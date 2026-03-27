@@ -7,11 +7,44 @@
 
 import {
   DiabloState, DiabloMapId, VendorType, DiabloVendor,
-  GreaterRiftState, MultiplayerState, SkillId,
+  GreaterRiftState, MultiplayerState, SkillId, DamageType,
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, ADVANCED_CRAFTING_RECIPES,
 } from "./DiabloConfig";
+
+// Dark Diablo-style skill icon colors per damage type
+const SKILL_ICON_STYLES: Record<string, { bg: string; glow: string; border: string; symbol: string }> = {
+  [DamageType.FIRE]:      { bg: 'radial-gradient(circle at 40% 35%, #4a1a08, #1a0800)', glow: 'rgba(255,80,20,0.5)',  border: '#8a3010', symbol: '#ff6622' },
+  [DamageType.ICE]:       { bg: 'radial-gradient(circle at 40% 35%, #0a1a2a, #020810)', glow: 'rgba(80,160,255,0.5)', border: '#2a4a6a', symbol: '#66bbff' },
+  [DamageType.LIGHTNING]: { bg: 'radial-gradient(circle at 40% 35%, #1a1a08, #080800)', glow: 'rgba(255,255,80,0.5)', border: '#5a5a10', symbol: '#ffee44' },
+  [DamageType.POISON]:    { bg: 'radial-gradient(circle at 40% 35%, #0a1a08, #020800)', glow: 'rgba(80,255,80,0.4)',  border: '#2a5a10', symbol: '#66ff44' },
+  [DamageType.ARCANE]:    { bg: 'radial-gradient(circle at 40% 35%, #1a0a2a, #080010)', glow: 'rgba(160,80,255,0.5)', border: '#4a2a6a', symbol: '#bb66ff' },
+  [DamageType.SHADOW]:    { bg: 'radial-gradient(circle at 40% 35%, #12081a, #040008)', glow: 'rgba(120,60,180,0.4)', border: '#3a1a4a', symbol: '#9944cc' },
+  [DamageType.HOLY]:      { bg: 'radial-gradient(circle at 40% 35%, #2a2408, #0a0800)', glow: 'rgba(255,215,80,0.5)', border: '#6a5a10', symbol: '#ffd744' },
+  [DamageType.PHYSICAL]:  { bg: 'radial-gradient(circle at 40% 35%, #1a1510, #080604)', glow: 'rgba(180,140,80,0.3)', border: '#4a3a2a', symbol: '#ccaa66' },
+};
+
+/** Render a dark Diablo-style skill icon as HTML */
+function renderSkillIcon(icon: string, damageType: string): string {
+  const style = SKILL_ICON_STYLES[damageType] || SKILL_ICON_STYLES[DamageType.PHYSICAL];
+  return `<div style="
+    width:42px;height:42px;display:flex;align-items:center;justify-content:center;
+    background:${style.bg};border:1px solid ${style.border};border-radius:4px;
+    box-shadow:0 0 8px ${style.glow}, inset 0 0 12px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    position:relative;overflow:hidden;
+  "><div style="
+    font-size:24px;color:${style.symbol};
+    filter:drop-shadow(0 0 4px ${style.glow}) drop-shadow(0 0 8px ${style.glow});
+    text-shadow:0 0 6px ${style.glow};
+    z-index:1;line-height:1;
+  ">${icon}</div><div style="
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    background:linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(0,0,0,0.15) 100%);
+    pointer-events:none;
+  "></div></div>`;
+}
 import {
   EXCALIBUR_QUEST_INFO, MAP_NAME_MAP, WEATHER_LABELS,
 } from "./DiabloConstants";
@@ -221,29 +254,52 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
   `;
-  // Gargoyle holder SVG (demon crouching behind the orb)
-  const hpGargoyle = document.createElement("div");
-  hpGargoyle.style.cssText = "position:absolute;width:190px;height:190px;top:-20px;left:-20px;pointer-events:none;z-index:-3;";
-  hpGargoyle.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.55;">
-    <path d="M 28 72 Q 8 38 3 15 Q 14 32 38 48 Q 18 54 28 72" fill="#2a2218" stroke="#3a3228" stroke-width="0.8"/>
-    <path d="M 172 72 Q 192 38 197 15 Q 186 32 162 48 Q 182 54 172 72" fill="#2a2218" stroke="#3a3228" stroke-width="0.8"/>
-    <path d="M 33 67 Q 16 44 10 25" fill="none" stroke="#3a3228" stroke-width="0.6"/>
-    <path d="M 167 67 Q 184 44 190 25" fill="none" stroke="#3a3228" stroke-width="0.6"/>
-    <path d="M 76 40 Q 66 16 54 4" fill="none" stroke="#3a3228" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M 124 40 Q 134 16 146 4" fill="none" stroke="#3a3228" stroke-width="2.5" stroke-linecap="round"/>
-    <ellipse cx="100" cy="46" rx="19" ry="15" fill="#2a2218" stroke="#3a3228" stroke-width="1"/>
-    <circle cx="93" cy="44" r="3.5" fill="#661111" opacity="0.9"/>
-    <circle cx="107" cy="44" r="3.5" fill="#661111" opacity="0.9"/>
-    <circle cx="93" cy="44" r="1.5" fill="#cc3333"/>
-    <circle cx="107" cy="44" r="1.5" fill="#cc3333"/>
-    <path d="M 96 52 L 100 56 L 104 52" fill="none" stroke="#3a3228" stroke-width="0.8"/>
-    <path d="M 56 62 Q 38 78 28 98" fill="none" stroke="#2a2218" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 144 62 Q 162 78 172 98" fill="none" stroke="#2a2218" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 28 98 L 36 90 L 30 84 L 38 92 L 32 86 L 40 96" fill="#2a2218" stroke="#3a3228" stroke-width="0.6"/>
-    <path d="M 172 98 L 164 90 L 170 84 L 162 92 L 168 86 L 160 96" fill="#2a2218" stroke="#3a3228" stroke-width="0.6"/>
-    <path d="M 100 178 Q 112 188 132 190 Q 142 188 146 182 Q 140 186 130 184" fill="none" stroke="#3a3228" stroke-width="1.8" stroke-linecap="round"/>
+  // Dark creature frame behind the health orb (smooth organic stone shape)
+  const hpCreature = document.createElement("div");
+  hpCreature.style.cssText = `
+    position:absolute;width:200px;height:200px;top:-25px;left:-25px;pointer-events:none;z-index:-3;
+  `;
+  hpCreature.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.6;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="hpCreatureGrad" cx="50%" cy="50%"><stop offset="60%" stop-color="#1a1410"/><stop offset="100%" stop-color="#0a0806"/></radialGradient>
+      <filter id="hpBlur"><feGaussianBlur stdDeviation="0.8"/></filter>
+    </defs>
+    <!-- Organic stone frame wrapping around the orb -->
+    <path d="M 100 12 C 65 10 30 30 20 60 C 10 85 8 100 12 120 C 16 145 30 170 55 185
+             C 70 193 85 198 100 198 C 115 198 130 193 145 185
+             C 170 170 184 145 188 120 C 192 100 190 85 180 60
+             C 170 30 135 10 100 12 Z"
+      fill="url(#hpCreatureGrad)" stroke="#2a2018" stroke-width="2" filter="url(#hpBlur)"/>
+    <!-- Inner carved channel (dark groove around the orb area) -->
+    <circle cx="100" cy="105" r="78" fill="none" stroke="#0a0804" stroke-width="5" opacity="0.5"/>
+    <!-- Stone texture cracks -->
+    <path d="M 40 50 Q 50 55 45 70" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 160 50 Q 150 55 155 70" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 35 140 Q 45 150 40 165" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 165 140 Q 155 150 160 165" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <!-- Demon face at top (smooth, organic) -->
+    <ellipse cx="100" cy="28" rx="22" ry="16" fill="#1a1410" stroke="#2a2018" stroke-width="1"/>
+    <!-- Eyes (glowing red, inset) -->
+    <ellipse cx="92" cy="26" rx="5" ry="3.5" fill="#0a0604" stroke="#1a0808" stroke-width="0.5"/>
+    <ellipse cx="108" cy="26" rx="5" ry="3.5" fill="#0a0604" stroke="#1a0808" stroke-width="0.5"/>
+    <ellipse cx="92" cy="26" rx="2.5" ry="1.8" fill="#881111" opacity="0.9"/>
+    <ellipse cx="108" cy="26" rx="2.5" ry="1.8" fill="#881111" opacity="0.9"/>
+    <ellipse cx="92" cy="26" rx="1" ry="0.8" fill="#ff3333" opacity="0.8"/>
+    <ellipse cx="108" cy="26" rx="1" ry="0.8" fill="#ff3333" opacity="0.8"/>
+    <!-- Brow ridges -->
+    <path d="M 84 22 Q 92 19 100 22" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 100 22 Q 108 19 116 22" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Nose slit -->
+    <path d="M 98 30 Q 100 33 102 30" fill="none" stroke="#2a2018" stroke-width="0.8"/>
+    <!-- Mouth (grim, thin) -->
+    <path d="M 90 36 Q 95 38 100 37 Q 105 38 110 36" fill="none" stroke="#2a2018" stroke-width="1" stroke-linecap="round"/>
+    <!-- Curved horn-like ridges (smooth, part of the stone frame) -->
+    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#1a1410" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#1a1410" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
   </svg>`;
-  hpOrbWrap.appendChild(hpGargoyle);
+  hpOrbWrap.appendChild(hpCreature);
   // Outer decorative ring
   const hpRingOuter = document.createElement("div");
   hpRingOuter.style.cssText = `
@@ -442,29 +498,52 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
   `;
-  // Gargoyle holder SVG (blue-eyed demon for mana)
-  const mpGargoyle = document.createElement("div");
-  mpGargoyle.style.cssText = "position:absolute;width:190px;height:190px;top:-20px;left:-20px;pointer-events:none;z-index:-3;";
-  mpGargoyle.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.55;">
-    <path d="M 28 72 Q 8 38 3 15 Q 14 32 38 48 Q 18 54 28 72" fill="#181828" stroke="#282838" stroke-width="0.8"/>
-    <path d="M 172 72 Q 192 38 197 15 Q 186 32 162 48 Q 182 54 172 72" fill="#181828" stroke="#282838" stroke-width="0.8"/>
-    <path d="M 33 67 Q 16 44 10 25" fill="none" stroke="#282838" stroke-width="0.6"/>
-    <path d="M 167 67 Q 184 44 190 25" fill="none" stroke="#282838" stroke-width="0.6"/>
-    <path d="M 76 40 Q 66 16 54 4" fill="none" stroke="#282838" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M 124 40 Q 134 16 146 4" fill="none" stroke="#282838" stroke-width="2.5" stroke-linecap="round"/>
-    <ellipse cx="100" cy="46" rx="19" ry="15" fill="#181828" stroke="#282838" stroke-width="1"/>
-    <circle cx="93" cy="44" r="3.5" fill="#112266" opacity="0.9"/>
-    <circle cx="107" cy="44" r="3.5" fill="#112266" opacity="0.9"/>
-    <circle cx="93" cy="44" r="1.5" fill="#4466cc"/>
-    <circle cx="107" cy="44" r="1.5" fill="#4466cc"/>
-    <path d="M 96 52 L 100 56 L 104 52" fill="none" stroke="#282838" stroke-width="0.8"/>
-    <path d="M 56 62 Q 38 78 28 98" fill="none" stroke="#181828" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 144 62 Q 162 78 172 98" fill="none" stroke="#181828" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 28 98 L 36 90 L 30 84 L 38 92 L 32 86 L 40 96" fill="#181828" stroke="#282838" stroke-width="0.6"/>
-    <path d="M 172 98 L 164 90 L 170 84 L 162 92 L 168 86 L 160 96" fill="#181828" stroke="#282838" stroke-width="0.6"/>
-    <path d="M 100 178 Q 88 188 68 190 Q 58 188 54 182 Q 60 186 70 184" fill="none" stroke="#282838" stroke-width="1.8" stroke-linecap="round"/>
+  // Dark creature frame behind the mana orb (blue-tinted)
+  const mpCreature = document.createElement("div");
+  mpCreature.style.cssText = `
+    position:absolute;width:200px;height:200px;top:-25px;left:-25px;pointer-events:none;z-index:-3;
+  `;
+  mpCreature.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.6;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="mpCreatureGrad" cx="50%" cy="50%"><stop offset="60%" stop-color="#101420"/><stop offset="100%" stop-color="#06080a"/></radialGradient>
+      <filter id="mpBlur"><feGaussianBlur stdDeviation="0.8"/></filter>
+    </defs>
+    <!-- Organic stone frame wrapping around the orb -->
+    <path d="M 100 12 C 65 10 30 30 20 60 C 10 85 8 100 12 120 C 16 145 30 170 55 185
+             C 70 193 85 198 100 198 C 115 198 130 193 145 185
+             C 170 170 184 145 188 120 C 192 100 190 85 180 60
+             C 170 30 135 10 100 12 Z"
+      fill="url(#mpCreatureGrad)" stroke="#1a2030" stroke-width="2" filter="url(#mpBlur)"/>
+    <!-- Inner carved channel -->
+    <circle cx="100" cy="105" r="78" fill="none" stroke="#040810" stroke-width="5" opacity="0.5"/>
+    <!-- Stone texture cracks -->
+    <path d="M 40 50 Q 50 55 45 70" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 160 50 Q 150 55 155 70" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 35 140 Q 45 150 40 165" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 165 140 Q 155 150 160 165" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
+    <!-- Demon face at top (smooth, organic) -->
+    <ellipse cx="100" cy="28" rx="22" ry="16" fill="#101420" stroke="#1a2030" stroke-width="1"/>
+    <!-- Eyes (glowing blue, inset) -->
+    <ellipse cx="92" cy="26" rx="5" ry="3.5" fill="#040810" stroke="#0a1020" stroke-width="0.5"/>
+    <ellipse cx="108" cy="26" rx="5" ry="3.5" fill="#040810" stroke="#0a1020" stroke-width="0.5"/>
+    <ellipse cx="92" cy="26" rx="2.5" ry="1.8" fill="#112266" opacity="0.9"/>
+    <ellipse cx="108" cy="26" rx="2.5" ry="1.8" fill="#112266" opacity="0.9"/>
+    <ellipse cx="92" cy="26" rx="1" ry="0.8" fill="#4488ff" opacity="0.8"/>
+    <ellipse cx="108" cy="26" rx="1" ry="0.8" fill="#4488ff" opacity="0.8"/>
+    <!-- Brow ridges -->
+    <path d="M 84 22 Q 92 19 100 22" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 100 22 Q 108 19 116 22" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Nose slit -->
+    <path d="M 98 30 Q 100 33 102 30" fill="none" stroke="#1a2030" stroke-width="0.8"/>
+    <!-- Mouth -->
+    <path d="M 90 36 Q 95 38 100 37 Q 105 38 110 36" fill="none" stroke="#1a2030" stroke-width="1" stroke-linecap="round"/>
+    <!-- Curved horn-like ridges -->
+    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#101420" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#101420" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
   </svg>`;
-  mpOrbWrap.appendChild(mpGargoyle);
+  mpOrbWrap.appendChild(mpCreature);
   // Outer decorative ring (silver/blue)
   const mpRingOuter = document.createElement("div");
   mpRingOuter.style.cssText = `
@@ -779,7 +858,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     keyLabel.textContent = String(i + 1);
 
     const iconEl = document.createElement("div");
-    iconEl.style.cssText = "font-size:34px;z-index:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));";
+    iconEl.style.cssText = "z-index:1;display:flex;align-items:center;justify-content:center;";
     iconEl.className = "skill-icon";
 
     // Inner bevel highlight (raised stone look)
@@ -1706,7 +1785,10 @@ export function updateHUD(
     const def = SKILL_DEFS[skillId];
     if (!def) continue;
     const iconEl = refs.skillSlots[i].querySelector(".skill-icon") as HTMLDivElement;
-    if (iconEl) iconEl.textContent = def.icon;
+    if (iconEl && iconEl.dataset.skillId !== skillId) {
+      iconEl.dataset.skillId = skillId;
+      iconEl.innerHTML = renderSkillIcon(def.icon, def.damageType);
+    }
 
     const cd = p.skillCooldowns.get(skillId) || 0;
     const maxCd = def.cooldown;
