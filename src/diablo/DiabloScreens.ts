@@ -1469,9 +1469,12 @@ export function showInventory(ctx: ScreenContext): void {
             cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
             text-shadow:0 1px 3px rgba(0,0,0,0.5);
           ">STASH</button>
-          <div style="color:#888;font-size:12px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
+          <div style="color:#888;font-size:13px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
         </div>
-        <div style="margin-top:10px;color:#666;font-size:12px;text-align:center;">Press <span style="color:#aaa;">I</span> or <span style="color:#aaa;">Escape</span> to close</div>
+        <div style="margin-top:10px;color:#666;font-size:13px;text-align:center;display:flex;gap:20px;justify-content:center;flex-wrap:wrap;">
+          <span>Hover item + <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:1px 8px;font-family:monospace;color:#ff8844;">T</span> to destroy</span>
+          <span>Press <span style="color:#aaa;">I</span> or <span style="color:#aaa;">Escape</span> to close</span>
+        </div>
       </div>
       <!-- Tooltip container -->
       <div id="inv-tooltip" style="
