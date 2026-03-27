@@ -1411,7 +1411,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   // Quest tracker - ornate scroll style
   const questTracker = document.createElement("div");
   questTracker.style.cssText = `
-    position:absolute;top:16px;right:20px;margin-top:100px;width:240px;
+    position:absolute;top:16px;right:20px;margin-top:130px;width:240px;
     background:linear-gradient(180deg, rgba(30,24,12,0.9), rgba(15,12,6,0.92), rgba(25,20,10,0.9));
     border:2px solid #7a6a3a;border-radius:8px;
     padding:12px 36px 12px 14px;font-size:13px;color:#ccc;display:none;
