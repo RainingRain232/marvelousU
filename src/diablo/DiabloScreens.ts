@@ -1351,7 +1351,7 @@ export function showInventory(ctx: ScreenContext): void {
   // Player stats
   const stats = ctx.getEffectiveStats();
   const statsHtml = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 14px;font-size:12px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 14px;font-size:14px;">
       <div style="color:#e88;">STR: ${stats.strength}</div>
       <div style="color:#8e8;">DEX: ${stats.dexterity}</div>
       <div style="color:#88e;">INT: ${stats.intelligence}</div>
@@ -1476,8 +1476,8 @@ export function showInventory(ctx: ScreenContext): void {
       <!-- Tooltip container -->
       <div id="inv-tooltip" style="
         display:none;position:fixed;z-index:100;background:rgba(8,4,2,0.97);
-        border:2px solid #5a4a2a;border-radius:8px;padding:0;max-width:360px;min-width:260px;
-        pointer-events:none;color:#ccc;font-size:14px;overflow:hidden;
+        border:2px solid #5a4a2a;border-radius:8px;padding:0;max-width:400px;min-width:280px;
+        pointer-events:none;color:#ccc;font-size:15px;overflow:hidden;
         box-shadow:0 4px 20px rgba(0,0,0,0.7),0 0 1px #c8a84e;
       "></div>
     </div>`;
@@ -1552,9 +1552,44 @@ export function showInventory(ctx: ScreenContext): void {
       ctx.state.loot.push(loot);
       ctx.showInventory();
     });
-    el.addEventListener("mouseenter", (ev) => ctx.showItemTooltip(ev, p.inventory[idx].item));
-    el.addEventListener("mouseleave", () => ctx.hideItemTooltip());
+    el.addEventListener("mouseenter", (ev) => {
+      ctx.showItemTooltip(ev, p.inventory[idx].item);
+      (ctx.menuEl as any)._hoveredInvSlot = idx;
+    });
+    el.addEventListener("mouseleave", () => {
+      ctx.hideItemTooltip();
+      if ((ctx.menuEl as any)._hoveredInvSlot === idx) (ctx.menuEl as any)._hoveredInvSlot = -1;
+    });
   });
+
+  // T key to trash hovered item
+  const trashKeyHandler = (e: KeyboardEvent) => {
+    if (e.code !== "KeyT") return;
+    const hovIdx = (ctx.menuEl as any)._hoveredInvSlot;
+    if (hovIdx === undefined || hovIdx < 0) return;
+    const item = p.inventory[hovIdx]?.item;
+    if (!item) return;
+    if (item.isLocked) {
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'Item is locked!', '#ff4444');
+      return;
+    }
+    const gold = Math.max(1, Math.floor((item.value || 0) * 0.3));
+    p.gold += gold;
+    ctx.addFloatingText(p.x, p.y + 2, p.z, `Destroyed ${item.name} (+${gold}g)`, '#ff8844');
+    p.inventory[hovIdx].item = null;
+    ctx.hideItemTooltip();
+    window.removeEventListener("keydown", trashKeyHandler);
+    ctx.showInventory();
+  };
+  window.addEventListener("keydown", trashKeyHandler);
+  // Clean up listener when inventory closes (menuEl gets cleared)
+  const observer = new MutationObserver(() => {
+    if (!ctx.menuEl.querySelector("#inv-tooltip")) {
+      window.removeEventListener("keydown", trashKeyHandler);
+      observer.disconnect();
+    }
+  });
+  observer.observe(ctx.menuEl, { childList: true });
 
   // Sort buttons
   const sortBtns = ctx.menuEl.querySelectorAll(".inv-sort-btn") as NodeListOf<HTMLButtonElement>;
@@ -2595,7 +2630,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
         const val = stats[k];
         const clr = val > 0 ? "#8f8" : "#f88";
         const sgn = val > 0 ? "+" : "";
-        statsLines += `<div style="color:${clr};font-size:14px;padding:2px 0;">${sgn}${val} ${label}</div>`;
+        statsLines += `<div style="color:${clr};font-size:15px;padding:2px 0;">${sgn}${val} ${label}</div>`;
       }
     }
 
@@ -2606,7 +2641,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
       const equipped = ctx.state.player.equipment[equipKey];
       if (equipped && equipped.id !== item.id) {
         comparisonLines += `<div style="border-top:1px solid rgba(90,74,42,0.3);margin:6px 0;padding-top:6px;">`;
-        comparisonLines += `<div style="color:#c8a84e;font-size:13px;font-weight:bold;margin-bottom:4px;">vs. ${equipped.name}</div>`;
+        comparisonLines += `<div style="color:#c8a84e;font-size:15px;font-weight:bold;margin-bottom:4px;">vs. ${equipped.name}</div>`;
         const eqStats = equipped.stats as any;
         for (const k of Object.keys(statLabels)) {
           const newVal = (stats[k] || 0) as number;
@@ -2615,7 +2650,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
           if (diff !== 0) {
             const clr = diff > 0 ? "#44ff44" : "#ff4444";
             const arrow = diff > 0 ? "\u25B2" : "\u25BC";
-            comparisonLines += `<div style="color:${clr};font-size:13px;padding:2px 0;">${arrow} ${diff > 0 ? '+' : ''}${diff} ${statLabels[k] || k}</div>`;
+            comparisonLines += `<div style="color:${clr};font-size:14px;padding:2px 0;">${arrow} ${diff > 0 ? '+' : ''}${diff} ${statLabels[k] || k}</div>`;
           }
         }
         comparisonLines += `</div>`;
@@ -2630,12 +2665,12 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
         const colorHex = '#' + lcfg.color.toString(16).padStart(6, '0');
         lanternLines = `
           <div style="border-top:1px solid rgba(90,74,42,0.3);margin:6px 0;padding-top:6px;">
-            <div style="color:#c8a84e;font-size:12px;font-weight:bold;margin-bottom:4px;">Light Properties</div>
-            <div style="color:#ffcc66;font-size:12px;padding:1px 0;">Intensity: ${lcfg.intensity.toFixed(1)}</div>
-            <div style="color:#ffcc66;font-size:12px;padding:1px 0;">Range: ${lcfg.distance} units</div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:1px 0;">
+            <div style="color:#c8a84e;font-size:15px;font-weight:bold;margin-bottom:4px;">Light Properties</div>
+            <div style="color:#ffcc66;font-size:14px;padding:2px 0;">Intensity: ${lcfg.intensity.toFixed(1)}</div>
+            <div style="color:#ffcc66;font-size:14px;padding:2px 0;">Range: ${lcfg.distance} units</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:14px;padding:2px 0;">
               <span style="color:#ffcc66;">Color:</span>
-              <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${colorHex};border:1px solid #555;box-shadow:0 0 6px ${colorHex};"></span>
+              <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${colorHex};border:1px solid #555;box-shadow:0 0 6px ${colorHex};"></span>
             </div>
           </div>`;
       }
@@ -2645,9 +2680,9 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
     if (item.legendaryAbility) {
       const effect = LEGENDARY_EFFECTS[item.legendaryAbility];
       if (effect) {
-        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${effect.description}</div>`;
+        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-size:14px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${effect.description}</div>`;
       } else {
-        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${item.legendaryAbility}</div>`;
+        legendaryLine = `<div style="color:#ff8800;margin-top:6px;font-size:14px;font-style:italic;border-left:2px solid #ff880060;padding-left:6px;">${item.legendaryAbility}</div>`;
       }
     }
     let setLine = "";
@@ -2673,7 +2708,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
           socketIcons += `<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#222;border:1px solid #555;margin:1px;"></span>`;
         }
       }
-      socketLine = `<div style="margin-top:4px;font-size:12px;color:#aaa;">Sockets: ${socketIcons}</div>`;
+      socketLine = `<div style="margin-top:4px;font-size:14px;color:#aaa;">Sockets: ${socketIcons}</div>`;
     }
     // DPS calculation for weapons
     let dpsLine = "";
@@ -2699,16 +2734,16 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
       <!-- Rarity color top bar -->
       <div style="height:4px;background:linear-gradient(90deg,transparent,${rarityColor},transparent);"></div>
       <!-- Content area with subtle rarity gradient background -->
-      <div style="padding:14px 16px;background:linear-gradient(180deg, ${RARITY_BG[item.rarity]} 0%, rgba(8,4,2,0) 40%);position:relative;">
+      <div style="padding:16px 20px;background:linear-gradient(180deg, ${RARITY_BG[item.rarity]} 0%, rgba(8,4,2,0) 40%);position:relative;">
         <!-- Item name & rarity header -->
-        <div style="border-bottom:1px solid rgba(90,74,42,0.5);padding-bottom:8px;margin-bottom:8px;">
-          <div style="color:${rarityColor};font-size:18px;font-weight:bold;text-shadow:0 0 8px ${rarityColor}40;">${item.icon} ${item.name}</div>
-          <div style="color:${rarityColor};font-size:13px;margin-top:3px;letter-spacing:1px;">
-            <span style="font-size:12px;">${stars}</span> ${rarityName}
+        <div style="border-bottom:1px solid rgba(90,74,42,0.5);padding-bottom:10px;margin-bottom:10px;">
+          <div style="color:${rarityColor};font-size:20px;font-weight:bold;text-shadow:0 0 8px ${rarityColor}40;">${item.icon} ${item.name}</div>
+          <div style="color:${rarityColor};font-size:14px;margin-top:4px;letter-spacing:1px;">
+            <span style="font-size:13px;">${stars}</span> ${rarityName}
           </div>
         </div>
         <!-- Slot/type -->
-        <div style="color:#888;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">${item.slot || item.type}</div>
+        <div style="color:#888;font-size:14px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">${item.slot || item.type}</div>
         <!-- Separator with diamond ornaments -->
         <div style="display:flex;align-items:center;gap:6px;margin:4px 0 6px;">
           <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a60);"></div>
@@ -2729,13 +2764,13 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
           <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
           <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a60);"></div>
         </div>
-        <div style="color:#777;font-size:13px;font-style:italic;line-height:1.5;">${item.description}</div>
+        <div style="color:#777;font-size:14px;font-style:italic;line-height:1.5;">${item.description}</div>
       </div>
       <!-- Rarity color bottom bar -->
       <div style="height:2px;background:linear-gradient(90deg,transparent,${rarityColor}40,transparent);"></div>
     `;
     tooltip.style.display = "block";
-    tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 320) + "px";
+    tooltip.style.left = Math.min(ev.clientX + 16, window.innerWidth - 400) + "px";
     tooltip.style.top = Math.min(ev.clientY + 16, window.innerHeight - 250) + "px";
 }
 

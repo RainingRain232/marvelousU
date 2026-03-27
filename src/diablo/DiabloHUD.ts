@@ -168,10 +168,10 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
       100% { background-position: 200% 0; }
     }
     @keyframes hud-torch-flicker {
-      0%, 100% { opacity:0.85; transform:scaleX(1) scaleY(1); }
-      25% { opacity:1; transform:scaleX(1.05) scaleY(1.1); }
-      50% { opacity:0.75; transform:scaleX(0.95) scaleY(0.95); }
-      75% { opacity:0.95; transform:scaleX(1.02) scaleY(1.05); }
+      0%, 100% { opacity:0.85; transform:translateX(-50%) scaleX(1) scaleY(1); }
+      25% { opacity:1; transform:translateX(-50%) scaleX(1.05) scaleY(1.1); }
+      50% { opacity:0.75; transform:translateX(-50%) scaleX(0.95) scaleY(0.95); }
+      75% { opacity:0.95; transform:translateX(-50%) scaleX(1.02) scaleY(1.05); }
     }
     @keyframes hud-torch-glow {
       0%, 100% { box-shadow:0 0 15px 8px rgba(255,140,20,0.3), 0 0 30px 12px rgba(255,100,0,0.15); }
@@ -1122,57 +1122,86 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   const potionHudSlots: HTMLDivElement[] = [];
   const potionLabels = ["F1", "F2", "F3", "F4"];
   const potionColors = [
-    "rgba(200,40,40,0.5)", "rgba(60,60,220,0.5)", "rgba(40,180,40,0.5)", "rgba(200,180,40,0.5)"
+    { fill: "rgba(200,40,40,0.55)", glow: "rgba(200,40,40,0.15)", border: "#8a4a4a" },
+    { fill: "rgba(60,60,220,0.55)", glow: "rgba(60,60,220,0.15)", border: "#4a4a8a" },
+    { fill: "rgba(40,180,40,0.55)", glow: "rgba(40,180,40,0.15)", border: "#4a8a4a" },
+    { fill: "rgba(200,180,40,0.55)", glow: "rgba(200,180,40,0.15)", border: "#8a7a3a" },
   ];
   for (let i = 0; i < 4; i++) {
+    const pc = potionColors[i];
     const slot = document.createElement("div");
     slot.style.cssText = `
       width:58px;height:70px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
-      border:2px solid #8a7a4a;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:4px;
-      box-shadow:inset 0 1px 0 rgba(100,180,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
-        0 2px 6px rgba(0,0,0,0.4), inset 0 0 15px rgba(80,160,60,0.03);
-      clip-path:polygon(25% 0%, 75% 0%, 80% 8%, 80% 12%, 100% 20%, 100% 100%, 0% 100%, 0% 20%, 20% 12%, 20% 8%);
+      border:2px solid ${pc.border};display:flex;flex-direction:column;
+      align-items:center;justify-content:center;position:relative;overflow:hidden;
+      border-radius:6px 6px 10px 10px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3),
+        0 2px 6px rgba(0,0,0,0.4), 0 0 8px ${pc.glow};
     `;
 
-    // Cork/stopper decoration at top
+    // Flask neck (narrower top section with smooth border-radius)
+    const neck = document.createElement("div");
+    neck.style.cssText = `
+      position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:3;
+      width:24px;height:16px;pointer-events:none;
+      background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(15,22,10,0.95));
+      border-left:2px solid ${pc.border};border-right:2px solid ${pc.border};
+      border-top:2px solid ${pc.border};
+      border-radius:4px 4px 0 0;
+    `;
+    slot.appendChild(neck);
+
+    // Cork/stopper
     const cork = document.createElement("div");
     cork.style.cssText = `
-      position:absolute;top:0px;left:50%;transform:translateX(-50%);z-index:4;
-      width:20px;height:6px;pointer-events:none;
-      background:linear-gradient(180deg, #8b7355, #6b5335, #8b7355);
-      border-radius:2px 2px 0 0;
-      box-shadow:0 1px 2px rgba(0,0,0,0.4);
+      position:absolute;top:-2px;left:50%;transform:translateX(-50%);z-index:5;
+      width:18px;height:7px;pointer-events:none;
+      background:linear-gradient(180deg, #9b8365, #7b6345, #6b5335, #7b6345);
+      border-radius:3px 3px 1px 1px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
     `;
     slot.appendChild(cork);
 
-    // Liquid level indicator (colored fill from bottom)
+    // Liquid level indicator (colored fill from bottom, smooth)
     const liquidLevel = document.createElement("div");
     liquidLevel.style.cssText = `
       position:absolute;bottom:0;left:0;width:100%;height:60%;z-index:0;
-      background:linear-gradient(0deg, ${potionColors[i]}, transparent);
+      background:linear-gradient(0deg, ${pc.fill}, ${pc.glow}, transparent);
       pointer-events:none;transition:height 0.3s;
+      border-radius:0 0 8px 8px;
     `;
     slot.appendChild(liquidLevel);
 
-    // Frame corners
-    const potCorner = document.createElement("div");
-    potCorner.style.cssText = `
-      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3;
-      box-shadow:inset 2px 2px 0 rgba(100,180,78,0.1), inset -2px -2px 0 rgba(100,180,78,0.08);
+    // Liquid surface highlight
+    const liquidSurface = document.createElement("div");
+    liquidSurface.style.cssText = `
+      position:absolute;bottom:55%;left:10%;width:80%;height:4px;z-index:1;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+      pointer-events:none;border-radius:2px;
     `;
+    slot.appendChild(liquidSurface);
+
+    // Glass shine
+    const shine = document.createElement("div");
+    shine.style.cssText = `
+      position:absolute;top:18px;left:4px;width:8px;height:30px;z-index:2;
+      background:linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04), transparent);
+      border-radius:4px;pointer-events:none;
+    `;
+    slot.appendChild(shine);
+
     const keyLabel = document.createElement("div");
     keyLabel.style.cssText = `
-      position:absolute;bottom:2px;right:3px;font-size:9px;color:#7a9a5a;z-index:2;
+      position:absolute;bottom:2px;right:4px;font-size:10px;color:#9aaa7a;z-index:4;
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      text-shadow:0 1px 2px rgba(0,0,0,0.8);
     `;
     keyLabel.textContent = potionLabels[i];
     const iconEl = document.createElement("div");
-    iconEl.style.cssText = "font-size:22px;z-index:1;";
+    iconEl.style.cssText = "font-size:24px;z-index:3;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));";
     iconEl.className = "potion-icon";
     slot.appendChild(iconEl);
     slot.appendChild(keyLabel);
-    slot.appendChild(potCorner);
     potionBarBg.appendChild(slot);
     potionHudSlots.push(slot);
   }
@@ -1338,8 +1367,8 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
 
   // === Animated torches flanking the skill bar ===
   const torchPositions = [
-    { side: "left", xOffset: "-300px" },
-    { side: "right", xOffset: "300px" },
+    { side: "left", xOffset: "-340px" },
+    { side: "right", xOffset: "340px" },
   ];
   for (const tp of torchPositions) {
     const torchWrap = document.createElement("div");
@@ -1372,7 +1401,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     // Flame (anchored to top of cup)
     const flame = document.createElement("div");
     flame.style.cssText = `
-      position:absolute;bottom:50px;left:50%;transform:translateX(-50%);
+      position:absolute;bottom:50px;left:50%;
       width:18px;height:26px;
       background:radial-gradient(ellipse at 50% 70%, #ffee66, #ffaa00 40%, #ff5500 70%, transparent);
       border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;

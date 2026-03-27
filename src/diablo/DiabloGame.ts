@@ -4211,7 +4211,7 @@ export class DiabloGame {
       const chest: DiabloTreasureChest = {
         id: this._genId(),
         x: cx,
-        y: 0,
+        y: getTerrainHeight(cx, cz),
         z: cz,
         opened: false,
         rarity,
