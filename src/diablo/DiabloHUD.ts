@@ -25,23 +25,23 @@ const SKILL_ICON_STYLES: Record<string, { bg: string; glow: string; border: stri
   [DamageType.PHYSICAL]:  { bg: 'radial-gradient(circle at 40% 35%, #1a1510, #080604)', glow: 'rgba(180,140,80,0.3)', border: '#4a3a2a', symbol: '#ccaa66' },
 };
 
-/** Render a dark Diablo-style skill icon as HTML */
+/** Render a dark Diablo-style skill icon as HTML — fills the entire slot */
 function renderSkillIcon(icon: string, damageType: string): string {
   const style = SKILL_ICON_STYLES[damageType] || SKILL_ICON_STYLES[DamageType.PHYSICAL];
   return `<div style="
-    width:42px;height:42px;display:flex;align-items:center;justify-content:center;
-    background:${style.bg};border:1px solid ${style.border};border-radius:4px;
-    box-shadow:0 0 8px ${style.glow}, inset 0 0 12px rgba(0,0,0,0.6),
-      inset 0 1px 0 rgba(255,255,255,0.05);
-    position:relative;overflow:hidden;
+    width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    background:${style.bg};
+    box-shadow:0 0 8px ${style.glow}, inset 0 0 15px rgba(0,0,0,0.7),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    position:absolute;top:0;left:0;border-radius:5px;overflow:hidden;
   "><div style="
-    font-size:24px;color:${style.symbol};
-    filter:drop-shadow(0 0 4px ${style.glow}) drop-shadow(0 0 8px ${style.glow});
-    text-shadow:0 0 6px ${style.glow};
+    font-size:30px;color:${style.symbol};
+    filter:drop-shadow(0 0 5px ${style.glow}) drop-shadow(0 0 10px ${style.glow});
+    text-shadow:0 0 8px ${style.glow};
     z-index:1;line-height:1;
   ">${icon}</div><div style="
     position:absolute;top:0;left:0;width:100%;height:100%;
-    background:linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%, rgba(0,0,0,0.15) 100%);
+    background:linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 40%, rgba(0,0,0,0.2) 100%);
     pointer-events:none;
   "></div></div>`;
 }
@@ -254,50 +254,87 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
   `;
-  // Dark creature frame behind the health orb (smooth organic stone shape)
+  // Detailed gargoyle behind the health orb with claws gripping the sides
   const hpCreature = document.createElement("div");
-  hpCreature.style.cssText = `
-    position:absolute;width:200px;height:200px;top:-25px;left:-25px;pointer-events:none;z-index:-3;
-  `;
-  hpCreature.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.6;" xmlns="http://www.w3.org/2000/svg">
+  hpCreature.style.cssText = `position:absolute;width:220px;height:220px;top:-35px;left:-35px;pointer-events:none;z-index:-3;`;
+  hpCreature.innerHTML = `<svg viewBox="0 0 220 220" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <radialGradient id="hpCreatureGrad" cx="50%" cy="50%"><stop offset="60%" stop-color="#1a1410"/><stop offset="100%" stop-color="#0a0806"/></radialGradient>
-      <filter id="hpBlur"><feGaussianBlur stdDeviation="0.8"/></filter>
+      <radialGradient id="hpGG" cx="50%" cy="48%"><stop offset="0%" stop-color="#18120c"/><stop offset="70%" stop-color="#0e0a06"/><stop offset="100%" stop-color="#060402"/></radialGradient>
+      <linearGradient id="hpHorn" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a1410"/><stop offset="100%" stop-color="#0a0806"/></linearGradient>
     </defs>
-    <!-- Organic stone frame wrapping around the orb -->
-    <path d="M 100 12 C 65 10 30 30 20 60 C 10 85 8 100 12 120 C 16 145 30 170 55 185
-             C 70 193 85 198 100 198 C 115 198 130 193 145 185
-             C 170 170 184 145 188 120 C 192 100 190 85 180 60
-             C 170 30 135 10 100 12 Z"
-      fill="url(#hpCreatureGrad)" stroke="#2a2018" stroke-width="2" filter="url(#hpBlur)"/>
-    <!-- Inner carved channel (dark groove around the orb area) -->
-    <circle cx="100" cy="105" r="78" fill="none" stroke="#0a0804" stroke-width="5" opacity="0.5"/>
-    <!-- Stone texture cracks -->
-    <path d="M 40 50 Q 50 55 45 70" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 160 50 Q 150 55 155 70" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 35 140 Q 45 150 40 165" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 165 140 Q 155 150 160 165" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <!-- Demon face at top (smooth, organic) -->
-    <ellipse cx="100" cy="28" rx="22" ry="16" fill="#1a1410" stroke="#2a2018" stroke-width="1"/>
-    <!-- Eyes (glowing red, inset) -->
-    <ellipse cx="92" cy="26" rx="5" ry="3.5" fill="#0a0604" stroke="#1a0808" stroke-width="0.5"/>
-    <ellipse cx="108" cy="26" rx="5" ry="3.5" fill="#0a0604" stroke="#1a0808" stroke-width="0.5"/>
-    <ellipse cx="92" cy="26" rx="2.5" ry="1.8" fill="#881111" opacity="0.9"/>
-    <ellipse cx="108" cy="26" rx="2.5" ry="1.8" fill="#881111" opacity="0.9"/>
-    <ellipse cx="92" cy="26" rx="1" ry="0.8" fill="#ff3333" opacity="0.8"/>
-    <ellipse cx="108" cy="26" rx="1" ry="0.8" fill="#ff3333" opacity="0.8"/>
-    <!-- Brow ridges -->
-    <path d="M 84 22 Q 92 19 100 22" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M 100 22 Q 108 19 116 22" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
-    <!-- Nose slit -->
-    <path d="M 98 30 Q 100 33 102 30" fill="none" stroke="#2a2018" stroke-width="0.8"/>
-    <!-- Mouth (grim, thin) -->
-    <path d="M 90 36 Q 95 38 100 37 Q 105 38 110 36" fill="none" stroke="#2a2018" stroke-width="1" stroke-linecap="round"/>
-    <!-- Curved horn-like ridges (smooth, part of the stone frame) -->
-    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#1a1410" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#1a1410" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#2a2018" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Body mass behind orb -->
+    <path d="M 110 8 C 70 5 28 28 16 62 C 6 90 4 110 8 135 C 14 160 32 182 60 196
+             C 78 205 95 210 110 210 C 125 210 142 205 160 196
+             C 188 182 206 160 212 135 C 216 110 214 90 204 62
+             C 192 28 150 5 110 8 Z"
+      fill="url(#hpGG)" stroke="#1a1208" stroke-width="1.5" opacity="0.85"/>
+    <!-- Muscle/rib texture lines on body -->
+    <path d="M 50 70 Q 55 80 48 95" fill="none" stroke="#1a1410" stroke-width="1.2" opacity="0.4"/>
+    <path d="M 42 90 Q 48 105 40 120" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.3"/>
+    <path d="M 170 70 Q 165 80 172 95" fill="none" stroke="#1a1410" stroke-width="1.2" opacity="0.4"/>
+    <path d="M 178 90 Q 172 105 180 120" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.3"/>
+    <path d="M 55 150 Q 60 160 52 172" fill="none" stroke="#1a1410" stroke-width="0.8" opacity="0.3"/>
+    <path d="M 165 150 Q 160 160 168 172" fill="none" stroke="#1a1410" stroke-width="0.8" opacity="0.3"/>
+    <!-- Shoulder masses -->
+    <ellipse cx="38" cy="65" rx="18" ry="14" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
+    <ellipse cx="182" cy="65" rx="18" ry="14" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
+    <!-- LEFT CLAW gripping orb (3 fingers + thumb wrapping around) -->
+    <path d="M 32 82 Q 22 90 18 100 Q 16 108 20 112 Q 22 108 24 102 Q 26 96 30 90 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 28 95 Q 16 105 12 118 Q 10 126 14 130 Q 16 124 20 116 Q 22 108 26 100 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 26 112 Q 14 124 10 140 Q 8 148 12 150 Q 16 144 18 136 Q 20 128 24 118 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
+    <!-- Left claw tips (sharp, curved) -->
+    <path d="M 18 100 Q 14 96 12 92 Q 11 90 13 90 Q 15 92 18 100" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
+    <path d="M 12 118 Q 8 114 6 110 Q 5 108 7 108 Q 9 110 12 118" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
+    <path d="M 10 140 Q 6 136 4 132 Q 3 130 5 130 Q 7 132 10 140" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
+    <!-- LEFT THUMB (wraps from behind) -->
+    <path d="M 36 70 Q 28 78 24 88 Q 22 94 26 96 Q 28 90 32 82 Z" fill="#14100a" stroke="#201810" stroke-width="0.6"/>
+    <!-- RIGHT CLAW gripping orb (mirror) -->
+    <path d="M 188 82 Q 198 90 202 100 Q 204 108 200 112 Q 198 108 196 102 Q 194 96 190 90 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 192 95 Q 204 105 208 118 Q 210 126 206 130 Q 204 124 200 116 Q 198 108 194 100 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 194 112 Q 206 124 210 140 Q 212 148 208 150 Q 204 144 202 136 Q 200 128 196 118 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
+    <!-- Right claw tips -->
+    <path d="M 202 100 Q 206 96 208 92 Q 209 90 207 90 Q 205 92 202 100" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
+    <path d="M 208 118 Q 212 114 214 110 Q 215 108 213 108 Q 211 110 208 118" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
+    <path d="M 210 140 Q 214 136 216 132 Q 217 130 215 130 Q 213 132 210 140" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
+    <!-- RIGHT THUMB -->
+    <path d="M 184 70 Q 192 78 196 88 Q 198 94 194 96 Q 192 90 188 82 Z" fill="#14100a" stroke="#201810" stroke-width="0.6"/>
+    <!-- Head (larger, more detailed) -->
+    <path d="M 110 14 C 90 12 76 18 74 30 C 72 42 80 50 95 52 C 100 52 110 53 120 52
+             C 140 50 148 42 146 30 C 144 18 130 12 110 14 Z" fill="#12100a" stroke="#1a1410" stroke-width="1"/>
+    <!-- Brow ridge (heavy, overhanging) -->
+    <path d="M 80 24 C 88 18 100 17 110 20 C 120 17 132 18 140 24" fill="none" stroke="#1e1810" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Deep-set eye sockets -->
+    <ellipse cx="95" cy="28" rx="7" ry="5" fill="#060402" stroke="#0e0a06" stroke-width="0.8"/>
+    <ellipse cx="125" cy="28" rx="7" ry="5" fill="#060402" stroke="#0e0a06" stroke-width="0.8"/>
+    <!-- Glowing red eyes -->
+    <ellipse cx="95" cy="28" rx="3.5" ry="2.2" fill="#661111"/>
+    <ellipse cx="125" cy="28" rx="3.5" ry="2.2" fill="#661111"/>
+    <ellipse cx="95" cy="28" rx="1.5" ry="1" fill="#cc2222"/>
+    <ellipse cx="125" cy="28" rx="1.5" ry="1" fill="#cc2222"/>
+    <ellipse cx="95" cy="27.5" rx="0.6" ry="0.5" fill="#ff4444" opacity="0.9"/>
+    <ellipse cx="125" cy="27.5" rx="0.6" ry="0.5" fill="#ff4444" opacity="0.9"/>
+    <!-- Nose bridge and nostrils -->
+    <path d="M 107 32 Q 110 36 113 32" fill="none" stroke="#1a1410" stroke-width="1.2"/>
+    <circle cx="107" cy="34" r="1.2" fill="#0a0806"/>
+    <circle cx="113" cy="34" r="1.2" fill="#0a0806"/>
+    <!-- Mouth with fangs -->
+    <path d="M 94 40 Q 100 43 110 42 Q 120 43 126 40" fill="none" stroke="#1a1410" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Upper fangs -->
+    <path d="M 100 41 L 99 46 L 101 41" fill="#1e1a12" stroke="#1a1410" stroke-width="0.4"/>
+    <path d="M 120 41 L 121 46 L 119 41" fill="#1e1a12" stroke="#1a1410" stroke-width="0.4"/>
+    <!-- Cheekbone ridges -->
+    <path d="M 82 30 Q 86 36 88 42" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.6"/>
+    <path d="M 138 30 Q 134 36 132 42" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.6"/>
+    <!-- Horns (thick, curved, textured) -->
+    <path d="M 78 20 Q 62 6 48 0" fill="none" stroke="url(#hpHorn)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 142 20 Q 158 6 172 0" fill="none" stroke="url(#hpHorn)" stroke-width="7" stroke-linecap="round"/>
+    <!-- Horn ridges (rings) -->
+    <path d="M 72 16 Q 70 14 72 12" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 65 12 Q 63 10 65 8" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.4"/>
+    <path d="M 148 16 Q 150 14 148 12" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 155 12 Q 157 10 155 8" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.4"/>
+    <!-- Chin/jaw detail -->
+    <path d="M 98 48 Q 110 54 122 48" fill="#0e0c08" stroke="#1a1410" stroke-width="0.6" opacity="0.5"/>
   </svg>`;
   hpOrbWrap.appendChild(hpCreature);
   // Outer decorative ring
@@ -498,50 +535,70 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
   `;
-  // Dark creature frame behind the mana orb (blue-tinted)
+  // Detailed gargoyle behind the mana orb with claws (blue-tinted)
   const mpCreature = document.createElement("div");
-  mpCreature.style.cssText = `
-    position:absolute;width:200px;height:200px;top:-25px;left:-25px;pointer-events:none;z-index:-3;
-  `;
-  mpCreature.innerHTML = `<svg viewBox="0 0 200 200" style="width:100%;height:100%;opacity:0.6;" xmlns="http://www.w3.org/2000/svg">
+  mpCreature.style.cssText = `position:absolute;width:220px;height:220px;top:-35px;left:-35px;pointer-events:none;z-index:-3;`;
+  mpCreature.innerHTML = `<svg viewBox="0 0 220 220" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <radialGradient id="mpCreatureGrad" cx="50%" cy="50%"><stop offset="60%" stop-color="#101420"/><stop offset="100%" stop-color="#06080a"/></radialGradient>
-      <filter id="mpBlur"><feGaussianBlur stdDeviation="0.8"/></filter>
+      <radialGradient id="mpGG" cx="50%" cy="48%"><stop offset="0%" stop-color="#0c1018"/><stop offset="70%" stop-color="#06080e"/><stop offset="100%" stop-color="#020406"/></radialGradient>
+      <linearGradient id="mpHorn" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10141a"/><stop offset="100%" stop-color="#06080a"/></linearGradient>
     </defs>
-    <!-- Organic stone frame wrapping around the orb -->
-    <path d="M 100 12 C 65 10 30 30 20 60 C 10 85 8 100 12 120 C 16 145 30 170 55 185
-             C 70 193 85 198 100 198 C 115 198 130 193 145 185
-             C 170 170 184 145 188 120 C 192 100 190 85 180 60
-             C 170 30 135 10 100 12 Z"
-      fill="url(#mpCreatureGrad)" stroke="#1a2030" stroke-width="2" filter="url(#mpBlur)"/>
-    <!-- Inner carved channel -->
-    <circle cx="100" cy="105" r="78" fill="none" stroke="#040810" stroke-width="5" opacity="0.5"/>
-    <!-- Stone texture cracks -->
-    <path d="M 40 50 Q 50 55 45 70" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 160 50 Q 150 55 155 70" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 35 140 Q 45 150 40 165" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 165 140 Q 155 150 160 165" fill="none" stroke="#1a2028" stroke-width="0.8" opacity="0.5"/>
-    <!-- Demon face at top (smooth, organic) -->
-    <ellipse cx="100" cy="28" rx="22" ry="16" fill="#101420" stroke="#1a2030" stroke-width="1"/>
-    <!-- Eyes (glowing blue, inset) -->
-    <ellipse cx="92" cy="26" rx="5" ry="3.5" fill="#040810" stroke="#0a1020" stroke-width="0.5"/>
-    <ellipse cx="108" cy="26" rx="5" ry="3.5" fill="#040810" stroke="#0a1020" stroke-width="0.5"/>
-    <ellipse cx="92" cy="26" rx="2.5" ry="1.8" fill="#112266" opacity="0.9"/>
-    <ellipse cx="108" cy="26" rx="2.5" ry="1.8" fill="#112266" opacity="0.9"/>
-    <ellipse cx="92" cy="26" rx="1" ry="0.8" fill="#4488ff" opacity="0.8"/>
-    <ellipse cx="108" cy="26" rx="1" ry="0.8" fill="#4488ff" opacity="0.8"/>
-    <!-- Brow ridges -->
-    <path d="M 84 22 Q 92 19 100 22" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M 100 22 Q 108 19 116 22" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
-    <!-- Nose slit -->
-    <path d="M 98 30 Q 100 33 102 30" fill="none" stroke="#1a2030" stroke-width="0.8"/>
-    <!-- Mouth -->
-    <path d="M 90 36 Q 95 38 100 37 Q 105 38 110 36" fill="none" stroke="#1a2030" stroke-width="1" stroke-linecap="round"/>
-    <!-- Curved horn-like ridges -->
-    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#101420" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#101420" stroke-width="5" stroke-linecap="round"/>
-    <path d="M 78 22 Q 60 8 50 4" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M 122 22 Q 140 8 150 4" fill="none" stroke="#1a2030" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 110 8 C 70 5 28 28 16 62 C 6 90 4 110 8 135 C 14 160 32 182 60 196
+             C 78 205 95 210 110 210 C 125 210 142 205 160 196
+             C 188 182 206 160 212 135 C 216 110 214 90 204 62
+             C 192 28 150 5 110 8 Z"
+      fill="url(#mpGG)" stroke="#0e1420" stroke-width="1.5" opacity="0.85"/>
+    <path d="M 50 70 Q 55 80 48 95" fill="none" stroke="#101828" stroke-width="1.2" opacity="0.4"/>
+    <path d="M 42 90 Q 48 105 40 120" fill="none" stroke="#101828" stroke-width="1" opacity="0.3"/>
+    <path d="M 170 70 Q 165 80 172 95" fill="none" stroke="#101828" stroke-width="1.2" opacity="0.4"/>
+    <path d="M 178 90 Q 172 105 180 120" fill="none" stroke="#101828" stroke-width="1" opacity="0.3"/>
+    <path d="M 55 150 Q 60 160 52 172" fill="none" stroke="#101828" stroke-width="0.8" opacity="0.3"/>
+    <path d="M 165 150 Q 160 160 168 172" fill="none" stroke="#101828" stroke-width="0.8" opacity="0.3"/>
+    <ellipse cx="38" cy="65" rx="18" ry="14" fill="#0a0e18" stroke="#101828" stroke-width="0.8" opacity="0.7"/>
+    <ellipse cx="182" cy="65" rx="18" ry="14" fill="#0a0e18" stroke="#101828" stroke-width="0.8" opacity="0.7"/>
+    <!-- LEFT CLAW -->
+    <path d="M 32 82 Q 22 90 18 100 Q 16 108 20 112 Q 22 108 24 102 Q 26 96 30 90 Z" fill="#0a0e14" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 28 95 Q 16 105 12 118 Q 10 126 14 130 Q 16 124 20 116 Q 22 108 26 100 Z" fill="#080c12" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 26 112 Q 14 124 10 140 Q 8 148 12 150 Q 16 144 18 136 Q 20 128 24 118 Z" fill="#060a0e" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 18 100 Q 14 96 12 92 Q 11 90 13 90 Q 15 92 18 100" fill="#101828" stroke="#182030" stroke-width="0.5"/>
+    <path d="M 12 118 Q 8 114 6 110 Q 5 108 7 108 Q 9 110 12 118" fill="#101828" stroke="#182030" stroke-width="0.5"/>
+    <path d="M 10 140 Q 6 136 4 132 Q 3 130 5 130 Q 7 132 10 140" fill="#101828" stroke="#182030" stroke-width="0.5"/>
+    <path d="M 36 70 Q 28 78 24 88 Q 22 94 26 96 Q 28 90 32 82 Z" fill="#0c1018" stroke="#142028" stroke-width="0.6"/>
+    <!-- RIGHT CLAW -->
+    <path d="M 188 82 Q 198 90 202 100 Q 204 108 200 112 Q 198 108 196 102 Q 194 96 190 90 Z" fill="#0a0e14" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 192 95 Q 204 105 208 118 Q 210 126 206 130 Q 204 124 200 116 Q 198 108 194 100 Z" fill="#080c12" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 194 112 Q 206 124 210 140 Q 212 148 208 150 Q 204 144 202 136 Q 200 128 196 118 Z" fill="#060a0e" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 202 100 Q 206 96 208 92 Q 209 90 207 90 Q 205 92 202 100" fill="#101828" stroke="#182030" stroke-width="0.5"/>
+    <path d="M 208 118 Q 212 114 214 110 Q 215 108 213 108 Q 211 110 208 118" fill="#101828" stroke="#182030" stroke-width="0.5"/>
+    <path d="M 210 140 Q 214 136 216 132 Q 217 130 215 130 Q 213 132 210 140" fill="#101828" stroke="#182030" stroke-width="0.5"/>
+    <path d="M 184 70 Q 192 78 196 88 Q 198 94 194 96 Q 192 90 188 82 Z" fill="#0c1018" stroke="#142028" stroke-width="0.6"/>
+    <!-- Head -->
+    <path d="M 110 14 C 90 12 76 18 74 30 C 72 42 80 50 95 52 C 100 52 110 53 120 52
+             C 140 50 148 42 146 30 C 144 18 130 12 110 14 Z" fill="#0a0e14" stroke="#101828" stroke-width="1"/>
+    <path d="M 80 24 C 88 18 100 17 110 20 C 120 17 132 18 140 24" fill="none" stroke="#141c28" stroke-width="2.5" stroke-linecap="round"/>
+    <ellipse cx="95" cy="28" rx="7" ry="5" fill="#020408" stroke="#0a0e14" stroke-width="0.8"/>
+    <ellipse cx="125" cy="28" rx="7" ry="5" fill="#020408" stroke="#0a0e14" stroke-width="0.8"/>
+    <ellipse cx="95" cy="28" rx="3.5" ry="2.2" fill="#112266"/>
+    <ellipse cx="125" cy="28" rx="3.5" ry="2.2" fill="#112266"/>
+    <ellipse cx="95" cy="28" rx="1.5" ry="1" fill="#2244cc"/>
+    <ellipse cx="125" cy="28" rx="1.5" ry="1" fill="#2244cc"/>
+    <ellipse cx="95" cy="27.5" rx="0.6" ry="0.5" fill="#4488ff" opacity="0.9"/>
+    <ellipse cx="125" cy="27.5" rx="0.6" ry="0.5" fill="#4488ff" opacity="0.9"/>
+    <path d="M 107 32 Q 110 36 113 32" fill="none" stroke="#101828" stroke-width="1.2"/>
+    <circle cx="107" cy="34" r="1.2" fill="#040810"/>
+    <circle cx="113" cy="34" r="1.2" fill="#040810"/>
+    <path d="M 94 40 Q 100 43 110 42 Q 120 43 126 40" fill="none" stroke="#101828" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M 100 41 L 99 46 L 101 41" fill="#141c24" stroke="#101828" stroke-width="0.4"/>
+    <path d="M 120 41 L 121 46 L 119 41" fill="#141c24" stroke="#101828" stroke-width="0.4"/>
+    <path d="M 82 30 Q 86 36 88 42" fill="none" stroke="#101828" stroke-width="1" opacity="0.6"/>
+    <path d="M 138 30 Q 134 36 132 42" fill="none" stroke="#101828" stroke-width="1" opacity="0.6"/>
+    <path d="M 78 20 Q 62 6 48 0" fill="none" stroke="url(#mpHorn)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 142 20 Q 158 6 172 0" fill="none" stroke="url(#mpHorn)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 72 16 Q 70 14 72 12" fill="none" stroke="#141c28" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 65 12 Q 63 10 65 8" fill="none" stroke="#141c28" stroke-width="0.7" opacity="0.4"/>
+    <path d="M 148 16 Q 150 14 148 12" fill="none" stroke="#141c28" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 155 12 Q 157 10 155 8" fill="none" stroke="#141c28" stroke-width="0.7" opacity="0.4"/>
+    <path d="M 98 48 Q 110 54 122 48" fill="#080c12" stroke="#101828" stroke-width="0.6" opacity="0.5"/>
   </svg>`;
   mpOrbWrap.appendChild(mpCreature);
   // Outer decorative ring (silver/blue)
@@ -815,16 +872,11 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     const slot = document.createElement("div");
     slot.style.cssText = `
       width:66px;height:66px;
-      background:linear-gradient(145deg, rgba(45,36,20,0.97), rgba(15,10,4,0.99), rgba(25,18,8,0.97));
-      border:3px solid #8a7a3a;border-radius:6px;display:flex;flex-direction:column;
+      background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
+      border:2px solid #8a7a4a;border-radius:6px;display:flex;flex-direction:column;
       align-items:center;justify-content:center;position:relative;overflow:hidden;
-      box-shadow:inset 0 2px 0 rgba(200,168,78,0.35), inset 0 -2px 0 rgba(0,0,0,0.6),
-        inset 2px 0 0 rgba(200,168,78,0.15), inset -2px 0 0 rgba(0,0,0,0.4),
-        0 3px 12px rgba(0,0,0,0.8), 0 0 1px rgba(200,168,78,0.3),
-        inset 0 0 20px rgba(0,0,0,0.5);
-      background-image:
-        radial-gradient(ellipse at 30% 20%, rgba(200,168,78,0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 80%, rgba(200,168,78,0.04) 0%, transparent 50%);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.4),
+        0 3px 10px rgba(0,0,0,0.7), 0 0 1px rgba(200,168,78,0.25);
     `;
     // Ornate frame corners on each slot
     const cornerDeco = document.createElement("div");
@@ -858,7 +910,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     keyLabel.textContent = String(i + 1);
 
     const iconEl = document.createElement("div");
-    iconEl.style.cssText = "z-index:1;display:flex;align-items:center;justify-content:center;";
+    iconEl.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;";
     iconEl.className = "skill-icon";
 
     // Inner bevel highlight (raised stone look)
