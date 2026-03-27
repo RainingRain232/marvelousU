@@ -73,7 +73,7 @@ export function buildMoonlitGrove(mctx: MapBuildContext, w: number, d: number): 
       const fstem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, stemH, 17), new THREE.MeshStandardMaterial({ color: 0x446644 }));
       fstem.position.y = stemH / 2; flower.add(fstem);
       for (let p = 0; p < 5; p++) {
-        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06, 30, 16), moonflowerMat);
+        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), moonflowerMat);
         const pa = (p / 5) * Math.PI * 2;
         petal.position.set(Math.cos(pa) * 0.06, stemH + 0.02, Math.sin(pa) * 0.06);
         petal.scale.set(1, 0.4, 1); flower.add(petal);
@@ -117,7 +117,7 @@ export function buildMoonlitGrove(mctx: MapBuildContext, w: number, d: number): 
       const mush = new THREE.Group();
       const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 17), new THREE.MeshStandardMaterial({ color: 0x887788 }));
       stem.position.y = 0.075; mush.add(stem);
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 36, 17), glowMat);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), glowMat);
       cap.scale.y = 0.5; cap.position.y = 0.17; mush.add(cap);
       const mx = (Math.random()-0.5)*w*0.8, mz = (Math.random()-0.5)*d*0.8;
       mush.position.set(mx, getTerrainHeight(mx, mz, 1.2), mz); mctx.scene.add(mush);
@@ -146,7 +146,7 @@ export function buildMoonlitGrove(mctx: MapBuildContext, w: number, d: number): 
       const nestBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.1, 27), new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.9 }));
       nest.add(nestBase);
       for (let e = 0; e < 2; e++) {
-        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.035, 30, 16), new THREE.MeshStandardMaterial({ color: 0xeeeedd }));
+        const egg = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshStandardMaterial({ color: 0xeeeedd }));
         egg.scale.y = 1.3; egg.position.set((Math.random()-0.5)*0.12, 0.06, (Math.random()-0.5)*0.12); nest.add(egg);
       }
       const nx = (Math.random()-0.5)*w*0.6, nz = (Math.random()-0.5)*d*0.6;
@@ -174,7 +174,7 @@ export function buildMoonlitGrove(mctx: MapBuildContext, w: number, d: number): 
       const logMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, logLen, 23), silverBarkMat);
       logMesh.rotation.z = Math.PI / 2; logMesh.position.y = 0.12; log.add(logMesh);
       for (let m = 0; m < 3; m++) {
-        const mPatch = new THREE.Mesh(new THREE.SphereGeometry(0.08, 30, 16), mossMat);
+        const mPatch = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), mossMat);
         mPatch.position.set((Math.random()-0.5)*logLen*0.6, 0.2, (Math.random()-0.5)*0.1);
         mPatch.scale.y = 0.4; log.add(mPatch);
       }
@@ -1013,7 +1013,7 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
       gStand.position.y = 0.4; globeGroup.add(gStand);
       const gBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.05, 27), woodMat);
       globeGroup.add(gBase);
-      const globe = new THREE.Mesh(new THREE.SphereGeometry(0.15, 46, 27),
+      const globe = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12),
         new THREE.MeshStandardMaterial({ color: 0x446688, roughness: 0.4, metalness: 0.2 }));
       globe.position.y = 0.95; globeGroup.add(globe);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.008, 17, 44), ironMat);
@@ -1249,7 +1249,7 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
       agSt.position.y = 0.88; aGlb.add(agSt);
       const agBR = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.01, 12, 24), ironMat);
       agBR.rotation.x = -Math.PI / 2; agBR.position.y = 0.73; aGlb.add(agBR);
-      const agSph = new THREE.Mesh(new THREE.SphereGeometry(0.12, 32, 24),
+      const agSph = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10),
         new THREE.MeshStandardMaterial({ color: 0x335566, roughness: 0.4, metalness: 0.2 }));
       agSph.position.y = 1.1; aGlb.add(agSph);
       for (let cl = 0; cl < 6; cl++) {
@@ -1403,7 +1403,7 @@ export function buildJadeTemple(mctx: MapBuildContext, w: number, d: number): vo
       const statue = new THREE.Group();
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5, 23), jadeMat);
       body.position.y = 0.75; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 20), jadeMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), jadeMat);
       head.position.y = 1.6; statue.add(head);
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.8), stoneMat);
       base.position.y = 0.1; statue.add(base);
@@ -1947,7 +1947,7 @@ export function buildAshenBattlefield(mctx: MapBuildContext, w: number, d: numbe
       const body = new THREE.Group();
       const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.8, 20), metalMat);
       torso.rotation.z = Math.PI/2; torso.position.y = 0.1; body.add(torso);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 36, 17), boneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), boneMat);
       head.position.set(0.45, 0.1, 0); body.add(head);
       const fx = (Math.random()-0.5)*w*0.7, fz = (Math.random()-0.5)*d*0.7;
       body.position.set(fx, getTerrainHeight(fx, fz, 1.0), fz);
@@ -2743,7 +2743,7 @@ export function buildObsidianFortress(mctx: MapBuildContext, w: number, d: numbe
       sBase.position.y = 0.15; statue.add(sBase);
       const sBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2, 23), obsidianMat);
       sBody.position.y = 1.3; sBody.castShadow = true; statue.add(sBody);
-      const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 20), obsidianMat);
+      const sHead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), obsidianMat);
       sHead.position.y = 2.5; statue.add(sHead);
       // Glowing eyes
       for (const ex of [-0.08, 0.08]) {
@@ -3194,7 +3194,7 @@ export function buildCelestialRuins(mctx: MapBuildContext, w: number, d: number)
       aBase.position.y = 0.15; angel.add(aBase);
       const aBody = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.8, 23), divineMat);
       aBody.position.y = 1.2; aBody.castShadow = true; angel.add(aBody);
-      const aHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 31, 20), divineMat);
+      const aHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10), divineMat);
       aHead.position.y = 2.2; angel.add(aHead);
       // Wings
       for (const wx of [-0.3, 0.3]) {
@@ -3652,7 +3652,7 @@ export function buildInfernalThrone(mctx: MapBuildContext, w: number, d: number)
       sBase.position.y = 0.15; statue.add(sBase);
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2.5, 23), demonMat);
       body.position.y = 1.5; body.castShadow = true; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 31, 20), demonMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12), demonMat);
       head.position.y = 2.95; statue.add(head);
       for (const hx of [-0.2, 0.2]) {
         const horn = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.5, 17), demonMat);

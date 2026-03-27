@@ -432,7 +432,7 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       const shield = new THREE.Group();
       const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 27), bronzeMat);
       disc.rotation.x = Math.PI / 2; shield.add(disc);
-      const boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 31, 17), ironMat);
+      const boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), ironMat);
       boss.position.z = 0.03; shield.add(boss);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 17, 36), ironMat); shield.add(rim);
       const sx = (Math.random() - 0.5) * w * 0.4, sz = (Math.random() - 0.5) * d * 0.4;
@@ -596,7 +596,7 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       const statue = new THREE.Group();
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 1.5, 27), stoneMat);
       body.position.y = 0.95; body.castShadow = true; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 44, 23), stoneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 14), stoneMat);
       head.position.y = 1.8; statue.add(head);
       for (const ax of [-0.22, 0.22]) {
         const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.8, 17), stoneMat);
@@ -620,19 +620,24 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       const mx = (Math.random() - 0.5) * w * 0.3, mz = (Math.random() - 0.5) * d * 0.3;
       mound.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.05, mz); mctx.scene.add(mound);
     }
+    const dragMat = new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 1.0 });
     for (let i = 0; i < 8; i++) {
-      const drag = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.01, 2 + Math.random() * 2), new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 1.0 }));
+      const drag = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.01, 2 + Math.random() * 2), dragMat);
       const dx = (Math.random() - 0.5) * w * 0.3, dz = (Math.random() - 0.5) * d * 0.3;
       drag.position.set(dx, getTerrainHeight(dx, dz, 1.0) + 0.015, dz); drag.rotation.y = Math.random() * Math.PI;
       mctx.scene.add(drag);
     }
 
     // Spectator skeletons
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa });
+    const skullMat = new THREE.MeshStandardMaterial({ color: 0xddccbb });
+    const ribGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.4, 12);
+    const skullGeo = new THREE.SphereGeometry(0.08, 14, 10);
     for (let i = 0; i < 6; i++) {
       const skel = new THREE.Group();
-      const ribcage = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.4, 23), new THREE.MeshStandardMaterial({ color: 0xccbbaa }));
+      const ribcage = new THREE.Mesh(ribGeo, boneMat);
       ribcage.position.y = 0.3; skel.add(ribcage);
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 31, 20), new THREE.MeshStandardMaterial({ color: 0xddccbb }));
+      const skull = new THREE.Mesh(skullGeo, skullMat);
       skull.position.y = 0.55; skel.add(skull);
       const skAngle = Math.random() * Math.PI * 2, skR = w * 0.32 + Math.random() * 3;
       skel.position.set(Math.sin(skAngle) * skR, getTerrainHeight(Math.sin(skAngle) * skR, Math.cos(skAngle) * skR, 1.0) + 0.5, Math.cos(skAngle) * skR);
@@ -916,7 +921,7 @@ export function buildPetrifiedGarden(mctx: MapBuildContext, w: number, d: number
       const statue = new THREE.Group();
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 23), stoneMat);
       body.position.y = 0.55; statue.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 31, 20), stoneMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), stoneMat);
       head.position.y = 1.05; statue.add(head);
       for (const lx of [-0.06, 0.06]) {
         const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 17), stoneMat);
@@ -943,7 +948,7 @@ export function buildPetrifiedGarden(mctx: MapBuildContext, w: number, d: number
       if (Math.random() > 0.5) {
         const deerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.6, 20), stoneMat);
         deerBody.rotation.z = Math.PI / 2; deerBody.position.y = 0.35; animal.add(deerBody);
-        const deerHead = new THREE.Mesh(new THREE.SphereGeometry(0.07, 36, 17), stoneMat);
+        const deerHead = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), stoneMat);
         deerHead.position.set(0.35, 0.45, 0); animal.add(deerHead);
         for (let l = 0; l < 4; l++) {
           const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 16), stoneMat);
@@ -1683,7 +1688,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
       const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.5, 17), boneMat);
       spine.rotation.x = Math.PI / 2; fossil.add(spine);
       // Skull
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 31, 20), boneMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), boneMat);
       skull.scale.x = 1.5; skull.position.set(0, 0, -1.5); fossil.add(skull);
       const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.4), boneMat);
       jaw.position.set(0, -0.15, -1.6); fossil.add(jaw);
