@@ -3034,6 +3034,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
     });
     ctx.menuEl.querySelector("#diablo-stash-btn")!.addEventListener("click", () => {
       ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
       showStash(ctx);
     });
     ctx.menuEl.querySelector("#diablo-collection-btn")!.addEventListener("click", () => {
