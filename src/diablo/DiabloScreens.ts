@@ -1310,8 +1310,8 @@ export function showInventory(ctx: ScreenContext): void {
       ? `<div style="position:absolute;top:2px;right:3px;font-size:9px;color:${RARITY_CSS[item.rarity]};text-shadow:0 0 4px ${RARITY_CSS[item.rarity]};line-height:1;">${RARITY_BADGE[item.rarity]}</div>`
       : "";
     const content = item
-      ? `<div style="font-size:28px;">${item.icon}</div><div style="font-size:10px;color:${RARITY_CSS[item.rarity]};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68px;text-shadow:0 0 6px ${RARITY_CSS[item.rarity]}40;">${item.name}</div>${badge}`
-      : `<div style="font-size:11px;color:#555;">${sd.label}</div>`;
+      ? `<div style="font-size:28px;">${item.icon}</div><div style="font-size:12px;color:${RARITY_CSS[item.rarity]};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px;text-shadow:0 0 6px ${RARITY_CSS[item.rarity]}40;">${item.name}</div>${badge}`
+      : `<div style="font-size:12px;color:#555;">${sd.label}</div>`;
     equipHtml += `
       <div class="equip-slot ${anim}" data-equip-key="${sd.key}" style="
         grid-area:${sd.gridArea};width:74px;height:74px;background:${bg};
@@ -1475,8 +1475,8 @@ export function showInventory(ctx: ScreenContext): void {
       <!-- Tooltip container -->
       <div id="inv-tooltip" style="
         display:none;position:fixed;z-index:100;background:rgba(8,4,2,0.97);
-        border:2px solid #5a4a2a;border-radius:8px;padding:0;max-width:300px;
-        pointer-events:none;color:#ccc;font-size:13px;overflow:hidden;
+        border:2px solid #5a4a2a;border-radius:8px;padding:0;max-width:360px;min-width:260px;
+        pointer-events:none;color:#ccc;font-size:14px;overflow:hidden;
         box-shadow:0 4px 20px rgba(0,0,0,0.7),0 0 1px #c8a84e;
       "></div>
     </div>`;
@@ -2594,7 +2594,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
         const val = stats[k];
         const clr = val > 0 ? "#8f8" : "#f88";
         const sgn = val > 0 ? "+" : "";
-        statsLines += `<div style="color:${clr};font-size:12px;padding:1px 0;">${sgn}${val} ${label}</div>`;
+        statsLines += `<div style="color:${clr};font-size:14px;padding:2px 0;">${sgn}${val} ${label}</div>`;
       }
     }
 
@@ -2605,7 +2605,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
       const equipped = ctx.state.player.equipment[equipKey];
       if (equipped && equipped.id !== item.id) {
         comparisonLines += `<div style="border-top:1px solid rgba(90,74,42,0.3);margin:6px 0;padding-top:6px;">`;
-        comparisonLines += `<div style="color:#c8a84e;font-size:11px;font-weight:bold;margin-bottom:4px;">vs. ${equipped.name}</div>`;
+        comparisonLines += `<div style="color:#c8a84e;font-size:13px;font-weight:bold;margin-bottom:4px;">vs. ${equipped.name}</div>`;
         const eqStats = equipped.stats as any;
         for (const k of Object.keys(statLabels)) {
           const newVal = (stats[k] || 0) as number;
@@ -2614,7 +2614,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
           if (diff !== 0) {
             const clr = diff > 0 ? "#44ff44" : "#ff4444";
             const arrow = diff > 0 ? "\u25B2" : "\u25BC";
-            comparisonLines += `<div style="color:${clr};font-size:11px;padding:1px 0;">${arrow} ${diff > 0 ? '+' : ''}${diff} ${statLabels[k] || k}</div>`;
+            comparisonLines += `<div style="color:${clr};font-size:13px;padding:2px 0;">${arrow} ${diff > 0 ? '+' : ''}${diff} ${statLabels[k] || k}</div>`;
           }
         }
         comparisonLines += `</div>`;
@@ -2654,10 +2654,10 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
       const sn = (item as any).setName as string;
       const equippedSetCount = ctx.countEquippedSetPieces(sn);
       const setBonuses = SET_BONUSES.filter(sb => sb.setName === sn);
-      setLine = `<div style="color:#44ff44;margin-top:4px;font-size:12px;">Set: ${sn} (${equippedSetCount} equipped)</div>`;
+      setLine = `<div style="color:#44ff44;margin-top:4px;font-size:14px;">Set: ${sn} (${equippedSetCount} equipped)</div>`;
       for (const sb of setBonuses) {
         const active = equippedSetCount >= sb.pieces;
-        setLine += `<div style="color:${active ? '#44ff44' : '#666'};font-size:11px;padding:1px 0;margin-left:8px;">(${sb.pieces}) ${sb.bonusDescription || ''}</div>`;
+        setLine += `<div style="color:${active ? '#44ff44' : '#666'};font-size:13px;padding:1px 0;margin-left:8px;">(${sb.pieces}) ${sb.bonusDescription || ''}</div>`;
       }
     }
     // Socket display
@@ -2678,10 +2678,10 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
     let dpsLine = "";
     if (stats.damage && stats.speed) {
       const dps = (stats.damage * stats.speed).toFixed(1);
-      dpsLine = `<div style="color:#ffdd44;font-size:12px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
+      dpsLine = `<div style="color:#ffdd44;font-size:15px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
     } else if (stats.damage && stats.attackSpeed) {
       const dps = (stats.damage * (1 + stats.attackSpeed)).toFixed(1);
-      dpsLine = `<div style="color:#ffdd44;font-size:12px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
+      dpsLine = `<div style="color:#ffdd44;font-size:15px;margin-top:2px;font-weight:bold;">${dps} DPS</div>`;
     }
 
     const stars = "\u2605".repeat(RARITY_TIER[item.rarity]);
@@ -2701,13 +2701,13 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
       <div style="padding:14px 16px;background:linear-gradient(180deg, ${RARITY_BG[item.rarity]} 0%, rgba(8,4,2,0) 40%);position:relative;">
         <!-- Item name & rarity header -->
         <div style="border-bottom:1px solid rgba(90,74,42,0.5);padding-bottom:8px;margin-bottom:8px;">
-          <div style="color:${rarityColor};font-size:16px;font-weight:bold;text-shadow:0 0 8px ${rarityColor}40;">${item.icon} ${item.name}</div>
-          <div style="color:${rarityColor};font-size:11px;margin-top:3px;letter-spacing:1px;">
-            <span style="font-size:10px;">${stars}</span> ${rarityName}
+          <div style="color:${rarityColor};font-size:18px;font-weight:bold;text-shadow:0 0 8px ${rarityColor}40;">${item.icon} ${item.name}</div>
+          <div style="color:${rarityColor};font-size:13px;margin-top:3px;letter-spacing:1px;">
+            <span style="font-size:12px;">${stars}</span> ${rarityName}
           </div>
         </div>
         <!-- Slot/type -->
-        <div style="color:#888;font-size:11px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">${item.slot || item.type}</div>
+        <div style="color:#888;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">${item.slot || item.type}</div>
         <!-- Separator with diamond ornaments -->
         <div style="display:flex;align-items:center;gap:6px;margin:4px 0 6px;">
           <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,#5a4a2a60);"></div>
@@ -2728,7 +2728,7 @@ export function showItemTooltip(ctx: ScreenContext, ev: MouseEvent, item: Diablo
           <span style="color:#5a4a2a;font-size:6px;">&#9670;</span>
           <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,#5a4a2a60);"></div>
         </div>
-        <div style="color:#777;font-size:11px;font-style:italic;line-height:1.4;">${item.description}</div>
+        <div style="color:#777;font-size:13px;font-style:italic;line-height:1.5;">${item.description}</div>
       </div>
       <!-- Rarity color bottom bar -->
       <div style="height:2px;background:linear-gradient(90deg,transparent,${rarityColor}40,transparent);"></div>
@@ -4125,7 +4125,7 @@ export function showVendorShop(ctx: ScreenContext, vendor: DiabloVendor): void {
             transition:border-color 0.2s,box-shadow 0.2s;
           ">
             <div style="font-size:32px;">${item.icon}</div>
-            <div style="font-size:11px;color:${rarityColor};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;text-align:center;">${item.name}</div>
+            <div style="font-size:13px;color:${rarityColor};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;text-align:center;">${item.name}</div>
             <div style="font-size:12px;color:${priceColor};margin-top:2px;">\uD83E\uDE99 ${item.value}</div>
           </div>`;
       }

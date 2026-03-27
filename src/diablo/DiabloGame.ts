@@ -688,9 +688,9 @@ export class DiabloGame {
         if (this._firstPerson) {
           this._fpYaw = this._state.player.angle;
           this._fpPitch = 0;
-          this._renderer.canvas.requestPointerLock();
+          try { this._renderer.canvas.requestPointerLock()?.catch?.(() => {}); } catch (_) {}
         } else if (document.pointerLockElement) {
-          document.exitPointerLock();
+          try { document.exitPointerLock(); } catch (_) {}
         }
       } else if (e.code === "KeyN") {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
@@ -1149,6 +1149,7 @@ export class DiabloGame {
   }
 
   private _closeOverlay(): void {
+    this._hideItemTooltip();
     if (this._phaseBeforeOverlay === DiabloPhase.CLASS_SELECT) {
       this._state.phase = DiabloPhase.CLASS_SELECT;
       this._showClassSelect();
@@ -1156,7 +1157,7 @@ export class DiabloGame {
       this._state.phase = DiabloPhase.PLAYING;
       this._menuEl.innerHTML = "";
       if (this._firstPerson) {
-        this._renderer.canvas.requestPointerLock();
+        try { this._renderer.canvas.requestPointerLock()?.catch?.(() => {}); } catch (_) {}
       }
     }
   }
@@ -3587,15 +3588,6 @@ export class DiabloGame {
       return;
     }
 
-    // Check if this is a death gold pile
-    if (loot.item.name.startsWith('Lost Gold (')) {
-      p.gold += loot.item.value;
-      this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.value} Gold recovered!`, '#ffd700');
-      this._playSound('gold');
-      this._state.loot.splice(lootIdx, 1);
-      return;
-    }
-
     const emptyIdx = p.inventory.findIndex((s) => s.item === null);
     if (emptyIdx < 0) {
       this._addFloatingText(p.x, p.y + 2, p.z, "Inventory Full!", "#ff4444");
@@ -4564,42 +4556,15 @@ export class DiabloGame {
     this._deathLocationX = p.x;
     this._deathLocationZ = p.z;
 
-    const goldLoss = Math.floor(p.gold * 0.1);
-    p.gold -= goldLoss;
-    this._deathGoldDrop = goldLoss;
-    this._state.deathGoldLoss = goldLoss;
+    this._deathGoldDrop = 0;
+    this._state.deathGoldLoss = 0;
     this._state.respawnTimer = 5.0;
 
     this._playSound('death');
 
-    // Drop gold pile at death location
-    if (this._deathGoldDrop > 0) {
-      this._addFloatingText(p.x, p.y + 2, p.z, `-${this._deathGoldDrop} Gold`, '#ff4444');
-      const goldItem: DiabloItem = {
-        id: `death-gold-${this._nextId++}`,
-        name: `Lost Gold (${this._deathGoldDrop}g)`,
-        type: ItemType.AMULET,
-        slot: ItemSlot.ACCESSORY_1,
-        rarity: ItemRarity.COMMON,
-        level: 1,
-        stats: {},
-        description: `Your lost gold from death.`,
-        icon: '💰',
-        value: this._deathGoldDrop,
-      };
-      this._state.loot.push({
-        id: `death-loot-${this._nextId++}`,
-        item: goldItem,
-        x: this._deathLocationX,
-        y: 0,
-        z: this._deathLocationZ,
-        timer: 999,
-      });
-    }
-
     this._hudRefs.deathOverlay.style.display = "flex";
     const goldEl = this._hudRefs.deathOverlay.querySelector("#diablo-gold-loss") as HTMLDivElement;
-    if (goldEl) goldEl.textContent = goldLoss > 0 ? `Lost ${goldLoss} gold` : "";
+    if (goldEl) goldEl.textContent = "";
     // Death recap
     const recapEl = this._hudRefs.deathOverlay.querySelector("#diablo-death-recap") as HTMLDivElement;
     if (recapEl) {

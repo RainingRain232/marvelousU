@@ -1245,9 +1245,9 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
       const radius = modRadius(def.aoeRadius || 6);
       const aoe: DiabloAOE = {
         id: ctx.genId(),
-        x: worldMouse.x,
+        x: aimX,
         y: 0,
-        z: worldMouse.z,
+        z: aimZ,
         radius,
         damage: modDmg,
         damageType: def.damageType,
@@ -1261,10 +1261,10 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
       ctx.state.aoeEffects.push(aoe);
       // Massive meteor impact visuals
       ctx.renderer.shakeCamera(0.6, 0.8);
-      ctx.renderer.spawnParticles(damageTypeToParticle(def.damageType), worldMouse.x, 0.5, worldMouse.z, 25, ctx.state.particles);
-      ctx.renderer.spawnParticles(damageTypeToParticle(def.damageType), worldMouse.x, 1.5, worldMouse.z, 15, ctx.state.particles);
-      ctx.renderer.spawnParticles(ParticleType.DUST, worldMouse.x, 0, worldMouse.z, 12, ctx.state.particles);
-      ctx.renderer.spawnParticles(damageTypeToParticle(def.damageType), worldMouse.x, 1.0, worldMouse.z, 10, ctx.state.particles);
+      ctx.renderer.spawnParticles(damageTypeToParticle(def.damageType), aimX, 0.5, aimZ, 25, ctx.state.particles);
+      ctx.renderer.spawnParticles(damageTypeToParticle(def.damageType), aimX, 1.5, aimZ, 15, ctx.state.particles);
+      ctx.renderer.spawnParticles(ParticleType.DUST, aimX, 0, aimZ, 12, ctx.state.particles);
+      ctx.renderer.spawnParticles(damageTypeToParticle(def.damageType), aimX, 1.0, aimZ, 10, ctx.state.particles);
       break;
     }
 
@@ -1272,9 +1272,9 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
       const radius = modRadius(def.aoeRadius || 6);
       const aoe: DiabloAOE = {
         id: ctx.genId(),
-        x: worldMouse.x,
+        x: aimX,
         y: 0,
-        z: worldMouse.z,
+        z: aimZ,
         radius,
         damage: modDmg,
         damageType: def.damageType,
@@ -1294,9 +1294,9 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
       const trapStatus = modStatus || StatusEffect.BURNING;
       const aoe: DiabloAOE = {
         id: ctx.genId(),
-        x: worldMouse.x,
+        x: aimX,
         y: 0,
-        z: worldMouse.z,
+        z: aimZ,
         radius,
         damage: modDmg,
         damageType: def.damageType,
@@ -1378,7 +1378,7 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
     // ── WARRIOR UNLOCKABLE SKILLS ──
     case SkillId.LEAP: {
       // Leap to target location, AOE on landing
-      const leapDist = Math.min(12, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
+      const leapDist = Math.min(12, Math.sqrt((aimX - p.x) ** 2 + (aimZ - p.z) ** 2));
       p.x += Math.sin(angle) * leapDist;
       p.z += Math.cos(angle) * leapDist;
       p.invulnTimer = 0.5;
@@ -1440,8 +1440,8 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
     case SkillId.TIME_WARP:
     case SkillId.NET_TRAP: {
       // AOE centered on player (or target for NET_TRAP)
-      const aoeCenterX = skillId === SkillId.NET_TRAP ? worldMouse.x : p.x;
-      const aoeCenterZ = skillId === SkillId.NET_TRAP ? worldMouse.z : p.z;
+      const aoeCenterX = skillId === SkillId.NET_TRAP ? aimX : p.x;
+      const aoeCenterZ = skillId === SkillId.NET_TRAP ? aimZ : p.z;
       const aoeR = modRadius(def.aoeRadius || 6);
       const bigAoe: DiabloAOE = {
         id: ctx.genId(), x: aoeCenterX, y: 0, z: aoeCenterZ, radius: aoeR,
@@ -1511,7 +1511,7 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
 
     case SkillId.BLINK: {
       // Teleport to target location
-      const blinkDist = Math.min(15, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
+      const blinkDist = Math.min(15, Math.sqrt((aimX - p.x) ** 2 + (aimZ - p.z) ** 2));
       // Damage at departure point
       if (modDmg > 0) {
         const departAoe: DiabloAOE = {
@@ -1552,7 +1552,7 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
     // ── RANGER UNLOCKABLE SKILLS ──
     case SkillId.GRAPPLING_HOOK: {
       // Dash to target location
-      const hookDist = Math.min(15, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
+      const hookDist = Math.min(15, Math.sqrt((aimX - p.x) ** 2 + (aimZ - p.z) ** 2));
       p.x += Math.sin(angle) * hookDist;
       p.z += Math.cos(angle) * hookDist;
       p.invulnTimer = 0.3;
@@ -1646,7 +1646,7 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
   }
 
   // Trigger legendary on_skill effects
-  triggerLegendaryEffects(ctx, 'on_skill', { targetX: worldMouse.x, targetZ: worldMouse.z, damage: modDmg, skillId: skillId });
+  triggerLegendaryEffects(ctx, 'on_skill', { targetX: aimX, targetZ: aimZ, damage: modDmg, skillId: skillId });
 
   // Rune visual feedback
   if (runeEffect) {
