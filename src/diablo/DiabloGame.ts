@@ -3,6 +3,20 @@ import { hasSave, saveGame, showSaveRecoveryPrompt } from "./DiabloSaveLoad";
 import { loadLeaderboard, saveLeaderboard, addLeaderboardEntry, showLeaderboard } from "./DiabloLeaderboard";
 import { DiabloNetwork } from './DiabloNetwork';
 import {
+  PetContext, PetUIContext,
+  createPet as petCreatePet,
+  rollPetDrop as petRollPetDrop,
+  summonPet as petSummonPet,
+  dismissPet as petDismissPet,
+  grantPetXp as petGrantPetXp,
+  updatePets as petUpdatePets,
+  applyPetBuff as petApplyPetBuff,
+  updatePetBuffs as petUpdatePetBuffs,
+  hasPetBuff as petHasPetBuff,
+  showPetPanel as petShowPetPanel,
+  showPetManagement as petShowPetManagement,
+} from "./DiabloPets";
+import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloLoot,
   DiabloTreasureChest, DiabloAOE,
   DiabloClass, DiabloMapId, DiabloPhase, ItemRarity, DiabloDifficulty,
@@ -47,7 +61,6 @@ import {
   SKILL_RUNES,
   LEGENDARY_EFFECTS,
   RUNEWORD_DEFS,
-  ACHIEVEMENT_DEFS,
   COSMETIC_DEFS,
   TALENT_SYNERGIES,
 } from "./DiabloConfig";
@@ -63,7 +76,40 @@ import {
   startBgm, stopBgm, playSound as playSoundEffect, destroyAudio,
 } from "./DiabloAudioSystem";
 import type { SoundType } from "./DiabloAudioSystem";
+import {
+  CombatContext,
+  updateCombat as combatUpdateCombat,
+  activateSkill as combatActivateSkill,
+  updateProjectiles as combatUpdateProjectiles,
+  updateAOE as combatUpdateAOE,
+  tickAOEDamage as combatTickAOEDamage,
+  createProjectile as combatCreateProjectile,
+  chainLightningBounce as combatChainLightningBounce,
+  checkElementalReaction as combatCheckElementalReaction,
+  getEquippedLegendaryEffects as combatGetEquippedLegendaryEffects,
+  triggerLegendaryEffects as combatTriggerLegendaryEffects,
+  getPassiveLegendaryBonusDamage as combatGetPassiveLegendaryBonusDamage,
+  getSkillBranchModifiers as combatGetSkillBranchModifiers,
+  getSkillDamage as combatGetSkillDamage,
+  doDodgeRoll as combatDoDodgeRoll,
+  damageTypeColor as combatDamageTypeColor,
+  damageTypeToParticle as combatDamageTypeToParticle,
+} from "./DiabloCombat";
 import { drawMinimapContent, isExplored, type MinimapContext } from "./DiabloMinimap";
+import { HUDRefs, HUDState, HUDUpdateContext, buildHUD, updateHUD, createHUDState } from "./DiabloHUD";
+import {
+  initAchievements, updateAchievement, incrementAchievement,
+  showAchievements, processAchievementNotifications,
+  generateDailyChallenges, updateDailyProgress, updateQuestTracker,
+} from "./DiabloQuests";
+import {
+  RiftContext,
+  startGreaterRift as riftStart,
+  updateGreaterRift as riftUpdate,
+  spawnRiftGuardian as riftSpawnGuardian,
+  onRiftEnemyKill as riftOnEnemyKill,
+  onRiftGuardianKill as riftOnGuardianKill,
+} from "./DiabloRift";
 
 // ────────────────────────────────────────────────────────────────────────────
 // DiabloGame
@@ -102,7 +148,6 @@ export class DiabloGame {
   // Multiplayer
   private _network: DiabloNetwork = new DiabloNetwork();
   private _networkUpdateTimer: number = 0;
-  private _multiplayerHud: HTMLDivElement | null = null;
 
   // Bound event handlers
   private _boundKeyDown!: (e: KeyboardEvent) => void;
@@ -114,101 +159,24 @@ export class DiabloGame {
   private _boundResize!: () => void;
   private _boundPointerLockChange!: () => void;
 
-  // HUD element references
-  private _hpBar!: HTMLDivElement;
-  private _mpBar!: HTMLDivElement;
-  private _xpBar!: HTMLDivElement;
-  private _goldText!: HTMLDivElement;
-  private _levelText!: HTMLDivElement;
-  private _killText!: HTMLDivElement;
-  private _topRightPanel!: HTMLDivElement;
-  private _hpText!: HTMLDivElement;
-  private _mpText!: HTMLDivElement;
-  private _skillSlots: HTMLDivElement[] = [];
-  private _prevSkillCooldowns: number[] = [0, 0, 0, 0, 0, 0];
-  private _skillCooldownOverlays: HTMLDivElement[] = [];
-  private _fpsCrosshair!: HTMLDivElement;
-  private _viewModeLabel!: HTMLDivElement;
-  private _dpsMeter!: HTMLDivElement;
-
-  // HP/Mana change tracking for visual effects
-  private _prevHp: number = -1;
-  private _prevMana: number = -1;
-  private _hpFlashTimer: number = 0;
-  private _manaFlashTimer: number = 0;
-  private _hpOrbWrap!: HTMLDivElement;
-  private _mpOrbWrap!: HTMLDivElement;
-
-  // Minimap
-  private _minimapCanvas!: HTMLCanvasElement;
-  private _minimapCtx!: CanvasRenderingContext2D;
-
-  // Vendor interaction hint
-  private _vendorHint!: HTMLDivElement;
-  private _chestHint!: HTMLDivElement;
+  // HUD (extracted to DiabloHUD.ts)
+  private _hudRefs!: HUDRefs;
+  private _hudState: HUDState = createHUDState();
 
   // Town portal (return to character select)
   private _portalX: number = 0;
   private _portalZ: number = 0;
   private _portalActive: boolean = false;
-  private _portalHint!: HTMLDivElement;
 
-  // Quest popup element
-  private _questPopup!: HTMLDivElement;
-
-  // Death overlay (ac6cb424)
-  private _deathOverlay!: HTMLDivElement;
+  // Death overlay state
   private _isDead: boolean = false;
-  private _hardcoreLabel: HTMLDivElement | null = null;
 
-  // Potion HUD slots (ad1a2850)
-  private _potionHudSlots: HTMLDivElement[] = [];
-
-  // Fullscreen map (aece2d8c)
-  private _fullmapCanvas!: HTMLCanvasElement;
-  private _fullmapCtx!: CanvasRenderingContext2D;
-  private _fullmapVisible: boolean = false;
-  private _weatherText!: HTMLDivElement;
-  private _mapNameLabel!: HTMLDivElement;
-  private _xpLevelText!: HTMLDivElement;
-
-  // Quest tracker (a270b216)
-  private _questTracker!: HTMLDivElement;
+  // Quest tracker state (a270b216)
   private _chestsOpened: number = 0;
   private _goldEarnedTotal: number = 0;
   private _totalKills: number = 0;
   private _questTrackerDirty: boolean = true;
   private _questTrackerDirtyTimer: number = 0;
-
-  // Greater Rift HUD
-  private _riftHud: HTMLDivElement | null = null;
-  private _lastRiftProgress: number = -1;
-  private _lastRiftTime: number = -1;
-  private _lastRiftState: GreaterRiftState | null = null;
-
-  // Excalibur quest HUD
-  private _excaliburHud: HTMLDivElement | null = null;
-
-  // Crafting queue HUD
-  private _craftingQueueHud: HTMLDivElement | null = null;
-  private _lastCraftingPct: number = -1;
-  private _lastCraftingQueueLen: number = -1;
-
-  // Multiplayer HUD tracking
-  private _lastMpMessageCount: number = -1;
-
-  // Gold/Level/Kill text tracking
-  private _lastGoldValue: number = -1;
-  private _lastLevelValue: number = -1;
-  private _lastKillValue: number = -1;
-  private _lastDeathValue: number = -1;
-
-  // HP/MP bar tracking (rounded integer percentages)
-  private _lastHpPctInt: number = -1;
-  private _lastMpPctInt: number = -1;
-
-  // Minimap frame throttle
-  private _minimapFrameCounter: number = 0;
 
   // Safe zone (enemy-free spawn area)
   // @ts-ignore assigned but value never read (reserved for future use)
@@ -656,8 +624,8 @@ export class DiabloGame {
           this._useTownPortal();
         }
       } else if (e.code === this._keyBindings.map) {
-        this._fullmapVisible = !this._fullmapVisible;
-        this._fullmapCanvas.style.display = this._fullmapVisible ? "block" : "none";
+        this._hudState.fullmapVisible = !this._hudState.fullmapVisible;
+        this._hudRefs.fullmapCanvas.style.display = this._hudState.fullmapVisible ? "block" : "none";
       } else if (e.code === this._keyBindings.dodge) {
         this._doDodgeRoll();
       } else if (e.code === "KeyP" && e.shiftKey) {
@@ -2062,8 +2030,8 @@ export class DiabloGame {
     this._state.spawnTimer = 0;
     this._mapClearRewardGiven = false;
     this._targetEnemyId = null;
-    this._fullmapVisible = false;
-    if (this._fullmapCanvas) this._fullmapCanvas.style.display = "none";
+    this._hudState.fullmapVisible = false;
+    if (this._hudRefs) this._hudRefs.fullmapCanvas.style.display = "none";
 
     const weathers = [Weather.NORMAL, Weather.FOGGY, Weather.CLEAR, Weather.STORMY];
     this._state.weather = this._state.preferredWeather === 'RANDOM'
@@ -4551,1629 +4519,30 @@ export class DiabloGame {
   //  BUILD HUD
   // ──────────────────────────────────────────────────────────────
   private _buildHUD(): void {
-    this._hud.innerHTML = "";
-
-    // Inject CSS keyframe animations for HUD effects
-    const hudStyleEl = document.createElement("style");
-    hudStyleEl.textContent = `
-      @keyframes hud-blood-drip {
-        0%, 100% { opacity:0.6; transform:translateX(-50%) scaleY(1); }
-        50% { opacity:1; transform:translateX(-50%) scaleY(1.5); }
-      }
-      @keyframes hud-arcane-particles {
-        0% { box-shadow:0 0 4px 2px rgba(100,100,255,0.6), 8px -6px 3px 1px rgba(120,80,255,0.4), -6px -8px 2px 1px rgba(80,120,255,0.5); }
-        33% { box-shadow:-4px -10px 4px 2px rgba(120,80,255,0.5), 6px 4px 3px 1px rgba(80,120,255,0.6), 10px -4px 2px 1px rgba(100,100,255,0.4); }
-        66% { box-shadow:6px -4px 4px 2px rgba(80,120,255,0.4), -8px 2px 3px 1px rgba(100,100,255,0.6), 2px -12px 2px 1px rgba(120,80,255,0.5); }
-        100% { box-shadow:0 0 4px 2px rgba(100,100,255,0.6), 8px -6px 3px 1px rgba(120,80,255,0.4), -6px -8px 2px 1px rgba(80,120,255,0.5); }
-      }
-      @keyframes hud-xp-pulse {
-        0%, 100% { box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
-        50% { box-shadow:0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3); }
-      }
-      @keyframes hud-xp-shimmer {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-      }
-      @keyframes hud-torch-flicker {
-        0%, 100% { opacity:0.85; transform:scaleX(1) scaleY(1); }
-        25% { opacity:1; transform:scaleX(1.05) scaleY(1.1); }
-        50% { opacity:0.75; transform:scaleX(0.95) scaleY(0.95); }
-        75% { opacity:0.95; transform:scaleX(1.02) scaleY(1.05); }
-      }
-      @keyframes hud-torch-glow {
-        0%, 100% { box-shadow:0 0 15px 8px rgba(255,140,20,0.3), 0 0 30px 12px rgba(255,100,0,0.15); }
-        50% { box-shadow:0 0 20px 12px rgba(255,140,20,0.45), 0 0 40px 16px rgba(255,100,0,0.2); }
-      }
-      @keyframes hud-compass-spin {
-        0% { transform:translate(-50%,-50%) rotate(0deg); }
-        100% { transform:translate(-50%,-50%) rotate(360deg); }
-      }
-      @keyframes hud-bar-breathe {
-        0%, 100% { box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.25),
-          inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 1px rgba(200,168,78,0.3),
-          0 -2px 15px rgba(200,168,78,0.08); }
-        50% { box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.35),
-          inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 3px rgba(200,168,78,0.4),
-          0 -2px 20px rgba(200,168,78,0.15); }
-      }
-      @keyframes hud-orb-low-pulse {
-        0%, 100% { border-color: rgba(255,40,40,0.6); }
-        50% { border-color: rgba(255,80,80,0.9); }
-      }
-      @keyframes hud-slot-hover-glow {
-        0%, 100% { box-shadow:inset 0 0 20px rgba(200,168,78,0.15), 0 0 8px rgba(200,168,78,0.2); }
-        50% { box-shadow:inset 0 0 25px rgba(200,168,78,0.25), 0 0 14px rgba(200,168,78,0.35); }
-      }
-    `;
-    this._hud.appendChild(hudStyleEl);
-
-    // Health orb - bottom left (ornate)
-    this._hpOrbWrap = document.createElement("div");
-    const hpOrbWrap = this._hpOrbWrap;
-    hpOrbWrap.style.cssText = `
-      position:absolute;bottom:22px;left:22px;width:150px;height:150px;
-      display:flex;align-items:center;justify-content:center;
-      filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
-    `;
-    // Outer decorative ring
-    const hpRingOuter = document.createElement("div");
-    hpRingOuter.style.cssText = `
-      position:absolute;width:146px;height:146px;border-radius:50%;
-      border:3px solid transparent;
-      background:conic-gradient(from 0deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914, #6b4f0e, #8b6914) border-box;
-      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;
-      pointer-events:none;
-    `;
-    // Inner decorative ring
-    const hpRingInner = document.createElement("div");
-    hpRingInner.style.cssText = `
-      position:absolute;width:146px;height:146px;border-radius:50%;
-      border:2px solid rgba(60,5,5,0.8);
-      box-shadow:0 0 6px rgba(0,0,0,0.6);
-      pointer-events:none;
-    `;
-    const hpOrb = document.createElement("div");
-    hpOrb.style.cssText = `
-      width:130px;height:130px;border-radius:50%;
-      background:radial-gradient(circle at 35% 35%, rgba(60,10,10,0.9), rgba(20,2,2,0.97));
-      overflow:hidden;position:relative;
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 0 20px rgba(180,20,20,0.5), inset 0 0 30px rgba(0,0,0,0.6),
-        inset 0 0 60px rgba(120,10,10,0.2);
-    `;
-    this._hpBar = document.createElement("div");
-    this._hpBar.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:100%;
-      background:radial-gradient(circle at 40% 40%, rgba(220,40,40,0.9), rgba(140,10,10,0.85));
-      border-radius:50%;transition:height 0.3s;
-      box-shadow:inset 0 -5px 15px rgba(255,60,60,0.3);
-    `;
-    // Inner glow overlay
-    const hpGlow = document.createElement("div");
-    hpGlow.style.cssText = `
-      position:absolute;top:10%;left:15%;width:40%;height:30%;
-      background:radial-gradient(ellipse, rgba(255,180,180,0.25), transparent);
-      border-radius:50%;pointer-events:none;z-index:2;
-    `;
-    this._hpText = document.createElement("div");
-    this._hpText.style.cssText = `
-      position:relative;z-index:3;color:#ffdddd;font-size:15px;font-weight:bold;text-align:center;
-      text-shadow:0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,1),
-        0 0 20px rgba(180,20,20,0.3);
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      letter-spacing:1px;
-    `;
-    // Skull decoration on top
-    const hpSkull = document.createElement("div");
-    hpSkull.style.cssText = `
-      position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:4;
-      font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
-      color:#c8a84e;pointer-events:none;
-    `;
-    hpSkull.textContent = "\u2020";
-    // Corner flourishes (4 positions)
-    const hpFlourishes = [
-      { top: "2px", left: "2px", rot: "0deg" },
-      { top: "2px", right: "2px", rot: "90deg" },
-      { bottom: "2px", left: "2px", rot: "270deg" },
-      { bottom: "2px", right: "2px", rot: "180deg" },
-    ];
-    for (const pos of hpFlourishes) {
-      const fl = document.createElement("div");
-      let posStr = `position:absolute;width:14px;height:14px;pointer-events:none;z-index:5;`;
-      if (pos.top) posStr += `top:${pos.top};`;
-      if (pos.bottom) posStr += `bottom:${pos.bottom};`;
-      if (pos.left) posStr += `left:${pos.left};`;
-      if (pos.right) posStr += `right:${pos.right};`;
-      posStr += `transform:rotate(${pos.rot});font-size:10px;color:#c8a84e;text-shadow:0 0 4px rgba(200,168,78,0.4);`;
-      fl.style.cssText = posStr;
-      fl.textContent = "\u269C";
-      hpOrbWrap.appendChild(fl);
-    }
-    hpOrb.appendChild(this._hpBar);
-    hpOrb.appendChild(hpGlow);
-    hpOrb.appendChild(this._hpText);
-    hpOrbWrap.appendChild(hpRingOuter);
-    hpOrbWrap.appendChild(hpRingInner);
-    hpOrbWrap.appendChild(hpOrb);
-    hpOrbWrap.appendChild(hpSkull);
-
-    // === HP Orb enhancements ===
-    // Second outer ring (dark metal, behind existing gold ring)
-    const hpRingOuter2 = document.createElement("div");
-    hpRingOuter2.style.cssText = `
-      position:absolute;width:144px;height:144px;border-radius:50%;
-      border:4px solid transparent;
-      background:conic-gradient(from 0deg, #3a2a10, #5a4420, #3a2a10, #2a1a08, #3a2a10) border-box;
-      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;
-      pointer-events:none;z-index:-1;
-    `;
-    hpOrbWrap.appendChild(hpRingOuter2);
-
-    // Tick marks (8 radial lines around the ring)
-    for (let t = 0; t < 8; t++) {
-      const tick = document.createElement("div");
-      tick.style.cssText = `
-        position:absolute;width:2px;height:10px;
-        background:linear-gradient(180deg, #c8a84e, rgba(139,105,20,0.3));
-        top:50%;left:50%;transform-origin:0 0;
-        transform:rotate(${t * 45}deg) translate(-1px, -72px);
-        pointer-events:none;z-index:6;
-      `;
-      hpOrbWrap.appendChild(tick);
-    }
-
-    // Animated blood drip at top of orb
-    const hpBloodDrip = document.createElement("div");
-    hpBloodDrip.style.cssText = `
-      position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;
-      width:6px;height:12px;border-radius:50% 50% 50% 50% / 30% 30% 70% 70%;
-      background:radial-gradient(circle at 40% 30%, rgba(220,40,40,0.9), rgba(140,10,10,0.7));
-      animation:hud-blood-drip 2s ease-in-out infinite;
-      pointer-events:none;
-    `;
-    hpOrbWrap.appendChild(hpBloodDrip);
-
-    // Chain link decoration connecting to skill bar
-    const hpChain = document.createElement("div");
-    hpChain.style.cssText = `
-      position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);z-index:6;
-      width:8px;height:20px;pointer-events:none;
-      background:repeating-linear-gradient(180deg, #8b6914 0px, #c8a84e 2px, #8b6914 4px, transparent 4px, transparent 6px);
-      border-radius:2px;
-      filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));
-    `;
-    hpOrbWrap.appendChild(hpChain);
-
-    // Bottom ornament (fleur-de-lis)
-    const hpBottomOrnament = document.createElement("div");
-    hpBottomOrnament.style.cssText = `
-      position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);z-index:8;
-      font-size:16px;color:#c8a84e;pointer-events:none;
-      filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
-      text-shadow:0 0 6px rgba(200,168,78,0.4);
-    `;
-    hpBottomOrnament.textContent = "\u269C";
-    hpOrbWrap.appendChild(hpBottomOrnament);
-
-    this._hud.appendChild(hpOrbWrap);
-
-    // Mana orb - bottom right (ornate)
-    this._mpOrbWrap = document.createElement("div");
-    const mpOrbWrap = this._mpOrbWrap;
-    mpOrbWrap.style.cssText = `
-      position:absolute;bottom:22px;right:22px;width:150px;height:150px;
-      display:flex;align-items:center;justify-content:center;
-      filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
-    `;
-    // Outer decorative ring (silver/blue)
-    const mpRingOuter = document.createElement("div");
-    mpRingOuter.style.cssText = `
-      position:absolute;width:146px;height:146px;border-radius:50%;
-      border:3px solid transparent;
-      background:conic-gradient(from 0deg, #4a5a8b, #7a8ac8, #a0b0e8, #7a8ac8, #4a5a8b, #3a4a6b, #4a5a8b) border-box;
-      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;
-      pointer-events:none;
-    `;
-    // Inner ring
-    const mpRingInner = document.createElement("div");
-    mpRingInner.style.cssText = `
-      position:absolute;width:136px;height:136px;border-radius:50%;
-      border:2px solid rgba(5,5,60,0.8);
-      box-shadow:0 0 6px rgba(0,0,0,0.6);
-      pointer-events:none;
-    `;
-    const mpOrb = document.createElement("div");
-    mpOrb.style.cssText = `
-      width:130px;height:130px;border-radius:50%;
-      background:radial-gradient(circle at 35% 35%, rgba(10,10,60,0.9), rgba(2,2,20,0.97));
-      overflow:hidden;position:relative;
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 0 20px rgba(30,30,200,0.5), inset 0 0 30px rgba(0,0,0,0.6),
-        inset 0 0 60px rgba(10,10,120,0.2);
-    `;
-    this._mpBar = document.createElement("div");
-    this._mpBar.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:100%;
-      background:radial-gradient(circle at 40% 40%, rgba(60,60,240,0.9), rgba(20,20,140,0.85));
-      border-radius:50%;transition:height 0.3s;
-      box-shadow:inset 0 -5px 15px rgba(60,60,255,0.3);
-    `;
-    // Inner glow
-    const mpGlow = document.createElement("div");
-    mpGlow.style.cssText = `
-      position:absolute;top:10%;left:15%;width:40%;height:30%;
-      background:radial-gradient(ellipse, rgba(180,180,255,0.25), transparent);
-      border-radius:50%;pointer-events:none;z-index:2;
-    `;
-    this._mpText = document.createElement("div");
-    this._mpText.style.cssText = `
-      position:relative;z-index:3;color:#ddddff;font-size:15px;font-weight:bold;text-align:center;
-      text-shadow:0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,1),
-        0 0 20px rgba(40,40,200,0.3);
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      letter-spacing:1px;
-    `;
-    // Arcane rune decoration on top
-    const mpRune = document.createElement("div");
-    mpRune.style.cssText = `
-      position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:4;
-      font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
-      color:#7a8ac8;pointer-events:none;
-    `;
-    mpRune.textContent = "\u2726";
-    // Corner rune flourishes
-    const mpFlourishes = [
-      { top: "2px", left: "2px", rot: "0deg" },
-      { top: "2px", right: "2px", rot: "90deg" },
-      { bottom: "2px", left: "2px", rot: "270deg" },
-      { bottom: "2px", right: "2px", rot: "180deg" },
-    ];
-    for (const pos of mpFlourishes) {
-      const fl = document.createElement("div");
-      let posStr = `position:absolute;width:14px;height:14px;pointer-events:none;z-index:5;`;
-      if (pos.top) posStr += `top:${pos.top};`;
-      if (pos.bottom) posStr += `bottom:${pos.bottom};`;
-      if (pos.left) posStr += `left:${pos.left};`;
-      if (pos.right) posStr += `right:${pos.right};`;
-      posStr += `transform:rotate(${pos.rot});font-size:10px;color:#7a8ac8;text-shadow:0 0 4px rgba(100,120,200,0.4);`;
-      fl.style.cssText = posStr;
-      fl.textContent = "\u2727";
-      mpOrbWrap.appendChild(fl);
-    }
-    mpOrb.appendChild(this._mpBar);
-    mpOrb.appendChild(mpGlow);
-    mpOrb.appendChild(this._mpText);
-    mpOrbWrap.appendChild(mpRingOuter);
-    mpOrbWrap.appendChild(mpRingInner);
-    mpOrbWrap.appendChild(mpOrb);
-    mpOrbWrap.appendChild(mpRune);
-
-    // === MP Orb enhancements ===
-    // Second outer ring (silver metal, behind existing ring)
-    const mpRingOuter2 = document.createElement("div");
-    mpRingOuter2.style.cssText = `
-      position:absolute;width:144px;height:144px;border-radius:50%;
-      border:4px solid transparent;
-      background:conic-gradient(from 0deg, #2a2a3a, #3a3a5a, #2a2a3a, #1a1a28, #2a2a3a) border-box;
-      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;
-      pointer-events:none;z-index:-1;
-    `;
-    mpOrbWrap.appendChild(mpRingOuter2);
-
-    // Tick marks (8 radial lines)
-    for (let t = 0; t < 8; t++) {
-      const tick = document.createElement("div");
-      tick.style.cssText = `
-        position:absolute;width:2px;height:10px;
-        background:linear-gradient(180deg, #7a8ac8, rgba(74,90,139,0.3));
-        top:50%;left:50%;transform-origin:0 0;
-        transform:rotate(${t * 45}deg) translate(-1px, -72px);
-        pointer-events:none;z-index:6;
-      `;
-      mpOrbWrap.appendChild(tick);
-    }
-
-    // Arcane energy particles effect
-    const mpArcaneParticles = document.createElement("div");
-    mpArcaneParticles.style.cssText = `
-      position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:7;
-      width:4px;height:4px;border-radius:50%;
-      background:rgba(120,100,255,0.8);
-      animation:hud-arcane-particles 3s ease-in-out infinite;
-      pointer-events:none;
-    `;
-    mpOrbWrap.appendChild(mpArcaneParticles);
-
-    // Chain link decoration connecting to skill bar
-    const mpChain = document.createElement("div");
-    mpChain.style.cssText = `
-      position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);z-index:6;
-      width:8px;height:20px;pointer-events:none;
-      background:repeating-linear-gradient(180deg, #4a5a8b 0px, #7a8ac8 2px, #4a5a8b 4px, transparent 4px, transparent 6px);
-      border-radius:2px;
-      filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));
-    `;
-    mpOrbWrap.appendChild(mpChain);
-
-    // Bottom rune ornament
-    const mpBottomOrnament = document.createElement("div");
-    mpBottomOrnament.style.cssText = `
-      position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);z-index:8;
-      font-size:16px;color:#7a8ac8;pointer-events:none;
-      filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
-      text-shadow:0 0 6px rgba(100,120,200,0.4);
-    `;
-    mpBottomOrnament.textContent = "\u25C6";
-    mpOrbWrap.appendChild(mpBottomOrnament);
-
-    this._hud.appendChild(mpOrbWrap);
-
-    // Skill bar - bottom center (ornate stone bar)
-    const skillBarBg = document.createElement("div");
-    skillBarBg.style.cssText = `
-      position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
-      padding:10px 14px;display:flex;gap:6px;
-      background:linear-gradient(180deg, rgba(45,38,25,0.95), rgba(25,20,10,0.97), rgba(35,28,18,0.95));
-      border:2px solid #8b7a4a;border-radius:8px;
-      animation:hud-bar-breathe 4s ease-in-out infinite;
-      background-image:repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(200,168,78,0.015) 8px, rgba(200,168,78,0.015) 16px);
-    `;
-    // Left end-cap ornament
-    const skillCapL = document.createElement("div");
-    skillCapL.style.cssText = `
-      position:absolute;left:-10px;top:50%;transform:translateY(-50%);
-      font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
-      pointer-events:none;
-    `;
-    skillCapL.textContent = "\uD83D\uDDFF";
-    skillBarBg.appendChild(skillCapL);
-    // Right end-cap ornament (gargoyle)
-    const skillCapR = document.createElement("div");
-    skillCapR.style.cssText = `
-      position:absolute;right:-14px;top:50%;transform:translateY(-50%) scaleX(-1);
-      font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
-      pointer-events:none;
-    `;
-    skillCapR.textContent = "\uD83D\uDDFF";
-    skillBarBg.appendChild(skillCapR);
-
-    // Top decorative border strip (gothic repeating pattern via box-shadow)
-    const skillTopBorder = document.createElement("div");
-    skillTopBorder.style.cssText = `
-      position:absolute;top:-6px;left:10px;right:10px;height:4px;pointer-events:none;
-      background:linear-gradient(90deg, transparent, #c8a84e, #e8d07a, #c8a84e, transparent);
-      box-shadow:0 -2px 0 rgba(139,105,20,0.4),
-        -20px -4px 0 1px rgba(200,168,78,0.15), 0px -4px 0 1px rgba(200,168,78,0.2), 20px -4px 0 1px rgba(200,168,78,0.15),
-        -40px -4px 0 1px rgba(200,168,78,0.1), 40px -4px 0 1px rgba(200,168,78,0.1);
-      z-index:10;
-    `;
-    skillBarBg.appendChild(skillTopBorder);
-
-    // Bottom shadow/depth strip for 3D beveled effect
-    const skillBottomStrip = document.createElement("div");
-    skillBottomStrip.style.cssText = `
-      position:absolute;bottom:-4px;left:4px;right:4px;height:4px;pointer-events:none;
-      background:linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.1));
-      border-radius:0 0 8px 8px;z-index:10;
-    `;
-    skillBarBg.appendChild(skillBottomStrip);
-
-    // Runic inscription strip below skill bar
-    const runicStrip = document.createElement("div");
-    runicStrip.style.cssText = `
-      position:absolute;bottom:-16px;left:20px;right:20px;height:12px;pointer-events:none;
-      text-align:center;font-size:8px;letter-spacing:3px;
-      color:rgba(200,168,78,0.35);z-index:10;
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 0 4px rgba(200,168,78,0.15);
-    `;
-    runicStrip.textContent = "\u16A0 \u16B1 \u16C1 \u16A2 \u16B3 \u16C7 \u16A8 \u16B7 \u16C9 \u16AA";
-    skillBarBg.appendChild(runicStrip);
-
-    const skillBarGlow = document.createElement("div");
-    skillBarGlow.style.cssText = `
-      position:absolute;bottom:-8px;left:10%;right:10%;height:8px;pointer-events:none;
-      background:radial-gradient(ellipse at center, rgba(200,168,78,0.15), transparent);
-      filter:blur(4px);z-index:-1;
-    `;
-    skillBarBg.appendChild(skillBarGlow);
-
-    this._skillSlots = [];
-    this._skillCooldownOverlays = [];
-    for (let i = 0; i < 6; i++) {
-      const slotWrap = document.createElement("div");
-      slotWrap.style.cssText = `
-        position:relative;width:66px;height:66px;
-      `;
-      const slot = document.createElement("div");
-      slot.style.cssText = `
-        width:66px;height:66px;
-        background:linear-gradient(145deg, rgba(40,32,18,0.97), rgba(18,12,5,0.98), rgba(30,24,12,0.96));
-        border:2px solid #9a8a4a;border-radius:8px;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;position:relative;overflow:hidden;
-        box-shadow:inset 0 1px 0 rgba(200,168,78,0.3), inset 0 -1px 0 rgba(0,0,0,0.5),
-          0 2px 10px rgba(0,0,0,0.7), inset 0 0 20px rgba(200,168,78,0.06),
-          inset 0 0 8px rgba(0,0,0,0.4);
-        background-image:
-          radial-gradient(ellipse at 30% 20%, rgba(200,168,78,0.06) 0%, transparent 60%),
-          repeating-conic-gradient(from 0deg, rgba(200,168,78,0.02) 0deg 15deg, transparent 15deg 30deg);
-      `;
-      // Ornate frame corners on each slot
-      const cornerDeco = document.createElement("div");
-      cornerDeco.style.cssText = `
-        position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;
-        border-radius:8px;
-        box-shadow:inset 2px 2px 0 rgba(200,168,78,0.15), inset -2px -2px 0 rgba(200,168,78,0.1);
-      `;
-
-      const cdOverlay = document.createElement("div");
-      cdOverlay.style.cssText = `
-        position:absolute;top:0;left:0;width:100%;height:0%;
-        background:linear-gradient(180deg, rgba(0,0,0,0.75), rgba(10,5,0,0.6) 80%, rgba(60,40,10,0.2));
-        transition:height 0.1s;pointer-events:none;
-        border-bottom:1px solid rgba(200,168,78,0.25);
-      `;
-
-      const cdText = document.createElement("div");
-      cdText.style.cssText = `
-        position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-        font-size:18px;font-weight:bold;color:#fff;z-index:3;
-        text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none;display:none;
-      `;
-      cdText.className = "skill-cd-text";
-
-      const keyLabel = document.createElement("div");
-      keyLabel.style.cssText = `
-        position:absolute;bottom:2px;right:4px;font-size:10px;color:#9a8a5a;z-index:2;
-        font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      `;
-      keyLabel.textContent = String(i + 1);
-
-      const iconEl = document.createElement("div");
-      iconEl.style.cssText = "font-size:34px;z-index:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));";
-      iconEl.className = "skill-icon";
-
-      // Inner bevel highlight (raised stone look)
-      const innerBevel = document.createElement("div");
-      innerBevel.style.cssText = `
-        position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;
-        border-radius:6px;
-        border-top:1px solid rgba(200,180,120,0.25);
-        border-left:1px solid rgba(200,180,120,0.2);
-        border-bottom:1px solid rgba(0,0,0,0.5);
-        border-right:1px solid rgba(0,0,0,0.4);
-      `;
-
-      slot.appendChild(cdOverlay);
-      slot.appendChild(iconEl);
-      slot.appendChild(cdText);
-      slot.appendChild(keyLabel);
-      slot.appendChild(cornerDeco);
-      slot.appendChild(innerBevel);
-      slotWrap.appendChild(slot);
-
-      // Divider line between slots (not after last one)
-      if (i < 5) {
-        const divider = document.createElement("div");
-        divider.style.cssText = `
-          position:absolute;right:-4px;top:4px;bottom:4px;width:2px;pointer-events:none;z-index:6;
-          background:linear-gradient(180deg, transparent, #c8a84e, #e8d07a, #c8a84e, transparent);
-          box-shadow:0 0 4px rgba(200,168,78,0.3);
-        `;
-        slotWrap.appendChild(divider);
-      }
-
-      skillBarBg.appendChild(slotWrap);
-      this._skillSlots.push(slot);
-      this._skillCooldownOverlays.push(cdOverlay);
-    }
-    this._hud.appendChild(skillBarBg);
-
-    // XP bar - very bottom (ornate, enhanced)
-    const xpContainer = document.createElement("div");
-    xpContainer.style.cssText = `
-      position:absolute;bottom:0;left:0;width:100%;height:18px;
-      background:linear-gradient(180deg, rgba(30,22,8,0.95), rgba(15,10,3,0.95));
-      border-top:2px solid rgba(200,168,78,0.4);
-      box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);
-    `;
-    // Gothic-style repeating peaks border on top
-    const xpGothicBorder = document.createElement("div");
-    xpGothicBorder.style.cssText = `
-      position:absolute;top:-6px;left:0;right:0;height:4px;pointer-events:none;z-index:4;
-      background:repeating-linear-gradient(90deg,
-        transparent 0px, transparent 8px,
-        rgba(200,168,78,0.3) 8px, rgba(200,168,78,0.3) 10px,
-        transparent 10px, transparent 18px);
-    `;
-    xpContainer.appendChild(xpGothicBorder);
-    // Filigree left end-cap (wider ornamental)
-    const xpCapL = document.createElement("div");
-    xpCapL.style.cssText = `
-      position:absolute;left:2px;top:50%;transform:translateY(-50%);z-index:3;
-      font-size:14px;color:#c8a84e;pointer-events:none;
-      filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));
-    `;
-    xpCapL.textContent = "\u2761\u25C0";
-    xpContainer.appendChild(xpCapL);
-    // Filigree right end-cap
-    const xpCapR = document.createElement("div");
-    xpCapR.style.cssText = `
-      position:absolute;right:2px;top:50%;transform:translateY(-50%);z-index:3;
-      font-size:14px;color:#c8a84e;pointer-events:none;
-      filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));
-    `;
-    xpCapR.textContent = "\u25B6\u2761";
-    xpContainer.appendChild(xpCapR);
-    // Segment marks every 10%
-    for (let s = 1; s < 10; s++) {
-      const seg = document.createElement("div");
-      seg.style.cssText = `
-        position:absolute;left:${s * 10}%;top:2px;bottom:2px;width:1px;z-index:2;
-        background:linear-gradient(180deg, rgba(200,168,78,0.5), rgba(200,168,78,0.15));
-        pointer-events:none;
-      `;
-      xpContainer.appendChild(seg);
-    }
-    this._xpBar = document.createElement("div");
-    this._xpBar.style.cssText = `
-      height:100%;width:0%;
-      background:linear-gradient(90deg,#6b5500,#ffd700,#fff4aa,#ffd700,#6b5500);
-      background-size:200% 100%;
-      animation:hud-xp-shimmer 3s linear infinite;
-      transition:width 0.3s;
-      box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
-    `;
-    xpContainer.appendChild(this._xpBar);
-    // Level indicator text embedded in bar
-    this._xpLevelText = document.createElement("div");
-    this._xpLevelText.style.cssText = `
-      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;
-      font-size:10px;color:#e8d07a;font-weight:bold;pointer-events:none;
-      text-shadow:0 0 4px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8);
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      letter-spacing:1px;
-    `;
-    xpContainer.appendChild(this._xpLevelText);
-    this._hud.appendChild(xpContainer);
-
-    // Top right info (parchment panel, enhanced)
-    const topRight = document.createElement("div");
-    topRight.style.cssText = `
-      position:absolute;top:16px;right:20px;text-align:right;
-      background:linear-gradient(180deg, rgba(35,28,15,0.9), rgba(20,15,8,0.92), rgba(30,24,12,0.9));
-      border:2px solid #7a6a3a;border-radius:8px;
-      padding:14px 18px;min-width:160px;
-      box-shadow:0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
-        inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2),
-        inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3);
-      transition:border-color 0.3s, box-shadow 0.3s;
-    `;
-    this._topRightPanel = topRight;
-    // Top ornament for the panel
-    const panelOrnament = document.createElement("div");
-    panelOrnament.style.cssText = `
-      position:absolute;top:-8px;left:50%;transform:translateX(-50%);
-      font-size:14px;color:#c8a84e;filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
-      pointer-events:none;
-    `;
-    panelOrnament.textContent = "\u2736";
-    topRight.appendChild(panelOrnament);
-    this._goldText = document.createElement("div");
-    this._goldText.style.cssText = `
-      font-size:20px;color:#ffd700;margin-bottom:6px;
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 0 8px rgba(255,215,0,0.5), 0 0 16px rgba(255,215,0,0.2), 0 1px 3px rgba(0,0,0,0.9);
-      letter-spacing:1px;transition:text-shadow 0.3s, transform 0.2s;
-    `;
-    this._levelText = document.createElement("div");
-    this._levelText.style.cssText = `
-      font-size:18px;color:#c8a84e;margin-bottom:5px;
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 0 6px rgba(200,168,78,0.3), 0 1px 2px rgba(0,0,0,0.7);
-    `;
-    this._killText = document.createElement("div");
-    this._killText.style.cssText = `
-      font-size:15px;color:#bbb;
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 1px 2px rgba(0,0,0,0.6);
-    `;
-    topRight.appendChild(this._goldText);
-
-    // Separator between gold and level
-    const sep1 = document.createElement("div");
-    sep1.style.cssText = `
-      width:100%;height:1px;margin:4px 0;pointer-events:none;
-      background:linear-gradient(90deg, transparent, rgba(200,168,78,0.4), rgba(200,168,78,0.6), rgba(200,168,78,0.4), transparent);
-    `;
-    topRight.appendChild(sep1);
-
-    topRight.appendChild(this._levelText);
-
-    // Separator between level and kills
-    const sep2 = document.createElement("div");
-    sep2.style.cssText = `
-      width:100%;height:1px;margin:4px 0;pointer-events:none;
-      background:linear-gradient(90deg, transparent, rgba(200,168,78,0.3), rgba(200,168,78,0.5), rgba(200,168,78,0.3), transparent);
-    `;
-    topRight.appendChild(sep2);
-
-    topRight.appendChild(this._killText);
-
-    // Corner metal brackets (L-shaped gold corners)
-    const bracketPositions = [
-      { top: "3px", left: "3px", borderSides: "border-top:2px solid #c8a84e;border-left:2px solid #c8a84e;" },
-      { top: "3px", right: "3px", borderSides: "border-top:2px solid #c8a84e;border-right:2px solid #c8a84e;" },
-      { bottom: "3px", left: "3px", borderSides: "border-bottom:2px solid #c8a84e;border-left:2px solid #c8a84e;" },
-      { bottom: "3px", right: "3px", borderSides: "border-bottom:2px solid #c8a84e;border-right:2px solid #c8a84e;" },
-    ];
-    for (const bp of bracketPositions) {
-      const bracket = document.createElement("div");
-      let bStyle = `position:absolute;width:12px;height:12px;pointer-events:none;z-index:5;${bp.borderSides}`;
-      if (bp.top) bStyle += `top:${bp.top};`;
-      if (bp.bottom) bStyle += `bottom:${bp.bottom};`;
-      if (bp.left) bStyle += `left:${bp.left};`;
-      if (bp.right) bStyle += `right:${bp.right};`;
-      bracket.style.cssText = bStyle;
-      topRight.appendChild(bracket);
-    }
-
-    // Wax seal decoration at the bottom
-    const waxSeal = document.createElement("div");
-    waxSeal.style.cssText = `
-      position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);z-index:6;
-      width:24px;height:24px;border-radius:50%;pointer-events:none;
-      background:radial-gradient(circle at 40% 35%, #cc3333, #8b1a1a, #5a0a0a);
-      box-shadow:0 1px 4px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,100,100,0.3);
-      display:flex;align-items:center;justify-content:center;
-      font-size:12px;color:rgba(180,40,40,0.8);text-shadow:0 0 2px rgba(0,0,0,0.4);
-    `;
-    waxSeal.textContent = "\u2605";
-    topRight.appendChild(waxSeal);
-
-    this._hud.appendChild(topRight);
-
-    // Minimap canvas — top-left corner (ornate frame)
-    const minimapWrap = document.createElement("div");
-    minimapWrap.style.cssText = `
-      position:absolute;top:12px;left:12px;width:216px;height:216px;
-      display:flex;align-items:center;justify-content:center;
-    `;
-    // Ornate outer frame
-    const mmFrame = document.createElement("div");
-    mmFrame.style.cssText = `
-      position:absolute;width:216px;height:216px;border-radius:6px;
-      border:3px solid transparent;pointer-events:none;
-      background:linear-gradient(135deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914) border-box;
-      -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite:xor;mask-composite:exclude;
-      box-shadow:0 0 8px rgba(200,168,78,0.3);
-    `;
-    minimapWrap.appendChild(mmFrame);
-    // Inner thick border
-    const mmInner = document.createElement("div");
-    mmInner.style.cssText = `
-      position:absolute;width:208px;height:208px;border-radius:4px;
-      border:2px solid rgba(40,30,10,0.9);pointer-events:none;
-      box-shadow:inset 0 0 6px rgba(0,0,0,0.5);
-    `;
-    minimapWrap.appendChild(mmInner);
-    // Corner rivets (small gold circles)
-    const mmCorners = [
-      { top: "-5px", left: "-5px" },
-      { top: "-5px", right: "-5px" },
-      { bottom: "-5px", left: "-5px" },
-      { bottom: "-5px", right: "-5px" },
-    ];
-    for (const pos of mmCorners) {
-      const c = document.createElement("div");
-      let cStyle = `position:absolute;width:10px;height:10px;border-radius:50%;z-index:3;pointer-events:none;
-        background:radial-gradient(circle at 35% 35%, #e8d07a, #c8a84e, #8b6914);
-        box-shadow:0 1px 3px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,200,0.3);`;
-      if (pos.top) cStyle += `top:${pos.top};`;
-      if (pos.bottom) cStyle += `bottom:${pos.bottom};`;
-      if (pos.left) cStyle += `left:${pos.left};`;
-      if (pos.right) cStyle += `right:${pos.right};`;
-      c.style.cssText = cStyle;
-      minimapWrap.appendChild(c);
-    }
-
-    // Chain/rope edge effect around minimap frame
-    const mmChainEdge = document.createElement("div");
-    mmChainEdge.style.cssText = `
-      position:absolute;width:222px;height:222px;border-radius:6px;pointer-events:none;z-index:1;
-      top:50%;left:50%;transform:translate(-50%,-50%);
-      box-shadow:
-        inset 3px 0 0 -1px rgba(139,105,20,0.25), inset -3px 0 0 -1px rgba(139,105,20,0.25),
-        inset 0 3px 0 -1px rgba(139,105,20,0.25), inset 0 -3px 0 -1px rgba(139,105,20,0.25),
-        3px 0 0 -1px rgba(139,105,20,0.15), -3px 0 0 -1px rgba(139,105,20,0.15),
-        0 3px 0 -1px rgba(139,105,20,0.15), 0 -3px 0 -1px rgba(139,105,20,0.15);
-    `;
-    minimapWrap.appendChild(mmChainEdge);
-
-    // 4 compass point labels (N, S, E, W)
-    const compassLabels = [
-      { label: "N", top: "-2px", left: "50%", extra: "transform:translateX(-50%);" },
-      { label: "S", bottom: "-2px", left: "50%", extra: "transform:translateX(-50%);" },
-      { label: "E", right: "-1px", top: "50%", extra: "transform:translateY(-50%);" },
-      { label: "W", left: "1px", top: "50%", extra: "transform:translateY(-50%);" },
-    ];
-    for (const cl of compassLabels) {
-      const lbl = document.createElement("div");
-      let lStyle = `position:absolute;z-index:4;font-size:11px;color:#e8d07a;font-weight:bold;pointer-events:none;
-        text-shadow:0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(200,168,78,0.3);
-        font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;`;
-      if (cl.top) lStyle += `top:${cl.top};`;
-      if (cl.bottom) lStyle += `bottom:${cl.bottom};`;
-      if (cl.left) lStyle += `left:${cl.left};`;
-      if (cl.right) lStyle += `right:${cl.right};`;
-      if (cl.extra) lStyle += cl.extra;
-      lbl.style.cssText = lStyle;
-      lbl.textContent = cl.label;
-      minimapWrap.appendChild(lbl);
-    }
-
-    // Rotating compass needle overlay
-    const compassNeedle = document.createElement("div");
-    compassNeedle.style.cssText = `
-      position:absolute;top:50%;left:50%;z-index:5;pointer-events:none;
-      width:2px;height:20px;
-      background:linear-gradient(180deg, #cc2222 0%, #cc2222 50%, #cccccc 50%, #cccccc 100%);
-      transform-origin:center center;
-      animation:hud-compass-spin 30s linear infinite;
-      transform:translate(-50%,-50%) rotate(0deg);
-      opacity:0.6;
-    `;
-    minimapWrap.appendChild(compassNeedle);
-
-    // Parchment texture background behind the map canvas
-    const mmParchment = document.createElement("div");
-    mmParchment.style.cssText = `
-      position:absolute;width:204px;height:204px;border-radius:3px;pointer-events:none;z-index:0;
-      background:
-        radial-gradient(ellipse at 20% 20%, rgba(180,160,120,0.08), transparent 50%),
-        radial-gradient(ellipse at 80% 80%, rgba(160,140,100,0.06), transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(140,120,80,0.04), transparent 70%),
-        linear-gradient(180deg, rgba(120,100,60,0.05), rgba(80,60,30,0.08));
-    `;
-    minimapWrap.appendChild(mmParchment);
-
-    this._minimapCanvas = document.createElement("canvas");
-    this._minimapCanvas.width = 200;
-    this._minimapCanvas.height = 200;
-    this._minimapCanvas.style.cssText = `
-      width:200px;height:200px;border-radius:3px;background:rgba(0,0,0,0.6);
-      box-shadow:inset 0 0 10px rgba(0,0,0,0.4);z-index:1;position:relative;
-    `;
-    this._minimapCtx = this._minimapCanvas.getContext("2d")!;
-    minimapWrap.appendChild(this._minimapCanvas);
-    this._hud.appendChild(minimapWrap);
-
-    // DPS meter
-    this._dpsMeter = document.createElement("div");
-    this._dpsMeter.style.cssText = `
-      position:absolute;top:270px;left:16px;
-      font-size:12px;color:#ffcc44;font-family:'Georgia',serif;
-      text-shadow:0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9);
-      pointer-events:none;letter-spacing:1px;opacity:0.8;
-    `;
-    this._hud.appendChild(this._dpsMeter);
-
-    // Dedicated map name label below minimap
-    this._mapNameLabel = document.createElement("div");
-    this._mapNameLabel.style.cssText = `
-      position:absolute;top:234px;left:12px;width:216px;text-align:center;
-      font-size:13px;color:#e8d07a;font-weight:bold;
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 0 6px rgba(200,168,78,0.3), 0 1px 3px rgba(0,0,0,0.8);
-      background:linear-gradient(90deg, transparent, rgba(25,20,10,0.7), transparent);
-      padding:3px 0;letter-spacing:1px;pointer-events:none;
-    `;
-    this._hud.appendChild(this._mapNameLabel);
-
-    // Fullscreen map overlay (aece2d8c)
-    this._fullmapCanvas = document.createElement("canvas");
-    this._fullmapCanvas.width = 400;
-    this._fullmapCanvas.height = 400;
-    this._fullmapCanvas.style.cssText = `
-      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:400px;
-      border:3px solid #c8a84e;border-radius:8px;background:rgba(0,0,0,0.85);
-      display:none;z-index:5;
-    `;
-    this._fullmapCtx = this._fullmapCanvas.getContext("2d")!;
-    this._hud.appendChild(this._fullmapCanvas);
-
-    // Weather text (aece2d8c) - ornate
-    this._weatherText = document.createElement("div");
-    this._weatherText.style.cssText = `
-      position:absolute;top:258px;left:12px;width:216px;text-align:center;
-      font-size:12px;color:#b8a878;
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 1px 3px rgba(0,0,0,0.7);
-      background:linear-gradient(90deg, transparent, rgba(20,16,8,0.6), transparent);
-      padding:2px 0;letter-spacing:0.5px;
-    `;
-    this._hud.appendChild(this._weatherText);
-
-    // Potion bar (ad1a2850) - ornate, enhanced with flask shapes
-    const potionBarBg = document.createElement("div");
-    potionBarBg.style.cssText = `
-      position:absolute;bottom:22px;left:50%;transform:translateX(280px);display:flex;gap:6px;
-      background:linear-gradient(180deg, rgba(35,28,18,0.95), rgba(18,14,8,0.97), rgba(28,22,14,0.95));
-      border:2px solid #7a6a3a;border-radius:8px;padding:8px 12px;
-      box-shadow:0 3px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.15),
-        0 0 1px rgba(200,168,78,0.2), 0 -2px 10px rgba(200,168,78,0.05);
-    `;
-
-    // Wooden rack background (horizontal wood grain lines)
-    const woodenRack = document.createElement("div");
-    woodenRack.style.cssText = `
-      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
-      border-radius:6px;overflow:hidden;
-      background:repeating-linear-gradient(0deg,
-        transparent 0px, transparent 6px,
-        rgba(90,60,20,0.08) 6px, rgba(90,60,20,0.08) 7px,
-        transparent 7px, transparent 13px,
-        rgba(70,45,15,0.06) 13px, rgba(70,45,15,0.06) 14px);
-    `;
-    potionBarBg.appendChild(woodenRack);
-
-    this._potionHudSlots = [];
-    const potionLabels = ["F1", "F2", "F3", "F4"];
-    const potionColors = [
-      "rgba(200,40,40,0.5)", "rgba(60,60,220,0.5)", "rgba(40,180,40,0.5)", "rgba(200,180,40,0.5)"
-    ];
-    for (let i = 0; i < 4; i++) {
-      const slot = document.createElement("div");
-      slot.style.cssText = `
-        width:58px;height:70px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
-        border:2px solid #8a7a4a;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:4px;
-        box-shadow:inset 0 1px 0 rgba(100,180,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
-          0 2px 6px rgba(0,0,0,0.4), inset 0 0 15px rgba(80,160,60,0.03);
-        clip-path:polygon(25% 0%, 75% 0%, 80% 8%, 80% 12%, 100% 20%, 100% 100%, 0% 100%, 0% 20%, 20% 12%, 20% 8%);
-      `;
-
-      // Cork/stopper decoration at top
-      const cork = document.createElement("div");
-      cork.style.cssText = `
-        position:absolute;top:0px;left:50%;transform:translateX(-50%);z-index:4;
-        width:20px;height:6px;pointer-events:none;
-        background:linear-gradient(180deg, #8b7355, #6b5335, #8b7355);
-        border-radius:2px 2px 0 0;
-        box-shadow:0 1px 2px rgba(0,0,0,0.4);
-      `;
-      slot.appendChild(cork);
-
-      // Liquid level indicator (colored fill from bottom)
-      const liquidLevel = document.createElement("div");
-      liquidLevel.style.cssText = `
-        position:absolute;bottom:0;left:0;width:100%;height:60%;z-index:0;
-        background:linear-gradient(0deg, ${potionColors[i]}, transparent);
-        pointer-events:none;transition:height 0.3s;
-      `;
-      slot.appendChild(liquidLevel);
-
-      // Frame corners
-      const potCorner = document.createElement("div");
-      potCorner.style.cssText = `
-        position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3;
-        box-shadow:inset 2px 2px 0 rgba(100,180,78,0.1), inset -2px -2px 0 rgba(100,180,78,0.08);
-      `;
-      const keyLabel = document.createElement("div");
-      keyLabel.style.cssText = `
-        position:absolute;bottom:2px;right:3px;font-size:9px;color:#7a9a5a;z-index:2;
-        font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      `;
-      keyLabel.textContent = potionLabels[i];
-      const iconEl = document.createElement("div");
-      iconEl.style.cssText = "font-size:22px;z-index:1;";
-      iconEl.className = "potion-icon";
-      slot.appendChild(iconEl);
-      slot.appendChild(keyLabel);
-      slot.appendChild(potCorner);
-      potionBarBg.appendChild(slot);
-      this._potionHudSlots.push(slot);
-    }
-    this._hud.appendChild(potionBarBg);
-
-    // Quest tracker (a270b216) - ornate scroll style
-    this._questTracker = document.createElement("div");
-    this._questTracker.style.cssText = `
-      position:absolute;top:16px;right:20px;margin-top:100px;width:240px;
-      background:linear-gradient(180deg, rgba(30,24,12,0.9), rgba(15,12,6,0.92), rgba(25,20,10,0.9));
-      border:2px solid #6a5a2a;border-radius:8px;
-      padding:12px 14px;font-size:13px;color:#ccc;display:none;
-      box-shadow:0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
-        inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
-      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-    `;
-    // Scroll top decoration
-    const questScrollTop = document.createElement("div");
-    questScrollTop.style.cssText = `
-      position:absolute;top:-7px;left:50%;transform:translateX(-50%);
-      font-size:12px;color:#c8a84e;pointer-events:none;letter-spacing:4px;
-      filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
-    `;
-    questScrollTop.textContent = "\u2E31 \u2736 \u2E31";
-    this._questTracker.appendChild(questScrollTop);
-    // Scroll bottom decoration
-    const questScrollBot = document.createElement("div");
-    questScrollBot.style.cssText = `
-      position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);
-      font-size:12px;color:#c8a84e;pointer-events:none;letter-spacing:4px;
-      filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
-    `;
-    questScrollBot.textContent = "\u2E31 \u2736 \u2E31";
-    this._questTracker.appendChild(questScrollBot);
-    this._hud.appendChild(this._questTracker);
-
-    // Vendor interaction hint
-    this._vendorHint = document.createElement("div");
-    this._vendorHint.style.cssText = `
-      position:absolute;bottom:100px;left:50%;transform:translateX(-50%);
-      padding:8px 20px;background:rgba(10,8,4,0.85);border:1px solid #5a4a2a;
-      border-radius:6px;color:#c8a84e;font-size:14px;font-weight:bold;
-      letter-spacing:1px;display:none;white-space:nowrap;
-    `;
-    this._hud.appendChild(this._vendorHint);
-
-    // Chest interaction hint
-    this._chestHint = document.createElement("div");
-    this._chestHint.style.cssText = `
-      position:absolute;bottom:120px;left:50%;transform:translateX(-50%);
-      padding:8px 20px;background:rgba(10,8,4,0.85);border:1px solid #5a4a2a;
-      border-radius:6px;color:#ffd700;font-size:14px;font-weight:bold;
-      letter-spacing:1px;display:none;white-space:nowrap;
-    `;
-    this._hud.appendChild(this._chestHint);
-
-    // Town portal interaction hint
-    this._portalHint = document.createElement("div");
-    this._portalHint.style.cssText = `
-      position:absolute;bottom:140px;left:50%;transform:translateX(-50%);
-      padding:8px 20px;background:rgba(10,8,20,0.9);border:1px solid #6688ff;
-      border-radius:6px;color:#88bbff;font-size:14px;font-weight:bold;
-      letter-spacing:1px;display:none;white-space:nowrap;
-      box-shadow:0 0 12px rgba(100,130,255,0.3);
-    `;
-    this._hud.appendChild(this._portalHint);
-
-    // Quest popup (centered, semi-transparent parchment style)
-    this._questPopup = document.createElement("div");
-    this._questPopup.style.cssText = `
-      position:absolute;top:12%;left:50%;transform:translateX(-50%);
-      max-width:550px;width:90%;padding:20px 30px;
-      background:linear-gradient(180deg, rgba(35,28,15,0.95) 0%, rgba(25,20,10,0.95) 100%);
-      border:2px solid #5a4a2a;border-radius:10px;
-      box-shadow:0 0 30px rgba(200,168,78,0.15), inset 0 0 20px rgba(0,0,0,0.3);
-      color:#ccbb99;font-family:'Georgia',serif;text-align:center;
-      display:none;z-index:5;pointer-events:none;
-      transition:opacity 0.8s ease-out;
-    `;
-    this._hud.appendChild(this._questPopup);
-
-    this._deathOverlay = document.createElement("div");
-    this._deathOverlay.style.cssText = `
-      position:absolute;top:0;left:0;width:100%;height:100%;
-      background:rgba(80,0,0,0.7);display:none;
-      flex-direction:column;align-items:center;justify-content:center;
-      color:#fff;pointer-events:none;
-    `;
-    this._deathOverlay.innerHTML = `
-      <div style="font-size:48px;font-family:'Georgia',serif;color:#cc2222;
-        text-shadow:0 0 30px rgba(200,30,30,0.6);letter-spacing:4px;">YOU HAVE DIED</div>
-      <div id="diablo-respawn-timer" style="font-size:20px;color:#c8a84e;margin-top:16px;"></div>
-      <div id="diablo-death-recap" style="font-size:14px;color:#aaa;margin-top:10px;text-align:center;"></div>
-      <div id="diablo-gold-loss" style="font-size:16px;color:#ff8888;margin-top:8px;"></div>
-    `;
-    this._hud.appendChild(this._deathOverlay);
-
-    // FPS crosshair (hidden by default)
-    this._fpsCrosshair = document.createElement("div");
-    this._fpsCrosshair.style.cssText = `
-      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;display:none;
-    `;
-    this._fpsCrosshair.innerHTML =
-      `<div style="position:absolute;width:3px;height:3px;border:1px solid rgba(255,255,255,0.9);border-radius:50%;left:-1px;top:-1px"></div>` +
-      `<div style="position:absolute;width:14px;height:2px;background:rgba(255,255,255,0.6);left:5px;top:0"></div>` +
-      `<div style="position:absolute;width:14px;height:2px;background:rgba(255,255,255,0.6);right:5px;top:0;transform:translateX(100%)"></div>` +
-      `<div style="position:absolute;width:2px;height:14px;background:rgba(255,255,255,0.6);left:0;top:5px"></div>` +
-      `<div style="position:absolute;width:2px;height:14px;background:rgba(255,255,255,0.6);left:0;bottom:5px;transform:translateY(100%)"></div>`;
-    this._hud.appendChild(this._fpsCrosshair);
-
-    // View mode indicator — hidden from main HUD (shown in pause menu instead)
-    this._viewModeLabel = document.createElement("div");
-    this._viewModeLabel.style.cssText = `
-      position:absolute;top:10px;left:50%;transform:translateX(-50%);
-      font-size:11px;color:#888;letter-spacing:1px;pointer-events:none;display:none;
-    `;
-    this._viewModeLabel.textContent = "";
-    this._hud.appendChild(this._viewModeLabel);
-
-    // DPS display
-    this._dpsDisplay = document.createElement("div");
-    this._dpsDisplay.style.cssText = `
-      position:absolute;bottom:140px;right:20px;background:rgba(0,0,0,0.7);
-      border:1px solid #5a4a2a;border-radius:6px;padding:8px 12px;display:none;
-      font-family:'Georgia',serif;color:#c8a84e;font-size:13px;min-width:120px;
-    `;
-    this._dpsDisplay.innerHTML = `<div style="font-size:10px;color:#888;margin-bottom:2px;">DPS METER</div><div id="dps-value">0</div>`;
-    this._hud.appendChild(this._dpsDisplay);
-    this._dpsValueEl = this._dpsDisplay.querySelector("#dps-value");
-
-    // Loot filter label
-    const lootFilterLabel = document.createElement("div");
-    lootFilterLabel.id = "loot-filter-label";
-    lootFilterLabel.style.cssText = `
-      position:absolute;bottom:110px;right:20px;color:#ffdd00;font-size:11px;
-      font-family:'Georgia',serif;opacity:0.7;
-    `;
-    lootFilterLabel.textContent = "Filter: Show All (Tab)";
-    this._hud.appendChild(lootFilterLabel);
-    this._lootFilterLabelEl = lootFilterLabel;
-
-    // === Animated torches flanking the skill bar ===
-    const torchPositions = [
-      { side: "left", xOffset: "-300px" },
-      { side: "right", xOffset: "300px" },
-    ];
-    for (const tp of torchPositions) {
-      const torchWrap = document.createElement("div");
-      torchWrap.style.cssText = `
-        position:absolute;bottom:36px;left:50%;
-        transform:translateX(calc(${tp.xOffset} - 50%));
-        width:24px;height:56px;pointer-events:none;z-index:10;
-      `;
-      // Torch bracket (wall mount)
-      const bracket = document.createElement("div");
-      bracket.style.cssText = `
-        position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-        width:14px;height:6px;
-        background:linear-gradient(180deg, #8b7a4a, #5a4a2a);
-        border-radius:2px;
-        box-shadow:0 1px 2px rgba(0,0,0,0.5);
-      `;
-      torchWrap.appendChild(bracket);
-      // Torch handle
-      const torchHandle = document.createElement("div");
-      torchHandle.style.cssText = `
-        position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
-        width:8px;height:32px;
-        background:linear-gradient(180deg, #8b6914, #6b4f0e, #4a3508, #6b4f0e);
-        border-radius:2px 2px 3px 3px;
-        box-shadow:inset 1px 0 0 rgba(200,168,78,0.2), inset -1px 0 0 rgba(0,0,0,0.3),
-          0 0 3px rgba(0,0,0,0.5);
-      `;
-      torchWrap.appendChild(torchHandle);
-      // Torch cup (holds fire)
-      const cup = document.createElement("div");
-      cup.style.cssText = `
-        position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
-        width:16px;height:8px;
-        background:linear-gradient(180deg, #5a4a2a, #3a2a1a);
-        border-radius:2px 2px 4px 4px;
-        box-shadow:0 1px 2px rgba(0,0,0,0.4);
-      `;
-      torchWrap.appendChild(cup);
-      // Flame (centered above cup)
-      const flame = document.createElement("div");
-      flame.style.cssText = `
-        position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
-        width:16px;height:24px;
-        background:radial-gradient(ellipse at 50% 65%, #ffee66, #ffaa00, #ff5500, transparent);
-        border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
-        animation:hud-torch-flicker 0.4s ease-in-out infinite alternate;
-        filter:blur(0.5px);
-      `;
-      torchWrap.appendChild(flame);
-      // Inner flame core
-      const flameCore = document.createElement("div");
-      flameCore.style.cssText = `
-        position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
-        width:8px;height:12px;
-        background:radial-gradient(ellipse at 50% 60%, #ffffcc, #ffee66, transparent);
-        border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
-        pointer-events:none;
-      `;
-      torchWrap.appendChild(flameCore);
-      // Flame glow
-      const flameGlow = document.createElement("div");
-      flameGlow.style.cssText = `
-        position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
-        width:10px;height:10px;border-radius:50%;
-        animation:hud-torch-glow 0.6s ease-in-out infinite alternate;
-        pointer-events:none;
-      `;
-      torchWrap.appendChild(flameGlow);
-      this._hud.appendChild(torchWrap);
-    }
-
-    // === NEW: Gothic frame border around entire HUD viewport ===
-    const gothicFrame = document.createElement("div");
-    gothicFrame.style.cssText = `
-      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
-      box-shadow:
-        inset 0 0 0 3px rgba(20,15,5,0.8),
-        inset 0 0 0 5px rgba(139,105,20,0.3),
-        inset 0 0 0 6px rgba(200,168,78,0.15),
-        inset 0 0 0 8px rgba(20,15,5,0.6),
-        inset 0 0 30px rgba(0,0,0,0.3);
-    `;
-    this._hud.appendChild(gothicFrame);
-
-    // Corner demon face ornaments (dark gradients shaped with border-radius)
-    const cornerOrnPositions = [
-      { top: "4px", left: "4px", rot: "0deg" },
-      { top: "4px", right: "4px", rot: "90deg" },
-      { bottom: "22px", left: "4px", rot: "270deg" },
-      { bottom: "22px", right: "4px", rot: "180deg" },
-    ];
-    for (const cp of cornerOrnPositions) {
-      const demon = document.createElement("div");
-      let dStyle = `position:absolute;width:28px;height:28px;pointer-events:none;z-index:1;
-        background:radial-gradient(circle at 50% 40%,
-          rgba(200,168,78,0.25), rgba(100,80,30,0.2) 40%, rgba(20,15,5,0.4) 70%, transparent);
-        border-radius:40% 40% 50% 50%;
-        box-shadow:0 0 6px rgba(200,168,78,0.1);
-        transform:rotate(${cp.rot});`;
-      if (cp.top) dStyle += `top:${cp.top};`;
-      if (cp.bottom) dStyle += `bottom:${cp.bottom};`;
-      if (cp.left) dStyle += `left:${cp.left};`;
-      if (cp.right) dStyle += `right:${cp.right};`;
-      demon.style.cssText = dStyle;
-      // Small face detail
-      demon.innerHTML = `<div style="position:absolute;top:30%;left:50%;transform:translateX(-50%);
-        font-size:10px;color:rgba(200,168,78,0.3);pointer-events:none;">\u2620</div>`;
-      this._hud.appendChild(demon);
-    }
-
-    // Thin gold pinstripe inside the stone border
-    const goldPinstripe = document.createElement("div");
-    goldPinstripe.style.cssText = `
-      position:absolute;top:6px;left:6px;right:6px;bottom:6px;pointer-events:none;z-index:0;
-      border:1px solid rgba(200,168,78,0.12);
-      border-radius:2px;
-    `;
-    this._hud.appendChild(goldPinstripe);
+    this._hudRefs = buildHUD(this._hud);
   }
 
   // ──────────────────────────────────────────────────────────────
   //  UPDATE HUD
   // ──────────────────────────────────────────────────────────────
   private _updateHUD(): void {
-    const p = this._state.player;
-
-    // Hardcore HUD indicator
-    if (p.isHardcore) {
-      if (!this._hardcoreLabel) {
-        this._hardcoreLabel = document.createElement('div');
-        this._hardcoreLabel.style.cssText = 'position:absolute;top:5px;left:50%;transform:translateX(-50%);color:#ff4444;font-size:11px;font-family:Georgia,serif;font-weight:bold;pointer-events:none;z-index:20;text-shadow:0 0 5px #ff0000;';
-        this._hardcoreLabel.textContent = 'HARDCORE';
-        this._hud.appendChild(this._hardcoreLabel);
-      }
-    }
-
-    // DPS calculation
-    const now = performance.now();
-    // In-place prune expired combat log entries (avoids allocating new array each frame)
-    for (let i = this._combatLog.length - 1; i >= 0; i--) {
-      if (now - this._combatLog[i].time >= 5000) this._combatLog.splice(i, 1);
-    }
-    const totalDmg = this._combatLog.reduce((s, e) => s + e.damage, 0);
-    this._currentDps = this._combatLog.length > 0 ? totalDmg / 5 : 0;
-
-    if (this._dpsMeter) {
-      if (this._currentDps > 0) {
-        this._dpsMeter.textContent = `⚔ ${Math.round(this._currentDps)} DPS`;
-        this._dpsMeter.style.display = 'block';
-      } else {
-        this._dpsMeter.style.display = 'none';
-      }
-    }
-
-    // FPS crosshair + view mode label
-    if (this._fpsCrosshair) this._fpsCrosshair.style.display = this._firstPerson ? "block" : "none";
-    // View mode label removed from HUD — hint is in the pause menu instead
-
-    // Health orb
-    const hpPct = Math.max(0, p.hp / p.maxHp);
-    const hpPctInt = Math.round(hpPct * 100);
-    if (hpPctInt !== this._lastHpPctInt) {
-      this._lastHpPctInt = hpPctInt;
-      this._hpBar.style.height = hpPctInt + "%";
-    }
-    this._hpText.textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
-    this._renderer.updateVignette(p.hp / p.maxHp);
-
-    // Detect HP change and trigger flash (threshold high enough to ignore minor regen ticks)
-    const hpDelta = p.hp - this._prevHp;
-    if (this._prevHp >= 0 && Math.abs(hpDelta) > 2) {
-      this._hpFlashTimer = hpDelta < 0 ? 0.5 : 0.4;
-    }
-    this._prevHp = p.hp;
-    if (this._hpFlashTimer > 0) {
-      this._hpFlashTimer -= 0.016; // roughly per-frame at 60fps
-      const fi = Math.min(1, this._hpFlashTimer * 3);
-      const isLoss = fi > 0;
-      if (isLoss) {
-        const pulse = 0.6 + Math.sin(Date.now() * 0.02) * 0.4;
-        this._hpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + fi * 16}px rgba(255,40,40,${0.5 * fi * pulse})) drop-shadow(0 0 ${6 + fi * 8}px rgba(255,100,100,${0.3 * fi}))`;
-      }
-    } else {
-      // Low HP warning pulse (< 30% HP)
-      if (hpPct < 0.3 && hpPct > 0) {
-        const pulse = 0.5 + Math.sin(Date.now() * 0.006) * 0.5;
-        const danger = (0.3 - hpPct) / 0.3; // 0→1 as HP gets lower
-        this._hpOrbWrap.style.filter = `drop-shadow(0 0 ${14 + danger * 12}px rgba(255,30,30,${0.3 + pulse * 0.35 * danger}))`;
-      } else {
-        this._hpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(180,20,20,0.35))';
-      }
-    }
-
-    // Mana orb
-    const mpPct = Math.max(0, p.mana / p.maxMana);
-    const mpPctInt = Math.round(mpPct * 100);
-    if (mpPctInt !== this._lastMpPctInt) {
-      this._lastMpPctInt = mpPctInt;
-      this._mpBar.style.height = mpPctInt + "%";
-    }
-    this._mpText.textContent = `${Math.ceil(p.mana)}/${p.maxMana}`;
-
-    // Detect Mana change and trigger flash (only on significant changes like skill use)
-    const manaDelta = p.mana - this._prevMana;
-    if (this._prevMana >= 0 && Math.abs(manaDelta) > 5) {
-      this._manaFlashTimer = manaDelta < 0 ? 0.4 : 0.35;
-    }
-    this._prevMana = p.mana;
-    if (this._manaFlashTimer > 0) {
-      this._manaFlashTimer -= 0.016;
-      const mi = Math.min(1, this._manaFlashTimer * 3);
-      const pulse = 0.6 + Math.sin(Date.now() * 0.02) * 0.4;
-      this._mpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + mi * 16}px rgba(60,60,255,${0.5 * mi * pulse})) drop-shadow(0 0 ${6 + mi * 8}px rgba(120,120,255,${0.3 * mi}))`;
-    } else {
-      // Low mana warning pulse (< 20% mana)
-      if (mpPct < 0.2 && mpPct > 0) {
-        const pulse = 0.5 + Math.sin(Date.now() * 0.005) * 0.5;
-        const danger = (0.2 - mpPct) / 0.2;
-        this._mpOrbWrap.style.filter = `drop-shadow(0 0 ${14 + danger * 10}px rgba(80,80,255,${0.25 + pulse * 0.3 * danger}))`;
-      } else {
-        this._mpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(30,30,200,0.35))';
-      }
-    }
-
-    // Skill bar
-    for (let i = 0; i < 6; i++) {
-      const skillId = p.skills[i];
-      if (!skillId) continue;
-      const def = SKILL_DEFS[skillId];
-      if (!def) continue;
-      const iconEl = this._skillSlots[i].querySelector(".skill-icon") as HTMLDivElement;
-      if (iconEl) iconEl.textContent = def.icon;
-
-      const cd = p.skillCooldowns.get(skillId) || 0;
-      const maxCd = def.cooldown;
-      const cdTextEl = this._skillSlots[i].querySelector(".skill-cd-text") as HTMLDivElement | null;
-      // Detect cooldown just finished → flash ready
-      const prevCd = this._prevSkillCooldowns[i] || 0;
-      if (prevCd > 0.1 && cd <= 0) {
-        // Cooldown just ended — flash the slot
-        this._skillSlots[i].style.transition = 'box-shadow 0.1s ease';
-        this._skillSlots[i].style.boxShadow = '0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,180,0,0.6), inset 0 0 15px rgba(255,215,0,0.4)';
-        this._skillSlots[i].style.borderColor = '#ffd700';
-        setTimeout(() => {
-          if (this._skillSlots[i]) {
-            this._skillSlots[i].style.transition = 'box-shadow 0.5s ease';
-            this._skillSlots[i].style.boxShadow = 'inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03)';
-            this._skillSlots[i].style.borderColor = '#9a8a4a';
-          }
-        }, 500);
-      }
-      this._prevSkillCooldowns[i] = cd;
-      if (cd > 0) {
-        const pct = Math.min(100, (cd / maxCd) * 100);
-        this._skillCooldownOverlays[i].style.height = pct + "%";
-        if (cdTextEl) {
-          cdTextEl.style.display = "block";
-          cdTextEl.textContent = cd >= 1 ? Math.ceil(cd).toString() : cd.toFixed(1);
-        }
-      } else {
-        this._skillCooldownOverlays[i].style.height = "0%";
-        if (cdTextEl) cdTextEl.style.display = "none";
-      }
-
-      // Ability glow effect when skill is actively being used
-      const isActive = p.activeSkillId === skillId && p.activeSkillAnimTimer > 0;
-      if (isActive) {
-        const glowIntensity = Math.min(1, p.activeSkillAnimTimer * 4);
-        const pulseGlow = 0.7 + Math.sin(Date.now() * 0.012) * 0.3;
-        const gI = glowIntensity * pulseGlow;
-        this._skillSlots[i].style.boxShadow =
-          `inset 0 0 20px rgba(255,215,100,${0.4 * gI}), ` +
-          `0 0 12px rgba(255,200,60,${0.5 * gI}), ` +
-          `0 0 24px rgba(255,180,40,${0.3 * gI})`;
-        this._skillSlots[i].style.borderColor = `rgba(255,215,100,${0.7 * gI + 0.3})`;
-      } else {
-        this._skillSlots[i].style.boxShadow =
-          'inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03)';
-        this._skillSlots[i].style.borderColor = '#9a8a4a';
-      }
-    }
-
-    // XP bar
-    const xpPct = p.xpToNext > 0 ? (p.xp / p.xpToNext) * 100 : 0;
-    this._xpBar.style.width = Math.min(100, xpPct) + "%";
-    // Pulsing glow when near level up (>90% XP)
-    if (xpPct > 90) {
-      this._xpBar.style.animation = "hud-xp-pulse 1.2s ease-in-out infinite";
-    } else {
-      this._xpBar.style.animation = "none";
-    }
-    if (this._xpLevelText) {
-      this._xpLevelText.textContent = `Level ${p.level}  \u2014  ${Math.floor(xpPct)}%`;
-    }
-
-    // Top right
-    if (p.gold !== this._lastGoldValue) {
-      const gained = p.gold > this._lastGoldValue;
-      this._lastGoldValue = p.gold;
-      this._goldText.innerHTML = `<span style="filter:drop-shadow(0 0 3px rgba(255,215,0,0.4))">\uD83E\uDE99</span> ${p.gold.toLocaleString()}`;
-      // Flash gold text on gain
-      if (gained) {
-        this._goldText.style.textShadow = '0 0 16px rgba(255,215,0,0.9), 0 0 32px rgba(255,215,0,0.5), 0 1px 3px rgba(0,0,0,0.9)';
-        this._goldText.style.transform = 'scale(1.08)';
-        setTimeout(() => {
-          this._goldText.style.textShadow = '0 0 8px rgba(255,215,0,0.5), 0 0 16px rgba(255,215,0,0.2), 0 1px 3px rgba(0,0,0,0.9)';
-          this._goldText.style.transform = 'scale(1)';
-        }, 300);
-      }
-    }
-    if (p.level !== this._lastLevelValue) {
-      const didLevelUp = this._lastLevelValue > 0 && p.level > this._lastLevelValue;
-      this._lastLevelValue = p.level;
-      this._levelText.innerHTML = `\u2694 Level ${p.level}`;
-      if (didLevelUp) {
-        // Level-up flash: golden burst on level text
-        this._levelText.style.color = '#fff';
-        this._levelText.style.textShadow = '0 0 20px rgba(255,215,0,1), 0 0 40px rgba(255,215,0,0.7), 0 0 60px rgba(255,180,0,0.5)';
-        this._levelText.style.transform = 'scale(1.15)';
-        this._levelText.style.transition = 'all 0.15s ease-out';
-        // Also flash the entire top-right panel border gold
-        if (this._topRightPanel) {
-          this._topRightPanel.style.borderColor = '#ffd700';
-          this._topRightPanel.style.boxShadow = '0 0 20px rgba(255,215,0,0.5), 0 4px 12px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,215,0,0.1)';
-        }
-        setTimeout(() => {
-          this._levelText.style.color = '#c8a84e';
-          this._levelText.style.textShadow = '0 0 6px rgba(200,168,78,0.3), 0 1px 2px rgba(0,0,0,0.7)';
-          this._levelText.style.transform = 'scale(1)';
-          if (this._topRightPanel) {
-            this._topRightPanel.style.borderColor = '#7a6a3a';
-            this._topRightPanel.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2), inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3)';
-          }
-        }, 800);
-      }
-    }
-    if (this._state.killCount !== this._lastKillValue || this._state.deathCount !== this._lastDeathValue) {
-      this._lastKillValue = this._state.killCount;
-      this._lastDeathValue = this._state.deathCount;
-      this._killText.innerHTML = `\u2620 ${this._state.killCount} Kills` +
-        (this._state.deathCount > 0 ? `  &nbsp;\u2620 ${this._state.deathCount} Deaths` : "");
-    }
-
-    // Glow border when talent points are available
-    if (p.talentPoints > 0) {
-      this._topRightPanel.style.borderColor = "#ffd700";
-      this._topRightPanel.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5), 0 0 12px rgba(255,215,0,0.5), 0 0 24px rgba(255,215,0,0.25), inset 0 0 8px rgba(255,215,0,0.1)";
-    } else {
-      this._topRightPanel.style.borderColor = "#7a6a3a";
-      this._topRightPanel.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2), inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3)";
-    }
-
-    // Potion slots (ad1a2850)
-    for (let i = 0; i < 4; i++) {
-      const pot = p.potionSlots[i];
-      const iconEl = this._potionHudSlots[i].querySelector(".potion-icon") as HTMLDivElement;
-      if (iconEl) iconEl.textContent = pot ? pot.icon : "";
-      const onCd = p.potionCooldown > 0;
-      this._potionHudSlots[i].style.borderColor = onCd ? "#5a2a2a" : "#6a8a4a";
-      this._potionHudSlots[i].style.opacity = onCd ? "0.5" : "1";
-    }
-
-    // Minimap (throttled to every 3rd frame)
-    this._minimapFrameCounter++;
-    if (this._minimapFrameCounter >= 3) {
-      this._minimapFrameCounter = 0;
-      this._updateMinimap();
-    }
-    if (this._fullmapVisible) {
-      this._updateFullmap();
-    }
-
-    // Map name label
-    if (this._mapNameLabel) {
-      this._mapNameLabel.textContent = MAP_NAME_MAP[this._state.currentMap] || this._state.currentMap.replace(/_/g, ' ');
-    }
-
-    // Weather text (aece2d8c) - with icons
-    this._weatherText.textContent = WEATHER_LABELS[this._state.weather] || "";
-
-    // Quest tracker (a270b216)
-    this._updateQuestTracker();
-
-    // Vendor hint (Camelot only)
-    if (this._state.currentMap === DiabloMapId.CAMELOT) {
-      let nearestVendor: DiabloVendor | null = null;
-      let nearestDist = 4;
-      for (const v of this._state.vendors) {
-        const d = this._dist(p.x, p.z, v.x, v.z);
-        if (d < nearestDist) {
-          nearestDist = d;
-          nearestVendor = v;
-        }
-      }
-      if (nearestVendor) {
-        this._vendorHint.style.display = "block";
-        const action = nearestVendor.type === VendorType.BLACKSMITH ? "forge/salvage"
-          : nearestVendor.type === VendorType.JEWELER ? "reroll stats"
-          : "trade";
-        this._vendorHint.textContent = `Press [E] to ${action} with ${nearestVendor.name}`;
-      } else {
-        this._vendorHint.style.display = "none";
-      }
-    } else {
-      this._vendorHint.style.display = "none";
-    }
-
-    // Chest proximity hint
-    let nearestChest = false;
-    for (const chest of this._state.treasureChests) {
-      if (chest.opened) continue;
-      const d = this._dist(p.x, p.z, chest.x, chest.z);
-      if (d < 4) {
-        nearestChest = true;
-        break;
-      }
-    }
-    if (nearestChest) {
-      this._chestHint.style.display = "block";
-      this._chestHint.textContent = "Press [F] to open chest";
-    } else {
-      this._chestHint.style.display = "none";
-    }
-
-    // Town portal proximity hint
-    if (this._portalActive) {
-      const portalDist = this._dist(p.x, p.z, this._portalX, this._portalZ);
-      if (portalDist < 4) {
-        this._portalHint.style.display = "block";
-        this._portalHint.textContent = "\uD83C\uDF00 Press [E] to use Town Portal \u2014 Return to Character Select";
-      } else {
-        this._portalHint.style.display = "none";
-      }
-    } else {
-      this._portalHint.style.display = "none";
-    }
-
-    // DPS meter update
-    if (this._state.player.dpsDisplayVisible && this._dpsDisplay) {
-      this._dpsDisplay.style.display = "block";
-      const dpsVal = this._dpsValueEl;
-      if (dpsVal) dpsVal.textContent = `${Math.round(this._currentDps).toLocaleString()} DPS`;
-    } else if (this._dpsDisplay) {
-      this._dpsDisplay.style.display = "none";
-    }
-
-    // Loot filter label update
-    const filterLabel = this._lootFilterLabelEl;
-    if (filterLabel) {
-      const customFilter = p.customLootFilters[p.activeFilterIndex];
-      const filterName = customFilter ? customFilter.name : 'Show All';
-      filterLabel.textContent = `Filter: ${filterName} (Tab)`;
-    }
-
-    // Greater Rift HUD
-    const rift = this._state.greaterRift;
-    if (rift.state !== GreaterRiftState.NOT_ACTIVE) {
-      if (!this._riftHud) {
-        this._riftHud = document.createElement('div');
-        this._riftHud.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-family:monospace;text-align:center;background:rgba(0,0,0,0.7);padding:8px 16px;border:1px solid #ff8800;border-radius:4px;pointer-events:none;z-index:20;';
-        this._hud.appendChild(this._riftHud);
-      }
-      const riftProgressInt = Math.floor(rift.progressBar);
-      const riftTimeInt = Math.floor(rift.timeRemaining);
-      if (riftProgressInt !== this._lastRiftProgress || riftTimeInt !== this._lastRiftTime || rift.state !== this._lastRiftState) {
-        this._lastRiftProgress = riftProgressInt;
-        this._lastRiftTime = riftTimeInt;
-        this._lastRiftState = rift.state;
-        const mins = Math.floor(rift.timeRemaining / 60);
-        const secs = Math.floor(rift.timeRemaining % 60);
-        const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-        const barWidth = Math.floor(rift.progressBar * 2);
-        const barFill = '\u2588'.repeat(Math.floor(barWidth / 10));
-        const barEmpty = '\u2591'.repeat(20 - Math.floor(barWidth / 10));
-        const stateLabel = rift.state === GreaterRiftState.BOSS_SPAWNED ? ' \u26A0 GUARDIAN!' : '';
-        this._riftHud.innerHTML = `<span style="color:#ff8800">GR ${rift.level}</span> | ${timeStr} | [${barFill}${barEmpty}] ${riftProgressInt}%${stateLabel}`;
-      }
-      this._riftHud.style.display = 'block';
-      if (rift.timeRemaining < 30) this._riftHud.style.borderColor = '#ff2222';
-      else this._riftHud.style.borderColor = '#ff8800';
-    } else if (this._riftHud) {
-      this._riftHud.style.display = 'none';
-    }
-
-    // Multiplayer HUD
-    if (this._state.multiplayer.state !== MultiplayerState.DISCONNECTED) {
-      if (!this._multiplayerHud) {
-        this._multiplayerHud = document.createElement('div');
-        this._multiplayerHud.style.cssText = 'position:absolute;bottom:10px;left:10px;color:#fff;font-size:12px;font-family:monospace;background:rgba(0,0,0,0.6);padding:6px 10px;border-radius:4px;pointer-events:none;z-index:20;max-height:200px;overflow:hidden;';
-        this._hud.appendChild(this._multiplayerHud);
-      }
-      const mp = this._state.multiplayer;
-      const msgCount = mp.chatMessages.length;
-      if (msgCount !== this._lastMpMessageCount) {
-        this._lastMpMessageCount = msgCount;
-        const playerCount = mp.remotePlayers.length + 1;
-        const recentChat = mp.chatMessages.slice(-5).map(m => `<span style="color:#aaa">${m.name}:</span> ${m.message}`).join('<br>');
-        if (this._state.multiplayer.state === MultiplayerState.CONNECTING) {
-          this._multiplayerHud.innerHTML = `<span style="color:#ffaa00">RECONNECTING...</span>`;
-        } else {
-          this._multiplayerHud.innerHTML = `<span style="color:#44ff44">ONLINE</span> ${playerCount} players | ${mp.ping}ms${recentChat ? '<br>' + recentChat : ''}`;
-        }
-      }
-      this._multiplayerHud.style.display = 'block';
-    } else if (this._multiplayerHud) {
-      this._multiplayerHud.style.display = 'none';
-    }
-
-    // Excalibur quest progress
-    const fragments = this._state.player.excaliburFragments.length;
-    if (fragments > 0 && !this._state.player.excaliburReforged) {
-      const total = Object.keys(EXCALIBUR_QUEST_INFO).length;
-      if (!this._excaliburHud) {
-        this._excaliburHud = document.createElement('div');
-        this._excaliburHud.style.cssText = 'position:absolute;top:50px;right:10px;color:#ffd700;font-size:12px;font-family:Georgia,serif;background:rgba(0,0,0,0.6);padding:4px 8px;border:1px solid #8b6914;border-radius:4px;pointer-events:none;z-index:20;';
-        this._hud.appendChild(this._excaliburHud);
-      }
-      this._excaliburHud.textContent = `\u2694\uFE0F Excalibur: ${fragments}/${total}`;
-      this._excaliburHud.style.display = 'block';
-    } else if (this._excaliburHud) {
-      this._excaliburHud.style.display = 'none';
-    }
-
-    // Crafting queue HUD indicator
-    const cq = this._state.player.crafting.craftingQueue;
-    if (cq.length > 0) {
-      if (!this._craftingQueueHud) {
-        this._craftingQueueHud = document.createElement('div');
-        this._craftingQueueHud.style.cssText = 'position:absolute;top:70px;right:10px;color:#ffd700;font-size:12px;font-family:Georgia,serif;background:rgba(0,0,0,0.7);padding:6px 12px;border:1px solid #5a4a2a;border-radius:4px;pointer-events:none;z-index:20;min-width:160px;';
-        this._hud.appendChild(this._craftingQueueHud);
-      }
-      const current = cq[0];
-      const pct = Math.floor((current.progress / current.duration) * 100);
-      if (pct !== this._lastCraftingPct || cq.length !== this._lastCraftingQueueLen) {
-        this._lastCraftingPct = pct;
-        this._lastCraftingQueueLen = cq.length;
-        const recipe = ADVANCED_CRAFTING_RECIPES.find(r => r.id === current.recipeId);
-        const recipeName = recipe ? recipe.name : current.recipeId;
-        const barWidth = 120;
-        const filledWidth = Math.floor(barWidth * pct / 100);
-        this._craftingQueueHud.innerHTML =
-          `<div style="margin-bottom:4px;">Crafting: ${recipeName}</div>` +
-          `<div style="background:#333;border-radius:3px;height:8px;width:${barWidth}px;overflow:hidden;">` +
-          `<div style="background:linear-gradient(90deg,#c8a84e,#ffd700);height:100%;width:${filledWidth}px;transition:width 0.2s;"></div>` +
-          `</div>` +
-          `<div style="font-size:10px;color:#c8a84e;margin-top:2px;">${pct}%${cq.length > 1 ? ` (+${cq.length - 1} queued)` : ''}</div>`;
-      }
-      this._craftingQueueHud.style.display = 'block';
-    } else if (this._craftingQueueHud) {
-      this._craftingQueueHud.style.display = 'none';
-    }
+    const ctx: HUDUpdateContext = {
+      state: this._state,
+      firstPerson: this._firstPerson,
+      portalActive: this._portalActive,
+      portalX: this._portalX,
+      portalZ: this._portalZ,
+      combatLog: this._combatLog,
+      currentDps: this._currentDps,
+      setCurrentDps: (v) => { this._currentDps = v; },
+      updateVignette: (r) => this._renderer.updateVignette(r),
+      dist: (x1, z1, x2, z2) => this._dist(x1, z1, x2, z2),
+      updateMinimap: () => this._updateMinimap(),
+      updateFullmap: () => this._updateFullmap(),
+      updateQuestTracker: () => this._updateQuestTracker(),
+      hudEl: this._hud,
+    };
+    updateHUD(this._hudRefs, this._hudState, ctx);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -6342,10 +4711,10 @@ export class DiabloGame {
         if (this._questPopupTimer > 0) {
           this._questPopupTimer -= dt * 1000;
           if (this._questPopupTimer <= 1500) {
-            this._questPopup.style.opacity = String(Math.max(0, this._questPopupTimer / 1500));
+            this._hudRefs.questPopup.style.opacity = String(Math.max(0, this._questPopupTimer / 1500));
           }
           if (this._questPopupTimer <= 0) {
-            this._questPopup.style.display = "none";
+            this._hudRefs.questPopup.style.display = "none";
             this._questPopupTimer = 0;
           }
         }
@@ -7063,497 +5432,119 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  COMBAT CONTEXT (bridge to DiabloCombat.ts)
+  // ──────────────────────────────────────────────────────────────
+  private _getCombatContext(): CombatContext {
+    return {
+      state: this._state,
+      addFloatingText: (x, y, z, text, color) => this._addFloatingText(x, y, z, text, color),
+      genId: () => this._genId(),
+      dist: (x1, z1, x2, z2) => this._dist(x1, z1, x2, z2),
+      playSound: (type) => this._playSound(type as SoundType),
+      recalculatePlayerStats: () => this._recalculatePlayerStats(),
+      renderer: {
+        shakeCamera: (i, d) => this._renderer.shakeCamera(i, d),
+        spawnParticles: (type, x, y, z, count, particles) => this._renderer.spawnParticles(type, x, y, z, count, particles),
+        flashEnemy: (id) => this._renderer.flashEnemy(id),
+        showSwingArc: (x, y, z, angle, color) => this._renderer.showSwingArc(x, y, z, angle, color),
+        showSkillFlash: (color) => this._renderer.showSkillFlash(color),
+        showCastOverlay: (damageType, duration) => this._renderer.showCastOverlay(damageType, duration),
+        destroyNearbyProps: (x, z, radius) => this._renderer.destroyNearbyProps(x, z, radius),
+      },
+      incrementAchievement: (id, amount?) => this._incrementAchievement(id, amount),
+      updateAchievement: (id, progress) => this._updateAchievement(id, progress),
+      killEnemy: (enemy) => this._killEnemy(enemy),
+      triggerDeath: () => this._triggerDeath(),
+      getMouseWorldPos: () => this._getMouseWorldPos(),
+      getWeaponDamage: () => this._getWeaponDamage(),
+      getTalentBonuses: () => this._getTalentBonuses(),
+      getLifeSteal: () => this._getLifeSteal(),
+      spawnHitParticles: (enemy, damageType) => this._spawnHitParticles(enemy, damageType),
+      rollLoot: (enemy) => this._rollLoot(enemy),
+      pickRandomItemOfRarity: (rarity) => this._pickRandomItemOfRarity(rarity),
+      grantPetXp: (amount) => this._grantPetXp(amount),
+      rollPetDrop: (isBoss) => this._rollPetDrop(isBoss),
+      rollMaterialDrop: (enemy) => this._rollMaterialDrop(enemy),
+      onRiftGuardianKill: () => this._onRiftGuardianKill(),
+      onRiftEnemyKill: () => this._onRiftEnemyKill(),
+      updateDailyProgress: (type, amount?) => this._updateDailyProgress(type, amount),
+      updateQuestProgress: (type, context) => this._updateQuestProgress(type, context),
+      network: this._network,
+      mutableState: {
+        mouseDown: this._mouseDown,
+        targetEnemyId: this._targetEnemyId,
+        combatLog: this._combatLog,
+        hitFreezeTimer: this._hitFreezeTimer,
+        comboCount: this._comboCount,
+        comboTimer: this._comboTimer,
+        comboMultiplier: this._comboMultiplier,
+        slowMotionTimer: this._slowMotionTimer,
+        slowMotionScale: this._slowMotionScale,
+        goldEarnedTotal: this._goldEarnedTotal,
+        totalKills: this._totalKills,
+        queuedSkillIdx: this._queuedSkillIdx,
+        skillMasteryXp: this._skillMasteryXp,
+        equipDirty: this._equipDirty,
+        cachedLegendaryEffects: this._cachedLegendaryEffects,
+      },
+    };
+  }
+
+  private _syncCombatState(ctx: CombatContext): void {
+    this._mouseDown = ctx.mutableState.mouseDown;
+    this._targetEnemyId = ctx.mutableState.targetEnemyId;
+    this._hitFreezeTimer = ctx.mutableState.hitFreezeTimer;
+    this._comboCount = ctx.mutableState.comboCount;
+    this._comboTimer = ctx.mutableState.comboTimer;
+    this._comboMultiplier = ctx.mutableState.comboMultiplier;
+    this._slowMotionTimer = ctx.mutableState.slowMotionTimer;
+    this._slowMotionScale = ctx.mutableState.slowMotionScale;
+    this._goldEarnedTotal = ctx.mutableState.goldEarnedTotal;
+    this._totalKills = ctx.mutableState.totalKills;
+    this._queuedSkillIdx = ctx.mutableState.queuedSkillIdx;
+    this._equipDirty = ctx.mutableState.equipDirty;
+    this._cachedLegendaryEffects = ctx.mutableState.cachedLegendaryEffects;
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  UPDATE COMBAT (auto-attack targeted enemy)
   // ──────────────────────────────────────────────────────────────
   private _updateCombat(dt: number): void {
-    if (!this._targetEnemyId) return;
-    const p = this._state.player;
-    const target = this._state.enemies.find((e) => e.id === this._targetEnemyId);
-    if (!target || target.state === EnemyState.DYING || target.state === EnemyState.DEAD) {
-      this._targetEnemyId = null;
-      return;
-    }
-
-    const dist = this._dist(p.x, p.z, target.x, target.z);
-    const attackRange = 3.0; // base melee range
-
-    if (dist > attackRange) {
-      // Move toward target if holding mouse
-      if (this._mouseDown) {
-        const dx = target.x - p.x;
-        const dz = target.z - p.z;
-        const len = Math.sqrt(dx * dx + dz * dz);
-        if (len > 0) {
-          p.x += (dx / len) * p.moveSpeed * dt;
-          p.z += (dz / len) * p.moveSpeed * dt;
-        }
-      }
-      return;
-    }
-
-    if (p.attackTimer > 0) return;
-
-    // Calculate damage
-    let baseDamage = 0;
-    const weaponBonus = this._getWeaponDamage();
-    switch (p.class) {
-      case DiabloClass.WARRIOR:
-        baseDamage = p.strength * 1.5 + weaponBonus;
-        break;
-      case DiabloClass.MAGE:
-        baseDamage = p.intelligence * 1.2 + weaponBonus;
-        break;
-      case DiabloClass.RANGER:
-        baseDamage = p.dexterity * 1.3 + weaponBonus;
-        break;
-      case DiabloClass.PALADIN:
-        baseDamage = p.strength * 1.3 + p.vitality * 0.5 + weaponBonus;
-        break;
-      case DiabloClass.NECROMANCER:
-        baseDamage = p.intelligence * 1.1 + p.vitality * 0.4 + weaponBonus;
-        break;
-      case DiabloClass.ASSASSIN:
-        baseDamage = p.dexterity * 1.4 + p.strength * 0.3 + weaponBonus;
-        break;
-    }
-
-    // Check for buff
-    const hasBattleCry = p.statusEffects.some((e) => e.source === "BATTLE_CRY");
-    if (hasBattleCry) baseDamage *= 1.3;
-
-    // Talent damage bonus (ad1a2850)
-    const talentBonuses = this._getTalentBonuses();
-    if (talentBonuses[TalentEffectType.BONUS_DAMAGE_PERCENT]) {
-      baseDamage *= (1 + talentBonuses[TalentEffectType.BONUS_DAMAGE_PERCENT] / 100);
-    }
-    for (const buff of p.activePotionBuffs) {
-      if (buff.type === PotionType.STRENGTH) baseDamage *= (1 + buff.value / 100);
-    }
-
-    // Legendary passive damage bonus
-    const legendaryBonusPct = this._getPassiveLegendaryBonusDamage();
-    if (legendaryBonusPct > 0) baseDamage *= (1 + legendaryBonusPct / 100);
-
-    // Crit check
-    const isCrit = Math.random() < p.critChance;
-    if (isCrit) baseDamage *= p.critDamage;
-
-    let finalDamage = Math.max(1, baseDamage - target.armor * 0.2);
-    if (target.shieldActive) finalDamage *= 0.2;
-    if (target.bossShieldTimer && target.bossShieldTimer > 0) finalDamage *= 0.1;
-
-    target.hp -= finalDamage;
-
-    if (this._network.isConnected) {
-      this._network.sendEnemyDamage(target.id, finalDamage);
-    }
-
-    // Map modifier: Thorns
-    if (this._state.activeMapModifiers.includes(MapModifier.ENEMY_THORNS)) {
-      const thornsDmg = finalDamage * 0.15;
-      p.hp -= thornsDmg;
-      this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(thornsDmg)} thorns`, '#ff4488');
-      if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); return; }
-    }
-
-    this._combatLog.push({ time: performance.now(), damage: finalDamage });
-
-    // Floating text + sound
-    if (isCrit) {
-      this._addFloatingText(target.x, target.y + 2.5, target.z, `CRIT! ${Math.round(finalDamage)}`, "#ff4444");
-      this._renderer.shakeCamera(0.15, 0.2);
-      this._hitFreezeTimer = 0.04; // 40ms freeze frame on crit
-      this._playSound('crit');
-      this._incrementAchievement('crit_master');
-    } else {
-      this._addFloatingText(target.x, target.y + 2, target.z, `${Math.round(finalDamage)}`, "#ffff44");
-      this._playSound('hit');
-      this._renderer.shakeCamera(0.08, 0.1); // subtle hit feedback
-      this._hitFreezeTimer = 0.02; // 20ms micro-freeze on normal hits
-    }
-
-    this._spawnHitParticles(target, DamageType.PHYSICAL);
-    this._renderer.flashEnemy(target.id);
-
-    // Hit knockback — push enemy away from player on impact
-    const hkAngle = Math.atan2(target.z - p.z, target.x - p.x);
-    const hkDist = isCrit ? 0.8 : 0.3;
-    target.x += Math.cos(hkAngle) * hkDist;
-    target.z += Math.sin(hkAngle) * hkDist;
-
-    // Hit stagger — brief freeze on impact
-    target.staggerTimer = isCrit ? 0.2 : 0.1;
-
-    // Stat tracking: damage dealt
-    p.stats.totalDamageDealt += finalDamage;
-    p.stats.highestCrit = Math.max(p.stats.highestCrit, isCrit ? finalDamage : 0);
-    if (isCrit) p.stats.totalCritsLanded++;
-
-    // Trigger legendary on_hit effects
-    this._triggerLegendaryEffects('on_hit', { targetX: target.x, targetZ: target.z, damage: finalDamage });
-    if (isCrit) {
-      this._triggerLegendaryEffects('on_crit', { targetX: target.x, targetZ: target.z, damage: finalDamage });
-    }
-
-    // Life steal
-    const lifeStealPct = this._getLifeSteal();
-    if (lifeStealPct > 0) {
-      const healed = finalDamage * lifeStealPct / 100;
-      p.hp = Math.min(p.maxHp, p.hp + healed);
-      if (healed > 1) {
-        this._renderer.spawnParticles(ParticleType.HEAL, p.x, p.y + 0.5, p.z, 5 + Math.floor(Math.random() * 4), this._state.particles);
-      }
-    }
-
-    // Reset attack timer
-    p.attackTimer = 1.0 / p.attackSpeed;
-    p.isAttacking = true;
-    const swingAngle = Math.atan2(target.x - p.x, target.z - p.z);
-    this._renderer.showSwingArc(p.x, p.y, p.z, swingAngle, 0xffeedd);
-
-    // Check enemy death
-    if (target.hp <= 0) {
-      target.hp = 0;
-      target.state = EnemyState.DYING;
-      target.deathTimer = 0;
-      // Death knockback — push enemy away from player
-      const kbAngle = Math.atan2(target.z - p.z, target.x - p.x);
-      const kbDist = target.isBoss ? 1.0 : 2.0 + Math.random() * 1.5;
-      target.x += Math.cos(kbAngle) * kbDist;
-      target.z += Math.sin(kbAngle) * kbDist;
-      if (target.isBoss) {
-        this._slowMotionTimer = 1.5;
-        this._slowMotionScale = 0.3;
-        this._renderer.shakeCamera(0.8, 1.2);
-      }
-      // Combo system
-      this._comboCount++;
-      this._comboTimer = 3.0; // 3 second window
-      this._comboMultiplier = 1.0 + Math.min(this._comboCount * 0.05, 1.0); // up to 2x at 20 combo
-      if (this._comboCount >= 3) {
-        this._addFloatingText(p.x, p.y + 3.5, p.z, `${this._comboCount}x COMBO`, '#ffaa00');
-      }
-
-      const meleeXpMult = this._state.weather === Weather.CLEAR ? 1.1 : 1.0;
-      let meleeXpAmount = Math.floor(target.xpReward * meleeXpMult * this._comboMultiplier);
-      // Prestige XP bonus
-      if (p.prestigeBonuses.xpPercent > 0) {
-        meleeXpAmount = Math.floor(meleeXpAmount * (1 + p.prestigeBonuses.xpPercent / 100));
-      }
-      p.xp += meleeXpAmount;
-      this._addFloatingText(target.x, target.y + 1.5, target.z, `+${meleeXpAmount} XP`, '#aaccff');
-      let goldFromKill = Math.floor((5 + Math.random() * 10 * target.level) * this._comboMultiplier);
-      // Prestige gold bonus
-      if (p.prestigeBonuses.goldPercent > 0) {
-        goldFromKill = Math.floor(goldFromKill * (1 + p.prestigeBonuses.goldPercent / 100));
-      }
-      p.gold += goldFromKill;
-      this._playSound('gold');
-      this._goldEarnedTotal += goldFromKill;
-      this._state.killCount++;
-      this._totalKills++;
-      // Achievement tracking: enemy kill
-      this._incrementAchievement('first_blood');
-      this._incrementAchievement('centurion');
-      this._incrementAchievement('slayer');
-      this._incrementAchievement('massacre');
-      this._updateDailyProgress('kill');
-      this._updateDailyProgress('collect_gold', goldFromKill);
-      this._updateAchievement('gold_hoarder', p.gold);
-      if (target.isBoss) {
-        this._incrementAchievement('boss_slayer');
-        this._incrementAchievement('boss_hunter');
-        this._updateDailyProgress('boss_kill');
-      }
-      // Stat tracking (melee kill)
-      p.stats.totalKills++;
-      p.stats.currentKillStreak++;
-      // Kill streak announcements
-      const streak = p.stats.currentKillStreak;
-      if (streak === 5) {
-        this._addFloatingText(p.x, p.y + 4, p.z, 'KILLING SPREE!', '#ff8800');
-        this._renderer.shakeCamera(0.2, 0.3);
-      } else if (streak === 10) {
-        this._addFloatingText(p.x, p.y + 4, p.z, 'RAMPAGE!', '#ff4400');
-        this._renderer.shakeCamera(0.3, 0.4);
-      } else if (streak === 20) {
-        this._addFloatingText(p.x, p.y + 4, p.z, 'MASSACRE!', '#ff0000');
-        this._renderer.shakeCamera(0.5, 0.6);
-      } else if (streak === 50) {
-        this._addFloatingText(p.x, p.y + 4, p.z, 'LEGENDARY SLAYER!', '#ffd700');
-        this._renderer.shakeCamera(0.6, 0.8);
-        this._slowMotionTimer = 0.5;
-        this._slowMotionScale = 0.3;
-      }
-      p.stats.longestKillStreak = Math.max(p.stats.longestKillStreak, p.stats.currentKillStreak);
-      p.stats.totalGoldEarned += goldFromKill;
-      if (target.isBoss) p.stats.totalBossKills++;
-      this._targetEnemyId = null;
-
-      // Trigger legendary on_kill effects
-      this._triggerLegendaryEffects('on_kill', {
-        targetX: target.x, targetZ: target.z, damage: 0, enemyMaxHp: target.maxHp,
-        enemyStatusEffects: target.statusEffects
-      });
-
-      this._renderer.spawnParticles(ParticleType.DUST, target.x, target.y + 0.5, target.z, 8 + Math.floor(Math.random() * 5), this._state.particles);
-
-      // Roll loot
-      const lootItems = this._rollLoot(target);
-      for (const item of lootItems) {
-        const loot: DiabloLoot = {
-          id: this._genId(),
-          item,
-          x: target.x + (Math.random() * 2 - 1),
-          y: 0,
-          z: target.z + (Math.random() * 2 - 1),
-          timer: 0,
-        };
-        this._state.loot.push(loot);
-      }
-      this._renderer.spawnParticles(ParticleType.GOLD, target.x, target.y + 0.5, target.z, 5, this._state.particles);
-
-      // Guaranteed extra boss loot
-      if (target.isBoss) {
-        const isRiftGuardian = target.bossName?.includes('Rift Guardian');
-        const minRarity = isRiftGuardian ? ItemRarity.LEGENDARY : ItemRarity.RARE;
-        for (let i = 0; i < 2; i++) {
-          const bossItem = this._pickRandomItemOfRarity(minRarity);
-          if (bossItem) {
-            const bossLoot: DiabloLoot = {
-              id: this._genId(),
-              item: { ...bossItem, id: this._genId(), level: target.level },
-              x: target.x + (Math.random() * 4 - 2),
-              y: 0,
-              z: target.z + (Math.random() * 4 - 2),
-              timer: 0,
-            };
-            this._state.loot.push(bossLoot);
-          }
-        }
-      }
-
-      // Pet XP and drops
-      this._grantPetXp(Math.floor(target.xpReward * 0.5));
-      this._rollPetDrop(target.isBoss);
-      this._rollMaterialDrop(target);
-
-      // Greater Rift tracking
-      if (this._state.greaterRift.state !== GreaterRiftState.NOT_ACTIVE) {
-        if (target.bossName?.startsWith('Rift Guardian')) {
-          this._onRiftGuardianKill();
-        } else {
-          this._onRiftEnemyKill();
-        }
-      }
-
-      // Greater Rift keystone drop from bosses
-      if (target.isBoss && Math.random() < GREATER_RIFT_CONFIG.keystoneDropChance) {
-        this._state.greaterRift.keystones++;
-        this._addFloatingText(target.x, target.y + 3, target.z, '+1 Rift Keystone!', '#00ffff');
-      }
-    } else {
-      // Stagger
-      if (!target.isBoss && Math.random() < 0.3) {
-        target.state = EnemyState.HURT;
-        target.stateTimer = 0;
-      }
-    }
+    const ctx = this._getCombatContext();
+    combatUpdateCombat(ctx, dt);
+    this._syncCombatState(ctx);
   }
 
   // ──────────────────────────────────────────────────────────────
   //  LEGENDARY EFFECT PROCESSING
   // ──────────────────────────────────────────────────────────────
   private _getEquippedLegendaryEffects(): LegendaryEffectDef[] {
-    if (!this._equipDirty) return this._cachedLegendaryEffects;
-    const effects: LegendaryEffectDef[] = [];
-    const equipment = this._state.player.equipment;
-    const slots = ['helmet', 'body', 'gauntlets', 'legs', 'feet', 'accessory1', 'accessory2', 'weapon', 'lantern'] as const;
-    for (const slot of slots) {
-      const item = equipment[slot];
-      if (item && item.legendaryAbility && LEGENDARY_EFFECTS[item.legendaryAbility]) {
-        effects.push(LEGENDARY_EFFECTS[item.legendaryAbility]);
-      }
-    }
-    this._cachedLegendaryEffects = effects;
-    this._equipDirty = false;
-    return effects;
+    const ctx = this._getCombatContext();
+    const result = combatGetEquippedLegendaryEffects(ctx);
+    this._syncCombatState(ctx);
+    return result;
   }
 
   private _triggerLegendaryEffects(trigger: 'on_hit' | 'on_kill' | 'on_skill' | 'on_crit' | 'on_take_damage', context: {
     targetX?: number; targetZ?: number; damage?: number; enemyMaxHp?: number; skillId?: SkillId;
     enemyStatusEffects?: { effect: StatusEffect; duration: number; source: string }[];
   }): void {
-    const effects = this._getEquippedLegendaryEffects();
-    const p = this._state.player;
-
-    for (const legendaryEffect of effects) {
-      if (legendaryEffect.triggerType !== trigger) continue;
-      if (Math.random() > legendaryEffect.procChance) continue;
-
-      const eff = legendaryEffect.effect;
-      const tx = context.targetX ?? p.x;
-      const tz = context.targetZ ?? p.z;
-
-      // Healing effects
-      if (eff.healPercent && context.damage) {
-        const heal = context.damage * eff.healPercent / 100;
-        p.hp = Math.min(p.maxHp, p.hp + heal);
-        this._addFloatingText(p.x, p.y + 2, p.z, `+${Math.round(heal)} HP`, '#44ff44');
-      }
-
-      // Mana restore
-      if (eff.manaRestorePercent) {
-        const restore = p.maxMana * eff.manaRestorePercent / 100;
-        p.mana = Math.min(p.maxMana, p.mana + restore);
-        this._addFloatingText(p.x, p.y + 2.5, p.z, `+${Math.round(restore)} MP`, '#4488ff');
-      }
-
-      // AoE damage
-      if (eff.aoeRadius && eff.damageMultiplier) {
-        const baseDmg = (context.damage || p.strength * 1.5) * eff.damageMultiplier;
-
-        // Deal damage to enemies in range
-        for (const enemy of this._state.enemies) {
-          if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-          const dist = Math.sqrt((enemy.x - tx) ** 2 + (enemy.z - tz) ** 2);
-          if (dist <= eff.aoeRadius) {
-            enemy.hp -= baseDmg;
-            this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(baseDmg)}`, '#ff8800');
-            if (eff.statusEffect) {
-              if (!enemy.statusEffects.some(e => e.effect === eff.statusEffect)) {
-                enemy.statusEffects.push({ effect: eff.statusEffect!, duration: 3, source: legendaryEffect.id });
-                this._checkElementalReaction(enemy, eff.statusEffect!);
-              }
-            }
-          }
-        }
-      }
-
-      // Shield
-      if (eff.shieldAmount) {
-        p.invulnTimer = Math.max(p.invulnTimer, 5);
-        this._addFloatingText(p.x, p.y + 3, p.z, `SHIELD!`, '#ffd700');
-      }
-
-      // Speed boost
-      if (eff.speedBoost && eff.speedBoostDuration) {
-        if (!p.activePotionBuffs.some(b => b.type === PotionType.SPEED && (b as any).source === legendaryEffect.id)) {
-          p.activePotionBuffs.push({ type: PotionType.SPEED, value: 50, remaining: eff.speedBoostDuration, source: legendaryEffect.id } as any);
-          this._addFloatingText(p.x, p.y + 2, p.z, 'SPEED BOOST!', '#44ffff');
-        }
-      }
-
-      // Cooldown reduction
-      if (eff.cooldownReduction) {
-        for (const [skillId, cd] of p.skillCooldowns) {
-          if (cd > 0) {
-            p.skillCooldowns.set(skillId, Math.max(0, cd - eff.cooldownReduction));
-          }
-        }
-      }
-
-      // Double strike (on_hit with damageMultiplier and no aoe)
-      if (trigger === 'on_hit' && eff.damageMultiplier && !eff.aoeRadius && context.damage) {
-        // Deal extra hit
-        const extraDmg = context.damage * eff.damageMultiplier;
-        // Find nearest enemy to target position
-        let nearest: DiabloEnemy | null = null;
-        let nearestDist = 5;
-        for (const enemy of this._state.enemies) {
-          if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-          const d = Math.sqrt((enemy.x - tx) ** 2 + (enemy.z - tz) ** 2);
-          if (d < nearestDist) { nearestDist = d; nearest = enemy; }
-        }
-        if (nearest) {
-          nearest.hp -= extraDmg;
-          this._addFloatingText(nearest.x, nearest.y + 2.5, nearest.z, `ECHO ${Math.round(extraDmg)}`, '#ffaa00');
-        }
-      }
-    }
+    const ctx = this._getCombatContext();
+    combatTriggerLegendaryEffects(ctx, trigger, context);
+    this._syncCombatState(ctx);
   }
 
   private _getPassiveLegendaryBonusDamage(): number {
-    const effects = this._getEquippedLegendaryEffects();
-    const p = this._state.player;
-    let bonus = 0;
-    for (const eff of effects) {
-      if (eff.triggerType === 'passive' && eff.effect.bonusDamagePercent) {
-        // Berserker's Wrath: bonus when below 30% HP
-        if (eff.id === 'bonus_damage_low_hp' && p.hp / p.maxHp <= 0.3) {
-          bonus += eff.effect.bonusDamagePercent;
-        }
-      }
-    }
-    return bonus;
+    const ctx = this._getCombatContext();
+    const result = combatGetPassiveLegendaryBonusDamage(ctx);
+    this._syncCombatState(ctx);
+    return result;
   }
 
   private _checkElementalReaction(enemy: DiabloEnemy, newEffect: StatusEffect): void {
-    const effects = enemy.statusEffects;
-
-    const has = (e: StatusEffect) => effects.some(s => s.effect === e);
-
-    let reaction: { name: string; damage: number; radius: number; color: string } | null = null;
-
-    // Steam Cloud: Fire + Ice
-    if ((newEffect === StatusEffect.BURNING && has(StatusEffect.FROZEN)) ||
-        (newEffect === StatusEffect.FROZEN && has(StatusEffect.BURNING))) {
-      reaction = { name: 'STEAM CLOUD!', damage: enemy.maxHp * 0.15, radius: 4, color: '#aaddff' };
-    }
-    // Toxic Explosion: Poison + Fire
-    else if ((newEffect === StatusEffect.POISONED && has(StatusEffect.BURNING)) ||
-             (newEffect === StatusEffect.BURNING && has(StatusEffect.POISONED))) {
-      reaction = { name: 'TOXIC EXPLOSION!', damage: enemy.maxHp * 0.20, radius: 5, color: '#88ff00' };
-    }
-    // Shatter: Physical hit + Frozen (we check STUNNED as proxy for physical impact)
-    else if (newEffect === StatusEffect.STUNNED && has(StatusEffect.FROZEN)) {
-      reaction = { name: 'SHATTER!', damage: enemy.maxHp * 0.25, radius: 3, color: '#88ccff' };
-    }
-    // Overload: Lightning + Fire
-    else if ((newEffect === StatusEffect.SHOCKED && has(StatusEffect.BURNING)) ||
-             (newEffect === StatusEffect.BURNING && has(StatusEffect.SHOCKED))) {
-      reaction = { name: 'OVERLOAD!', damage: enemy.maxHp * 0.18, radius: 5, color: '#ffaa00' };
-    }
-    // Chain Burst: Lightning + Ice
-    else if ((newEffect === StatusEffect.SHOCKED && has(StatusEffect.FROZEN)) ||
-             (newEffect === StatusEffect.FROZEN && has(StatusEffect.SHOCKED))) {
-      reaction = { name: 'CHAIN BURST!', damage: enemy.maxHp * 0.15, radius: 6, color: '#44ddff' };
-    }
-    // Frostbite: Ice + Poison
-    else if ((newEffect === StatusEffect.FROZEN && has(StatusEffect.POISONED)) ||
-             (newEffect === StatusEffect.POISONED && has(StatusEffect.FROZEN))) {
-      reaction = { name: 'FROSTBITE!', damage: enemy.maxHp * 0.12, radius: 3, color: '#44ff88' };
-    }
-
-    if (reaction) {
-      // Apply AoE damage to all enemies in radius
-      this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, reaction.name, reaction.color);
-
-      for (const target of this._state.enemies) {
-        if (target.state === EnemyState.DYING || target.state === EnemyState.DEAD) continue;
-        const dist = Math.sqrt((target.x - enemy.x) ** 2 + (target.z - enemy.z) ** 2);
-        if (dist <= reaction.radius) {
-          target.hp -= reaction.damage;
-          this._addFloatingText(target.x, target.y + 2, target.z, `${Math.round(reaction.damage)}`, reaction.color);
-          if (target.hp <= 0) this._killEnemy(target);
-        }
-      }
-
-      // Clear the consumed status effects
-      enemy.statusEffects = enemy.statusEffects.filter(e =>
-        e.effect !== StatusEffect.BURNING && e.effect !== StatusEffect.FROZEN &&
-        e.effect !== StatusEffect.SHOCKED && e.effect !== StatusEffect.POISONED
-      );
-
-      // Screen shake for big reactions
-      this._renderer.shakeCamera(0.2, 0.3);
-      this._playSound('crit');
-
-      this._incrementAchievement('crit_master');
-      // Spawn reaction particles
-      const particleType = ParticleType.SPARK;
-      this._renderer.spawnParticles(particleType, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
-    }
+    const ctx = this._getCombatContext();
+    combatCheckElementalReaction(ctx, enemy, newEffect);
+    this._syncCombatState(ctx);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -7564,906 +5555,40 @@ export class DiabloGame {
     aoeRadiusMult: number; extraProjectiles: number;
     statusOverride: string | null; bonusEffects: Set<string>;
   } {
-    const result = {
-      damageMult: 1, cooldownMult: 1, manaCostMult: 1,
-      aoeRadiusMult: 1, extraProjectiles: 0,
-      statusOverride: null as string | null, bonusEffects: new Set<string>(),
-    };
-    const branches = this._state.player.skillBranches;
-    for (const bd of SKILL_BRANCHES) {
-      if (bd.skillId !== skillId) continue;
-      const key = `${skillId}_b${bd.tier}`;
-      const choice = branches[key];
-      if (!choice) continue;
-      const opt = choice === 1 ? bd.optionA : bd.optionB;
-      if (opt.damageMult) result.damageMult *= opt.damageMult;
-      if (opt.cooldownMult) result.cooldownMult *= opt.cooldownMult;
-      if (opt.manaCostMult) result.manaCostMult *= opt.manaCostMult;
-      if (opt.aoeRadiusMult) result.aoeRadiusMult *= opt.aoeRadiusMult;
-      if (opt.extraProjectiles) result.extraProjectiles += opt.extraProjectiles;
-      if (opt.statusOverride) result.statusOverride = opt.statusOverride;
-      if (opt.bonusEffect) result.bonusEffects.add(opt.bonusEffect);
-    }
-    return result;
+    return combatGetSkillBranchModifiers(this._getCombatContext(), skillId);
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  ACTIVATE SKILL
+  //  ACTIVATE SKILL (delegated to DiabloCombat.ts)
   // ──────────────────────────────────────────────────────────────
   private _activateSkill(idx: number): void {
-    const p = this._state.player;
-    if (idx >= p.skills.length) return;
-    const skillId = p.skills[idx];
-    const baseDef = SKILL_DEFS[skillId];
-    if (!baseDef) return;
-
-    // Apply active rune modifications
-    let runeEffect: SkillRuneEffect | undefined;
-    const activeRune = p.activeRunes[skillId];
-    if (activeRune && activeRune !== RuneType.NONE) {
-      const runes = SKILL_RUNES[skillId];
-      runeEffect = runes?.find(r => r.runeType === activeRune);
-    }
-    const def: typeof baseDef = runeEffect ? {
-      ...baseDef,
-      damageMultiplier: baseDef.damageMultiplier + runeEffect.damageMultiplierMod,
-      cooldown: Math.max(0.5, baseDef.cooldown + runeEffect.cooldownMod),
-      manaCost: Math.max(0, baseDef.manaCost + runeEffect.manaCostMod),
-      aoeRadius: (baseDef.aoeRadius || 0) + (runeEffect.aoeRadiusMod || 0),
-      range: baseDef.range + (runeEffect.rangeMod || 0),
-      damageType: runeEffect.replaceDamageType || baseDef.damageType,
-      statusEffect: runeEffect.replaceStatusEffect || baseDef.statusEffect,
-    } : baseDef;
-
-    const cd = p.skillCooldowns.get(skillId) || 0;
-    if (cd > 0) {
-      this._queuedSkillIdx = idx; // Queue this skill
-      return;
-    }
-    const branchMods = this._getSkillBranchModifiers(skillId);
-    // Add rune extra projectiles to branch mods
-    if (runeEffect?.extraProjectiles) branchMods.extraProjectiles += runeEffect.extraProjectiles;
-    if (p.mana < Math.ceil(def.manaCost * branchMods.manaCostMult)) return;
-
-    p.mana -= Math.ceil(def.manaCost * branchMods.manaCostMult);
-    this._playSound('skill');
-
-    // Skill screen flash by damage type
-    const flashColors: Record<string, string> = {
-      [DamageType.FIRE]: 'rgba(255,100,0,0.5)',
-      [DamageType.ICE]: 'rgba(100,200,255,0.5)',
-      [DamageType.LIGHTNING]: 'rgba(255,255,100,0.5)',
-      [DamageType.POISON]: 'rgba(100,255,100,0.5)',
-      [DamageType.ARCANE]: 'rgba(180,80,255,0.5)',
-      [DamageType.SHADOW]: 'rgba(120,80,180,0.5)',
-      [DamageType.HOLY]: 'rgba(255,255,200,0.5)',
-      [DamageType.PHYSICAL]: 'rgba(255,230,200,0.3)',
-    };
-    const skillFlashColor = flashColors[def.damageType] || flashColors[DamageType.PHYSICAL];
-    this._renderer.showSkillFlash(skillFlashColor);
-
-    const talentBonusesCd = this._getTalentBonuses();
-    const cdReduction = talentBonusesCd[TalentEffectType.SKILL_COOLDOWN_REDUCTION] || 0;
-    const effectiveCooldown = def.cooldown * branchMods.cooldownMult * (1 - cdReduction / 100);
-    p.skillCooldowns.set(skillId, effectiveCooldown);
-    p.activeSkillId = skillId;
-    p.activeSkillAnimTimer = 0.5;
-
-    // Mastery XP: increment and check thresholds
-    {
-      const prevXp = this._skillMasteryXp.get(skillId) || 0;
-      const newXp = prevXp + 1;
-      this._skillMasteryXp.set(skillId, newXp);
-      const skillName = baseDef.name.toUpperCase();
-      if (prevXp < 100 && newXp >= 100) {
-        this._addFloatingText(p.x, p.y + 4, p.z, `${skillName} MASTERED!`, '#ffd700');
-      } else if (prevXp < 500 && newXp >= 500) {
-        this._addFloatingText(p.x, p.y + 4, p.z, `${skillName} LEVEL 2!`, '#ff8800');
-      } else if (prevXp < 2000 && newXp >= 2000) {
-        this._addFloatingText(p.x, p.y + 4, p.z, `${skillName} LEVEL 3!`, '#ff4400');
-      }
-    }
-
-    const worldMouse = this._getMouseWorldPos();
-    const angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
-    const baseDmg = this._getSkillDamage(def);
-    const modDmg = baseDmg * branchMods.damageMult;
-    const modRadius = (r: number) => r * branchMods.aoeRadiusMult;
-    const modStatus = branchMods.statusOverride
-      ? branchMods.statusOverride as StatusEffect
-      : def.statusEffect;
-
-    switch (skillId) {
-      // ── PROJECTILE SKILLS ──
-      case SkillId.FIREBALL:
-      case SkillId.LIGHTNING_BOLT:
-      case SkillId.POISON_ARROW:
-      case SkillId.PIERCING_SHOT:
-      case SkillId.SMITE:
-      case SkillId.BONE_SPEAR:
-      case SkillId.HOLY_BOLT:
-      case SkillId.SPIRIT_BARRAGE:
-      case SkillId.CRIPPLING_THROW: {
-        this._createProjectile(p.x, p.y + 1, p.z, angle, modDmg, def, skillId);
-        // Branch effect: extra projectiles for projectile skills
-        if (branchMods.extraProjectiles > 0) {
-          for (let i = 1; i <= branchMods.extraProjectiles; i++) {
-            const offsetAngle = (i % 2 === 0 ? 1 : -1) * Math.ceil(i / 2) * 0.15;
-            this._createProjectile(p.x, p.y + 1, p.z, angle + offsetAngle, modDmg, def, skillId);
-          }
-        }
-        // Branch effect: HEAL_ON_BURN
-        if (branchMods.bonusEffects.has('HEAL_ON_BURN')) {
-          p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.10));
-          this._addFloatingText(p.x, p.y + 3, p.z, `+${Math.round(p.maxHp * 0.10)} HP`, "#44ff44");
-        }
-        // Branch effect: GUARANTEED_CRIT
-        if (branchMods.bonusEffects.has('GUARANTEED_CRIT')) {
-          // Damage already boosted via damageMult; add visual cue
-          this._addFloatingText(p.x, p.y + 3, p.z, "CRITICAL!", "#ff4444");
-        }
-        break;
-      }
-
-      case SkillId.MULTI_SHOT: {
-        const spread = 0.3;
-        const arrowCount = 5 + branchMods.extraProjectiles;
-        const half = Math.floor(arrowCount / 2);
-        for (let i = -half; i <= half; i++) {
-          this._createProjectile(p.x, p.y + 1, p.z, angle + i * spread, modDmg * 0.8, def, skillId);
-        }
-        break;
-      }
-
-      case SkillId.CHAIN_LIGHTNING: {
-        // Fires a projectile that, on hit, chains to nearby enemies
-        this._createProjectile(p.x, p.y + 1, p.z, angle, modDmg, def, skillId);
-        break;
-      }
-
-      // ── AOE AT PLAYER ──
-      case SkillId.CLEAVE:
-      case SkillId.WHIRLWIND:
-      case SkillId.ICE_NOVA:
-      case SkillId.GROUND_SLAM:
-      case SkillId.BLADE_FURY:
-      case SkillId.SHIELD_BASH:
-      case SkillId.HOLY_STRIKE:
-      case SkillId.CONSECRATION:
-      case SkillId.JUDGMENT:
-      case SkillId.HOLY_NOVA:
-      case SkillId.CORPSE_EXPLOSION:
-      case SkillId.DEATH_NOVA:
-      case SkillId.POISON_NOVA:
-      case SkillId.SHADOW_STAB:
-      case SkillId.FAN_OF_KNIVES:
-      case SkillId.BLADE_FLURRY:
-      case SkillId.VENOMOUS_STRIKE:
-      case SkillId.BLADE_DANCE:
-      case SkillId.BLESSED_HAMMER:
-      case SkillId.LIFE_TAP: {
-        const radius = modRadius(def.aoeRadius || 3);
-        const aoe: DiabloAOE = {
-          id: this._genId(),
-          x: p.x,
-          y: 0,
-          z: p.z,
-          radius,
-          damage: modDmg,
-          damageType: def.damageType,
-          duration: 0.3,
-          timer: 0,
-          ownerId: "player",
-          tickInterval: 0.3,
-          lastTickTimer: 0,
-          statusEffect: modStatus,
-        };
-        this._state.aoeEffects.push(aoe);
-        // Immediate damage tick for melee AOE
-        this._tickAOEDamage(aoe);
-        // Visual burst for melee AoE skills
-        const skillParticle = this._damageTypeToParticle(def.damageType);
-        if (skillId === SkillId.WHIRLWIND) {
-          this._renderer.shakeCamera(0.2, 0.3);
-          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 10, this._state.particles);
-          this._renderer.spawnParticles(skillParticle, p.x, 0.5, p.z, 6, this._state.particles);
-        } else if (skillId === SkillId.ICE_NOVA) {
-          this._renderer.shakeCamera(0.25, 0.35);
-          this._renderer.spawnParticles(ParticleType.ICE, p.x, 0.5, p.z, 15, this._state.particles);
-          this._renderer.spawnParticles(ParticleType.ICE, p.x, 1.0, p.z, 8, this._state.particles);
-        } else if (skillId === SkillId.GROUND_SLAM) {
-          this._renderer.shakeCamera(0.35, 0.5);
-          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 15, this._state.particles);
-          this._renderer.spawnParticles(skillParticle, p.x, 0.3, p.z, 8, this._state.particles);
-        } else if (skillId === SkillId.BLADE_FURY) {
-          this._renderer.shakeCamera(0.15, 0.25);
-          this._renderer.spawnParticles(skillParticle, p.x, 1.0, p.z, 10, this._state.particles);
-        } else if (skillId === SkillId.SHIELD_BASH) {
-          this._renderer.shakeCamera(0.2, 0.2);
-          this._renderer.spawnParticles(skillParticle, p.x, 1.0, p.z, 6, this._state.particles);
-        }
-        // Branch effect: LIFE_STEAL_AOE — heal 15% of damage dealt
-        if (branchMods.bonusEffects.has('LIFE_STEAL_AOE')) {
-          const healAmt = Math.round(modDmg * 0.15);
-          p.hp = Math.min(p.maxHp, p.hp + healAmt);
-          this._addFloatingText(p.x, p.y + 3, p.z, `+${healAmt} HP`, "#44ff44");
-        }
-        // Branch effect: GUARANTEED_CRIT — multiply by crit damage
-        if (branchMods.bonusEffects.has('GUARANTEED_CRIT')) {
-          this._addFloatingText(p.x, p.y + 3, p.z, "CRITICAL!", "#ff4444");
-        }
-        // Branch effect: EXECUTE_LOW_HP
-        if (branchMods.bonusEffects.has('EXECUTE_LOW_HP')) {
-          this._addFloatingText(p.x, p.y + 3.5, p.z, "EXECUTE!", "#ff2222");
-        }
-        break;
-      }
-
-      // ── AOE AT TARGET ──
-      case SkillId.METEOR: {
-        const radius = modRadius(def.aoeRadius || 6);
-        const aoe: DiabloAOE = {
-          id: this._genId(),
-          x: worldMouse.x,
-          y: 0,
-          z: worldMouse.z,
-          radius,
-          damage: modDmg,
-          damageType: def.damageType,
-          duration: 1.5,
-          timer: 0,
-          ownerId: "player",
-          tickInterval: 0.5,
-          lastTickTimer: 0,
-          statusEffect: modStatus,
-        };
-        this._state.aoeEffects.push(aoe);
-        // Massive meteor impact visuals
-        this._renderer.shakeCamera(0.6, 0.8);
-        this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), worldMouse.x, 0.5, worldMouse.z, 25, this._state.particles);
-        this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), worldMouse.x, 1.5, worldMouse.z, 15, this._state.particles);
-        this._renderer.spawnParticles(ParticleType.DUST, worldMouse.x, 0, worldMouse.z, 12, this._state.particles);
-        this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), worldMouse.x, 1.0, worldMouse.z, 10, this._state.particles);
-        break;
-      }
-
-      case SkillId.RAIN_OF_ARROWS: {
-        const radius = modRadius(def.aoeRadius || 6);
-        const aoe: DiabloAOE = {
-          id: this._genId(),
-          x: worldMouse.x,
-          y: 0,
-          z: worldMouse.z,
-          radius,
-          damage: modDmg,
-          damageType: def.damageType,
-          duration: 2.0,
-          timer: 0,
-          ownerId: "player",
-          tickInterval: 0.4,
-          lastTickTimer: 0,
-          statusEffect: modStatus,
-        };
-        this._state.aoeEffects.push(aoe);
-        break;
-      }
-
-      case SkillId.EXPLOSIVE_TRAP: {
-        const radius = modRadius(def.aoeRadius || 4);
-        const trapStatus = modStatus || StatusEffect.BURNING;
-        const aoe: DiabloAOE = {
-          id: this._genId(),
-          x: worldMouse.x,
-          y: 0,
-          z: worldMouse.z,
-          radius,
-          damage: modDmg,
-          damageType: def.damageType,
-          duration: 10.0, // trap lasts 10 seconds
-          timer: 0,
-          ownerId: "player",
-          tickInterval: 10.0, // only triggers once
-          lastTickTimer: 0,
-          statusEffect: trapStatus,
-        };
-        this._state.aoeEffects.push(aoe);
-        break;
-      }
-
-      // ── BUFFS ──
-      case SkillId.BATTLE_CRY: {
-        p.statusEffects.push({
-          effect: StatusEffect.STUNNED, // Placeholder effect type; source is what matters
-          duration: 10,
-          source: "BATTLE_CRY",
-        });
-        this._addFloatingText(p.x, p.y + 3, p.z, "BATTLE CRY!", "#ffd700");
-        // Branch effect: BUFF_ATTACK_SPEED
-        if (branchMods.bonusEffects.has('BUFF_ATTACK_SPEED')) {
-          p.attackSpeed *= 1.3;
-          this._addFloatingText(p.x, p.y + 3.5, p.z, "Attack Speed UP!", "#88ff88");
-        }
-        // Branch effect: DEBUFF_ENEMIES
-        if (branchMods.bonusEffects.has('DEBUFF_ENEMIES')) {
-          this._addFloatingText(p.x, p.y + 3.5, p.z, "Enemies Weakened!", "#ff8844");
-        }
-        // Branch effect: HEAL_ON_CRY
-        if (branchMods.bonusEffects.has('HEAL_ON_CRY')) {
-          const healAmt = Math.round(p.maxHp * 0.10);
-          p.hp = Math.min(p.maxHp, p.hp + healAmt);
-          this._addFloatingText(p.x, p.y + 4, p.z, `+${healAmt} HP`, "#44ff44");
-        }
-        // Branch effect: BERSERKER_MODE
-        if (branchMods.bonusEffects.has('BERSERKER_MODE')) {
-          this._addFloatingText(p.x, p.y + 4, p.z, "BERSERKER!", "#ff2222");
-        }
-        break;
-      }
-
-      case SkillId.ARCANE_SHIELD:
-      case SkillId.DIVINE_SHIELD:
-      case SkillId.AVENGING_WRATH:
-      case SkillId.LAY_ON_HANDS:
-      case SkillId.AEGIS_OF_LIGHT:
-      case SkillId.RIGHTEOUS_FURY:
-      case SkillId.RAISE_SKELETON:
-      case SkillId.BLOOD_GOLEM:
-      case SkillId.ARMY_OF_THE_DEAD:
-      case SkillId.BONE_ARMOR:
-      case SkillId.REVIVE:
-      case SkillId.SMOKE_SCREEN:
-      case SkillId.DEATH_MARK:
-      case SkillId.SHADOW_CLONE:
-      case SkillId.VANISH:
-      case SkillId.ASSASSINATE:
-      case SkillId.EXECUTE:
-      case SkillId.CURSE_OF_FRAILTY: {
-        p.invulnTimer = 8;
-        const buffName = def.name || skillId;
-        this._addFloatingText(p.x, p.y + 3, p.z, `${buffName}!`, "#aa44ff");
-        break;
-      }
-
-      case SkillId.EVASIVE_ROLL: {
-        // Dash forward, brief invuln
-        const dashDist = 6;
-        p.x += Math.sin(angle) * dashDist;
-        p.z += Math.cos(angle) * dashDist;
-        p.invulnTimer = 0.8;
-        this._addFloatingText(p.x, p.y + 2, p.z, "DODGE!", "#44ff44");
-        break;
-      }
-
-      // ── WARRIOR UNLOCKABLE SKILLS ──
-      case SkillId.LEAP: {
-        // Leap to target location, AOE on landing
-        const leapDist = Math.min(12, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
-        p.x += Math.sin(angle) * leapDist;
-        p.z += Math.cos(angle) * leapDist;
-        p.invulnTimer = 0.5;
-        const radius = modRadius(def.aoeRadius || 4);
-        const aoe: DiabloAOE = {
-          id: this._genId(), x: p.x, y: 0, z: p.z, radius,
-          damage: modDmg, damageType: def.damageType, duration: 0.3, timer: 0,
-          ownerId: "player", tickInterval: 0.3, lastTickTimer: 0, statusEffect: modStatus,
-        };
-        this._state.aoeEffects.push(aoe);
-        this._tickAOEDamage(aoe);
-        this._addFloatingText(p.x, p.y + 3, p.z, "LEAP!", "#ffd700");
-        this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 10, this._state.particles);
-        // Clamp to map bounds
-        const mapLeap = MAP_CONFIGS[this._state.currentMap];
-        p.x = Math.max(-mapLeap.width / 2, Math.min(mapLeap.width / 2, p.x));
-        p.z = Math.max(-((mapLeap as any).depth || mapLeap.width) / 2, Math.min(((mapLeap as any).depth || mapLeap.width) / 2, p.z));
-        break;
-      }
-
-      case SkillId.IRON_SKIN: {
-        p.statusEffects.push({ effect: StatusEffect.STUNNED, duration: 8, source: "IRON_SKIN" });
-        this._addFloatingText(p.x, p.y + 3, p.z, "IRON SKIN!", "#aaaaff");
-        // Temporary armor boost handled via source check in damage calc
-        break;
-      }
-
-      case SkillId.TAUNT: {
-        const tauntRadius = modRadius(def.aoeRadius || 8);
-        for (const enemy of this._state.enemies) {
-          const d = this._dist(p.x, p.z, enemy.x, enemy.z);
-          if (d < tauntRadius && enemy.state !== EnemyState.DEAD && enemy.state !== EnemyState.DYING) {
-            enemy.state = EnemyState.CHASE;
-            enemy.targetId = "player";
-          }
-        }
-        this._addFloatingText(p.x, p.y + 3, p.z, "TAUNT!", "#ff8844");
-        break;
-      }
-
-      case SkillId.CRUSHING_BLOW: {
-        // Single target melee — use AOE with tiny radius
-        const cbRadius = modRadius(2.5);
-        const cbAoe: DiabloAOE = {
-          id: this._genId(), x: p.x + Math.sin(angle) * 2, y: 0, z: p.z + Math.cos(angle) * 2,
-          radius: cbRadius, damage: modDmg, damageType: def.damageType, duration: 0.2, timer: 0,
-          ownerId: "player", tickInterval: 0.2, lastTickTimer: 0, statusEffect: modStatus,
-        };
-        this._state.aoeEffects.push(cbAoe);
-        this._tickAOEDamage(cbAoe);
-        this._addFloatingText(p.x, p.y + 3, p.z, "CRUSH!", "#ff4444");
-        break;
-      }
-
-      case SkillId.INTIMIDATING_ROAR:
-      case SkillId.EARTHQUAKE:
-      case SkillId.FROST_BARRIER:
-      case SkillId.MANA_SIPHON:
-      case SkillId.TIME_WARP:
-      case SkillId.NET_TRAP: {
-        // AOE centered on player (or target for NET_TRAP)
-        const aoeCenterX = skillId === SkillId.NET_TRAP ? worldMouse.x : p.x;
-        const aoeCenterZ = skillId === SkillId.NET_TRAP ? worldMouse.z : p.z;
-        const aoeR = modRadius(def.aoeRadius || 6);
-        const bigAoe: DiabloAOE = {
-          id: this._genId(), x: aoeCenterX, y: 0, z: aoeCenterZ, radius: aoeR,
-          damage: modDmg, damageType: def.damageType,
-          duration: def.duration || 1.0, timer: 0,
-          ownerId: "player", tickInterval: 0.5, lastTickTimer: 0, statusEffect: modStatus,
-        };
-        this._state.aoeEffects.push(bigAoe);
-        this._tickAOEDamage(bigAoe);
-        const labels: Partial<Record<SkillId, string>> = {
-          [SkillId.INTIMIDATING_ROAR]: "ROAR!",
-          [SkillId.EARTHQUAKE]: "EARTHQUAKE!",
-          [SkillId.FROST_BARRIER]: "FROST BARRIER!",
-          [SkillId.MANA_SIPHON]: "SIPHON!",
-          [SkillId.TIME_WARP]: "TIME WARP!",
-          [SkillId.NET_TRAP]: "TRAPPED!",
-        };
-        this._addFloatingText(p.x, p.y + 3, p.z, labels[skillId] || "!", "#44ffff");
-        // Mana Siphon: restore mana
-        if (skillId === SkillId.MANA_SIPHON) {
-          const manaGain = Math.round(p.maxMana * 0.25);
-          p.mana = Math.min(p.maxMana, p.mana + manaGain);
-          const hpGain = Math.round(p.maxHp * 0.10);
-          p.hp = Math.min(p.maxHp, p.hp + hpGain);
-          this._addFloatingText(p.x, p.y + 3.5, p.z, `+${manaGain} Mana +${hpGain} HP`, "#4488ff");
-        }
-        if (skillId === SkillId.EARTHQUAKE) {
-          this._renderer.shakeCamera(0.7, 1.0);
-          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0, p.z, 25, this._state.particles);
-          this._renderer.spawnParticles(ParticleType.DUST, p.x + 2, 0, p.z + 2, 10, this._state.particles);
-          this._renderer.spawnParticles(ParticleType.DUST, p.x - 2, 0, p.z - 2, 10, this._state.particles);
-          this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), p.x, 0.3, p.z, 8, this._state.particles);
-        }
-        if (skillId === SkillId.FROST_BARRIER) {
-          this._renderer.shakeCamera(0.2, 0.3);
-          this._renderer.spawnParticles(ParticleType.ICE, p.x, 0.5, p.z, 12, this._state.particles);
-        }
-        if (skillId === SkillId.TIME_WARP) {
-          this._renderer.shakeCamera(0.15, 0.25);
-          this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), p.x, 1.0, p.z, 10, this._state.particles);
-        }
-        if (skillId === SkillId.INTIMIDATING_ROAR) {
-          this._renderer.shakeCamera(0.3, 0.4);
-          this._renderer.spawnParticles(ParticleType.DUST, p.x, 0.5, p.z, 8, this._state.particles);
-        }
-        break;
-      }
-
-      // ── MAGE UNLOCKABLE SKILLS ──
-      case SkillId.SUMMON_ELEMENTAL: {
-        // Spawn a temporary allied "elemental" enemy that fights for the player
-        // Implemented as a series of AOE ticks around a projected point
-        const summonX = p.x + Math.sin(angle) * 3;
-        const summonZ = p.z + Math.cos(angle) * 3;
-        const elemAoe: DiabloAOE = {
-          id: this._genId(), x: summonX, y: 0, z: summonZ,
-          radius: modRadius(3), damage: modDmg,
-          damageType: def.damageType, duration: 15, timer: 0,
-          ownerId: "player", tickInterval: 1.5, lastTickTimer: 0,
-          statusEffect: modStatus || StatusEffect.BURNING,
-        };
-        this._state.aoeEffects.push(elemAoe);
-        this._addFloatingText(summonX, 2, summonZ, "ELEMENTAL!", "#ff8844");
-        this._renderer.spawnParticles(ParticleType.FIRE, summonX, 0.5, summonZ, 12, this._state.particles);
-        break;
-      }
-
-      case SkillId.BLINK: {
-        // Teleport to target location
-        const blinkDist = Math.min(15, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
-        // Damage at departure point
-        if (modDmg > 0) {
-          const departAoe: DiabloAOE = {
-            id: this._genId(), x: p.x, y: 0, z: p.z,
-            radius: modRadius(def.aoeRadius || 2), damage: modDmg,
-            damageType: DamageType.ARCANE, duration: 0.3, timer: 0,
-            ownerId: "player", tickInterval: 0.3, lastTickTimer: 0,
-          };
-          this._state.aoeEffects.push(departAoe);
-          this._tickAOEDamage(departAoe);
-        }
-        this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), p.x, 1, p.z, 8, this._state.particles);
-        p.x += Math.sin(angle) * blinkDist;
-        p.z += Math.cos(angle) * blinkDist;
-        p.invulnTimer = 0.3;
-        // Clamp to map bounds
-        const mapBlink = MAP_CONFIGS[this._state.currentMap];
-        p.x = Math.max(-mapBlink.width / 2, Math.min(mapBlink.width / 2, p.x));
-        p.z = Math.max(-((mapBlink as any).depth || mapBlink.width) / 2, Math.min(((mapBlink as any).depth || mapBlink.width) / 2, p.z));
-        this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), p.x, 1, p.z, 8, this._state.particles);
-        this._addFloatingText(p.x, p.y + 3, p.z, "BLINK!", "#aa44ff");
-        break;
-      }
-
-      case SkillId.ARCANE_MISSILES: {
-        // Fire multiple projectiles in a spread
-        const missileCount = 5 + branchMods.extraProjectiles;
-        const spread = 0.2;
-        const half = Math.floor(missileCount / 2);
-        for (let i = -half; i <= half; i++) {
-          if (missileCount % 2 === 0 && i === 0) continue;
-          this._createProjectile(p.x, p.y + 1, p.z, angle + i * spread, modDmg * 0.6, def, skillId);
-        }
-        this._addFloatingText(p.x, p.y + 3, p.z, "ARCANE MISSILES!", "#aa44ff");
-        break;
-      }
-
-      // ── RANGER UNLOCKABLE SKILLS ──
-      case SkillId.GRAPPLING_HOOK: {
-        // Dash to target location
-        const hookDist = Math.min(15, Math.sqrt((worldMouse.x - p.x) ** 2 + (worldMouse.z - p.z) ** 2));
-        p.x += Math.sin(angle) * hookDist;
-        p.z += Math.cos(angle) * hookDist;
-        p.invulnTimer = 0.3;
-        // Clamp to map bounds
-        const mapHook = MAP_CONFIGS[this._state.currentMap];
-        p.x = Math.max(-mapHook.width / 2, Math.min(mapHook.width / 2, p.x));
-        p.z = Math.max(-((mapHook as any).depth || mapHook.width) / 2, Math.min(((mapHook as any).depth || mapHook.width) / 2, p.z));
-        // Damage on arrival
-        if (modDmg > 0) {
-          const hookAoe: DiabloAOE = {
-            id: this._genId(), x: p.x, y: 0, z: p.z,
-            radius: 2, damage: modDmg,
-            damageType: def.damageType, duration: 0.2, timer: 0,
-            ownerId: "player", tickInterval: 0.2, lastTickTimer: 0,
-          };
-          this._state.aoeEffects.push(hookAoe);
-          this._tickAOEDamage(hookAoe);
-        }
-        this._addFloatingText(p.x, p.y + 2, p.z, "HOOK!", "#88ff44");
-        break;
-      }
-
-      case SkillId.CAMOUFLAGE: {
-        p.invulnTimer = 5;
-        p.statusEffects.push({ effect: StatusEffect.STUNNED, duration: 5, source: "CAMOUFLAGE" });
-        // Drop aggro from all enemies
-        for (const enemy of this._state.enemies) {
-          if (enemy.state === EnemyState.CHASE) {
-            enemy.state = EnemyState.IDLE;
-            enemy.stateTimer = 0;
-          }
-        }
-        this._addFloatingText(p.x, p.y + 3, p.z, "CAMOUFLAGE!", "#44aa44");
-        break;
-      }
-
-      case SkillId.FIRE_VOLLEY: {
-        const arrowCount = 7 + branchMods.extraProjectiles;
-        const fvSpread = 0.25;
-        const fvHalf = Math.floor(arrowCount / 2);
-        for (let i = -fvHalf; i <= fvHalf; i++) {
-          this._createProjectile(p.x, p.y + 1, p.z, angle + i * fvSpread, modDmg * 0.7, def, skillId);
-        }
-        this._addFloatingText(p.x, p.y + 3, p.z, "FIRE VOLLEY!", "#ff6622");
-        break;
-      }
-
-      case SkillId.WIND_WALK: {
-        p.statusEffects.push({ effect: StatusEffect.STUNNED, duration: 5, source: "WIND_WALK" });
-        p.moveSpeed *= 1.8;
-        p.invulnTimer = 0.5;
-        this._addFloatingText(p.x, p.y + 3, p.z, "WIND WALK!", "#88ffff");
-        break;
-      }
-
-      case SkillId.SHADOW_STRIKE: {
-        // Find nearest enemy and teleport behind them
-        let nearestEnemy: DiabloEnemy | null = null;
-        let nearestDist = 12;
-        for (const enemy of this._state.enemies) {
-          if (enemy.state === EnemyState.DEAD || enemy.state === EnemyState.DYING) continue;
-          const d = this._dist(p.x, p.z, enemy.x, enemy.z);
-          if (d < nearestDist) {
-            nearestDist = d;
-            nearestEnemy = enemy;
-          }
-        }
-        if (nearestEnemy) {
-          const behindAngle = Math.atan2(p.x - nearestEnemy.x, p.z - nearestEnemy.z);
-          p.x = nearestEnemy.x + Math.sin(behindAngle) * 1.5;
-          p.z = nearestEnemy.z + Math.cos(behindAngle) * 1.5;
-          // Deal damage
-          const ssAoe: DiabloAOE = {
-            id: this._genId(), x: nearestEnemy.x, y: 0, z: nearestEnemy.z,
-            radius: modRadius(2), damage: modDmg,
-            damageType: def.damageType, duration: 0.2, timer: 0,
-            ownerId: "player", tickInterval: 0.2, lastTickTimer: 0,
-          };
-          this._state.aoeEffects.push(ssAoe);
-          this._tickAOEDamage(ssAoe);
-          this._addFloatingText(nearestEnemy.x, 3, nearestEnemy.z, "BACKSTAB!", "#ff44ff");
-          this._renderer.spawnParticles(this._damageTypeToParticle(def.damageType), nearestEnemy.x, 1, nearestEnemy.z, 8, this._state.particles);
-        } else {
-          this._addFloatingText(p.x, p.y + 2, p.z, "No target!", "#ff4444");
-          // Refund mana
-          p.mana = Math.min(p.maxMana, p.mana + Math.ceil(def.manaCost * branchMods.manaCostMult));
-          p.skillCooldowns.set(skillId, 0);
-        }
-        break;
-      }
-    }
-
-    // Trigger legendary on_skill effects
-    this._triggerLegendaryEffects('on_skill', { targetX: worldMouse.x, targetZ: worldMouse.z, damage: modDmg, skillId: skillId });
-
-    // Rune visual feedback
-    if (runeEffect) {
-      this._addFloatingText(p.x, p.y + 1.5, p.z, runeEffect.name, '#aa44ff');
-    }
-
-    // Extra projectiles from rune (for non-projectile skills that don't already handle extraProjectiles)
-    if (runeEffect && runeEffect.extraProjectiles) {
-      for (let ep = 0; ep < runeEffect.extraProjectiles; ep++) {
-        const spreadAngle = angle + (ep - runeEffect.extraProjectiles / 2) * 0.2;
-        const extraProj: DiabloProjectile = {
-          id: this._genId(),
-          x: p.x, y: p.y + 1, z: p.z,
-          vx: Math.sin(spreadAngle) * 15,
-          vy: 0,
-          vz: Math.cos(spreadAngle) * 15,
-          speed: 15,
-          damage: modDmg * 0.6,
-          damageType: def.damageType,
-          radius: 0.3,
-          ownerId: 'player',
-          isPlayerOwned: true,
-          lifetime: 0,
-          maxLifetime: 2,
-          skillId: skillId,
-        };
-        this._state.projectiles.push(extraProj);
-      }
-    }
-
-    // Apply rune leech healing
-    if (runeEffect?.leechPercent && modDmg > 0) {
-      const leechHeal = Math.round(modDmg * runeEffect.leechPercent / 100);
-      p.hp = Math.min(p.maxHp, p.hp + leechHeal);
-      this._addFloatingText(p.x, p.y + 3.5, p.z, `+${leechHeal} HP`, "#44ff44");
-    }
-
-    // Skill cast particles at player position
-    const castParticle = this._damageTypeToParticle(def.damageType);
-    this._renderer.spawnParticles(castParticle, p.x, p.y + 1, p.z, 8, this._state.particles);
-
-    // Cast effect screen overlay matching damage type
-    this._renderer.showCastOverlay(def.damageType, 0.3);
+    const ctx = this._getCombatContext();
+    combatActivateSkill(ctx, idx);
+    this._syncCombatState(ctx);
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  UPDATE PROJECTILES
+  //  UPDATE PROJECTILES (delegated to DiabloCombat.ts)
   // ──────────────────────────────────────────────────────────────
   private _updateProjectiles(dt: number): void {
-    const toRemove = new Set<string>();
-
-    for (const proj of this._state.projectiles) {
-      proj.x += proj.vx * dt;
-      proj.y += proj.vy * dt;
-      proj.z += proj.vz * dt;
-      proj.lifetime += dt;
-
-      if (proj.lifetime > proj.maxLifetime) {
-        toRemove.add(proj.id);
-        continue;
-      }
-
-      // Bounds check
-      const mapCfg = MAP_CONFIGS[this._state.currentMap];
-      const halfW = mapCfg.width / 2 + 10;
-      if (Math.abs(proj.x) > halfW || Math.abs(proj.z) > halfW) {
-        toRemove.add(proj.id);
-        continue;
-      }
-
-      if (proj.isPlayerOwned) {
-        let hitCount = 0;
-        for (const enemy of this._state.enemies) {
-          if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-          const dist = this._dist(proj.x, proj.z, enemy.x, enemy.z);
-          if (dist < proj.radius + 0.5) {
-            // Hit
-            let finalDmg = Math.max(1, proj.damage - enemy.armor * 0.15);
-            if (enemy.shieldActive) finalDmg *= 0.2;
-            if (enemy.bossShieldTimer && enemy.bossShieldTimer > 0) finalDmg *= 0.1;
-            enemy.hp -= finalDmg;
-            this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, "#ffff44");
-
-            this._spawnHitParticles(enemy, proj.damageType);
-            this._renderer.flashEnemy(enemy.id);
-            // Projectile hit knockback
-            const projAngle = Math.atan2(proj.vz, proj.vx);
-            const projKb = 0.4;
-            enemy.x += Math.cos(projAngle) * projKb;
-            enemy.z += Math.sin(projAngle) * projKb;
-            this._renderer.shakeCamera(0.08, 0.1);
-
-            // Apply status effect if applicable
-            const def = proj.skillId ? SKILL_DEFS[proj.skillId] : null;
-            if (def && def.statusEffect) {
-              enemy.statusEffects.push({
-                effect: def.statusEffect,
-                duration: 3,
-                source: proj.skillId || "projectile",
-              });
-              this._checkElementalReaction(enemy, def.statusEffect);
-            }
-
-            // Chain lightning bounce
-            if (proj.skillId === SkillId.CHAIN_LIGHTNING) {
-              this._chainLightningBounce(enemy, proj.damage * 0.7, 4);
-            }
-
-            if (enemy.hp <= 0) {
-              this._killEnemy(enemy);
-            } else if (!enemy.isBoss && Math.random() < 0.2) {
-              enemy.state = EnemyState.HURT;
-              enemy.stateTimer = 0;
-            }
-
-            hitCount++;
-            // Piercing shot can hit up to 5
-            if (proj.skillId === SkillId.PIERCING_SHOT) {
-              if (hitCount >= 5) {
-                toRemove.add(proj.id);
-                break;
-              }
-            } else {
-              toRemove.add(proj.id);
-              break;
-            }
-          }
-        }
-      } else {
-        const pp = this._state.player;
-        if (pp.invulnTimer <= 0) {
-          const dist = this._dist(proj.x, proj.z, pp.x, pp.z);
-          if (dist < proj.radius + 0.5) {
-            const mitigated = Math.max(1, proj.damage - pp.armor * 0.3);
-            pp.hp -= mitigated;
-            this._addFloatingText(pp.x, pp.y + 2, pp.z, `-${Math.round(mitigated)}`, "#ff4444");
-            toRemove.add(proj.id);
-            if (pp.hp <= 0) {
-              pp.hp = 0;
-              this._triggerDeath();
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    this._state.projectiles = this._state.projectiles.filter((p) => !toRemove.has(p.id));
+    const ctx = this._getCombatContext();
+    combatUpdateProjectiles(ctx, dt);
+    this._syncCombatState(ctx);
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  UPDATE AOE
+  //  UPDATE AOE (delegated to DiabloCombat.ts)
   // ──────────────────────────────────────────────────────────────
   private _updateAOE(dt: number): void {
-    const toRemove = new Set<string>();
-
-    for (const aoe of this._state.aoeEffects) {
-      aoe.timer += dt;
-      aoe.lastTickTimer += dt;
-
-      if (aoe.lastTickTimer >= aoe.tickInterval) {
-        this._tickAOEDamage(aoe);
-        aoe.lastTickTimer = 0;
-      }
-
-      // Explosive trap proximity trigger
-      if (aoe.tickInterval >= 10) {
-        for (const enemy of this._state.enemies) {
-          if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-          const dist = this._dist(aoe.x, aoe.z, enemy.x, enemy.z);
-          if (dist < aoe.radius) {
-            this._tickAOEDamage(aoe);
-            aoe.timer = aoe.duration; // Force removal
-            break;
-          }
-        }
-      }
-
-      if (aoe.timer >= aoe.duration) {
-        toRemove.add(aoe.id);
-      }
-    }
-
-    this._state.aoeEffects = this._state.aoeEffects.filter((a) => !toRemove.has(a.id));
+    const ctx = this._getCombatContext();
+    combatUpdateAOE(ctx, dt);
+    this._syncCombatState(ctx);
   }
 
   private _tickAOEDamage(aoe: DiabloAOE): void {
-    if (aoe.ownerId === "player") {
-      this._renderer.destroyNearbyProps(aoe.x, aoe.z, aoe.radius);
-      for (const enemy of this._state.enemies) {
-        if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-        const dist = this._dist(aoe.x, aoe.z, enemy.x, enemy.z);
-        if (dist <= aoe.radius) {
-          const finalDmg = Math.max(1, aoe.damage - enemy.armor * 0.15);
-          enemy.hp -= finalDmg;
-          this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, this._damageTypeColor(aoe.damageType));
-
-          this._spawnHitParticles(enemy, aoe.damageType);
-          this._renderer.flashEnemy(enemy.id);
-          // AOE hit knockback — push enemy away from impact center
-          const aoHkAngle = Math.atan2(enemy.z - aoe.z, enemy.x - aoe.x);
-          const aoHkDist = 0.5;
-          enemy.x += Math.cos(aoHkAngle) * aoHkDist;
-          enemy.z += Math.sin(aoHkAngle) * aoHkDist;
-          // Spawn extra AoE impact particles based on damage type
-          switch (aoe.damageType) {
-            case DamageType.FIRE:
-              this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 0.5, enemy.z, 4 + Math.floor(Math.random() * 3), this._state.particles);
-              break;
-            case DamageType.ICE:
-              this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 0.5, enemy.z, 4 + Math.floor(Math.random() * 3), this._state.particles);
-              break;
-            case DamageType.LIGHTNING:
-              this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 0.5, enemy.z, 3 + Math.floor(Math.random() * 3), this._state.particles);
-              this._renderer.spawnParticles(ParticleType.SPARK, enemy.x, enemy.y + 1, enemy.z, 2, this._state.particles);
-              break;
-            case DamageType.POISON:
-              this._renderer.spawnParticles(ParticleType.POISON, enemy.x, enemy.y + 0.3, enemy.z, 3 + Math.floor(Math.random() * 2), this._state.particles);
-              break;
-          }
-          this._renderer.shakeCamera(0.15, 0.2);
-
-          if (aoe.statusEffect) {
-            const existing = enemy.statusEffects.find((e) => e.effect === aoe.statusEffect);
-            if (existing) {
-              existing.duration = Math.max(existing.duration, 3);
-            } else {
-              enemy.statusEffects.push({
-                effect: aoe.statusEffect,
-                duration: 3,
-                source: "aoe",
-              });
-              this._checkElementalReaction(enemy, aoe.statusEffect!);
-            }
-          }
-
-          if (enemy.hp <= 0) {
-            this._killEnemy(enemy);
-          // Death knockback from AOE center
-          const aoKbAngle = Math.atan2(enemy.z - aoe.z, enemy.x - aoe.x);
-          const aoKbDist = 1.5 + Math.random() * 1.5;
-          enemy.x += Math.cos(aoKbAngle) * aoKbDist;
-          enemy.z += Math.sin(aoKbAngle) * aoKbDist;
-          }
-        }
-      }
-    } else {
-      const pp = this._state.player;
-      if (pp.invulnTimer <= 0) {
-        const dist = this._dist(aoe.x, aoe.z, pp.x, pp.z);
-        if (dist <= aoe.radius) {
-          const mitigated = Math.max(1, aoe.damage - pp.armor * 0.3);
-          pp.hp -= mitigated;
-          this._addFloatingText(pp.x, pp.y + 2, pp.z, `-${Math.round(mitigated)}`, "#ff4444");
-          if (pp.hp <= 0) { pp.hp = 0; this._triggerDeath(); }
-        }
-      }
-    }
+    const ctx = this._getCombatContext();
+    combatTickAOEDamage(ctx, aoe);
+    this._syncCombatState(ctx);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -8773,177 +5898,38 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  GREATER RIFT SYSTEM
+  //  GREATER RIFT SYSTEM  (delegated to DiabloRift.ts)
   // ──────────────────────────────────────────────────────────────
+  private _riftCtx(): RiftContext {
+    return {
+      state: this._state,
+      genId: () => this._genId(),
+      addFloatingText: (x, y, z, text, color) => this._addFloatingText(x, y, z, text, color),
+      updateAchievement: (id, progress) => this._updateAchievement(id, progress),
+      addLeaderboardEntry: (entry) => this._addLeaderboardEntry(entry),
+      rollLoot: (enemy) => this._rollLoot(enemy),
+      startMap: (mapId) => this._startMap(mapId),
+    };
+  }
+
   private _startGreaterRift(level: number): void {
-    const rift = this._state.greaterRift;
-    if (rift.keystones <= 0) return;
-
-    rift.keystones--;
-    rift.level = level;
-    rift.state = GreaterRiftState.IN_PROGRESS;
-    rift.progressBar = 0;
-    rift.currentKills = 0;
-
-    const cfg = GREATER_RIFT_CONFIG;
-    rift.timeLimit = Math.max(cfg.minTimeLimit, cfg.baseTimeLimit + level * cfg.timeBonusPerLevel);
-    rift.timeRemaining = rift.timeLimit;
-    rift.killsForProgress = cfg.baseKillsRequired + level * cfg.killsPerLevel;
-    rift.enemyHpMultiplier = 1 + level * cfg.hpScalePerLevel;
-    rift.enemyDamageMultiplier = 1 + level * cfg.damageScalePerLevel;
-    rift.xpMultiplier = 1 + level * cfg.xpScalePerLevel;
-    rift.lootBonusMultiplier = 1 + level * cfg.lootScalePerLevel;
-
-    // Start a random map
-    const riftableMaps = Object.values(DiabloMapId).filter(
-      id => id !== DiabloMapId.CAMELOT && id !== DiabloMapId.CITY && id !== DiabloMapId.CITY_RUINS
-    );
-    const randomMap = riftableMaps[Math.floor(Math.random() * riftableMaps.length)];
-    this._state.currentMap = randomMap;
-    this._startMap(randomMap);
+    riftStart(this._riftCtx(), level);
   }
 
   private _updateGreaterRift(dt: number): void {
-    const rift = this._state.greaterRift;
-    if (rift.state === GreaterRiftState.NOT_ACTIVE) return;
-
-    if (rift.state === GreaterRiftState.IN_PROGRESS || rift.state === GreaterRiftState.BOSS_SPAWNED) {
-      rift.timeRemaining -= dt;
-
-      if (rift.timeRemaining <= 0) {
-        rift.state = GreaterRiftState.FAILED;
-        this._addFloatingText(this._state.player.x, this._state.player.y + 3, this._state.player.z, 'RIFT FAILED!', '#ff2222');
-        return;
-      }
-    }
-
-    if (rift.state === GreaterRiftState.IN_PROGRESS) {
-      rift.progressBar = Math.min(100, (rift.currentKills / rift.killsForProgress) * 100);
-
-      if (rift.progressBar >= 100) {
-        rift.state = GreaterRiftState.BOSS_SPAWNED;
-        this._addFloatingText(this._state.player.x, this._state.player.y + 4, this._state.player.z, 'RIFT GUARDIAN APPROACHES!', '#ff8800');
-        // Spawn a super-boss
-        this._spawnRiftGuardian();
-      }
-    }
+    riftUpdate(this._riftCtx(), dt);
   }
 
   private _spawnRiftGuardian(): void {
-    const p = this._state.player;
-    const rift = this._state.greaterRift;
-    const mapCfg = MAP_CONFIGS[this._state.currentMap];
-    const enemyTypes = mapCfg.enemyTypes;
-    const bossType = enemyTypes[enemyTypes.length - 1]; // Use the strongest enemy type
-
-    // Spawn at a distance from the player
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 15 + Math.random() * 10;
-    const bx = p.x + Math.sin(angle) * dist;
-    const bz = p.z + Math.cos(angle) * dist;
-
-    const enemyDef = ENEMY_DEFS[bossType];
-    const baseHp = (enemyDef?.hp || 500) * rift.enemyHpMultiplier * 5; // 5x for guardian
-    const baseDmg = (enemyDef?.damage || 30) * rift.enemyDamageMultiplier * 3;
-
-    const guardian: DiabloEnemy = {
-      id: `rift-guardian-${this._nextId++}`,
-      type: bossType,
-      x: bx, y: 0, z: bz,
-      angle: 0,
-      hp: baseHp,
-      maxHp: baseHp,
-      damage: baseDmg,
-      damageType: DamageType.PHYSICAL,
-      armor: 20 + rift.level * 2,
-      speed: 3.5,
-      state: EnemyState.CHASE,
-      targetId: null,
-      attackTimer: 0,
-      attackRange: 3,
-      aggroRange: 50, // Always aggro
-      xpReward: Math.floor(500 * rift.xpMultiplier),
-      lootTable: [],
-      deathTimer: 0,
-      stateTimer: 0,
-      patrolTarget: null,
-      statusEffects: [],
-      isBoss: true,
-      bossName: `Rift Guardian (GR ${rift.level})`,
-      scale: 2.5,
-      level: Math.min(100, 20 + rift.level),
-      behavior: EnemyBehavior.MELEE_BASIC,
-      bossPhase: 0,
-      bossAbilityCooldown: 0,
-      bossEnraged: false,
-      bossShieldTimer: 0,
-    };
-
-    this._state.enemies.push(guardian);
+    riftSpawnGuardian(this._riftCtx());
   }
 
   private _onRiftEnemyKill(): void {
-    const rift = this._state.greaterRift;
-    if (rift.state === GreaterRiftState.IN_PROGRESS) {
-      rift.currentKills++;
-    }
+    riftOnEnemyKill(this._riftCtx());
   }
 
   private _onRiftGuardianKill(): void {
-    const rift = this._state.greaterRift;
-    if (rift.state === GreaterRiftState.BOSS_SPAWNED) {
-      rift.state = GreaterRiftState.COMPLETED;
-      if (rift.level > rift.bestRiftLevel) {
-        rift.bestRiftLevel = rift.level;
-      }
-      // Reward keystones
-      rift.keystones += 2;
-      // Achievement tracking: greater rift complete
-      this._updateAchievement('rift_runner', rift.level);
-      this._updateAchievement('rift_master', rift.level);
-      this._updateAchievement('rift_legend', rift.level);
-
-      // Add leaderboard entry
-      this._addLeaderboardEntry({
-        playerName: this._state.multiplayer.playerName || 'Hero',
-        class: this._state.player.class,
-        level: this._state.player.level,
-        grLevel: rift.level,
-        timeRemaining: rift.timeRemaining,
-        date: new Date().toISOString().split('T')[0],
-      });
-
-      this._addFloatingText(
-        this._state.player.x, this._state.player.y + 4, this._state.player.z,
-        `GR ${rift.level} CLEARED! +2 Keystones`, '#ffd700'
-      );
-
-      // Bonus loot shower
-      for (let i = 0; i < 3 + Math.floor(rift.level / 10); i++) {
-        const lootAngle = Math.random() * Math.PI * 2;
-        const lootDist = 1 + Math.random() * 3;
-        const lx = this._state.player.x + Math.sin(lootAngle) * lootDist;
-        const lz = this._state.player.z + Math.cos(lootAngle) * lootDist;
-        const lootLevel = Math.min(20 + rift.level, 100);
-        const lootItems = this._rollLoot({
-          type: EnemyType.SKELETON_WARRIOR,
-          level: lootLevel,
-          isBoss: true,
-          lootTable: [],
-        } as unknown as DiabloEnemy);
-        for (const item of lootItems) {
-          const loot: DiabloLoot = {
-            id: this._genId(),
-            item,
-            x: lx + (Math.random() * 2 - 1),
-            y: 0,
-            z: lz + (Math.random() * 2 - 1),
-            timer: 0,
-          };
-          this._state.loot.push(loot);
-        }
-      }
-    }
+    riftOnGuardianKill(this._riftCtx());
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -9443,105 +6429,53 @@ export class DiabloGame {
   //  ACHIEVEMENT SYSTEM
   // ──────────────────────────────────────────────────────────────
   private _initAchievements(): void {
-    const p = this._state.player;
-    if (p.achievements.length === 0) {
-      p.achievements = ACHIEVEMENT_DEFS.map(def => ({
-        ...def,
-        progress: 0,
-        unlocked: false,
-      }));
-    }
+    initAchievements(this._state);
   }
 
   private _updateAchievement(id: string, progress: number): void {
-    const p = this._state.player;
-    const achievement = p.achievements.find(a => a.id === id);
-    if (!achievement || achievement.unlocked) return;
-
-    achievement.progress = Math.max(achievement.progress, progress);
-
-    if (achievement.progress >= achievement.requirement) {
-      achievement.unlocked = true;
-      p.achievementNotifications.push(id);
-
-      // Award rewards
-      if (achievement.reward) {
-        if (achievement.reward.gold) p.gold += achievement.reward.gold;
-        if (achievement.reward.xp) p.xp += achievement.reward.xp;
-        // Unlock cosmetic
-        if (achievement.reward.cosmeticId && !p.unlockedCosmetics.includes(achievement.reward.cosmeticId)) {
-          p.unlockedCosmetics.push(achievement.reward.cosmeticId);
-        }
-      }
-
-      this._addFloatingText(p.x, p.y + 4, p.z, `🏆 ${achievement.name}!`, '#ffd700');
+    const result = updateAchievement(this._state, id, progress);
+    if (result) {
+      const p = this._state.player;
+      this._addFloatingText(p.x, p.y + 4, p.z, `🏆 ${result.name}!`, '#ffd700');
       this._playSound('levelup');
     }
   }
 
   private _incrementAchievement(id: string, amount: number = 1): void {
-    const p = this._state.player;
-    const achievement = p.achievements.find(a => a.id === id);
-    if (!achievement || achievement.unlocked) return;
-    this._updateAchievement(id, achievement.progress + amount);
+    const result = incrementAchievement(this._state, id, amount);
+    if (result) {
+      const p = this._state.player;
+      this._addFloatingText(p.x, p.y + 4, p.z, `🏆 ${result.name}!`, '#ffd700');
+      this._playSound('levelup');
+    }
   }
 
   private _showAchievements(): void {
     this._phaseBeforeOverlay = this._state.phase;
     this._state.phase = DiabloPhase.PAUSED;
-    this._menuEl.innerHTML = '';
-    const panel = document.createElement('div');
-    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,15,10,0.95);border:2px solid #8b6914;border-radius:8px;padding:20px;color:#fff;font-family:Georgia,serif;min-width:500px;max-height:80vh;overflow-y:auto;z-index:100;pointer-events:auto;';
-
-    const unlocked = this._state.player.achievements.filter(a => a.unlocked).length;
-    const total = this._state.player.achievements.length;
-    panel.innerHTML = `<h2 style="text-align:center;color:#ffd700;margin:0 0 15px;">Achievements (${unlocked}/${total})</h2>`;
-
-    const categories: ('combat' | 'exploration' | 'collection' | 'challenge' | 'quest')[] = ['combat', 'exploration', 'collection', 'challenge', 'quest'];
-    for (const cat of categories) {
-      const catAchs = this._state.player.achievements.filter(a => a.category === cat);
-      const catLabel = document.createElement('h3');
-      catLabel.style.cssText = 'color:#b8860b;margin:10px 0 5px;font-size:14px;text-transform:uppercase;';
-      catLabel.textContent = cat;
-      panel.appendChild(catLabel);
-
-      for (const ach of catAchs) {
-        const row = document.createElement('div');
-        const opacity = ach.unlocked ? '1' : '0.5';
-        const check = ach.unlocked ? '✓' : `${ach.progress}/${ach.requirement}`;
-        row.style.cssText = `padding:4px 8px;margin:2px 0;background:rgba(255,255,255,0.05);border-radius:3px;font-size:12px;opacity:${opacity};display:flex;justify-content:space-between;`;
-        row.innerHTML = `<span>${ach.icon} ${ach.name} — <span style="color:#aaa;">${ach.description}</span></span><span style="color:${ach.unlocked ? '#44ff44' : '#888'};">${check}</span>`;
-        panel.appendChild(row);
-      }
-    }
-
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = 'display:block;margin:15px auto 0;padding:8px 20px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;';
-    closeBtn.textContent = 'Close';
-    closeBtn.addEventListener('click', () => { this._state.phase = this._phaseBeforeOverlay; this._menuEl.innerHTML = ''; });
-    panel.appendChild(closeBtn);
-    this._menuEl.appendChild(panel);
+    showAchievements(this._menuEl, this._state, () => {
+      this._state.phase = this._phaseBeforeOverlay;
+      this._menuEl.innerHTML = '';
+    });
   }
 
   private _processAchievementNotifications(): void {
-    if (this._state.player.achievementNotifications.length > 0 && !this._achievementPopup) {
-      const achId = this._state.player.achievementNotifications.shift()!;
-      const ach = this._state.player.achievements.find(a => a.id === achId);
-      if (ach) {
-        this._achievementPopup = document.createElement('div');
-        this._achievementPopup.style.cssText = 'position:absolute;top:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,10,0.9);border:2px solid #ffd700;border-radius:6px;padding:10px 20px;color:#ffd700;font-family:Georgia,serif;font-size:14px;text-align:center;z-index:30;transition:opacity 1s;pointer-events:none;';
-        this._achievementPopup.innerHTML = `🏆 <b>${ach.name}</b><br><span style="color:#aaa;font-size:12px;">${ach.description}</span>`;
-        this._hud.appendChild(this._achievementPopup);
-        setTimeout(() => {
-          if (this._achievementPopup) {
-            this._achievementPopup.style.opacity = '0';
-            setTimeout(() => {
-              this._achievementPopup?.remove();
-              this._achievementPopup = null;
-            }, 1000);
-          }
-        }, 3000);
-      }
+    if (this._achievementPopup) return;
+    const notif = processAchievementNotifications(this._state);
+    if (notif) {
+      this._achievementPopup = document.createElement('div');
+      this._achievementPopup.style.cssText = 'position:absolute;top:80px;left:50%;transform:translateX(-50%);background:rgba(20,15,10,0.9);border:2px solid #ffd700;border-radius:6px;padding:10px 20px;color:#ffd700;font-family:Georgia,serif;font-size:14px;text-align:center;z-index:30;transition:opacity 1s;pointer-events:none;';
+      this._achievementPopup.innerHTML = `🏆 <b>${notif.name}</b><br><span style="color:#aaa;font-size:12px;">${notif.description}</span>`;
+      this._hud.appendChild(this._achievementPopup);
+      setTimeout(() => {
+        if (this._achievementPopup) {
+          this._achievementPopup.style.opacity = '0';
+          setTimeout(() => {
+            this._achievementPopup?.remove();
+            this._achievementPopup = null;
+          }, 1000);
+        }
+      }, 3000);
     }
   }
 
@@ -9549,77 +6483,16 @@ export class DiabloGame {
   //  DAILY CHALLENGE SYSTEM
   // ──────────────────────────────────────────────────────────────
   private _generateDailyChallenges(): void {
-    const p = this._state.player;
-    const today = new Date().toISOString().split('T')[0];
-
-    if (p.lastDailyDate === today && p.dailyChallenges.length > 0) return;
-
-    // Check streak
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    if (p.lastDailyDate === yesterday) {
-      p.dailyStreak++;
-    } else if (p.lastDailyDate !== today) {
-      p.dailyStreak = 1;
-    }
-    p.lastDailyDate = today;
-
-    // Generate 3 daily challenges
-    const seed = today.split('-').reduce((a, b) => a + parseInt(b), 0);
-    const rng = (n: number) => ((seed * 16807 + n * 2147483647) % 2147483647) / 2147483647;
-
-    const streakBonus = 1 + (p.dailyStreak - 1) * 0.1;
-
-    p.dailyChallenges = [
-      {
-        id: `daily-kill-${today}`,
-        name: 'Slaughter',
-        description: `Kill ${50 + Math.floor(rng(1) * 100)} enemies`,
-        type: 'kill',
-        target: 50 + Math.floor(rng(1) * 100),
-        progress: 0,
-        completed: false,
-        reward: { gold: Math.floor(500 * streakBonus), xp: Math.floor(200 * streakBonus) },
-        generatedDate: today,
-      },
-      {
-        id: `daily-gold-${today}`,
-        name: 'Fortune Seeker',
-        description: `Collect ${1000 + Math.floor(rng(2) * 2000)} gold`,
-        type: 'collect_gold',
-        target: 1000 + Math.floor(rng(2) * 2000),
-        progress: 0,
-        completed: false,
-        reward: { gold: Math.floor(800 * streakBonus), xp: Math.floor(300 * streakBonus), keystones: 1 },
-        generatedDate: today,
-      },
-      {
-        id: `daily-boss-${today}`,
-        name: 'Boss Bounty',
-        description: `Defeat ${2 + Math.floor(rng(3) * 3)} bosses`,
-        type: 'boss_kill',
-        target: 2 + Math.floor(rng(3) * 3),
-        progress: 0,
-        completed: false,
-        reward: { gold: Math.floor(1000 * streakBonus), xp: Math.floor(500 * streakBonus), keystones: 1 },
-        generatedDate: today,
-      },
-    ];
+    generateDailyChallenges(this._state);
   }
 
   private _updateDailyProgress(type: string, amount: number = 1): void {
-    for (const challenge of this._state.player.dailyChallenges) {
-      if (challenge.completed || challenge.type !== type) continue;
-      challenge.progress += amount;
-      if (challenge.progress >= challenge.target) {
-        challenge.completed = true;
-        this._questTrackerDirty = true;
-        const p = this._state.player;
-        p.gold += challenge.reward.gold;
-        p.xp += challenge.reward.xp;
-        if (challenge.reward.keystones) {
-          this._state.greaterRift.keystones += challenge.reward.keystones;
-        }
-        this._addFloatingText(p.x, p.y + 3, p.z, `Daily: ${challenge.name} Complete!`, '#44ff44');
+    const results = updateDailyProgress(this._state, type, amount);
+    if (results.length > 0) {
+      this._questTrackerDirty = true;
+      const p = this._state.player;
+      for (const r of results) {
+        this._addFloatingText(p.x, p.y + 3, p.z, `Daily: ${r.challengeName} Complete!`, '#44ff44');
         this._playSound('loot');
       }
     }
@@ -9886,63 +6759,16 @@ export class DiabloGame {
     angle: number, damage: number,
     def: any, skillId: SkillId
   ): void {
-    const speed = 20;
-    const proj: DiabloProjectile = {
-      id: this._genId(),
-      x, y, z,
-      vx: Math.sin(angle) * speed,
-      vy: 0,
-      vz: Math.cos(angle) * speed,
-      speed,
-      damage,
-      damageType: def.damageType,
-      radius: 0.3,
-      ownerId: "player",
-      isPlayerOwned: true,
-      lifetime: 0,
-      maxLifetime: 3.0,
-      skillId,
-    };
-    this._state.projectiles.push(proj);
+    combatCreateProjectile(this._getCombatContext(), x, y, z, angle, damage, def, skillId);
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  HELPER: Chain lightning bounce
+  //  HELPER: Chain lightning bounce (delegated to DiabloCombat.ts)
   // ──────────────────────────────────────────────────────────────
   private _chainLightningBounce(fromEnemy: DiabloEnemy, damage: number, bouncesLeft: number): void {
-    if (bouncesLeft <= 0) return;
-
-    let nearest: DiabloEnemy | null = null;
-    let nearestDist = 10;
-    for (const enemy of this._state.enemies) {
-      if (enemy.id === fromEnemy.id) continue;
-      if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-      const d = this._dist(fromEnemy.x, fromEnemy.z, enemy.x, enemy.z);
-      if (d < nearestDist) {
-        nearestDist = d;
-        nearest = enemy;
-      }
-    }
-
-    if (nearest) {
-      const finalDmg = Math.max(1, damage - nearest.armor * 0.1);
-      nearest.hp -= finalDmg;
-      this._addFloatingText(nearest.x, nearest.y + 2, nearest.z, `${Math.round(finalDmg)}`, "#8888ff");
-
-      if (nearest.hp <= 0) {
-        this._killEnemy(nearest);
-      }
-
-      // Apply shocked
-      nearest.statusEffects.push({
-        effect: StatusEffect.SHOCKED,
-        duration: 2,
-        source: "chain_lightning",
-      });
-      this._checkElementalReaction(nearest, StatusEffect.SHOCKED);
-
-      this._chainLightningBounce(nearest, damage * 0.7, bouncesLeft - 1);
-    }
+    const ctx = this._getCombatContext();
+    combatChainLightningBounce(ctx, fromEnemy, damage, bouncesLeft);
+    this._syncCombatState(ctx);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -10056,20 +6882,7 @@ export class DiabloGame {
   //  HELPER: Dodge roll (space bar)
   // ──────────────────────────────────────────────────────────────
   private _doDodgeRoll(): void {
-    const p = this._state.player;
-    if (p.invulnTimer > 0) return;
-    const worldMouse = this._getMouseWorldPos();
-    const angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
-    p.x += Math.sin(angle) * 4;
-    p.z += Math.cos(angle) * 4;
-    p.invulnTimer = 0.4;
-
-    // Clamp to map bounds
-    const mapCfg = MAP_CONFIGS[this._state.currentMap];
-    const halfW = mapCfg.width / 2;
-    const halfD = ((mapCfg as any).depth || (mapCfg as any).height || mapCfg.width) / 2;
-    p.x = Math.max(-halfW, Math.min(halfW, p.x));
-    p.z = Math.max(-halfD, Math.min(halfD, p.z));
+    combatDoDodgeRoll(this._getCombatContext());
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -10095,16 +6908,7 @@ export class DiabloGame {
   //  HELPER: Add floating text
   // ──────────────────────────────────────────────────────────────
   private _damageTypeColor(type: DamageType): string {
-    switch (type) {
-      case DamageType.FIRE: return '#ff6622';
-      case DamageType.ICE: return '#44ddff';
-      case DamageType.LIGHTNING: return '#ffff44';
-      case DamageType.POISON: return '#44ff44';
-      case DamageType.ARCANE: return '#cc44ff';
-      case DamageType.SHADOW: return '#aa66cc';
-      case DamageType.HOLY: return '#ffffaa';
-      default: return '#ffff44'; // physical = yellow
-    }
+    return combatDamageTypeColor(type);
   }
 
   private _addFloatingText(x: number, y: number, z: number, text: string, color: string): void {
@@ -10147,14 +6951,14 @@ export class DiabloGame {
     const loreHtml = lore
       ? `<div style="margin-top:10px;font-size:12px;color:#887755;font-style:italic;line-height:1.5;">${lore}</div>`
       : "";
-    this._questPopup.innerHTML = `
+    this._hudRefs.questPopup.innerHTML = `
       <div style="font-size:11px;color:#665533;letter-spacing:3px;margin-bottom:6px;">THE FALL OF EXCALIBUR</div>
       <div style="font-size:20px;color:#ffd700;font-weight:bold;margin-bottom:10px;text-shadow:0 0 8px rgba(255,215,0,0.3);">${title}</div>
       <div style="font-size:14px;color:#ccbb99;line-height:1.7;">${body}</div>
       ${loreHtml}
     `;
-    this._questPopup.style.display = "block";
-    this._questPopup.style.opacity = "1";
+    this._hudRefs.questPopup.style.display = "block";
+    this._hudRefs.questPopup.style.opacity = "1";
     this._questPopupTimer = duration;
   }
 
@@ -10432,51 +7236,7 @@ export class DiabloGame {
   //  HELPER: Get skill damage
   // ──────────────────────────────────────────────────────────────
   private _getSkillDamage(def: any): number {
-    const p = this._state.player;
-    let base = 0;
-    const weaponBonus = this._getWeaponDamage();
-    switch (p.class) {
-      case DiabloClass.WARRIOR:
-        base = p.strength * 1.5 + weaponBonus;
-        break;
-      case DiabloClass.MAGE:
-        base = p.intelligence * 1.2 + weaponBonus;
-        break;
-      case DiabloClass.RANGER:
-        base = p.dexterity * 1.3 + weaponBonus;
-        break;
-    }
-    const hasBattleCry = p.statusEffects.some((e) => e.source === "BATTLE_CRY");
-    if (hasBattleCry) base *= 1.3;
-
-    // Apply equipped bonus damage
-    let bonusDmg = 0;
-    const equipKeys: (keyof DiabloEquipment)[] = [
-      "helmet", "body", "gauntlets", "legs", "feet", "accessory1", "accessory2", "weapon", "lantern",
-    ];
-    for (const key of equipKeys) {
-      const item = p.equipment[key];
-      if (item) {
-        const stats = item.stats as any;
-        if (stats.bonusDamage) bonusDmg += stats.bonusDamage;
-      }
-    }
-
-    let total = (base + bonusDmg) * (def.damageMultiplier || 1);
-
-    const talentBonusesSkill = this._getTalentBonuses();
-    if (talentBonusesSkill[TalentEffectType.BONUS_DAMAGE_PERCENT]) {
-      total *= (1 + talentBonusesSkill[TalentEffectType.BONUS_DAMAGE_PERCENT] / 100);
-    }
-
-    // Strength potion buff
-    for (const buff of p.activePotionBuffs) {
-      if (buff.type === PotionType.STRENGTH) {
-        total *= (1 + buff.value / 100);
-      }
-    }
-
-    return total;
+    return combatGetSkillDamage(this._getCombatContext(), def);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -11488,11 +8248,11 @@ export class DiabloGame {
   }
 
   private _updateMinimap(): void {
-    this._drawMinimapContent(this._minimapCtx, 200, 200);
+    this._drawMinimapContent(this._hudRefs.minimapCtx, 200, 200);
   }
 
   private _updateFullmap(): void {
-    this._drawMinimapContent(this._fullmapCtx, 400, 400);
+    this._drawMinimapContent(this._hudRefs.fullmapCtx, 400, 400);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -11614,11 +8374,11 @@ export class DiabloGame {
       });
     }
 
-    this._deathOverlay.style.display = "flex";
-    const goldEl = this._deathOverlay.querySelector("#diablo-gold-loss") as HTMLDivElement;
+    this._hudRefs.deathOverlay.style.display = "flex";
+    const goldEl = this._hudRefs.deathOverlay.querySelector("#diablo-gold-loss") as HTMLDivElement;
     if (goldEl) goldEl.textContent = goldLoss > 0 ? `Lost ${goldLoss} gold` : "";
     // Death recap
-    const recapEl = this._deathOverlay.querySelector("#diablo-death-recap") as HTMLDivElement;
+    const recapEl = this._hudRefs.deathOverlay.querySelector("#diablo-death-recap") as HTMLDivElement;
     if (recapEl) {
       let recapHtml = this._lastDeathCause ? `<div>Slain by: ${this._lastDeathCause}</div>` : '<div>You have been slain.</div>';
       const now = performance.now();
@@ -11636,12 +8396,12 @@ export class DiabloGame {
 
   private _updateDeathRespawn(dt: number): void {
     this._state.respawnTimer -= dt;
-    const timerEl = this._deathOverlay.querySelector("#diablo-respawn-timer") as HTMLDivElement;
+    const timerEl = this._hudRefs.deathOverlay.querySelector("#diablo-respawn-timer") as HTMLDivElement;
     if (timerEl) timerEl.textContent = `Respawning in ${Math.ceil(this._state.respawnTimer)}...`;
 
     if (this._state.respawnTimer <= 0) {
       this._isDead = false;
-      this._deathOverlay.style.display = "none";
+      this._hudRefs.deathOverlay.style.display = "none";
       const p = this._state.player;
       if (this._state.currentMap === DiabloMapId.CAMELOT) {
         p.x = 0;
@@ -11698,7 +8458,7 @@ export class DiabloGame {
     document.getElementById('hc-restart')?.addEventListener('click', () => {
       this._state = createDefaultState();
       this._isDead = false;
-      this._hardcoreLabel = null;
+      this._hudState.hardcoreLabel = null;
       this._showClassSelect();
     });
   }
@@ -12786,65 +9546,7 @@ export class DiabloGame {
     if (!this._questTrackerDirty) return;
     this._questTrackerDirty = false;
 
-    const active = this._state.activeQuests.filter(q => q.isActive && !q.isComplete);
-    const dailies = this._state.player.dailyChallenges.filter(d => !d.completed);
-    const bounties = this._state.activeBounties.filter(b => !b.isComplete && b.isActive);
-    if (active.length === 0 && dailies.length === 0 && bounties.length === 0 && this._state.player.prestigeLevel === 0) {
-      this._questTracker.style.display = "none";
-      return;
-    }
-    this._questTracker.style.display = "block";
-    let html = '';
-    if (active.length > 0) {
-      html += `<div style="color:#c8a84e;font-size:13px;font-weight:bold;margin-bottom:6px;border-bottom:1px solid #5a4a2a;padding-bottom:4px;">QUESTS</div>`;
-      for (const q of active) {
-        const pct = Math.min(100, (q.progress / q.required) * 100);
-        html += `
-          <div style="margin-bottom:6px;">
-            <div style="font-size:11px;color:#ddd;margin-bottom:2px;">${q.name}</div>
-            <div style="width:100%;height:6px;background:rgba(30,25,15,0.9);border-radius:3px;overflow:hidden;">
-              <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#c8a84e,#ffd700);border-radius:3px;"></div>
-            </div>
-            <div style="font-size:10px;color:#888;margin-top:1px;">${q.progress}/${q.required}</div>
-          </div>`;
-      }
-    }
-    if (dailies.length > 0) {
-      const streak = this._state.player.dailyStreak;
-      html += `<div style="color:#44aaff;font-size:13px;font-weight:bold;margin:8px 0 6px;border-bottom:1px solid #2a3a5a;padding-bottom:4px;">DAILY CHALLENGES ${streak > 1 ? `(${streak} day streak!)` : ''}</div>`;
-      for (const d of dailies) {
-        const pct = Math.min(100, (d.progress / d.target) * 100);
-        html += `
-          <div style="margin-bottom:6px;">
-            <div style="font-size:11px;color:#ddd;margin-bottom:2px;">${d.name}: ${d.description}</div>
-            <div style="width:100%;height:6px;background:rgba(15,20,30,0.9);border-radius:3px;overflow:hidden;">
-              <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#4488ff,#44aaff);border-radius:3px;"></div>
-            </div>
-            <div style="font-size:10px;color:#888;margin-top:1px;">${d.progress}/${d.target} | +${d.reward.gold}g +${d.reward.xp}xp</div>
-          </div>`;
-      }
-    }
-    // Bounty tracker
-    const activeBounties = this._state.activeBounties.filter(b => !b.isComplete && b.isActive);
-    if (activeBounties.length > 0) {
-      html += `<div style="color:#ffd700;font-size:13px;font-weight:bold;margin:8px 0 6px;border-bottom:1px solid #5a4a2a;padding-bottom:4px;">BOUNTIES</div>`;
-      for (const b of activeBounties) {
-        const isOnMap = b.mapId === this._state.currentMap;
-        const mapName = MAP_CONFIGS[b.mapId]?.name || b.mapId;
-        html += `
-          <div style="margin-bottom:6px;">
-            <div style="font-size:11px;color:${isOnMap ? '#ff8800' : '#ddd'};margin-bottom:2px;">${b.targetName}</div>
-            <div style="font-size:10px;color:#888;">${mapName} | +${b.reward.gold}g +${b.reward.xp}xp${b.reward.keystones ? ' +1 key' : ''}</div>
-          </div>`;
-      }
-    }
-
-    // Prestige indicator
-    if (this._state.player.prestigeLevel > 0) {
-      html += `<div style="color:#ffd700;font-size:10px;margin-top:6px;border-top:1px solid #5a4a2a;padding-top:4px;">Prestige ${this._state.player.prestigeLevel} | +${this._state.player.prestigeBonuses.damagePercent}% DMG +${this._state.player.prestigeBonuses.hpPercent}% HP</div>`;
-    }
-
-    this._questTracker.innerHTML = html;
+    updateQuestTracker(this._hudRefs.questTracker, this._state, this._state.currentMap);
   }
 
   private _updateQuestProgress(type: QuestType, context: string | undefined): void {
@@ -13328,483 +10030,72 @@ export class DiabloGame {
   //  PET SYSTEM
   // ══════════════════════════════════════════════════════════════
 
-  /** Create a new pet from a species definition. */
-  private _createPet(species: PetSpecies): DiabloPet {
-    const def = PET_DEFS[species];
+  /** Build context for pet system functions (DiabloPets.ts). */
+  private _petCtx(): PetContext {
     return {
-      id: this._genId(),
-      species,
-      petType: def.petType,
-      customName: def.name,
-      icon: def.icon,
-      level: 1,
-      xp: 0,
-      xpToNext: PET_XP_TABLE[0] || 80,
-      hp: def.baseHp,
-      maxHp: def.baseHp,
-      damage: def.baseDamage,
-      armor: def.baseArmor,
-      moveSpeed: def.moveSpeed,
-      attackRange: def.attackRange,
-      attackSpeed: def.attackSpeed,
-      aggroRange: def.aggroRange,
-      lootPickupRange: def.lootPickupRange || 0,
-      x: this._state.player.x + 2,
-      y: 0,
-      z: this._state.player.z + 2,
-      angle: 0,
-      aiState: PetAIState.FOLLOWING,
-      targetId: null,
-      attackTimer: 0,
-      abilityCooldowns: {},
-      equipment: { collar: null, charm: null },
-      isSummoned: false,
-      loyalty: 50,
+      state: this._state,
+      addFloatingText: (x, y, z, text, color) => this._addFloatingText(x, y, z, text, color),
+      genId: () => this._genId(),
+      dist: (x1, z1, x2, z2) => this._dist(x1, z1, x2, z2),
+      updateAchievement: (id, progress) => this._updateAchievement(id, progress),
+      pickupLoot: (lootId) => this._pickupLoot(lootId),
+      petBuffs: this._petBuffs,
     };
+  }
+
+  private _petUICtx(): PetUIContext {
+    return {
+      state: this._state,
+      menuEl: this._menuEl,
+      phaseBeforeOverlay: this._phaseBeforeOverlay,
+      setPhaseBeforeOverlay: (p) => { this._phaseBeforeOverlay = p; },
+      summonPet: (petId) => this._summonPet(petId),
+      dismissPet: () => this._dismissPet(),
+    };
+  }
+
+  private _createPet(species: PetSpecies): DiabloPet {
+    return petCreatePet(this._petCtx(), species);
   }
 
   /** Try to drop a pet egg when an enemy is killed. */
   private _rollPetDrop(isBoss: boolean): void {
-    const mapId = this._state.currentMap;
-    const p = this._state.player;
-    for (const drop of PET_DROP_TABLE) {
-      if (drop.mapId !== mapId) continue;
-      if (drop.bossOnly && !isBoss) continue;
-      if (Math.random() < drop.chance) {
-        // Check if player already owns this species
-        if (p.pets.some(pet => pet.species === drop.species)) continue;
-        if (p.pets.length >= p.maxPets) {
-          this._addFloatingText(p.x, p.y + 3, p.z, "Pet inventory full!", "#ff4444");
-          return;
-        }
-        const newPet = this._createPet(drop.species);
-        p.pets.push(newPet);
-        this._updateAchievement('pet_collector', p.pets.length);
-        const def = PET_DEFS[drop.species];
-        this._addFloatingText(p.x, p.y + 4, p.z, `PET FOUND: ${def.name}!`, "#ffd700");
-        return;
-      }
-    }
+    petRollPetDrop(this._petCtx(), isBoss);
   }
 
   /** Summon / dismiss a pet. Only one can be active at a time. */
   private _summonPet(petId: string): void {
-    const p = this._state.player;
-    const pet = p.pets.find(pt => pt.id === petId);
-    if (!pet) return;
-
-    // If this pet is already summoned, dismiss it (toggle behavior)
-    if (pet.isSummoned) {
-      pet.isSummoned = false;
-      pet.aiState = PetAIState.IDLE;
-      p.activePetId = null;
-      this._addFloatingText(p.x, p.y + 2, p.z, `${pet.customName} dismissed`, '#aaaaaa');
-      return;
-    }
-
-    // Dismiss currently active pet if different
-    if (p.activePetId && p.activePetId !== petId) {
-      const activePet = p.pets.find(pt => pt.id === p.activePetId);
-      if (activePet) {
-        activePet.isSummoned = false;
-        activePet.aiState = PetAIState.IDLE;
-      }
-    }
-
-    // Summon the new pet
-    pet.isSummoned = true;
-    pet.aiState = PetAIState.FOLLOWING;
-    pet.x = p.x + (Math.random() * 4 - 2);
-    pet.z = p.z + (Math.random() * 4 - 2);
-    pet.y = getTerrainHeight(pet.x, pet.z);
-    pet.hp = pet.maxHp;
-    p.activePetId = pet.id;
-    this._addFloatingText(p.x, p.y + 2, p.z, `${pet.customName} summoned!`, '#44ff44');
+    petSummonPet(this._petCtx(), petId);
   }
 
   private _dismissPet(): void {
-    const p = this._state.player;
-    const pet = p.pets.find(pt => pt.id === p.activePetId);
-    if (pet) {
-      pet.isSummoned = false;
-      pet.aiState = PetAIState.IDLE;
-      this._addFloatingText(p.x, p.y + 3, p.z, `${pet.customName} dismissed.`, "#aaaaaa");
-    }
-    p.activePetId = null;
+    petDismissPet(this._petCtx());
   }
 
   /** Award XP to all summoned pets. */
   private _grantPetXp(amount: number): void {
-    const p = this._state.player;
-    for (const pet of p.pets) {
-      if (!pet.isSummoned) continue;
-      pet.xp += amount;
-      while (pet.xp >= pet.xpToNext && pet.level < 50) {
-        pet.xp -= pet.xpToNext;
-        pet.level++;
-        const def = PET_DEFS[pet.species];
-        pet.maxHp = def.baseHp + def.hpPerLevel * (pet.level - 1);
-        pet.hp = pet.maxHp;
-        pet.damage = def.baseDamage + def.damagePerLevel * (pet.level - 1);
-        pet.armor = def.baseArmor + def.armorPerLevel * (pet.level - 1);
-        pet.xpToNext = PET_XP_TABLE[Math.min(pet.level - 1, PET_XP_TABLE.length - 1)];
-        if (pet.loyalty < 100) pet.loyalty = Math.min(100, pet.loyalty + 5);
-        this._addFloatingText(pet.x, pet.y + 2, pet.z, `${pet.customName} LEVEL ${pet.level}!`, "#ffd700");
-      }
-    }
+    petGrantPetXp(this._petCtx(), amount);
   }
 
   /** Main pet AI update each frame. */
   private _updatePets(dt: number): void {
-    const p = this._state.player;
-
-    for (const pet of p.pets) {
-      if (!pet.isSummoned) continue;
-
-      // Update ability cooldowns
-      for (const key of Object.keys(pet.abilityCooldowns)) {
-        if (pet.abilityCooldowns[key] > 0) {
-          pet.abilityCooldowns[key] = Math.max(0, pet.abilityCooldowns[key] - dt);
-        }
-      }
-      pet.attackTimer = Math.max(0, pet.attackTimer - dt);
-
-      // Pet regeneration (slow)
-      if (pet.hp < pet.maxHp) {
-        pet.hp = Math.min(pet.maxHp, pet.hp + pet.maxHp * 0.005 * dt);
-      }
-
-      const distToPlayer = this._dist(pet.x, pet.z, p.x, p.z);
-
-      // Teleport to player if too far
-      if (distToPlayer > 25) {
-        pet.x = p.x + (Math.random() * 4 - 2);
-        pet.z = p.z + (Math.random() * 4 - 2);
-        pet.y = getTerrainHeight(pet.x, pet.z);
-        pet.aiState = PetAIState.FOLLOWING;
-        continue;
-      }
-
-      // Pet takes damage from enemy AoE effects
-      for (const aoe of this._state.aoeEffects) {
-        // Skip player-owned AoEs (only damage pet from enemy AoEs)
-        if (aoe.ownerId === 'player') continue;
-        const distToAoe = this._dist(pet.x, pet.z, aoe.x, aoe.z);
-        if (distToAoe < aoe.radius) {
-          const aoeDmg = aoe.damage * 0.3 * dt;
-          const effectiveArmor = pet.armor * 0.5;
-          const reduction = effectiveArmor / (effectiveArmor + 50);
-          pet.hp -= aoeDmg * (1 - reduction);
-          if (pet.hp <= 0) {
-            pet.hp = 0;
-            pet.isSummoned = false;
-            pet.aiState = PetAIState.IDLE;
-            if (p.activePetId === pet.id) p.activePetId = null;
-            this._addFloatingText(pet.x, pet.y + 2, pet.z, `${pet.customName} fainted!`, '#ff4444');
-            break;
-          }
-        }
-      }
-      if (!pet.isSummoned) continue;
-
-      switch (pet.aiState) {
-        case PetAIState.FOLLOWING: {
-          // Follow player at a distance
-          if (distToPlayer > 3) {
-            const dx = p.x - pet.x;
-            const dz = p.z - pet.z;
-            const len = Math.hypot(dx, dz);
-            if (len > 0) {
-              const speed = distToPlayer > 15 ? pet.moveSpeed * 2 : pet.moveSpeed;
-              pet.x += (dx / len) * speed * dt;
-              pet.z += (dz / len) * speed * dt;
-              pet.angle = Math.atan2(dx, dz);
-            }
-          }
-
-          // Combat pets: look for enemies to attack
-          if (pet.petType === PetType.COMBAT && pet.aggroRange > 0) {
-            let nearestEnemy: DiabloEnemy | null = null;
-            let nearestDist = pet.aggroRange;
-            for (const enemy of this._state.enemies) {
-              if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-              const d = this._dist(enemy.x, enemy.z, pet.x, pet.z);
-              if (d < nearestDist) { nearestDist = d; nearestEnemy = enemy; }
-            }
-            if (nearestEnemy) {
-              pet.targetId = nearestEnemy.id;
-              pet.aiState = PetAIState.ATTACKING;
-            }
-          }
-
-          // Loot pets: look for loot to collect
-          if (pet.petType === PetType.LOOT && pet.lootPickupRange > 0) {
-            let nearestLoot: DiabloLoot | null = null;
-            let nearestDist = pet.lootPickupRange;
-            for (const loot of this._state.loot) {
-              const d = this._dist(loot.x, loot.z, pet.x, pet.z);
-              if (d < nearestDist) { nearestDist = d; nearestLoot = loot; }
-            }
-            if (nearestLoot) {
-              pet.targetId = nearestLoot.id;
-              pet.aiState = PetAIState.COLLECTING_LOOT;
-            }
-          }
-
-          // Utility pet abilities (auto-use while following)
-          if (pet.petType === PetType.UTILITY) {
-            const petDef = PET_DEFS[pet.species];
-            for (const ability of petDef.abilities) {
-              if (ability.unlocksAtLevel > pet.level) continue;
-              if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
-              // Auto heal when owner is low
-              if (ability.healAmount && ability.healAmount > 0 && p.hp < p.maxHp * 0.5) {
-                const healVal = ability.healAmount * p.maxHp;
-                p.hp = Math.min(p.maxHp, p.hp + healVal);
-                pet.abilityCooldowns[ability.id] = ability.cooldown;
-                this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +${Math.round(healVal)} HP`, "#44ff44");
-                break;
-              }
-              // Auto buff
-              if (ability.buffType && ability.buffDuration && ability.buffDuration > 0) {
-                const shouldBuff =
-                  (ability.buffType === 'cleanse' && p.statusEffects.length > 0) ||
-                  (ability.buffType === 'cooldownReduce') ||
-                  (ability.buffType === 'damageReduction' && p.hp < p.maxHp * 0.4) ||
-                  (ability.buffType === 'taunt' && this._state.enemies.filter(e => e.state !== EnemyState.DEAD && this._dist(e.x, e.z, p.x, p.z) < 8).length >= 3);
-                if (shouldBuff) {
-                  this._applyPetBuff(ability);
-                  pet.abilityCooldowns[ability.id] = ability.cooldown;
-                  break;
-                }
-              }
-            }
-          }
-          break;
-        }
-
-        case PetAIState.ATTACKING: {
-          const target = this._state.enemies.find(e => e.id === pet.targetId);
-          if (!target || target.state === EnemyState.DYING || target.state === EnemyState.DEAD) {
-            pet.targetId = null;
-            pet.aiState = PetAIState.RETURNING;
-            break;
-          }
-
-          const distToTarget = this._dist(target.x, target.z, pet.x, pet.z);
-
-          if (distToTarget > pet.attackRange) {
-            // Move toward target
-            const dx = target.x - pet.x;
-            const dz = target.z - pet.z;
-            const len = Math.hypot(dx, dz);
-            if (len > 0) {
-              pet.x += (dx / len) * pet.moveSpeed * dt;
-              pet.z += (dz / len) * pet.moveSpeed * dt;
-              pet.angle = Math.atan2(dx, dz);
-            }
-          } else if (pet.attackTimer <= 0) {
-            // Attack!
-            const loyaltyMult = 0.5 + (pet.loyalty / 100) * 0.5;
-            const dmg = pet.damage * loyaltyMult;
-            target.hp -= dmg;
-            pet.attackTimer = 1 / pet.attackSpeed;
-            this._addFloatingText(target.x, target.y + 2, target.z, String(Math.round(dmg)), "#88ff88");
-
-            // Try to use abilities
-            const petDef = PET_DEFS[pet.species];
-            for (const ability of petDef.abilities) {
-              if (ability.unlocksAtLevel > pet.level) continue;
-              if ((pet.abilityCooldowns[ability.id] || 0) > 0) continue;
-              if (ability.damageMultiplier && ability.damageMultiplier > 0) {
-                const abilDmg = pet.damage * ability.damageMultiplier * loyaltyMult;
-                target.hp -= abilDmg;
-                pet.abilityCooldowns[ability.id] = ability.cooldown;
-                this._addFloatingText(target.x, target.y + 3, target.z, `${ability.name}! ${Math.round(abilDmg)}`, "#ff8800");
-                break; // one ability per frame
-              }
-              if (ability.buffType) {
-                this._applyPetBuff(ability);
-                pet.abilityCooldowns[ability.id] = ability.cooldown;
-                break;
-              }
-            }
-
-            // Check if target died
-            if (target.hp <= 0) {
-              pet.targetId = null;
-              pet.aiState = PetAIState.RETURNING;
-            }
-          }
-
-          // Don't stray too far from player
-          if (distToPlayer > 15) {
-            pet.targetId = null;
-            pet.aiState = PetAIState.RETURNING;
-          }
-          break;
-        }
-
-        case PetAIState.COLLECTING_LOOT: {
-          const loot = this._state.loot.find(l => l.id === pet.targetId);
-          if (!loot) {
-            pet.targetId = null;
-            pet.aiState = PetAIState.RETURNING;
-            break;
-          }
-
-          const distToLoot = this._dist(loot.x, loot.z, pet.x, pet.z);
-          if (distToLoot > 1) {
-            const dx = loot.x - pet.x;
-            const dz = loot.z - pet.z;
-            const len = Math.hypot(dx, dz);
-            if (len > 0) {
-              pet.x += (dx / len) * pet.moveSpeed * 1.5 * dt;
-              pet.z += (dz / len) * pet.moveSpeed * 1.5 * dt;
-              pet.angle = Math.atan2(dx, dz);
-            }
-          } else {
-            // Pick up loot - add to player inventory
-            const lootName = loot.item.name;
-            this._pickupLoot(loot.id);
-            this._addFloatingText(pet.x, pet.y + 1, pet.z, `${pet.customName} picked up ${lootName}`, "#44ffff");
-            pet.targetId = null;
-            pet.aiState = PetAIState.RETURNING;
-          }
-          break;
-        }
-
-        case PetAIState.RETURNING: {
-          if (distToPlayer < 4) {
-            pet.aiState = PetAIState.FOLLOWING;
-          } else {
-            const dx = p.x - pet.x;
-            const dz = p.z - pet.z;
-            const len = Math.hypot(dx, dz);
-            if (len > 0) {
-              pet.x += (dx / len) * pet.moveSpeed * 1.2 * dt;
-              pet.z += (dz / len) * pet.moveSpeed * 1.2 * dt;
-              pet.angle = Math.atan2(dx, dz);
-            }
-          }
-          break;
-        }
-
-        case PetAIState.IDLE:
-          pet.aiState = PetAIState.FOLLOWING;
-          break;
-      }
-
-      // Update pet Y position (terrain height)
-      pet.y = getTerrainHeight(pet.x, pet.z);
-    }
+    petUpdatePets(this._petCtx(), dt);
   }
 
 
   /** Apply a pet buff to the player. */
   private _applyPetBuff(ability: { id: string; name: string; buffType?: string; buffDuration?: number; healAmount?: number }): void {
-    if (!ability.buffType) return;
-    const p = this._state.player;
-
-    switch (ability.buffType) {
-      case 'damage':
-        this._petBuffs.push({ type: 'damage', value: 0.15, remaining: ability.buffDuration || 10 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +15% DMG`, "#ff8800");
-        break;
-      case 'attackSpeed':
-        this._petBuffs.push({ type: 'attackSpeed', value: 1.0, remaining: ability.buffDuration || 8 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! 2x ATK SPD`, "#ffdd00");
-        break;
-      case 'fireResist':
-        this._petBuffs.push({ type: 'fireResist', value: 50, remaining: ability.buffDuration || 15 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +50 Fire Res`, "#ff4400");
-        break;
-      case 'invuln':
-        p.invulnTimer = Math.max(p.invulnTimer, ability.buffDuration || 3);
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Invulnerable`, "#ffffff");
-        break;
-      case 'damageReduction':
-        this._petBuffs.push({ type: 'damageReduction', value: 0.5, remaining: ability.buffDuration || 6 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! -50% DMG taken`, "#4488ff");
-        break;
-      case 'cleanse':
-        p.statusEffects = [];
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Cleansed`, "#ffffff");
-        break;
-      case 'cooldownReduce':
-        for (const [skillId, cd] of p.skillCooldowns) {
-          p.skillCooldowns.set(skillId, Math.max(0, cd - 3));
-        }
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! -3s CDs`, "#44ffff");
-        break;
-      case 'xpBonus':
-        this._petBuffs.push({ type: 'xpBonus', value: 0.2, remaining: ability.buffDuration || 30 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +20% XP`, "#ffd700");
-        break;
-      case 'lootRange':
-        this._petBuffs.push({ type: 'lootRange', value: 0.5, remaining: ability.buffDuration || 20 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +50% Pickup`, "#44ff44");
-        break;
-      case 'goldBonus':
-        this._petBuffs.push({ type: 'goldBonus', value: 0.25, remaining: ability.buffDuration || 30 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +25% Gold`, "#ffd700");
-        break;
-      case 'lootMagnet':
-        // Pull all loot to player
-        for (const loot of this._state.loot) {
-          loot.x = p.x + (Math.random() - 0.5) * 2;
-          loot.z = p.z + (Math.random() - 0.5) * 2;
-        }
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! All loot pulled!`, "#ffd700");
-        break;
-      case 'spellAmp':
-        this._petBuffs.push({ type: 'spellAmp', value: 0.5, remaining: ability.buffDuration || 10 });
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +50% Spell DMG`, "#aa44ff");
-        break;
-      default:
-        this._addFloatingText(p.x, p.y + 3, p.z, `${ability.name}!`, "#44ffff");
-        break;
-    }
+    petApplyPetBuff(this._petCtx(), ability);
   }
 
   /** Update pet buff timers and apply passive pet buffs. */
   private _updatePetBuffs(dt: number): void {
-    // Tick down active buff timers
-    for (let i = this._petBuffs.length - 1; i >= 0; i--) {
-      this._petBuffs[i].remaining -= dt;
-      if (this._petBuffs[i].remaining <= 0) {
-        this._petBuffs.splice(i, 1);
-      }
-    }
-
-    // Passive utility pet buffs (continuous while summoned)
-    const p = this._state.player;
-    for (const pet of p.pets) {
-      if (!pet.isSummoned) continue;
-
-      if (pet.petType === PetType.UTILITY) {
-        // Healing Wisp: passive HP regen
-        if (pet.species === PetSpecies.HEALING_WISP) {
-          const healPerSec = 2 + pet.level * 0.5;
-          p.hp = Math.min(p.maxHp, p.hp + healPerSec * dt);
-        }
-        // Mana Sprite: passive mana regen
-        if (pet.species === PetSpecies.MANA_SPRITE) {
-          const manaPerSec = 3 + pet.level * 0.8;
-          p.mana = Math.min(p.maxMana, p.mana + manaPerSec * dt);
-        }
-        // Shield Golem: passive armor buff is handled in stat recalculation
-      }
-    }
+    petUpdatePetBuffs(this._petCtx(), dt);
   }
 
   /** Check if a pet buff is active. */
   private _hasPetBuff(type: string): number {
-    let total = 0;
-    for (const buff of this._petBuffs) {
-      if (buff.type === type) total += buff.value;
-    }
-    return total;
+    return petHasPetBuff(this._petCtx(), type);
   }
 
 
@@ -13812,223 +10103,14 @@ export class DiabloGame {
   //  PET PANEL (Shift+P quick view)
   // ──────────────────────────────────────────────────────────────
   private _showPetPanel(): void {
-    const p = this._state.player;
-    this._phaseBeforeOverlay = this._phaseBeforeOverlay || DiabloPhase.PLAYING;
-    this._state.phase = DiabloPhase.INVENTORY;
-    this._menuEl.innerHTML = '';
-
-    const panel = document.createElement('div');
-    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,15,10,0.95);border:2px solid #8b6914;border-radius:8px;padding:20px;color:#fff;font-family:Georgia,serif;min-width:500px;max-height:80vh;overflow-y:auto;z-index:100;';
-
-    const title = document.createElement('h2');
-    title.style.cssText = 'text-align:center;color:#ffd700;margin:0 0 15px;font-size:24px;';
-    title.textContent = `Companions (${p.pets.length}/${p.maxPets})`;
-    panel.appendChild(title);
-
-    if (p.pets.length === 0) {
-      const empty = document.createElement('p');
-      empty.style.cssText = 'text-align:center;color:#888;font-style:italic;';
-      empty.textContent = 'No pets found yet. Defeat enemies to find companion eggs!';
-      panel.appendChild(empty);
-    }
-
-    for (const pet of p.pets) {
-      const petRow = document.createElement('div');
-      petRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px;margin:5px 0;background:rgba(255,255,255,0.05);border:1px solid #555;border-radius:4px;' + (pet.isSummoned ? 'border-color:#44ff44;' : '');
-
-      const icon = document.createElement('span');
-      icon.style.cssText = 'font-size:32px;';
-      icon.textContent = pet.icon;
-      petRow.appendChild(icon);
-
-      const info = document.createElement('div');
-      info.style.cssText = 'flex:1;';
-      info.innerHTML = `
-        <div style="font-size:16px;color:#ffd700;">${pet.customName} <span style="color:#aaa;font-size:12px;">Lv.${pet.level}</span></div>
-        <div style="font-size:12px;color:#aaa;">HP: ${Math.round(pet.hp)}/${pet.maxHp} | DMG: ${Math.round(pet.damage)} | ARM: ${pet.armor}</div>
-        <div style="font-size:11px;color:#888;">XP: ${pet.xp}/${pet.xpToNext} | Loyalty: ${pet.loyalty}%</div>
-        <div style="font-size:11px;color:#888;">Type: ${pet.petType} | ${pet.isSummoned ? '<span style="color:#44ff44;">Active</span>' : 'Idle'}</div>
-      `;
-      petRow.appendChild(info);
-
-      const btn = document.createElement('button');
-      btn.style.cssText = 'padding:6px 12px;background:' + (pet.isSummoned ? '#cc4444' : '#44aa44') + ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-family:Georgia,serif;';
-      btn.textContent = pet.isSummoned ? 'Dismiss' : 'Summon';
-      btn.addEventListener('click', () => {
-        if (pet.isSummoned) {
-          this._dismissPet();
-        } else {
-          this._summonPet(pet.id);
-        }
-        this._showPetPanel();
-      });
-      petRow.appendChild(btn);
-
-      panel.appendChild(petRow);
-    }
-
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = 'display:block;margin:15px auto 0;padding:8px 24px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:14px;';
-    closeBtn.textContent = 'Close (Esc)';
-    closeBtn.addEventListener('click', () => {
-      this._state.phase = this._phaseBeforeOverlay || DiabloPhase.PLAYING;
-      this._menuEl.innerHTML = '';
-    });
-    panel.appendChild(closeBtn);
-
-    this._menuEl.appendChild(panel);
+    petShowPetPanel(this._petUICtx());
   }
 
   // ──────────────────────────────────────────────────────────────
   //  PET MANAGEMENT UI
   // ──────────────────────────────────────────────────────────────
   private _showPetManagement(): void {
-    const p = this._state.player;
-    this._phaseBeforeOverlay = DiabloPhase.PLAYING;
-    this._state.phase = DiabloPhase.INVENTORY;
-
-    const renderPetUI = () => {
-      const activePet = p.pets.find(pt => pt.id === p.activePetId && pt.isSummoned);
-
-      let petListHtml = "";
-      if (p.pets.length === 0) {
-        petListHtml = `<div style="color:#887755;font-style:italic;padding:20px;text-align:center;">
-          No pets found yet. Defeat enemies to discover pet companions!</div>`;
-      }
-      for (const pet of p.pets) {
-        const def = PET_DEFS[pet.species];
-        const isActive = pet.id === p.activePetId && pet.isSummoned;
-        const borderColor = isActive ? "#ffd700" : "#5a4a2a";
-        const typeBadge = pet.petType === PetType.COMBAT ? "COMBAT" :
-          pet.petType === PetType.LOOT ? "LOOT" : "UTILITY";
-        const typeColor = pet.petType === PetType.COMBAT ? "#ff4444" :
-          pet.petType === PetType.LOOT ? "#ffd700" : "#44ff44";
-
-        let abilitiesHtml = "";
-        for (const ability of def.abilities) {
-          const unlocked = pet.level >= ability.unlocksAtLevel;
-          const color = unlocked ? "#cccccc" : "#555555";
-          abilitiesHtml += `<div style="color:${color};font-size:11px;margin:2px 0;">
-            ${ability.icon} ${ability.name} ${unlocked ? "" : `(Lv.${ability.unlocksAtLevel})`}
-            <span style="color:#888;font-size:10px;">${ability.description}</span>
-          </div>`;
-        }
-
-        petListHtml += `
-          <div class="pet-card" data-pet-id="${pet.id}" style="
-            background:rgba(20,15,8,0.9);border:2px solid ${borderColor};border-radius:8px;
-            padding:14px;cursor:pointer;transition:border-color 0.2s;pointer-events:auto;
-          ">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-              <span style="font-size:32px;">${pet.icon}</span>
-              <div>
-                <div style="color:#c8a84e;font-weight:bold;font-size:16px;">${pet.customName}</div>
-                <div style="font-size:11px;color:${typeColor};font-weight:bold;">${typeBadge}</div>
-                <div style="font-size:12px;color:#aaa;">Level ${pet.level} | Loyalty: ${Math.round(pet.loyalty)}%</div>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:#aaa;margin-bottom:8px;">
-              <div>HP: <span style="color:#ff4444;">${Math.round(pet.hp)}/${pet.maxHp}</span></div>
-              <div>DMG: <span style="color:#ff8800;">${Math.round(pet.damage)}</span></div>
-              <div>Armor: <span style="color:#4488ff;">${Math.round(pet.armor)}</span></div>
-              <div>Speed: <span style="color:#44ff44;">${pet.moveSpeed.toFixed(1)}</span></div>
-              <div>XP: <span style="color:#ffd700;">${pet.xp}/${pet.xpToNext}</span></div>
-              ${pet.lootPickupRange > 0 ? `<div>Pickup: <span style="color:#ffdd00;">${pet.lootPickupRange}</span></div>` : ""}
-            </div>
-            <div style="margin-bottom:8px;">
-              <div style="font-size:11px;color:#c8a84e;font-weight:bold;margin-bottom:4px;">ABILITIES</div>
-              ${abilitiesHtml}
-            </div>
-            <div style="display:flex;gap:8px;">
-              <button class="pet-summon-btn" data-pet-id="${pet.id}" style="
-                flex:1;padding:8px;font-size:12px;font-weight:bold;
-                background:${isActive ? "rgba(80,40,20,0.9)" : "rgba(40,30,15,0.9)"};
-                border:1px solid ${isActive ? "#ff4444" : "#5a4a2a"};border-radius:6px;
-                color:${isActive ? "#ff4444" : "#c8a84e"};cursor:pointer;pointer-events:auto;
-              ">${isActive ? "DISMISS" : "SUMMON"}</button>
-            </div>
-          </div>`;
-      }
-
-      // Active pet status
-      let activeStatusHtml = "";
-      if (activePet) {
-        const hpPct = Math.round((activePet.hp / activePet.maxHp) * 100);
-        activeStatusHtml = `
-          <div style="background:rgba(20,15,8,0.9);border:2px solid #ffd700;border-radius:8px;padding:14px;margin-bottom:16px;">
-            <div style="color:#ffd700;font-weight:bold;font-size:14px;margin-bottom:8px;">ACTIVE COMPANION</div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:36px;">${activePet.icon}</span>
-              <div style="flex:1;">
-                <div style="color:#c8a84e;font-weight:bold;">${activePet.customName} <span style="color:#aaa;font-weight:normal;">Lv.${activePet.level}</span></div>
-                <div style="background:#333;border-radius:3px;height:8px;margin-top:4px;overflow:hidden;">
-                  <div style="background:#ff4444;height:100%;width:${hpPct}%;transition:width 0.3s;"></div>
-                </div>
-                <div style="font-size:10px;color:#aaa;margin-top:2px;">HP: ${Math.round(activePet.hp)}/${activePet.maxHp} | AI: ${activePet.aiState}</div>
-              </div>
-            </div>
-          </div>`;
-      }
-
-      this._menuEl.innerHTML = `
-        <div style="
-          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
-          align-items:center;justify-content:center;color:#fff;pointer-events:auto;
-        ">
-          <div style="
-            max-width:700px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
-            border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
-          ">
-            <div style="text-align:center;margin-bottom:16px;">
-              <div style="font-size:28px;color:#c8a84e;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">
-                PET COMPANIONS
-              </div>
-              <div style="font-size:12px;color:#887755;margin-top:4px;">
-                ${p.pets.length} / ${p.maxPets} pets | Defeat enemies to find new companions
-              </div>
-            </div>
-            ${activeStatusHtml}
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              ${petListHtml}
-            </div>
-            <div style="text-align:center;margin-top:16px;">
-              <button id="pet-close-btn" style="
-                padding:10px 30px;font-size:14px;letter-spacing:2px;font-weight:bold;
-                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
-                cursor:pointer;pointer-events:auto;font-family:'Georgia',serif;
-              ">CLOSE</button>
-            </div>
-          </div>
-        </div>`;
-
-      // Summon/dismiss buttons
-      const summonBtns = this._menuEl.querySelectorAll(".pet-summon-btn") as NodeListOf<HTMLButtonElement>;
-      summonBtns.forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const petId = btn.getAttribute("data-pet-id")!;
-          const pet = p.pets.find(pt => pt.id === petId);
-          if (!pet) return;
-          if (pet.isSummoned) {
-            this._dismissPet();
-          } else {
-            this._summonPet(petId);
-          }
-          renderPetUI();
-        });
-      });
-
-      // Close
-      const closeBtn = this._menuEl.querySelector("#pet-close-btn") as HTMLButtonElement;
-      closeBtn.addEventListener("mouseenter", () => { closeBtn.style.borderColor = "#c8a84e"; });
-      closeBtn.addEventListener("mouseleave", () => { closeBtn.style.borderColor = "#5a4a2a"; });
-      closeBtn.addEventListener("click", () => {
-        this._state.phase = DiabloPhase.PLAYING;
-        this._menuEl.innerHTML = "";
-      });
-    };
-
-    renderPetUI();
+    petShowPetManagement(this._petUICtx());
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -14478,16 +10560,7 @@ export class DiabloGame {
   //  DAMAGE TYPE TO PARTICLE MAPPER
   // ──────────────────────────────────────────────────────────────
   private _damageTypeToParticle(dmgType: DamageType): ParticleType {
-    switch (dmgType) {
-      case DamageType.FIRE: return ParticleType.FIRE;
-      case DamageType.ICE: return ParticleType.ICE;
-      case DamageType.LIGHTNING: return ParticleType.LIGHTNING;
-      case DamageType.POISON: return ParticleType.POISON;
-      case DamageType.ARCANE: return ParticleType.SPARK;
-      case DamageType.SHADOW: return ParticleType.DUST;
-      case DamageType.HOLY: return ParticleType.HEAL;
-      default: return ParticleType.BLOOD;
-    }
+    return combatDamageTypeToParticle(dmgType);
   }
 
   // ──────────────────────────────────────────────────────────────

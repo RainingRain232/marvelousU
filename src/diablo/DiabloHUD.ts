@@ -1,0 +1,1798 @@
+/**
+ * DiabloHUD.ts — Extracted HUD building and per-frame update logic.
+ *
+ * All DOM element references created by buildHUD() are returned as a HUDRefs
+ * object.  Mutable per-frame tracking state lives in HUDState.
+ */
+
+import {
+  DiabloState, DiabloMapId, VendorType, DiabloVendor,
+  GreaterRiftState, MultiplayerState, SkillId,
+} from "./DiabloTypes";
+import {
+  SKILL_DEFS, ADVANCED_CRAFTING_RECIPES,
+} from "./DiabloConfig";
+import {
+  EXCALIBUR_QUEST_INFO, MAP_NAME_MAP, WEATHER_LABELS,
+} from "./DiabloConstants";
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Interfaces
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface HUDRefs {
+  hpBar: HTMLDivElement;
+  mpBar: HTMLDivElement;
+  hpText: HTMLDivElement;
+  mpText: HTMLDivElement;
+  hpOrbWrap: HTMLDivElement;
+  mpOrbWrap: HTMLDivElement;
+  xpBar: HTMLDivElement;
+  xpLevelText: HTMLDivElement;
+  goldText: HTMLDivElement;
+  levelText: HTMLDivElement;
+  killText: HTMLDivElement;
+  topRightPanel: HTMLDivElement;
+  skillSlots: HTMLDivElement[];
+  skillCooldownOverlays: HTMLDivElement[];
+  minimapCanvas: HTMLCanvasElement;
+  minimapCtx: CanvasRenderingContext2D;
+  fullmapCanvas: HTMLCanvasElement;
+  fullmapCtx: CanvasRenderingContext2D;
+  dpsMeter: HTMLDivElement;
+  mapNameLabel: HTMLDivElement;
+  weatherText: HTMLDivElement;
+  potionHudSlots: HTMLDivElement[];
+  questTracker: HTMLDivElement;
+  vendorHint: HTMLDivElement;
+  chestHint: HTMLDivElement;
+  portalHint: HTMLDivElement;
+  questPopup: HTMLDivElement;
+  deathOverlay: HTMLDivElement;
+  fpsCrosshair: HTMLDivElement;
+  viewModeLabel: HTMLDivElement;
+  dpsDisplay: HTMLDivElement;
+  dpsValueEl: Element | null;
+  lootFilterLabelEl: HTMLDivElement | null;
+}
+
+export interface HUDState {
+  prevHp: number;
+  prevMana: number;
+  hpFlashTimer: number;
+  manaFlashTimer: number;
+  prevSkillCooldowns: number[];
+  lastGoldValue: number;
+  lastLevelValue: number;
+  lastKillValue: number;
+  lastDeathValue: number;
+  lastHpPctInt: number;
+  lastMpPctInt: number;
+  minimapFrameCounter: number;
+  fullmapVisible: boolean;
+  hardcoreLabel: HTMLDivElement | null;
+  riftHud: HTMLDivElement | null;
+  lastRiftProgress: number;
+  lastRiftTime: number;
+  lastRiftState: GreaterRiftState | null;
+  excaliburHud: HTMLDivElement | null;
+  craftingQueueHud: HTMLDivElement | null;
+  lastCraftingPct: number;
+  lastCraftingQueueLen: number;
+  multiplayerHud: HTMLDivElement | null;
+  lastMpMessageCount: number;
+}
+
+/** Parameters that updateHUD reads from the game but does not own. */
+export interface HUDUpdateContext {
+  state: DiabloState;
+  firstPerson: boolean;
+  portalActive: boolean;
+  portalX: number;
+  portalZ: number;
+  combatLog: { time: number; damage: number }[];
+  currentDps: number;
+  /** Called so the game can store the computed DPS back. */
+  setCurrentDps: (v: number) => void;
+  /** Renderer vignette update. */
+  updateVignette: (hpRatio: number) => void;
+  /** Distance helper. */
+  dist: (x1: number, z1: number, x2: number, z2: number) => number;
+  /** The game's own minimap/fullmap/quest tracker updates. */
+  updateMinimap: () => void;
+  updateFullmap: () => void;
+  updateQuestTracker: () => void;
+  /** The HUD container itself (needed for lazily appending dynamic elements). */
+  hudEl: HTMLDivElement;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Factory helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function createHUDState(): HUDState {
+  return {
+    prevHp: -1,
+    prevMana: -1,
+    hpFlashTimer: 0,
+    manaFlashTimer: 0,
+    prevSkillCooldowns: [0, 0, 0, 0, 0, 0],
+    lastGoldValue: -1,
+    lastLevelValue: -1,
+    lastKillValue: -1,
+    lastDeathValue: -1,
+    lastHpPctInt: -1,
+    lastMpPctInt: -1,
+    minimapFrameCounter: 0,
+    fullmapVisible: false,
+    hardcoreLabel: null,
+    riftHud: null,
+    lastRiftProgress: -1,
+    lastRiftTime: -1,
+    lastRiftState: null,
+    excaliburHud: null,
+    craftingQueueHud: null,
+    lastCraftingPct: -1,
+    lastCraftingQueueLen: -1,
+    multiplayerHud: null,
+    lastMpMessageCount: -1,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  buildHUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function buildHUD(hud: HTMLDivElement): HUDRefs {
+  hud.innerHTML = "";
+
+  // Inject CSS keyframe animations for HUD effects
+  const hudStyleEl = document.createElement("style");
+  hudStyleEl.textContent = `
+    @keyframes hud-blood-drip {
+      0%, 100% { opacity:0.6; transform:translateX(-50%) scaleY(1); }
+      50% { opacity:1; transform:translateX(-50%) scaleY(1.5); }
+    }
+    @keyframes hud-arcane-particles {
+      0% { box-shadow:0 0 4px 2px rgba(100,100,255,0.6), 8px -6px 3px 1px rgba(120,80,255,0.4), -6px -8px 2px 1px rgba(80,120,255,0.5); }
+      33% { box-shadow:-4px -10px 4px 2px rgba(120,80,255,0.5), 6px 4px 3px 1px rgba(80,120,255,0.6), 10px -4px 2px 1px rgba(100,100,255,0.4); }
+      66% { box-shadow:6px -4px 4px 2px rgba(80,120,255,0.4), -8px 2px 3px 1px rgba(100,100,255,0.6), 2px -12px 2px 1px rgba(120,80,255,0.5); }
+      100% { box-shadow:0 0 4px 2px rgba(100,100,255,0.6), 8px -6px 3px 1px rgba(120,80,255,0.4), -6px -8px 2px 1px rgba(80,120,255,0.5); }
+    }
+    @keyframes hud-xp-pulse {
+      0%, 100% { box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
+      50% { box-shadow:0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3); }
+    }
+    @keyframes hud-xp-shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes hud-torch-flicker {
+      0%, 100% { opacity:0.85; transform:scaleX(1) scaleY(1); }
+      25% { opacity:1; transform:scaleX(1.05) scaleY(1.1); }
+      50% { opacity:0.75; transform:scaleX(0.95) scaleY(0.95); }
+      75% { opacity:0.95; transform:scaleX(1.02) scaleY(1.05); }
+    }
+    @keyframes hud-torch-glow {
+      0%, 100% { box-shadow:0 0 15px 8px rgba(255,140,20,0.3), 0 0 30px 12px rgba(255,100,0,0.15); }
+      50% { box-shadow:0 0 20px 12px rgba(255,140,20,0.45), 0 0 40px 16px rgba(255,100,0,0.2); }
+    }
+    @keyframes hud-compass-spin {
+      0% { transform:translate(-50%,-50%) rotate(0deg); }
+      100% { transform:translate(-50%,-50%) rotate(360deg); }
+    }
+    @keyframes hud-bar-breathe {
+      0%, 100% { box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.25),
+        inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 1px rgba(200,168,78,0.3),
+        0 -2px 15px rgba(200,168,78,0.08); }
+      50% { box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.35),
+        inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 3px rgba(200,168,78,0.4),
+        0 -2px 20px rgba(200,168,78,0.15); }
+    }
+    @keyframes hud-orb-low-pulse {
+      0%, 100% { border-color: rgba(255,40,40,0.6); }
+      50% { border-color: rgba(255,80,80,0.9); }
+    }
+    @keyframes hud-slot-hover-glow {
+      0%, 100% { box-shadow:inset 0 0 20px rgba(200,168,78,0.15), 0 0 8px rgba(200,168,78,0.2); }
+      50% { box-shadow:inset 0 0 25px rgba(200,168,78,0.25), 0 0 14px rgba(200,168,78,0.35); }
+    }
+  `;
+  hud.appendChild(hudStyleEl);
+
+  // Health orb - bottom left (ornate)
+  const hpOrbWrap = document.createElement("div");
+  hpOrbWrap.style.cssText = `
+    position:absolute;bottom:22px;left:22px;width:150px;height:150px;
+    display:flex;align-items:center;justify-content:center;
+    filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
+  `;
+  // Outer decorative ring
+  const hpRingOuter = document.createElement("div");
+  hpRingOuter.style.cssText = `
+    position:absolute;width:146px;height:146px;border-radius:50%;
+    border:3px solid transparent;
+    background:conic-gradient(from 0deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914, #6b4f0e, #8b6914) border-box;
+    -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;
+    pointer-events:none;
+  `;
+  // Inner decorative ring
+  const hpRingInner = document.createElement("div");
+  hpRingInner.style.cssText = `
+    position:absolute;width:146px;height:146px;border-radius:50%;
+    border:2px solid rgba(60,5,5,0.8);
+    box-shadow:0 0 6px rgba(0,0,0,0.6);
+    pointer-events:none;
+  `;
+  const hpOrb = document.createElement("div");
+  hpOrb.style.cssText = `
+    width:130px;height:130px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, rgba(60,10,10,0.9), rgba(20,2,2,0.97));
+    overflow:hidden;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 20px rgba(180,20,20,0.5), inset 0 0 30px rgba(0,0,0,0.6),
+      inset 0 0 60px rgba(120,10,10,0.2);
+  `;
+  const hpBar = document.createElement("div");
+  hpBar.style.cssText = `
+    position:absolute;bottom:0;left:0;width:100%;height:100%;
+    background:radial-gradient(circle at 40% 40%, rgba(220,40,40,0.9), rgba(140,10,10,0.85));
+    border-radius:50%;transition:height 0.3s;
+    box-shadow:inset 0 -5px 15px rgba(255,60,60,0.3);
+  `;
+  // Inner glow overlay
+  const hpGlow = document.createElement("div");
+  hpGlow.style.cssText = `
+    position:absolute;top:10%;left:15%;width:40%;height:30%;
+    background:radial-gradient(ellipse, rgba(255,180,180,0.25), transparent);
+    border-radius:50%;pointer-events:none;z-index:2;
+  `;
+  const hpText = document.createElement("div");
+  hpText.style.cssText = `
+    position:relative;z-index:3;color:#ffdddd;font-size:15px;font-weight:bold;text-align:center;
+    text-shadow:0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,1),
+      0 0 20px rgba(180,20,20,0.3);
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    letter-spacing:1px;
+  `;
+  // Skull decoration on top
+  const hpSkull = document.createElement("div");
+  hpSkull.style.cssText = `
+    position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:4;
+    font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+    color:#c8a84e;pointer-events:none;
+  `;
+  hpSkull.textContent = "\u2020";
+  // Corner flourishes (4 positions)
+  const hpFlourishes = [
+    { top: "2px", left: "2px", rot: "0deg" },
+    { top: "2px", right: "2px", rot: "90deg" },
+    { bottom: "2px", left: "2px", rot: "270deg" },
+    { bottom: "2px", right: "2px", rot: "180deg" },
+  ];
+  for (const pos of hpFlourishes) {
+    const fl = document.createElement("div");
+    let posStr = `position:absolute;width:14px;height:14px;pointer-events:none;z-index:5;`;
+    if (pos.top) posStr += `top:${pos.top};`;
+    if (pos.bottom) posStr += `bottom:${pos.bottom};`;
+    if (pos.left) posStr += `left:${pos.left};`;
+    if (pos.right) posStr += `right:${pos.right};`;
+    posStr += `transform:rotate(${pos.rot});font-size:10px;color:#c8a84e;text-shadow:0 0 4px rgba(200,168,78,0.4);`;
+    fl.style.cssText = posStr;
+    fl.textContent = "\u269C";
+    hpOrbWrap.appendChild(fl);
+  }
+  hpOrb.appendChild(hpBar);
+  hpOrb.appendChild(hpGlow);
+  hpOrb.appendChild(hpText);
+  hpOrbWrap.appendChild(hpRingOuter);
+  hpOrbWrap.appendChild(hpRingInner);
+  hpOrbWrap.appendChild(hpOrb);
+  hpOrbWrap.appendChild(hpSkull);
+
+  // === HP Orb enhancements ===
+  // Second outer ring (dark metal, behind existing gold ring)
+  const hpRingOuter2 = document.createElement("div");
+  hpRingOuter2.style.cssText = `
+    position:absolute;width:144px;height:144px;border-radius:50%;
+    border:4px solid transparent;
+    background:conic-gradient(from 0deg, #3a2a10, #5a4420, #3a2a10, #2a1a08, #3a2a10) border-box;
+    -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;
+    pointer-events:none;z-index:-1;
+  `;
+  hpOrbWrap.appendChild(hpRingOuter2);
+
+  // Tick marks (8 radial lines around the ring)
+  for (let t = 0; t < 8; t++) {
+    const tick = document.createElement("div");
+    tick.style.cssText = `
+      position:absolute;width:2px;height:10px;
+      background:linear-gradient(180deg, #c8a84e, rgba(139,105,20,0.3));
+      top:50%;left:50%;transform-origin:0 0;
+      transform:rotate(${t * 45}deg) translate(-1px, -72px);
+      pointer-events:none;z-index:6;
+    `;
+    hpOrbWrap.appendChild(tick);
+  }
+
+  // Animated blood drip at top of orb
+  const hpBloodDrip = document.createElement("div");
+  hpBloodDrip.style.cssText = `
+    position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;
+    width:6px;height:12px;border-radius:50% 50% 50% 50% / 30% 30% 70% 70%;
+    background:radial-gradient(circle at 40% 30%, rgba(220,40,40,0.9), rgba(140,10,10,0.7));
+    animation:hud-blood-drip 2s ease-in-out infinite;
+    pointer-events:none;
+  `;
+  hpOrbWrap.appendChild(hpBloodDrip);
+
+  // Chain link decoration connecting to skill bar
+  const hpChain = document.createElement("div");
+  hpChain.style.cssText = `
+    position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);z-index:6;
+    width:8px;height:20px;pointer-events:none;
+    background:repeating-linear-gradient(180deg, #8b6914 0px, #c8a84e 2px, #8b6914 4px, transparent 4px, transparent 6px);
+    border-radius:2px;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+  `;
+  hpOrbWrap.appendChild(hpChain);
+
+  // Bottom ornament (fleur-de-lis)
+  const hpBottomOrnament = document.createElement("div");
+  hpBottomOrnament.style.cssText = `
+    position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);z-index:8;
+    font-size:16px;color:#c8a84e;pointer-events:none;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+    text-shadow:0 0 6px rgba(200,168,78,0.4);
+  `;
+  hpBottomOrnament.textContent = "\u269C";
+  hpOrbWrap.appendChild(hpBottomOrnament);
+
+  hud.appendChild(hpOrbWrap);
+
+  // Mana orb - bottom right (ornate)
+  const mpOrbWrap = document.createElement("div");
+  mpOrbWrap.style.cssText = `
+    position:absolute;bottom:22px;right:22px;width:150px;height:150px;
+    display:flex;align-items:center;justify-content:center;
+    filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
+  `;
+  // Outer decorative ring (silver/blue)
+  const mpRingOuter = document.createElement("div");
+  mpRingOuter.style.cssText = `
+    position:absolute;width:146px;height:146px;border-radius:50%;
+    border:3px solid transparent;
+    background:conic-gradient(from 0deg, #4a5a8b, #7a8ac8, #a0b0e8, #7a8ac8, #4a5a8b, #3a4a6b, #4a5a8b) border-box;
+    -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;
+    pointer-events:none;
+  `;
+  // Inner ring
+  const mpRingInner = document.createElement("div");
+  mpRingInner.style.cssText = `
+    position:absolute;width:136px;height:136px;border-radius:50%;
+    border:2px solid rgba(5,5,60,0.8);
+    box-shadow:0 0 6px rgba(0,0,0,0.6);
+    pointer-events:none;
+  `;
+  const mpOrb = document.createElement("div");
+  mpOrb.style.cssText = `
+    width:130px;height:130px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, rgba(10,10,60,0.9), rgba(2,2,20,0.97));
+    overflow:hidden;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 20px rgba(30,30,200,0.5), inset 0 0 30px rgba(0,0,0,0.6),
+      inset 0 0 60px rgba(10,10,120,0.2);
+  `;
+  const mpBar = document.createElement("div");
+  mpBar.style.cssText = `
+    position:absolute;bottom:0;left:0;width:100%;height:100%;
+    background:radial-gradient(circle at 40% 40%, rgba(60,60,240,0.9), rgba(20,20,140,0.85));
+    border-radius:50%;transition:height 0.3s;
+    box-shadow:inset 0 -5px 15px rgba(60,60,255,0.3);
+  `;
+  // Inner glow
+  const mpGlow = document.createElement("div");
+  mpGlow.style.cssText = `
+    position:absolute;top:10%;left:15%;width:40%;height:30%;
+    background:radial-gradient(ellipse, rgba(180,180,255,0.25), transparent);
+    border-radius:50%;pointer-events:none;z-index:2;
+  `;
+  const mpText = document.createElement("div");
+  mpText.style.cssText = `
+    position:relative;z-index:3;color:#ddddff;font-size:15px;font-weight:bold;text-align:center;
+    text-shadow:0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,1),
+      0 0 20px rgba(40,40,200,0.3);
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    letter-spacing:1px;
+  `;
+  // Arcane rune decoration on top
+  const mpRune = document.createElement("div");
+  mpRune.style.cssText = `
+    position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:4;
+    font-size:16px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+    color:#7a8ac8;pointer-events:none;
+  `;
+  mpRune.textContent = "\u2726";
+  // Corner rune flourishes
+  const mpFlourishes = [
+    { top: "2px", left: "2px", rot: "0deg" },
+    { top: "2px", right: "2px", rot: "90deg" },
+    { bottom: "2px", left: "2px", rot: "270deg" },
+    { bottom: "2px", right: "2px", rot: "180deg" },
+  ];
+  for (const pos of mpFlourishes) {
+    const fl = document.createElement("div");
+    let posStr = `position:absolute;width:14px;height:14px;pointer-events:none;z-index:5;`;
+    if (pos.top) posStr += `top:${pos.top};`;
+    if (pos.bottom) posStr += `bottom:${pos.bottom};`;
+    if (pos.left) posStr += `left:${pos.left};`;
+    if (pos.right) posStr += `right:${pos.right};`;
+    posStr += `transform:rotate(${pos.rot});font-size:10px;color:#7a8ac8;text-shadow:0 0 4px rgba(100,120,200,0.4);`;
+    fl.style.cssText = posStr;
+    fl.textContent = "\u2727";
+    mpOrbWrap.appendChild(fl);
+  }
+  mpOrb.appendChild(mpBar);
+  mpOrb.appendChild(mpGlow);
+  mpOrb.appendChild(mpText);
+  mpOrbWrap.appendChild(mpRingOuter);
+  mpOrbWrap.appendChild(mpRingInner);
+  mpOrbWrap.appendChild(mpOrb);
+  mpOrbWrap.appendChild(mpRune);
+
+  // === MP Orb enhancements ===
+  // Second outer ring (silver metal, behind existing ring)
+  const mpRingOuter2 = document.createElement("div");
+  mpRingOuter2.style.cssText = `
+    position:absolute;width:144px;height:144px;border-radius:50%;
+    border:4px solid transparent;
+    background:conic-gradient(from 0deg, #2a2a3a, #3a3a5a, #2a2a3a, #1a1a28, #2a2a3a) border-box;
+    -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;
+    pointer-events:none;z-index:-1;
+  `;
+  mpOrbWrap.appendChild(mpRingOuter2);
+
+  // Tick marks (8 radial lines)
+  for (let t = 0; t < 8; t++) {
+    const tick = document.createElement("div");
+    tick.style.cssText = `
+      position:absolute;width:2px;height:10px;
+      background:linear-gradient(180deg, #7a8ac8, rgba(74,90,139,0.3));
+      top:50%;left:50%;transform-origin:0 0;
+      transform:rotate(${t * 45}deg) translate(-1px, -72px);
+      pointer-events:none;z-index:6;
+    `;
+    mpOrbWrap.appendChild(tick);
+  }
+
+  // Arcane energy particles effect
+  const mpArcaneParticles = document.createElement("div");
+  mpArcaneParticles.style.cssText = `
+    position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:7;
+    width:4px;height:4px;border-radius:50%;
+    background:rgba(120,100,255,0.8);
+    animation:hud-arcane-particles 3s ease-in-out infinite;
+    pointer-events:none;
+  `;
+  mpOrbWrap.appendChild(mpArcaneParticles);
+
+  // Chain link decoration connecting to skill bar
+  const mpChain = document.createElement("div");
+  mpChain.style.cssText = `
+    position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);z-index:6;
+    width:8px;height:20px;pointer-events:none;
+    background:repeating-linear-gradient(180deg, #4a5a8b 0px, #7a8ac8 2px, #4a5a8b 4px, transparent 4px, transparent 6px);
+    border-radius:2px;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+  `;
+  mpOrbWrap.appendChild(mpChain);
+
+  // Bottom rune ornament
+  const mpBottomOrnament = document.createElement("div");
+  mpBottomOrnament.style.cssText = `
+    position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);z-index:8;
+    font-size:16px;color:#7a8ac8;pointer-events:none;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+    text-shadow:0 0 6px rgba(100,120,200,0.4);
+  `;
+  mpBottomOrnament.textContent = "\u25C6";
+  mpOrbWrap.appendChild(mpBottomOrnament);
+
+  hud.appendChild(mpOrbWrap);
+
+  // Skill bar - bottom center (ornate stone bar)
+  const skillBarBg = document.createElement("div");
+  skillBarBg.style.cssText = `
+    position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+    padding:10px 14px;display:flex;gap:6px;
+    background:linear-gradient(180deg, rgba(45,38,25,0.95), rgba(25,20,10,0.97), rgba(35,28,18,0.95));
+    border:2px solid #8b7a4a;border-radius:8px;
+    animation:hud-bar-breathe 4s ease-in-out infinite;
+    background-image:repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(200,168,78,0.015) 8px, rgba(200,168,78,0.015) 16px);
+  `;
+  // Left end-cap ornament
+  const skillCapL = document.createElement("div");
+  skillCapL.style.cssText = `
+    position:absolute;left:-10px;top:50%;transform:translateY(-50%);
+    font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
+    pointer-events:none;
+  `;
+  skillCapL.textContent = "\uD83D\uDDFF";
+  skillBarBg.appendChild(skillCapL);
+  // Right end-cap ornament (gargoyle)
+  const skillCapR = document.createElement("div");
+  skillCapR.style.cssText = `
+    position:absolute;right:-14px;top:50%;transform:translateY(-50%) scaleX(-1);
+    font-size:20px;color:#c8a84e;filter:drop-shadow(0 0 4px rgba(200,168,78,0.4));
+    pointer-events:none;
+  `;
+  skillCapR.textContent = "\uD83D\uDDFF";
+  skillBarBg.appendChild(skillCapR);
+
+  // Top decorative border strip (gothic repeating pattern via box-shadow)
+  const skillTopBorder = document.createElement("div");
+  skillTopBorder.style.cssText = `
+    position:absolute;top:-6px;left:10px;right:10px;height:4px;pointer-events:none;
+    background:linear-gradient(90deg, transparent, #c8a84e, #e8d07a, #c8a84e, transparent);
+    box-shadow:0 -2px 0 rgba(139,105,20,0.4),
+      -20px -4px 0 1px rgba(200,168,78,0.15), 0px -4px 0 1px rgba(200,168,78,0.2), 20px -4px 0 1px rgba(200,168,78,0.15),
+      -40px -4px 0 1px rgba(200,168,78,0.1), 40px -4px 0 1px rgba(200,168,78,0.1);
+    z-index:10;
+  `;
+  skillBarBg.appendChild(skillTopBorder);
+
+  // Bottom shadow/depth strip for 3D beveled effect
+  const skillBottomStrip = document.createElement("div");
+  skillBottomStrip.style.cssText = `
+    position:absolute;bottom:-4px;left:4px;right:4px;height:4px;pointer-events:none;
+    background:linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.1));
+    border-radius:0 0 8px 8px;z-index:10;
+  `;
+  skillBarBg.appendChild(skillBottomStrip);
+
+  // Runic inscription strip below skill bar
+  const runicStrip = document.createElement("div");
+  runicStrip.style.cssText = `
+    position:absolute;bottom:-16px;left:20px;right:20px;height:12px;pointer-events:none;
+    text-align:center;font-size:8px;letter-spacing:3px;
+    color:rgba(200,168,78,0.35);z-index:10;
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    text-shadow:0 0 4px rgba(200,168,78,0.15);
+  `;
+  runicStrip.textContent = "\u16A0 \u16B1 \u16C1 \u16A2 \u16B3 \u16C7 \u16A8 \u16B7 \u16C9 \u16AA";
+  skillBarBg.appendChild(runicStrip);
+
+  const skillBarGlow = document.createElement("div");
+  skillBarGlow.style.cssText = `
+    position:absolute;bottom:-8px;left:10%;right:10%;height:8px;pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(200,168,78,0.15), transparent);
+    filter:blur(4px);z-index:-1;
+  `;
+  skillBarBg.appendChild(skillBarGlow);
+
+  const skillSlots: HTMLDivElement[] = [];
+  const skillCooldownOverlays: HTMLDivElement[] = [];
+  for (let i = 0; i < 6; i++) {
+    const slotWrap = document.createElement("div");
+    slotWrap.style.cssText = `
+      position:relative;width:66px;height:66px;
+    `;
+    const slot = document.createElement("div");
+    slot.style.cssText = `
+      width:66px;height:66px;
+      background:linear-gradient(145deg, rgba(40,32,18,0.97), rgba(18,12,5,0.98), rgba(30,24,12,0.96));
+      border:2px solid #9a8a4a;border-radius:8px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;position:relative;overflow:hidden;
+      box-shadow:inset 0 1px 0 rgba(200,168,78,0.3), inset 0 -1px 0 rgba(0,0,0,0.5),
+        0 2px 10px rgba(0,0,0,0.7), inset 0 0 20px rgba(200,168,78,0.06),
+        inset 0 0 8px rgba(0,0,0,0.4);
+      background-image:
+        radial-gradient(ellipse at 30% 20%, rgba(200,168,78,0.06) 0%, transparent 60%),
+        repeating-conic-gradient(from 0deg, rgba(200,168,78,0.02) 0deg 15deg, transparent 15deg 30deg);
+    `;
+    // Ornate frame corners on each slot
+    const cornerDeco = document.createElement("div");
+    cornerDeco.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;
+      border-radius:8px;
+      box-shadow:inset 2px 2px 0 rgba(200,168,78,0.15), inset -2px -2px 0 rgba(200,168,78,0.1);
+    `;
+
+    const cdOverlay = document.createElement("div");
+    cdOverlay.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:0%;
+      background:linear-gradient(180deg, rgba(0,0,0,0.75), rgba(10,5,0,0.6) 80%, rgba(60,40,10,0.2));
+      transition:height 0.1s;pointer-events:none;
+      border-bottom:1px solid rgba(200,168,78,0.25);
+    `;
+
+    const cdText = document.createElement("div");
+    cdText.style.cssText = `
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      font-size:18px;font-weight:bold;color:#fff;z-index:3;
+      text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none;display:none;
+    `;
+    cdText.className = "skill-cd-text";
+
+    const keyLabel = document.createElement("div");
+    keyLabel.style.cssText = `
+      position:absolute;bottom:2px;right:4px;font-size:10px;color:#9a8a5a;z-index:2;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    `;
+    keyLabel.textContent = String(i + 1);
+
+    const iconEl = document.createElement("div");
+    iconEl.style.cssText = "font-size:34px;z-index:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));";
+    iconEl.className = "skill-icon";
+
+    // Inner bevel highlight (raised stone look)
+    const innerBevel = document.createElement("div");
+    innerBevel.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;
+      border-radius:6px;
+      border-top:1px solid rgba(200,180,120,0.25);
+      border-left:1px solid rgba(200,180,120,0.2);
+      border-bottom:1px solid rgba(0,0,0,0.5);
+      border-right:1px solid rgba(0,0,0,0.4);
+    `;
+
+    slot.appendChild(cdOverlay);
+    slot.appendChild(iconEl);
+    slot.appendChild(cdText);
+    slot.appendChild(keyLabel);
+    slot.appendChild(cornerDeco);
+    slot.appendChild(innerBevel);
+    slotWrap.appendChild(slot);
+
+    // Divider line between slots (not after last one)
+    if (i < 5) {
+      const divider = document.createElement("div");
+      divider.style.cssText = `
+        position:absolute;right:-4px;top:4px;bottom:4px;width:2px;pointer-events:none;z-index:6;
+        background:linear-gradient(180deg, transparent, #c8a84e, #e8d07a, #c8a84e, transparent);
+        box-shadow:0 0 4px rgba(200,168,78,0.3);
+      `;
+      slotWrap.appendChild(divider);
+    }
+
+    skillBarBg.appendChild(slotWrap);
+    skillSlots.push(slot);
+    skillCooldownOverlays.push(cdOverlay);
+  }
+  hud.appendChild(skillBarBg);
+
+  // XP bar - very bottom (ornate, enhanced)
+  const xpContainer = document.createElement("div");
+  xpContainer.style.cssText = `
+    position:absolute;bottom:0;left:0;width:100%;height:18px;
+    background:linear-gradient(180deg, rgba(30,22,8,0.95), rgba(15,10,3,0.95));
+    border-top:2px solid rgba(200,168,78,0.4);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);
+  `;
+  // Gothic-style repeating peaks border on top
+  const xpGothicBorder = document.createElement("div");
+  xpGothicBorder.style.cssText = `
+    position:absolute;top:-6px;left:0;right:0;height:4px;pointer-events:none;z-index:4;
+    background:repeating-linear-gradient(90deg,
+      transparent 0px, transparent 8px,
+      rgba(200,168,78,0.3) 8px, rgba(200,168,78,0.3) 10px,
+      transparent 10px, transparent 18px);
+  `;
+  xpContainer.appendChild(xpGothicBorder);
+  // Filigree left end-cap (wider ornamental)
+  const xpCapL = document.createElement("div");
+  xpCapL.style.cssText = `
+    position:absolute;left:2px;top:50%;transform:translateY(-50%);z-index:3;
+    font-size:14px;color:#c8a84e;pointer-events:none;
+    filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));
+  `;
+  xpCapL.textContent = "\u2761\u25C0";
+  xpContainer.appendChild(xpCapL);
+  // Filigree right end-cap
+  const xpCapR = document.createElement("div");
+  xpCapR.style.cssText = `
+    position:absolute;right:2px;top:50%;transform:translateY(-50%);z-index:3;
+    font-size:14px;color:#c8a84e;pointer-events:none;
+    filter:drop-shadow(0 0 3px rgba(200,168,78,0.4));
+  `;
+  xpCapR.textContent = "\u25B6\u2761";
+  xpContainer.appendChild(xpCapR);
+  // Segment marks every 10%
+  for (let s = 1; s < 10; s++) {
+    const seg = document.createElement("div");
+    seg.style.cssText = `
+      position:absolute;left:${s * 10}%;top:2px;bottom:2px;width:1px;z-index:2;
+      background:linear-gradient(180deg, rgba(200,168,78,0.5), rgba(200,168,78,0.15));
+      pointer-events:none;
+    `;
+    xpContainer.appendChild(seg);
+  }
+  const xpBar = document.createElement("div");
+  xpBar.style.cssText = `
+    height:100%;width:0%;
+    background:linear-gradient(90deg,#6b5500,#ffd700,#fff4aa,#ffd700,#6b5500);
+    background-size:200% 100%;
+    animation:hud-xp-shimmer 3s linear infinite;
+    transition:width 0.3s;
+    box-shadow:0 0 10px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+  `;
+  xpContainer.appendChild(xpBar);
+  // Level indicator text embedded in bar
+  const xpLevelText = document.createElement("div");
+  xpLevelText.style.cssText = `
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;
+    font-size:10px;color:#e8d07a;font-weight:bold;pointer-events:none;
+    text-shadow:0 0 4px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.8);
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    letter-spacing:1px;
+  `;
+  xpContainer.appendChild(xpLevelText);
+  hud.appendChild(xpContainer);
+
+  // Top right info (parchment panel, enhanced)
+  const topRight = document.createElement("div");
+  topRight.style.cssText = `
+    position:absolute;top:16px;right:20px;text-align:right;
+    background:linear-gradient(180deg, rgba(35,28,15,0.9), rgba(20,15,8,0.92), rgba(30,24,12,0.9));
+    border:2px solid #7a6a3a;border-radius:8px;
+    padding:14px 18px;min-width:160px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
+      inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2),
+      inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3);
+    transition:border-color 0.3s, box-shadow 0.3s;
+  `;
+  // Top ornament for the panel
+  const panelOrnament = document.createElement("div");
+  panelOrnament.style.cssText = `
+    position:absolute;top:-8px;left:50%;transform:translateX(-50%);
+    font-size:14px;color:#c8a84e;filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
+    pointer-events:none;
+  `;
+  panelOrnament.textContent = "\u2736";
+  topRight.appendChild(panelOrnament);
+  const goldText = document.createElement("div");
+  goldText.style.cssText = `
+    font-size:20px;color:#ffd700;margin-bottom:6px;
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    text-shadow:0 0 8px rgba(255,215,0,0.5), 0 0 16px rgba(255,215,0,0.2), 0 1px 3px rgba(0,0,0,0.9);
+    letter-spacing:1px;transition:text-shadow 0.3s, transform 0.2s;
+  `;
+  const levelText = document.createElement("div");
+  levelText.style.cssText = `
+    font-size:18px;color:#c8a84e;margin-bottom:5px;
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    text-shadow:0 0 6px rgba(200,168,78,0.3), 0 1px 2px rgba(0,0,0,0.7);
+  `;
+  const killText = document.createElement("div");
+  killText.style.cssText = `
+    font-size:15px;color:#bbb;
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    text-shadow:0 1px 2px rgba(0,0,0,0.6);
+  `;
+  topRight.appendChild(goldText);
+
+  // Separator between gold and level
+  const sep1 = document.createElement("div");
+  sep1.style.cssText = `
+    width:100%;height:1px;margin:4px 0;pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(200,168,78,0.4), rgba(200,168,78,0.6), rgba(200,168,78,0.4), transparent);
+  `;
+  topRight.appendChild(sep1);
+
+  topRight.appendChild(levelText);
+
+  // Separator between level and kills
+  const sep2 = document.createElement("div");
+  sep2.style.cssText = `
+    width:100%;height:1px;margin:4px 0;pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(200,168,78,0.3), rgba(200,168,78,0.5), rgba(200,168,78,0.3), transparent);
+  `;
+  topRight.appendChild(sep2);
+
+  topRight.appendChild(killText);
+
+  // Corner metal brackets (L-shaped gold corners)
+  const bracketPositions = [
+    { top: "3px", left: "3px", borderSides: "border-top:2px solid #c8a84e;border-left:2px solid #c8a84e;" },
+    { top: "3px", right: "3px", borderSides: "border-top:2px solid #c8a84e;border-right:2px solid #c8a84e;" },
+    { bottom: "3px", left: "3px", borderSides: "border-bottom:2px solid #c8a84e;border-left:2px solid #c8a84e;" },
+    { bottom: "3px", right: "3px", borderSides: "border-bottom:2px solid #c8a84e;border-right:2px solid #c8a84e;" },
+  ];
+  for (const bp of bracketPositions) {
+    const bracket = document.createElement("div");
+    let bStyle = `position:absolute;width:12px;height:12px;pointer-events:none;z-index:5;${bp.borderSides}`;
+    if (bp.top) bStyle += `top:${bp.top};`;
+    if (bp.bottom) bStyle += `bottom:${bp.bottom};`;
+    if (bp.left) bStyle += `left:${bp.left};`;
+    if (bp.right) bStyle += `right:${bp.right};`;
+    bracket.style.cssText = bStyle;
+    topRight.appendChild(bracket);
+  }
+
+  // Wax seal decoration at the bottom
+  const waxSeal = document.createElement("div");
+  waxSeal.style.cssText = `
+    position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);z-index:6;
+    width:24px;height:24px;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle at 40% 35%, #cc3333, #8b1a1a, #5a0a0a);
+    box-shadow:0 1px 4px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,100,100,0.3);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:rgba(180,40,40,0.8);text-shadow:0 0 2px rgba(0,0,0,0.4);
+  `;
+  waxSeal.textContent = "\u2605";
+  topRight.appendChild(waxSeal);
+
+  hud.appendChild(topRight);
+
+  // Minimap canvas - top-left corner (ornate frame)
+  const minimapWrap = document.createElement("div");
+  minimapWrap.style.cssText = `
+    position:absolute;top:12px;left:12px;width:216px;height:216px;
+    display:flex;align-items:center;justify-content:center;
+  `;
+  // Ornate outer frame
+  const mmFrame = document.createElement("div");
+  mmFrame.style.cssText = `
+    position:absolute;width:216px;height:216px;border-radius:6px;
+    border:3px solid transparent;pointer-events:none;
+    background:linear-gradient(135deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914) border-box;
+    -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;
+    box-shadow:0 0 8px rgba(200,168,78,0.3);
+  `;
+  minimapWrap.appendChild(mmFrame);
+  // Inner thick border
+  const mmInner = document.createElement("div");
+  mmInner.style.cssText = `
+    position:absolute;width:208px;height:208px;border-radius:4px;
+    border:2px solid rgba(40,30,10,0.9);pointer-events:none;
+    box-shadow:inset 0 0 6px rgba(0,0,0,0.5);
+  `;
+  minimapWrap.appendChild(mmInner);
+  // Corner rivets (small gold circles)
+  const mmCorners = [
+    { top: "-5px", left: "-5px" },
+    { top: "-5px", right: "-5px" },
+    { bottom: "-5px", left: "-5px" },
+    { bottom: "-5px", right: "-5px" },
+  ];
+  for (const pos of mmCorners) {
+    const c = document.createElement("div");
+    let cStyle = `position:absolute;width:10px;height:10px;border-radius:50%;z-index:3;pointer-events:none;
+      background:radial-gradient(circle at 35% 35%, #e8d07a, #c8a84e, #8b6914);
+      box-shadow:0 1px 3px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,200,0.3);`;
+    if (pos.top) cStyle += `top:${pos.top};`;
+    if (pos.bottom) cStyle += `bottom:${pos.bottom};`;
+    if (pos.left) cStyle += `left:${pos.left};`;
+    if (pos.right) cStyle += `right:${pos.right};`;
+    c.style.cssText = cStyle;
+    minimapWrap.appendChild(c);
+  }
+
+  // Chain/rope edge effect around minimap frame
+  const mmChainEdge = document.createElement("div");
+  mmChainEdge.style.cssText = `
+    position:absolute;width:222px;height:222px;border-radius:6px;pointer-events:none;z-index:1;
+    top:50%;left:50%;transform:translate(-50%,-50%);
+    box-shadow:
+      inset 3px 0 0 -1px rgba(139,105,20,0.25), inset -3px 0 0 -1px rgba(139,105,20,0.25),
+      inset 0 3px 0 -1px rgba(139,105,20,0.25), inset 0 -3px 0 -1px rgba(139,105,20,0.25),
+      3px 0 0 -1px rgba(139,105,20,0.15), -3px 0 0 -1px rgba(139,105,20,0.15),
+      0 3px 0 -1px rgba(139,105,20,0.15), 0 -3px 0 -1px rgba(139,105,20,0.15);
+  `;
+  minimapWrap.appendChild(mmChainEdge);
+
+  // 4 compass point labels (N, S, E, W)
+  const compassLabels = [
+    { label: "N", top: "-2px", left: "50%", extra: "transform:translateX(-50%);" },
+    { label: "S", bottom: "-2px", left: "50%", extra: "transform:translateX(-50%);" },
+    { label: "E", right: "-1px", top: "50%", extra: "transform:translateY(-50%);" },
+    { label: "W", left: "1px", top: "50%", extra: "transform:translateY(-50%);" },
+  ];
+  for (const cl of compassLabels) {
+    const lbl = document.createElement("div");
+    let lStyle = `position:absolute;z-index:4;font-size:11px;color:#e8d07a;font-weight:bold;pointer-events:none;
+      text-shadow:0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(200,168,78,0.3);
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;`;
+    if (cl.top) lStyle += `top:${cl.top};`;
+    if (cl.bottom) lStyle += `bottom:${cl.bottom};`;
+    if (cl.left) lStyle += `left:${cl.left};`;
+    if (cl.right) lStyle += `right:${cl.right};`;
+    if (cl.extra) lStyle += cl.extra;
+    lbl.style.cssText = lStyle;
+    lbl.textContent = cl.label;
+    minimapWrap.appendChild(lbl);
+  }
+
+  // Rotating compass needle overlay
+  const compassNeedle = document.createElement("div");
+  compassNeedle.style.cssText = `
+    position:absolute;top:50%;left:50%;z-index:5;pointer-events:none;
+    width:2px;height:20px;
+    background:linear-gradient(180deg, #cc2222 0%, #cc2222 50%, #cccccc 50%, #cccccc 100%);
+    transform-origin:center center;
+    animation:hud-compass-spin 30s linear infinite;
+    transform:translate(-50%,-50%) rotate(0deg);
+    opacity:0.6;
+  `;
+  minimapWrap.appendChild(compassNeedle);
+
+  // Parchment texture background behind the map canvas
+  const mmParchment = document.createElement("div");
+  mmParchment.style.cssText = `
+    position:absolute;width:204px;height:204px;border-radius:3px;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(180,160,120,0.08), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(160,140,100,0.06), transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(140,120,80,0.04), transparent 70%),
+      linear-gradient(180deg, rgba(120,100,60,0.05), rgba(80,60,30,0.08));
+  `;
+  minimapWrap.appendChild(mmParchment);
+
+  const minimapCanvas = document.createElement("canvas");
+  minimapCanvas.width = 200;
+  minimapCanvas.height = 200;
+  minimapCanvas.style.cssText = `
+    width:200px;height:200px;border-radius:3px;background:rgba(0,0,0,0.6);
+    box-shadow:inset 0 0 10px rgba(0,0,0,0.4);z-index:1;position:relative;
+  `;
+  const minimapCtx = minimapCanvas.getContext("2d")!;
+  minimapWrap.appendChild(minimapCanvas);
+  hud.appendChild(minimapWrap);
+
+  // DPS meter
+  const dpsMeter = document.createElement("div");
+  dpsMeter.style.cssText = `
+    position:absolute;top:270px;left:16px;
+    font-size:12px;color:#ffcc44;font-family:'Georgia',serif;
+    text-shadow:0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9);
+    pointer-events:none;letter-spacing:1px;opacity:0.8;
+  `;
+  hud.appendChild(dpsMeter);
+
+  // Dedicated map name label below minimap
+  const mapNameLabel = document.createElement("div");
+  mapNameLabel.style.cssText = `
+    position:absolute;top:234px;left:12px;width:216px;text-align:center;
+    font-size:13px;color:#e8d07a;font-weight:bold;
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    text-shadow:0 0 6px rgba(200,168,78,0.3), 0 1px 3px rgba(0,0,0,0.8);
+    background:linear-gradient(90deg, transparent, rgba(25,20,10,0.7), transparent);
+    padding:3px 0;letter-spacing:1px;pointer-events:none;
+  `;
+  hud.appendChild(mapNameLabel);
+
+  // Fullscreen map overlay
+  const fullmapCanvas = document.createElement("canvas");
+  fullmapCanvas.width = 400;
+  fullmapCanvas.height = 400;
+  fullmapCanvas.style.cssText = `
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:400px;
+    border:3px solid #c8a84e;border-radius:8px;background:rgba(0,0,0,0.85);
+    display:none;z-index:5;
+  `;
+  const fullmapCtx = fullmapCanvas.getContext("2d")!;
+  hud.appendChild(fullmapCanvas);
+
+  // Weather text - ornate
+  const weatherText = document.createElement("div");
+  weatherText.style.cssText = `
+    position:absolute;top:258px;left:12px;width:216px;text-align:center;
+    font-size:12px;color:#b8a878;
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    text-shadow:0 1px 3px rgba(0,0,0,0.7);
+    background:linear-gradient(90deg, transparent, rgba(20,16,8,0.6), transparent);
+    padding:2px 0;letter-spacing:0.5px;
+  `;
+  hud.appendChild(weatherText);
+
+  // Potion bar - ornate, enhanced with flask shapes
+  const potionBarBg = document.createElement("div");
+  potionBarBg.style.cssText = `
+    position:absolute;bottom:22px;left:50%;transform:translateX(280px);display:flex;gap:6px;
+    background:linear-gradient(180deg, rgba(35,28,18,0.95), rgba(18,14,8,0.97), rgba(28,22,14,0.95));
+    border:2px solid #7a6a3a;border-radius:8px;padding:8px 12px;
+    box-shadow:0 3px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.15),
+      0 0 1px rgba(200,168,78,0.2), 0 -2px 10px rgba(200,168,78,0.05);
+  `;
+
+  // Wooden rack background (horizontal wood grain lines)
+  const woodenRack = document.createElement("div");
+  woodenRack.style.cssText = `
+    position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
+    border-radius:6px;overflow:hidden;
+    background:repeating-linear-gradient(0deg,
+      transparent 0px, transparent 6px,
+      rgba(90,60,20,0.08) 6px, rgba(90,60,20,0.08) 7px,
+      transparent 7px, transparent 13px,
+      rgba(70,45,15,0.06) 13px, rgba(70,45,15,0.06) 14px);
+  `;
+  potionBarBg.appendChild(woodenRack);
+
+  const potionHudSlots: HTMLDivElement[] = [];
+  const potionLabels = ["F1", "F2", "F3", "F4"];
+  const potionColors = [
+    "rgba(200,40,40,0.5)", "rgba(60,60,220,0.5)", "rgba(40,180,40,0.5)", "rgba(200,180,40,0.5)"
+  ];
+  for (let i = 0; i < 4; i++) {
+    const slot = document.createElement("div");
+    slot.style.cssText = `
+      width:58px;height:70px;background:linear-gradient(180deg, rgba(20,28,15,0.95), rgba(8,14,4,0.97));
+      border:2px solid #8a7a4a;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:4px;
+      box-shadow:inset 0 1px 0 rgba(100,180,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3),
+        0 2px 6px rgba(0,0,0,0.4), inset 0 0 15px rgba(80,160,60,0.03);
+      clip-path:polygon(25% 0%, 75% 0%, 80% 8%, 80% 12%, 100% 20%, 100% 100%, 0% 100%, 0% 20%, 20% 12%, 20% 8%);
+    `;
+
+    // Cork/stopper decoration at top
+    const cork = document.createElement("div");
+    cork.style.cssText = `
+      position:absolute;top:0px;left:50%;transform:translateX(-50%);z-index:4;
+      width:20px;height:6px;pointer-events:none;
+      background:linear-gradient(180deg, #8b7355, #6b5335, #8b7355);
+      border-radius:2px 2px 0 0;
+      box-shadow:0 1px 2px rgba(0,0,0,0.4);
+    `;
+    slot.appendChild(cork);
+
+    // Liquid level indicator (colored fill from bottom)
+    const liquidLevel = document.createElement("div");
+    liquidLevel.style.cssText = `
+      position:absolute;bottom:0;left:0;width:100%;height:60%;z-index:0;
+      background:linear-gradient(0deg, ${potionColors[i]}, transparent);
+      pointer-events:none;transition:height 0.3s;
+    `;
+    slot.appendChild(liquidLevel);
+
+    // Frame corners
+    const potCorner = document.createElement("div");
+    potCorner.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:3;
+      box-shadow:inset 2px 2px 0 rgba(100,180,78,0.1), inset -2px -2px 0 rgba(100,180,78,0.08);
+    `;
+    const keyLabel = document.createElement("div");
+    keyLabel.style.cssText = `
+      position:absolute;bottom:2px;right:3px;font-size:9px;color:#7a9a5a;z-index:2;
+      font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+    `;
+    keyLabel.textContent = potionLabels[i];
+    const iconEl = document.createElement("div");
+    iconEl.style.cssText = "font-size:22px;z-index:1;";
+    iconEl.className = "potion-icon";
+    slot.appendChild(iconEl);
+    slot.appendChild(keyLabel);
+    slot.appendChild(potCorner);
+    potionBarBg.appendChild(slot);
+    potionHudSlots.push(slot);
+  }
+  hud.appendChild(potionBarBg);
+
+  // Quest tracker - ornate scroll style
+  const questTracker = document.createElement("div");
+  questTracker.style.cssText = `
+    position:absolute;top:16px;right:20px;margin-top:100px;width:240px;
+    background:linear-gradient(180deg, rgba(30,24,12,0.9), rgba(15,12,6,0.92), rgba(25,20,10,0.9));
+    border:2px solid #6a5a2a;border-radius:8px;
+    padding:12px 14px;font-size:13px;color:#ccc;display:none;
+    box-shadow:0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15),
+      inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
+    font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+  `;
+  // Scroll top decoration
+  const questScrollTop = document.createElement("div");
+  questScrollTop.style.cssText = `
+    position:absolute;top:-7px;left:50%;transform:translateX(-50%);
+    font-size:12px;color:#c8a84e;pointer-events:none;letter-spacing:4px;
+    filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
+  `;
+  questScrollTop.textContent = "\u2E31 \u2736 \u2E31";
+  questTracker.appendChild(questScrollTop);
+  // Scroll bottom decoration
+  const questScrollBot = document.createElement("div");
+  questScrollBot.style.cssText = `
+    position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);
+    font-size:12px;color:#c8a84e;pointer-events:none;letter-spacing:4px;
+    filter:drop-shadow(0 0 3px rgba(200,168,78,0.3));
+  `;
+  questScrollBot.textContent = "\u2E31 \u2736 \u2E31";
+  questTracker.appendChild(questScrollBot);
+  hud.appendChild(questTracker);
+
+  // Vendor interaction hint
+  const vendorHint = document.createElement("div");
+  vendorHint.style.cssText = `
+    position:absolute;bottom:100px;left:50%;transform:translateX(-50%);
+    padding:8px 20px;background:rgba(10,8,4,0.85);border:1px solid #5a4a2a;
+    border-radius:6px;color:#c8a84e;font-size:14px;font-weight:bold;
+    letter-spacing:1px;display:none;white-space:nowrap;
+  `;
+  hud.appendChild(vendorHint);
+
+  // Chest interaction hint
+  const chestHint = document.createElement("div");
+  chestHint.style.cssText = `
+    position:absolute;bottom:120px;left:50%;transform:translateX(-50%);
+    padding:8px 20px;background:rgba(10,8,4,0.85);border:1px solid #5a4a2a;
+    border-radius:6px;color:#ffd700;font-size:14px;font-weight:bold;
+    letter-spacing:1px;display:none;white-space:nowrap;
+  `;
+  hud.appendChild(chestHint);
+
+  // Town portal interaction hint
+  const portalHint = document.createElement("div");
+  portalHint.style.cssText = `
+    position:absolute;bottom:140px;left:50%;transform:translateX(-50%);
+    padding:8px 20px;background:rgba(10,8,20,0.9);border:1px solid #6688ff;
+    border-radius:6px;color:#88bbff;font-size:14px;font-weight:bold;
+    letter-spacing:1px;display:none;white-space:nowrap;
+    box-shadow:0 0 12px rgba(100,130,255,0.3);
+  `;
+  hud.appendChild(portalHint);
+
+  // Quest popup (centered, semi-transparent parchment style)
+  const questPopup = document.createElement("div");
+  questPopup.style.cssText = `
+    position:absolute;top:12%;left:50%;transform:translateX(-50%);
+    max-width:550px;width:90%;padding:20px 30px;
+    background:linear-gradient(180deg, rgba(35,28,15,0.95) 0%, rgba(25,20,10,0.95) 100%);
+    border:2px solid #5a4a2a;border-radius:10px;
+    box-shadow:0 0 30px rgba(200,168,78,0.15), inset 0 0 20px rgba(0,0,0,0.3);
+    color:#ccbb99;font-family:'Georgia',serif;text-align:center;
+    display:none;z-index:5;pointer-events:none;
+    transition:opacity 0.8s ease-out;
+  `;
+  hud.appendChild(questPopup);
+
+  const deathOverlay = document.createElement("div");
+  deathOverlay.style.cssText = `
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    background:rgba(80,0,0,0.7);display:none;
+    flex-direction:column;align-items:center;justify-content:center;
+    color:#fff;pointer-events:none;
+  `;
+  deathOverlay.innerHTML = `
+    <div style="font-size:48px;font-family:'Georgia',serif;color:#cc2222;
+      text-shadow:0 0 30px rgba(200,30,30,0.6);letter-spacing:4px;">YOU HAVE DIED</div>
+    <div id="diablo-respawn-timer" style="font-size:20px;color:#c8a84e;margin-top:16px;"></div>
+    <div id="diablo-death-recap" style="font-size:14px;color:#aaa;margin-top:10px;text-align:center;"></div>
+    <div id="diablo-gold-loss" style="font-size:16px;color:#ff8888;margin-top:8px;"></div>
+  `;
+  hud.appendChild(deathOverlay);
+
+  // FPS crosshair (hidden by default)
+  const fpsCrosshair = document.createElement("div");
+  fpsCrosshair.style.cssText = `
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;display:none;
+  `;
+  fpsCrosshair.innerHTML =
+    `<div style="position:absolute;width:3px;height:3px;border:1px solid rgba(255,255,255,0.9);border-radius:50%;left:-1px;top:-1px"></div>` +
+    `<div style="position:absolute;width:14px;height:2px;background:rgba(255,255,255,0.6);left:5px;top:0"></div>` +
+    `<div style="position:absolute;width:14px;height:2px;background:rgba(255,255,255,0.6);right:5px;top:0;transform:translateX(100%)"></div>` +
+    `<div style="position:absolute;width:2px;height:14px;background:rgba(255,255,255,0.6);left:0;top:5px"></div>` +
+    `<div style="position:absolute;width:2px;height:14px;background:rgba(255,255,255,0.6);left:0;bottom:5px;transform:translateY(100%)"></div>`;
+  hud.appendChild(fpsCrosshair);
+
+  // View mode indicator - hidden from main HUD (shown in pause menu instead)
+  const viewModeLabel = document.createElement("div");
+  viewModeLabel.style.cssText = `
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    font-size:11px;color:#888;letter-spacing:1px;pointer-events:none;display:none;
+  `;
+  viewModeLabel.textContent = "";
+  hud.appendChild(viewModeLabel);
+
+  // DPS display
+  const dpsDisplay = document.createElement("div");
+  dpsDisplay.style.cssText = `
+    position:absolute;bottom:140px;right:20px;background:rgba(0,0,0,0.7);
+    border:1px solid #5a4a2a;border-radius:6px;padding:8px 12px;display:none;
+    font-family:'Georgia',serif;color:#c8a84e;font-size:13px;min-width:120px;
+  `;
+  dpsDisplay.innerHTML = `<div style="font-size:10px;color:#888;margin-bottom:2px;">DPS METER</div><div id="dps-value">0</div>`;
+  hud.appendChild(dpsDisplay);
+  const dpsValueEl = dpsDisplay.querySelector("#dps-value");
+
+  // Loot filter label
+  const lootFilterLabel = document.createElement("div");
+  lootFilterLabel.id = "loot-filter-label";
+  lootFilterLabel.style.cssText = `
+    position:absolute;bottom:110px;right:20px;color:#ffdd00;font-size:11px;
+    font-family:'Georgia',serif;opacity:0.7;
+  `;
+  lootFilterLabel.textContent = "Filter: Show All (Tab)";
+  hud.appendChild(lootFilterLabel);
+
+  // === Animated torches flanking the skill bar ===
+  const torchPositions = [
+    { side: "left", xOffset: "-300px" },
+    { side: "right", xOffset: "300px" },
+  ];
+  for (const tp of torchPositions) {
+    const torchWrap = document.createElement("div");
+    torchWrap.style.cssText = `
+      position:absolute;bottom:36px;left:50%;
+      transform:translateX(calc(${tp.xOffset} - 50%));
+      width:24px;height:56px;pointer-events:none;z-index:10;
+    `;
+    // Torch bracket (wall mount)
+    const bracket = document.createElement("div");
+    bracket.style.cssText = `
+      position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+      width:14px;height:6px;
+      background:linear-gradient(180deg, #8b7a4a, #5a4a2a);
+      border-radius:2px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.5);
+    `;
+    torchWrap.appendChild(bracket);
+    // Torch handle
+    const torchHandle = document.createElement("div");
+    torchHandle.style.cssText = `
+      position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+      width:8px;height:32px;
+      background:linear-gradient(180deg, #8b6914, #6b4f0e, #4a3508, #6b4f0e);
+      border-radius:2px 2px 3px 3px;
+      box-shadow:inset 1px 0 0 rgba(200,168,78,0.2), inset -1px 0 0 rgba(0,0,0,0.3),
+        0 0 3px rgba(0,0,0,0.5);
+    `;
+    torchWrap.appendChild(torchHandle);
+    // Torch cup (holds fire)
+    const cup = document.createElement("div");
+    cup.style.cssText = `
+      position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+      width:16px;height:8px;
+      background:linear-gradient(180deg, #5a4a2a, #3a2a1a);
+      border-radius:2px 2px 4px 4px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.4);
+    `;
+    torchWrap.appendChild(cup);
+    // Flame (centered above cup)
+    const flame = document.createElement("div");
+    flame.style.cssText = `
+      position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
+      width:16px;height:24px;
+      background:radial-gradient(ellipse at 50% 65%, #ffee66, #ffaa00, #ff5500, transparent);
+      border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+      animation:hud-torch-flicker 0.4s ease-in-out infinite alternate;
+      filter:blur(0.5px);
+    `;
+    torchWrap.appendChild(flame);
+    // Inner flame core
+    const flameCore = document.createElement("div");
+    flameCore.style.cssText = `
+      position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+      width:8px;height:12px;
+      background:radial-gradient(ellipse at 50% 60%, #ffffcc, #ffee66, transparent);
+      border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+      pointer-events:none;
+    `;
+    torchWrap.appendChild(flameCore);
+    // Flame glow
+    const flameGlow = document.createElement("div");
+    flameGlow.style.cssText = `
+      position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
+      width:10px;height:10px;border-radius:50%;
+      animation:hud-torch-glow 0.6s ease-in-out infinite alternate;
+      pointer-events:none;
+    `;
+    torchWrap.appendChild(flameGlow);
+    hud.appendChild(torchWrap);
+  }
+
+  // === Gothic frame border around entire HUD viewport ===
+  const gothicFrame = document.createElement("div");
+  gothicFrame.style.cssText = `
+    position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
+    box-shadow:
+      inset 0 0 0 3px rgba(20,15,5,0.8),
+      inset 0 0 0 5px rgba(139,105,20,0.3),
+      inset 0 0 0 6px rgba(200,168,78,0.15),
+      inset 0 0 0 8px rgba(20,15,5,0.6),
+      inset 0 0 30px rgba(0,0,0,0.3);
+  `;
+  hud.appendChild(gothicFrame);
+
+  // Corner demon face ornaments (dark gradients shaped with border-radius)
+  const cornerOrnPositions = [
+    { top: "4px", left: "4px", rot: "0deg" },
+    { top: "4px", right: "4px", rot: "90deg" },
+    { bottom: "22px", left: "4px", rot: "270deg" },
+    { bottom: "22px", right: "4px", rot: "180deg" },
+  ];
+  for (const cp of cornerOrnPositions) {
+    const demon = document.createElement("div");
+    let dStyle = `position:absolute;width:28px;height:28px;pointer-events:none;z-index:1;
+      background:radial-gradient(circle at 50% 40%,
+        rgba(200,168,78,0.25), rgba(100,80,30,0.2) 40%, rgba(20,15,5,0.4) 70%, transparent);
+      border-radius:40% 40% 50% 50%;
+      box-shadow:0 0 6px rgba(200,168,78,0.1);
+      transform:rotate(${cp.rot});`;
+    if (cp.top) dStyle += `top:${cp.top};`;
+    if (cp.bottom) dStyle += `bottom:${cp.bottom};`;
+    if (cp.left) dStyle += `left:${cp.left};`;
+    if (cp.right) dStyle += `right:${cp.right};`;
+    demon.style.cssText = dStyle;
+    // Small face detail
+    demon.innerHTML = `<div style="position:absolute;top:30%;left:50%;transform:translateX(-50%);
+      font-size:10px;color:rgba(200,168,78,0.3);pointer-events:none;">\u2620</div>`;
+    hud.appendChild(demon);
+  }
+
+  // Thin gold pinstripe inside the stone border
+  const goldPinstripe = document.createElement("div");
+  goldPinstripe.style.cssText = `
+    position:absolute;top:6px;left:6px;right:6px;bottom:6px;pointer-events:none;z-index:0;
+    border:1px solid rgba(200,168,78,0.12);
+    border-radius:2px;
+  `;
+  hud.appendChild(goldPinstripe);
+
+  return {
+    hpBar: hpBar as HTMLDivElement,
+    mpBar: mpBar as HTMLDivElement,
+    hpText: hpText as HTMLDivElement,
+    mpText: mpText as HTMLDivElement,
+    hpOrbWrap: hpOrbWrap as HTMLDivElement,
+    mpOrbWrap: mpOrbWrap as HTMLDivElement,
+    xpBar: xpBar as HTMLDivElement,
+    xpLevelText: xpLevelText as HTMLDivElement,
+    goldText: goldText as HTMLDivElement,
+    levelText: levelText as HTMLDivElement,
+    killText: killText as HTMLDivElement,
+    topRightPanel: topRight as HTMLDivElement,
+    skillSlots,
+    skillCooldownOverlays,
+    minimapCanvas,
+    minimapCtx,
+    fullmapCanvas,
+    fullmapCtx,
+    dpsMeter: dpsMeter as HTMLDivElement,
+    mapNameLabel: mapNameLabel as HTMLDivElement,
+    weatherText: weatherText as HTMLDivElement,
+    potionHudSlots,
+    questTracker: questTracker as HTMLDivElement,
+    vendorHint: vendorHint as HTMLDivElement,
+    chestHint: chestHint as HTMLDivElement,
+    portalHint: portalHint as HTMLDivElement,
+    questPopup: questPopup as HTMLDivElement,
+    deathOverlay: deathOverlay as HTMLDivElement,
+    fpsCrosshair: fpsCrosshair as HTMLDivElement,
+    viewModeLabel: viewModeLabel as HTMLDivElement,
+    dpsDisplay: dpsDisplay as HTMLDivElement,
+    dpsValueEl,
+    lootFilterLabelEl: lootFilterLabel,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  updateHUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function updateHUD(
+  refs: HUDRefs,
+  hs: HUDState,
+  ctx: HUDUpdateContext,
+): void {
+  const p = ctx.state.player;
+
+  // Hardcore HUD indicator
+  if (p.isHardcore) {
+    if (!hs.hardcoreLabel) {
+      hs.hardcoreLabel = document.createElement('div');
+      hs.hardcoreLabel.style.cssText = 'position:absolute;top:5px;left:50%;transform:translateX(-50%);color:#ff4444;font-size:11px;font-family:Georgia,serif;font-weight:bold;pointer-events:none;z-index:20;text-shadow:0 0 5px #ff0000;';
+      hs.hardcoreLabel.textContent = 'HARDCORE';
+      ctx.hudEl.appendChild(hs.hardcoreLabel);
+    }
+  }
+
+  // DPS calculation
+  const now = performance.now();
+  for (let i = ctx.combatLog.length - 1; i >= 0; i--) {
+    if (now - ctx.combatLog[i].time >= 5000) ctx.combatLog.splice(i, 1);
+  }
+  const totalDmg = ctx.combatLog.reduce((s, e) => s + e.damage, 0);
+  const currentDps = ctx.combatLog.length > 0 ? totalDmg / 5 : 0;
+  ctx.setCurrentDps(currentDps);
+
+  if (refs.dpsMeter) {
+    if (currentDps > 0) {
+      refs.dpsMeter.textContent = `\u2694 ${Math.round(currentDps)} DPS`;
+      refs.dpsMeter.style.display = 'block';
+    } else {
+      refs.dpsMeter.style.display = 'none';
+    }
+  }
+
+  // FPS crosshair + view mode label
+  if (refs.fpsCrosshair) refs.fpsCrosshair.style.display = ctx.firstPerson ? "block" : "none";
+
+  // Health orb
+  const hpPct = Math.max(0, p.hp / p.maxHp);
+  const hpPctInt = Math.round(hpPct * 100);
+  if (hpPctInt !== hs.lastHpPctInt) {
+    hs.lastHpPctInt = hpPctInt;
+    refs.hpBar.style.height = hpPctInt + "%";
+  }
+  refs.hpText.textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
+  ctx.updateVignette(p.hp / p.maxHp);
+
+  // Detect HP change and trigger flash
+  const hpDelta = p.hp - hs.prevHp;
+  if (hs.prevHp >= 0 && Math.abs(hpDelta) > 2) {
+    hs.hpFlashTimer = hpDelta < 0 ? 0.5 : 0.4;
+  }
+  hs.prevHp = p.hp;
+  if (hs.hpFlashTimer > 0) {
+    hs.hpFlashTimer -= 0.016;
+    const fi = Math.min(1, hs.hpFlashTimer * 3);
+    const isLoss = fi > 0;
+    if (isLoss) {
+      const pulse = 0.6 + Math.sin(Date.now() * 0.02) * 0.4;
+      refs.hpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + fi * 16}px rgba(255,40,40,${0.5 * fi * pulse})) drop-shadow(0 0 ${6 + fi * 8}px rgba(255,100,100,${0.3 * fi}))`;
+    }
+  } else {
+    if (hpPct < 0.3 && hpPct > 0) {
+      const pulse = 0.5 + Math.sin(Date.now() * 0.006) * 0.5;
+      const danger = (0.3 - hpPct) / 0.3;
+      refs.hpOrbWrap.style.filter = `drop-shadow(0 0 ${14 + danger * 12}px rgba(255,30,30,${0.3 + pulse * 0.35 * danger}))`;
+    } else {
+      refs.hpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(180,20,20,0.35))';
+    }
+  }
+
+  // Mana orb
+  const mpPct = Math.max(0, p.mana / p.maxMana);
+  const mpPctInt = Math.round(mpPct * 100);
+  if (mpPctInt !== hs.lastMpPctInt) {
+    hs.lastMpPctInt = mpPctInt;
+    refs.mpBar.style.height = mpPctInt + "%";
+  }
+  refs.mpText.textContent = `${Math.ceil(p.mana)}/${p.maxMana}`;
+
+  const manaDelta = p.mana - hs.prevMana;
+  if (hs.prevMana >= 0 && Math.abs(manaDelta) > 5) {
+    hs.manaFlashTimer = manaDelta < 0 ? 0.4 : 0.35;
+  }
+  hs.prevMana = p.mana;
+  if (hs.manaFlashTimer > 0) {
+    hs.manaFlashTimer -= 0.016;
+    const mi = Math.min(1, hs.manaFlashTimer * 3);
+    const pulse = 0.6 + Math.sin(Date.now() * 0.02) * 0.4;
+    refs.mpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + mi * 16}px rgba(60,60,255,${0.5 * mi * pulse})) drop-shadow(0 0 ${6 + mi * 8}px rgba(120,120,255,${0.3 * mi}))`;
+  } else {
+    if (mpPct < 0.2 && mpPct > 0) {
+      const pulse = 0.5 + Math.sin(Date.now() * 0.005) * 0.5;
+      const danger = (0.2 - mpPct) / 0.2;
+      refs.mpOrbWrap.style.filter = `drop-shadow(0 0 ${14 + danger * 10}px rgba(80,80,255,${0.25 + pulse * 0.3 * danger}))`;
+    } else {
+      refs.mpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(30,30,200,0.35))';
+    }
+  }
+
+  // Skill bar
+  for (let i = 0; i < 6; i++) {
+    const skillId = p.skills[i];
+    if (!skillId) continue;
+    const def = SKILL_DEFS[skillId];
+    if (!def) continue;
+    const iconEl = refs.skillSlots[i].querySelector(".skill-icon") as HTMLDivElement;
+    if (iconEl) iconEl.textContent = def.icon;
+
+    const cd = p.skillCooldowns.get(skillId) || 0;
+    const maxCd = def.cooldown;
+    const cdTextEl = refs.skillSlots[i].querySelector(".skill-cd-text") as HTMLDivElement | null;
+    const prevCd = hs.prevSkillCooldowns[i] || 0;
+    if (prevCd > 0.1 && cd <= 0) {
+      refs.skillSlots[i].style.transition = 'box-shadow 0.1s ease';
+      refs.skillSlots[i].style.boxShadow = '0 0 20px rgba(255,215,0,0.9), 0 0 40px rgba(255,180,0,0.6), inset 0 0 15px rgba(255,215,0,0.4)';
+      refs.skillSlots[i].style.borderColor = '#ffd700';
+      const slotRef = refs.skillSlots[i];
+      setTimeout(() => {
+        if (slotRef) {
+          slotRef.style.transition = 'box-shadow 0.5s ease';
+          slotRef.style.boxShadow = 'inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03)';
+          slotRef.style.borderColor = '#9a8a4a';
+        }
+      }, 500);
+    }
+    hs.prevSkillCooldowns[i] = cd;
+    if (cd > 0) {
+      const pct = Math.min(100, (cd / maxCd) * 100);
+      refs.skillCooldownOverlays[i].style.height = pct + "%";
+      if (cdTextEl) {
+        cdTextEl.style.display = "block";
+        cdTextEl.textContent = cd >= 1 ? Math.ceil(cd).toString() : cd.toFixed(1);
+      }
+    } else {
+      refs.skillCooldownOverlays[i].style.height = "0%";
+      if (cdTextEl) cdTextEl.style.display = "none";
+    }
+
+    // Ability glow effect when skill is actively being used
+    const isActive = p.activeSkillId === skillId && p.activeSkillAnimTimer > 0;
+    if (isActive) {
+      const glowIntensity = Math.min(1, p.activeSkillAnimTimer * 4);
+      const pulseGlow = 0.7 + Math.sin(Date.now() * 0.012) * 0.3;
+      const gI = glowIntensity * pulseGlow;
+      refs.skillSlots[i].style.boxShadow =
+        `inset 0 0 20px rgba(255,215,100,${0.4 * gI}), ` +
+        `0 0 12px rgba(255,200,60,${0.5 * gI}), ` +
+        `0 0 24px rgba(255,180,40,${0.3 * gI})`;
+      refs.skillSlots[i].style.borderColor = `rgba(255,215,100,${0.7 * gI + 0.3})`;
+    } else {
+      refs.skillSlots[i].style.boxShadow =
+        'inset 0 1px 0 rgba(200,168,78,0.2), inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.5), inset 0 0 20px rgba(200,168,78,0.03)';
+      refs.skillSlots[i].style.borderColor = '#9a8a4a';
+    }
+  }
+
+  // XP bar
+  const xpPct = p.xpToNext > 0 ? (p.xp / p.xpToNext) * 100 : 0;
+  refs.xpBar.style.width = Math.min(100, xpPct) + "%";
+  if (xpPct > 90) {
+    refs.xpBar.style.animation = "hud-xp-pulse 1.2s ease-in-out infinite";
+  } else {
+    refs.xpBar.style.animation = "none";
+  }
+  if (refs.xpLevelText) {
+    refs.xpLevelText.textContent = `Level ${p.level}  \u2014  ${Math.floor(xpPct)}%`;
+  }
+
+  // Top right
+  if (p.gold !== hs.lastGoldValue) {
+    const gained = p.gold > hs.lastGoldValue;
+    hs.lastGoldValue = p.gold;
+    refs.goldText.innerHTML = `<span style="filter:drop-shadow(0 0 3px rgba(255,215,0,0.4))">\uD83E\uDE99</span> ${p.gold.toLocaleString()}`;
+    if (gained) {
+      refs.goldText.style.textShadow = '0 0 16px rgba(255,215,0,0.9), 0 0 32px rgba(255,215,0,0.5), 0 1px 3px rgba(0,0,0,0.9)';
+      refs.goldText.style.transform = 'scale(1.08)';
+      setTimeout(() => {
+        refs.goldText.style.textShadow = '0 0 8px rgba(255,215,0,0.5), 0 0 16px rgba(255,215,0,0.2), 0 1px 3px rgba(0,0,0,0.9)';
+        refs.goldText.style.transform = 'scale(1)';
+      }, 300);
+    }
+  }
+  if (p.level !== hs.lastLevelValue) {
+    const didLevelUp = hs.lastLevelValue > 0 && p.level > hs.lastLevelValue;
+    hs.lastLevelValue = p.level;
+    refs.levelText.innerHTML = `\u2694 Level ${p.level}`;
+    if (didLevelUp) {
+      refs.levelText.style.color = '#fff';
+      refs.levelText.style.textShadow = '0 0 20px rgba(255,215,0,1), 0 0 40px rgba(255,215,0,0.7), 0 0 60px rgba(255,180,0,0.5)';
+      refs.levelText.style.transform = 'scale(1.15)';
+      refs.levelText.style.transition = 'all 0.15s ease-out';
+      if (refs.topRightPanel) {
+        refs.topRightPanel.style.borderColor = '#ffd700';
+        refs.topRightPanel.style.boxShadow = '0 0 20px rgba(255,215,0,0.5), 0 4px 12px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,215,0,0.1)';
+      }
+      setTimeout(() => {
+        refs.levelText.style.color = '#c8a84e';
+        refs.levelText.style.textShadow = '0 0 6px rgba(200,168,78,0.3), 0 1px 2px rgba(0,0,0,0.7)';
+        refs.levelText.style.transform = 'scale(1)';
+        if (refs.topRightPanel) {
+          refs.topRightPanel.style.borderColor = '#7a6a3a';
+          refs.topRightPanel.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2), inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3)';
+        }
+      }, 800);
+    }
+  }
+  if (ctx.state.killCount !== hs.lastKillValue || ctx.state.deathCount !== hs.lastDeathValue) {
+    hs.lastKillValue = ctx.state.killCount;
+    hs.lastDeathValue = ctx.state.deathCount;
+    refs.killText.innerHTML = `\u2620 ${ctx.state.killCount} Kills` +
+      (ctx.state.deathCount > 0 ? `  &nbsp;\u2620 ${ctx.state.deathCount} Deaths` : "");
+  }
+
+  // Glow border when talent points are available
+  if (p.talentPoints > 0) {
+    refs.topRightPanel.style.borderColor = "#ffd700";
+    refs.topRightPanel.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5), 0 0 12px rgba(255,215,0,0.5), 0 0 24px rgba(255,215,0,0.25), inset 0 0 8px rgba(255,215,0,0.1)";
+  } else {
+    refs.topRightPanel.style.borderColor = "#7a6a3a";
+    refs.topRightPanel.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2), inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3)";
+  }
+
+  // Potion slots
+  for (let i = 0; i < 4; i++) {
+    const pot = p.potionSlots[i];
+    const iconEl = refs.potionHudSlots[i].querySelector(".potion-icon") as HTMLDivElement;
+    if (iconEl) iconEl.textContent = pot ? pot.icon : "";
+    const onCd = p.potionCooldown > 0;
+    refs.potionHudSlots[i].style.borderColor = onCd ? "#5a2a2a" : "#6a8a4a";
+    refs.potionHudSlots[i].style.opacity = onCd ? "0.5" : "1";
+  }
+
+  // Minimap (throttled to every 3rd frame)
+  hs.minimapFrameCounter++;
+  if (hs.minimapFrameCounter >= 3) {
+    hs.minimapFrameCounter = 0;
+    ctx.updateMinimap();
+  }
+  if (hs.fullmapVisible) {
+    ctx.updateFullmap();
+  }
+
+  // Map name label
+  if (refs.mapNameLabel) {
+    refs.mapNameLabel.textContent = MAP_NAME_MAP[ctx.state.currentMap] || ctx.state.currentMap.replace(/_/g, ' ');
+  }
+
+  // Weather text - with icons
+  refs.weatherText.textContent = WEATHER_LABELS[ctx.state.weather] || "";
+
+  // Quest tracker
+  ctx.updateQuestTracker();
+
+  // Vendor hint (Camelot only)
+  if (ctx.state.currentMap === DiabloMapId.CAMELOT) {
+    let nearestVendor: DiabloVendor | null = null;
+    let nearestDist = 4;
+    for (const v of ctx.state.vendors) {
+      const d = ctx.dist(p.x, p.z, v.x, v.z);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestVendor = v;
+      }
+    }
+    if (nearestVendor) {
+      refs.vendorHint.style.display = "block";
+      const action = nearestVendor.type === VendorType.BLACKSMITH ? "forge/salvage"
+        : nearestVendor.type === VendorType.JEWELER ? "reroll stats"
+        : "trade";
+      refs.vendorHint.textContent = `Press [E] to ${action} with ${nearestVendor.name}`;
+    } else {
+      refs.vendorHint.style.display = "none";
+    }
+  } else {
+    refs.vendorHint.style.display = "none";
+  }
+
+  // Chest proximity hint
+  let nearestChest = false;
+  for (const chest of ctx.state.treasureChests) {
+    if (chest.opened) continue;
+    const d = ctx.dist(p.x, p.z, chest.x, chest.z);
+    if (d < 4) {
+      nearestChest = true;
+      break;
+    }
+  }
+  if (nearestChest) {
+    refs.chestHint.style.display = "block";
+    refs.chestHint.textContent = "Press [F] to open chest";
+  } else {
+    refs.chestHint.style.display = "none";
+  }
+
+  // Town portal proximity hint
+  if (ctx.portalActive) {
+    const portalDist = ctx.dist(p.x, p.z, ctx.portalX, ctx.portalZ);
+    if (portalDist < 4) {
+      refs.portalHint.style.display = "block";
+      refs.portalHint.textContent = "\uD83C\uDF00 Press [E] to use Town Portal \u2014 Return to Character Select";
+    } else {
+      refs.portalHint.style.display = "none";
+    }
+  } else {
+    refs.portalHint.style.display = "none";
+  }
+
+  // DPS meter update
+  if (ctx.state.player.dpsDisplayVisible && refs.dpsDisplay) {
+    refs.dpsDisplay.style.display = "block";
+    const dpsVal = refs.dpsValueEl;
+    if (dpsVal) dpsVal.textContent = `${Math.round(currentDps).toLocaleString()} DPS`;
+  } else if (refs.dpsDisplay) {
+    refs.dpsDisplay.style.display = "none";
+  }
+
+  // Loot filter label update
+  const filterLabel = refs.lootFilterLabelEl;
+  if (filterLabel) {
+    const customFilter = p.customLootFilters[p.activeFilterIndex];
+    const filterName = customFilter ? customFilter.name : 'Show All';
+    filterLabel.textContent = `Filter: ${filterName} (Tab)`;
+  }
+
+  // Greater Rift HUD
+  const rift = ctx.state.greaterRift;
+  if (rift.state !== GreaterRiftState.NOT_ACTIVE) {
+    if (!hs.riftHud) {
+      hs.riftHud = document.createElement('div');
+      hs.riftHud.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-family:monospace;text-align:center;background:rgba(0,0,0,0.7);padding:8px 16px;border:1px solid #ff8800;border-radius:4px;pointer-events:none;z-index:20;';
+      ctx.hudEl.appendChild(hs.riftHud);
+    }
+    const riftProgressInt = Math.floor(rift.progressBar);
+    const riftTimeInt = Math.floor(rift.timeRemaining);
+    if (riftProgressInt !== hs.lastRiftProgress || riftTimeInt !== hs.lastRiftTime || rift.state !== hs.lastRiftState) {
+      hs.lastRiftProgress = riftProgressInt;
+      hs.lastRiftTime = riftTimeInt;
+      hs.lastRiftState = rift.state;
+      const mins = Math.floor(rift.timeRemaining / 60);
+      const secs = Math.floor(rift.timeRemaining % 60);
+      const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+      const barWidth = Math.floor(rift.progressBar * 2);
+      const barFill = '\u2588'.repeat(Math.floor(barWidth / 10));
+      const barEmpty = '\u2591'.repeat(20 - Math.floor(barWidth / 10));
+      const stateLabel = rift.state === GreaterRiftState.BOSS_SPAWNED ? ' \u26A0 GUARDIAN!' : '';
+      hs.riftHud.innerHTML = `<span style="color:#ff8800">GR ${rift.level}</span> | ${timeStr} | [${barFill}${barEmpty}] ${riftProgressInt}%${stateLabel}`;
+    }
+    hs.riftHud.style.display = 'block';
+    if (rift.timeRemaining < 30) hs.riftHud.style.borderColor = '#ff2222';
+    else hs.riftHud.style.borderColor = '#ff8800';
+  } else if (hs.riftHud) {
+    hs.riftHud.style.display = 'none';
+  }
+
+  // Multiplayer HUD
+  if (ctx.state.multiplayer.state !== MultiplayerState.DISCONNECTED) {
+    if (!hs.multiplayerHud) {
+      hs.multiplayerHud = document.createElement('div');
+      hs.multiplayerHud.style.cssText = 'position:absolute;bottom:10px;left:10px;color:#fff;font-size:12px;font-family:monospace;background:rgba(0,0,0,0.6);padding:6px 10px;border-radius:4px;pointer-events:none;z-index:20;max-height:200px;overflow:hidden;';
+      ctx.hudEl.appendChild(hs.multiplayerHud);
+    }
+    const mp = ctx.state.multiplayer;
+    const msgCount = mp.chatMessages.length;
+    if (msgCount !== hs.lastMpMessageCount) {
+      hs.lastMpMessageCount = msgCount;
+      const playerCount = mp.remotePlayers.length + 1;
+      const recentChat = mp.chatMessages.slice(-5).map(m => `<span style="color:#aaa">${m.name}:</span> ${m.message}`).join('<br>');
+      if (ctx.state.multiplayer.state === MultiplayerState.CONNECTING) {
+        hs.multiplayerHud.innerHTML = `<span style="color:#ffaa00">RECONNECTING...</span>`;
+      } else {
+        hs.multiplayerHud.innerHTML = `<span style="color:#44ff44">ONLINE</span> ${playerCount} players | ${mp.ping}ms${recentChat ? '<br>' + recentChat : ''}`;
+      }
+    }
+    hs.multiplayerHud.style.display = 'block';
+  } else if (hs.multiplayerHud) {
+    hs.multiplayerHud.style.display = 'none';
+  }
+
+  // Excalibur quest progress
+  const fragments = ctx.state.player.excaliburFragments.length;
+  if (fragments > 0 && !ctx.state.player.excaliburReforged) {
+    const total = Object.keys(EXCALIBUR_QUEST_INFO).length;
+    if (!hs.excaliburHud) {
+      hs.excaliburHud = document.createElement('div');
+      hs.excaliburHud.style.cssText = 'position:absolute;top:50px;right:10px;color:#ffd700;font-size:12px;font-family:Georgia,serif;background:rgba(0,0,0,0.6);padding:4px 8px;border:1px solid #8b6914;border-radius:4px;pointer-events:none;z-index:20;';
+      ctx.hudEl.appendChild(hs.excaliburHud);
+    }
+    hs.excaliburHud.textContent = `\u2694\uFE0F Excalibur: ${fragments}/${total}`;
+    hs.excaliburHud.style.display = 'block';
+  } else if (hs.excaliburHud) {
+    hs.excaliburHud.style.display = 'none';
+  }
+
+  // Crafting queue HUD indicator
+  const cq = ctx.state.player.crafting.craftingQueue;
+  if (cq.length > 0) {
+    if (!hs.craftingQueueHud) {
+      hs.craftingQueueHud = document.createElement('div');
+      hs.craftingQueueHud.style.cssText = 'position:absolute;top:70px;right:10px;color:#ffd700;font-size:12px;font-family:Georgia,serif;background:rgba(0,0,0,0.7);padding:6px 12px;border:1px solid #5a4a2a;border-radius:4px;pointer-events:none;z-index:20;min-width:160px;';
+      ctx.hudEl.appendChild(hs.craftingQueueHud);
+    }
+    const current = cq[0];
+    const pct = Math.floor((current.progress / current.duration) * 100);
+    if (pct !== hs.lastCraftingPct || cq.length !== hs.lastCraftingQueueLen) {
+      hs.lastCraftingPct = pct;
+      hs.lastCraftingQueueLen = cq.length;
+      const recipe = ADVANCED_CRAFTING_RECIPES.find(r => r.id === current.recipeId);
+      const recipeName = recipe ? recipe.name : current.recipeId;
+      const barWidth = 120;
+      const filledWidth = Math.floor(barWidth * pct / 100);
+      hs.craftingQueueHud.innerHTML =
+        `<div style="margin-bottom:4px;">Crafting: ${recipeName}</div>` +
+        `<div style="background:#333;border-radius:3px;height:8px;width:${barWidth}px;overflow:hidden;">` +
+        `<div style="background:linear-gradient(90deg,#c8a84e,#ffd700);height:100%;width:${filledWidth}px;transition:width 0.2s;"></div>` +
+        `</div>` +
+        `<div style="font-size:10px;color:#c8a84e;margin-top:2px;">${pct}%${cq.length > 1 ? ` (+${cq.length - 1} queued)` : ''}</div>`;
+    }
+    hs.craftingQueueHud.style.display = 'block';
+  } else if (hs.craftingQueueHud) {
+    hs.craftingQueueHud.style.display = 'none';
+  }
+}
