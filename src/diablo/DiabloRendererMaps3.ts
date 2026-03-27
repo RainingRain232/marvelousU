@@ -3276,20 +3276,109 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       mctx.scene.add(rockGroup);
     }
 
-    // ── Dirt paths ──
+    // ── Dirt paths (curved, textured) ──
+    const dirtDarkMat = new THREE.MeshStandardMaterial({ color: 0x6a5535, roughness: 0.95 });
+    const dirtEdgeMat = new THREE.MeshStandardMaterial({ color: 0x5a4a30, roughness: 0.92 });
+    const mudMat = new THREE.MeshStandardMaterial({ color: 0x7a6545, roughness: 0.88 });
+    const pathGrassMat = new THREE.MeshStandardMaterial({ color: 0x558833, roughness: 0.85 });
     for (let i = 0; i < 4; i++) {
-      const path = new THREE.Mesh(
-        new THREE.PlaneGeometry(2, 25 + Math.random() * 20),
-        dirtMat,
-      );
-      path.rotation.x = -Math.PI / 2;
-      path.rotation.z = Math.random() * Math.PI;
-      path.position.set(
-        (Math.random() - 0.5) * w * 0.5,
-        0.01,
-        (Math.random() - 0.5) * d * 0.5,
-      );
-      mctx.scene.add(path);
+      const pathGroup = new THREE.Group();
+      const pathLen = 20 + Math.random() * 18;
+      const segments = Math.floor(pathLen / 2);
+      const startX = (Math.random() - 0.5) * w * 0.5;
+      const startZ = (Math.random() - 0.5) * d * 0.5;
+      const baseAngle = Math.random() * Math.PI;
+      let curX = startX, curZ = startZ;
+      let curAngle = baseAngle;
+
+      for (let s = 0; s < segments; s++) {
+        // Curve the path slightly each segment
+        curAngle += (Math.random() - 0.5) * 0.35;
+        const segLen = 1.8 + Math.random() * 0.8;
+        const nextX = curX + Math.cos(curAngle) * segLen;
+        const nextZ = curZ + Math.sin(curAngle) * segLen;
+        const segWidth = 1.6 + Math.sin(s * 0.7) * 0.4; // width varies
+        const midX = (curX + nextX) / 2;
+        const midZ = (curZ + nextZ) / 2;
+        const ty = getTerrainHeight(midX, midZ, 1.4);
+
+        // Main dirt segment
+        const seg = new THREE.Mesh(new THREE.PlaneGeometry(segWidth, segLen + 0.3), dirtMat);
+        seg.rotation.x = -Math.PI / 2;
+        seg.rotation.z = -curAngle + Math.PI / 2;
+        seg.position.set(midX, ty + 0.015, midZ);
+        pathGroup.add(seg);
+
+        // Darker center worn line (wheel ruts)
+        if (Math.random() > 0.3) {
+          for (const rutSide of [-0.25, 0.25]) {
+            const rut = new THREE.Mesh(new THREE.PlaneGeometry(0.12, segLen), dirtDarkMat);
+            rut.rotation.x = -Math.PI / 2;
+            rut.rotation.z = -curAngle + Math.PI / 2;
+            const rutOffX = Math.sin(curAngle) * rutSide;
+            const rutOffZ = -Math.cos(curAngle) * rutSide;
+            rut.position.set(midX + rutOffX, ty + 0.018, midZ + rutOffZ);
+            pathGroup.add(rut);
+          }
+        }
+
+        // Edge weathering (slightly darker/raised edges)
+        for (const edgeSide of [-1, 1]) {
+          const edgeOff = (segWidth / 2 + 0.05) * edgeSide;
+          const edge = new THREE.Mesh(new THREE.PlaneGeometry(0.3, segLen), dirtEdgeMat);
+          edge.rotation.x = -Math.PI / 2;
+          edge.rotation.z = -curAngle + Math.PI / 2;
+          const eOffX = Math.sin(curAngle) * edgeOff;
+          const eOffZ = -Math.cos(curAngle) * edgeOff;
+          edge.position.set(midX + eOffX, ty + 0.012, midZ + eOffZ);
+          pathGroup.add(edge);
+        }
+
+        // Scattered pebbles on path (2-3 per segment)
+        for (let p = 0; p < 2 + Math.floor(Math.random() * 2); p++) {
+          const pebOff = (Math.random() - 0.5) * segWidth * 0.8;
+          const pebAlong = (Math.random() - 0.5) * segLen;
+          const px = midX + Math.sin(curAngle) * pebOff + Math.cos(curAngle) * pebAlong;
+          const pz = midZ - Math.cos(curAngle) * pebOff + Math.sin(curAngle) * pebAlong;
+          const peb = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.04 + Math.random() * 0.04, 1),
+            stoneMat,
+          );
+          peb.position.set(px, ty + 0.03, pz);
+          peb.scale.y = 0.4;
+          pathGroup.add(peb);
+        }
+
+        // Occasional mud puddle
+        if (Math.random() > 0.75) {
+          const puddle = new THREE.Mesh(
+            new THREE.CircleGeometry(0.3 + Math.random() * 0.2, 10),
+            mudMat,
+          );
+          puddle.rotation.x = -Math.PI / 2;
+          puddle.position.set(midX + (Math.random() - 0.5) * 0.5, ty + 0.02, midZ + (Math.random() - 0.5) * 0.5);
+          pathGroup.add(puddle);
+        }
+
+        // Grass tufts along edges (every other segment)
+        if (s % 2 === 0) {
+          for (const grassSide of [-1, 1]) {
+            const gOff = (segWidth / 2 + 0.3 + Math.random() * 0.3) * grassSide;
+            const gx = midX + Math.sin(curAngle) * gOff;
+            const gz = midZ - Math.cos(curAngle) * gOff;
+            const tuft = new THREE.Mesh(
+              new THREE.ConeGeometry(0.08, 0.2 + Math.random() * 0.1, 6),
+              pathGrassMat,
+            );
+            tuft.position.set(gx, ty + 0.1, gz);
+            pathGroup.add(tuft);
+          }
+        }
+
+        curX = nextX;
+        curZ = nextZ;
+      }
+      mctx.scene.add(pathGroup);
     }
 
     // ── Windmill ──
@@ -3314,23 +3403,22 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
 
     // ── Campfire in open field ──
     const cfX = hw * 0.1, cfZ = hd * 0.2;
+    const cfY = getTerrainHeight(cfX, cfZ, 1.4);
     const fireRing = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.2, 23, 30), stoneMat);
     fireRing.rotation.x = Math.PI / 2;
-    fireRing.position.set(cfX, 0.2, cfZ);
+    fireRing.position.set(cfX, cfY + 0.2, cfZ);
     mctx.scene.add(fireRing);
     const fieldFire = new THREE.PointLight(0xff8833, 1.2, 10);
-    fieldFire.position.set(cfX, 1.5, cfZ);
+    fieldFire.position.set(cfX, cfY + 1.5, cfZ);
     mctx.scene.add(fieldFire);
     // Log seats
     for (let i = 0; i < 3; i++) {
       const logAngle = (i / 3) * Math.PI * 2 + 0.3;
       const log = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 23), woodMat);
       log.rotation.z = Math.PI / 2;
-      log.position.set(
-        cfX + Math.cos(logAngle) * 2.5,
-        0.2,
-        cfZ + Math.sin(logAngle) * 2.5,
-      );
+      const logX = cfX + Math.cos(logAngle) * 2.5;
+      const logZ = cfZ + Math.sin(logAngle) * 2.5;
+      log.position.set(logX, getTerrainHeight(logX, logZ, 1.4) + 0.2, logZ);
       log.rotation.y = logAngle;
       mctx.scene.add(log);
     }
@@ -3920,7 +4008,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     const scPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3, 17), woodMat);
     scPole.position.y = 1.5;
     scarecrow.add(scPole);
-    const scArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 17), woodMat);
+    const scArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.2, 17), woodMat);
     scArm.rotation.z = Math.PI / 2;
     scArm.position.y = 2.3;
     scarecrow.add(scArm);

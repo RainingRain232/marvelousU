@@ -2109,11 +2109,21 @@ export function updateHUD(
     refs.topRightPanel.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2), inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3)";
   }
 
-  // Potion slots
+  // Potion slots (stacking)
   for (let i = 0; i < 4; i++) {
-    const pot = p.potionSlots[i];
+    const slot = p.potionSlots[i];
     const iconEl = refs.potionHudSlots[i].querySelector(".potion-icon") as HTMLDivElement;
-    if (iconEl) iconEl.textContent = pot ? pot.icon : "";
+    if (iconEl) iconEl.textContent = slot ? slot.potion.icon : "";
+    // Show stack count
+    let countEl = refs.potionHudSlots[i].querySelector(".potion-count") as HTMLDivElement | null;
+    if (!countEl) {
+      countEl = document.createElement("div");
+      countEl.className = "potion-count";
+      countEl.style.cssText = `position:absolute;bottom:2px;left:4px;font-size:10px;font-weight:bold;color:#ffd700;
+        text-shadow:0 0 3px #000,0 0 6px #000;z-index:3;font-family:'Georgia',serif;pointer-events:none;`;
+      refs.potionHudSlots[i].appendChild(countEl);
+    }
+    countEl.textContent = slot && slot.count > 1 ? `x${slot.count}` : "";
     const onCd = p.potionCooldown > 0;
     refs.potionHudSlots[i].style.borderColor = onCd ? "#5a2a2a" : "#6a8a4a";
     refs.potionHudSlots[i].style.opacity = onCd ? "0.5" : "1";

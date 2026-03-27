@@ -962,6 +962,9 @@ export interface DiabloPotion {
   cost: number;
 }
 
+export type PotionSlot = { potion: DiabloPotion; count: number } | null;
+export const MAX_POTION_STACK = 10;
+
 // ── Quest & Crafting Interfaces ──────────────────────────────
 
 export interface QuestTarget {
@@ -1229,7 +1232,7 @@ export interface DiabloPlayerState {
   talentPoints: number;
   talents: Record<string, number>;
   potions: DiabloPotion[];
-  potionSlots: [DiabloPotion | null, DiabloPotion | null, DiabloPotion | null, DiabloPotion | null];
+  potionSlots: [PotionSlot, PotionSlot, PotionSlot, PotionSlot];
   potionCooldown: number;
   activePotionBuffs: { type: PotionType; value: number; remaining: number }[];
   salvageMaterials: number;
@@ -2064,7 +2067,12 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
     talentPoints: 0,
     talents: {},
     potions: [],
-    potionSlots: [null, null, null, null],
+    potionSlots: [
+      { potion: { id: 'start_hp', name: 'Minor HP Potion', icon: '\u{1F9EA}', type: PotionType.HEALTH, value: 50, cooldown: 5, cost: 0 }, count: 2 },
+      { potion: { id: 'start_mp', name: 'Minor Mana Potion', icon: '\u{1FAE7}', type: PotionType.MANA, value: 50, cooldown: 5, cost: 0 }, count: 2 },
+      null,
+      null,
+    ],
     potionCooldown: 0,
     activePotionBuffs: [],
     salvageMaterials: 0,

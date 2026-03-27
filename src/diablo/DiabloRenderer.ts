@@ -121,6 +121,8 @@ export class DiabloRenderer {
   private _currentWeather: Weather = Weather.NORMAL;
   private _stormFlashTimer: number = 0;
   private _stormFlashActive: boolean = false;
+  private _lightningBoltGroup: THREE.Group | null = null;
+  private _lightningBoltTimer: number = 0;
   private _baseFogDensity: number = 0;
   private _baseAmbientIntensity: number = 0;
   private _baseDirIntensity: number = 0;
@@ -2677,6 +2679,26 @@ export class DiabloRenderer {
 
   private _updateWeather(dt: number): void {
     if (this._currentWeather !== Weather.STORMY) return;
+
+    // Fade out lightning bolt
+    if (this._lightningBoltTimer > 0) {
+      this._lightningBoltTimer -= dt;
+      if (this._lightningBoltGroup) {
+        const fade = Math.max(0, this._lightningBoltTimer / 0.3);
+        this._lightningBoltGroup.traverse(child => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+            if (mat.transparent !== undefined) mat.opacity = fade * 0.9;
+          }
+        });
+        if (this._lightningBoltTimer <= 0) {
+          this._scene.remove(this._lightningBoltGroup);
+          this._disposeObject3D(this._lightningBoltGroup);
+          this._lightningBoltGroup = null;
+        }
+      }
+    }
+
     this._stormFlashTimer -= dt;
     if (this._stormFlashTimer <= 0) {
       if (!this._stormFlashActive) {
@@ -2686,6 +2708,8 @@ export class DiabloRenderer {
         this._dirLight.intensity = this._baseDirIntensity * 3;
         this._hemiLight.intensity = 1.5;
         this._renderer.toneMappingExposure = 1.5;
+        // Spawn lightning bolt visual
+        this._spawnLightningBolt();
         // Double flash sometimes
         this._stormFlashTimer = Math.random() > 0.6 ? 0.05 : 0.12;
       } else {
@@ -2697,6 +2721,112 @@ export class DiabloRenderer {
         this._stormFlashTimer = 3 + Math.random() * 8;
       }
     }
+  }
+
+  /** Spawn a jagged lightning bolt from sky to ground near the camera. */
+  private _spawnLightningBolt(): void {
+    // Remove old bolt
+    if (this._lightningBoltGroup) {
+      this._scene.remove(this._lightningBoltGroup);
+      this._disposeObject3D(this._lightningBoltGroup);
+    }
+    const group = new THREE.Group();
+    const boltMat = new THREE.MeshStandardMaterial({
+      color: 0xeeeeff, emissive: 0xaabbff, emissiveIntensity: 5.0,
+      transparent: true, opacity: 0.9, depthWrite: false,
+    });
+    const branchMat = new THREE.MeshStandardMaterial({
+      color: 0xccddff, emissive: 0x8899ff, emissiveIntensity: 3.0,
+      transparent: true, opacity: 0.7, depthWrite: false,
+    });
+    const glowMat = new THREE.MeshStandardMaterial({
+      color: 0x4466ff, emissive: 0x4466ff, emissiveIntensity: 2.0,
+      transparent: true, opacity: 0.2, depthWrite: false,
+    });
+
+    // Strike position: offset from camera target
+    const cx = this._camera.position.x + (Math.random() - 0.5) * 40;
+    const cz = this._camera.position.z + (Math.random() - 0.5) * 40;
+    const topY = 25;
+    const botY = getTerrainHeight(cx, cz);
+
+    // Build jagged bolt path (main trunk)
+    const segments = 8 + Math.floor(Math.random() * 5);
+    const points: { x: number; y: number; z: number }[] = [];
+    points.push({ x: cx + (Math.random() - 0.5) * 6, y: topY, z: cz + (Math.random() - 0.5) * 6 });
+    for (let i = 1; i < segments; i++) {
+      const t = i / segments;
+      const jitter = (1 - t) * 3; // more jitter at top, less at impact
+      points.push({
+        x: cx + (Math.random() - 0.5) * jitter,
+        y: topY - (topY - botY) * t,
+        z: cz + (Math.random() - 0.5) * jitter,
+      });
+    }
+    points.push({ x: cx, y: botY, z: cz });
+
+    // Render bolt segments as cylinders between points
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const dx = p2.x - p1.x, dy = p2.y - p1.y, dz = p2.z - p1.z;
+      const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const thickness = 0.06 + (1 - i / points.length) * 0.08; // thicker at top
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(thickness * 0.5, thickness, len, 6), boltMat);
+      seg.position.set((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2);
+      seg.lookAt(p2.x, p2.y, p2.z);
+      seg.rotateX(Math.PI / 2);
+      group.add(seg);
+
+      // Glow tube around main bolt
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(thickness * 2, thickness * 3, len, 6), glowMat);
+      glow.position.copy(seg.position);
+      glow.rotation.copy(seg.rotation);
+      group.add(glow);
+    }
+
+    // Branch bolts (2-3 smaller forks off the main trunk)
+    const branchCount = 2 + Math.floor(Math.random() * 2);
+    for (let b = 0; b < branchCount; b++) {
+      const forkIdx = 1 + Math.floor(Math.random() * (points.length - 3));
+      const forkPt = points[forkIdx];
+      const brSegs = 3 + Math.floor(Math.random() * 3);
+      let bx = forkPt.x, by = forkPt.y, bz = forkPt.z;
+      for (let bs = 0; bs < brSegs; bs++) {
+        const nbx = bx + (Math.random() - 0.5) * 2.5;
+        const nby = by - (1 + Math.random() * 1.5);
+        const nbz = bz + (Math.random() - 0.5) * 2.5;
+        const bdx = nbx - bx, bdy = nby - by, bdz = nbz - bz;
+        const bLen = Math.sqrt(bdx * bdx + bdy * bdy + bdz * bdz);
+        const bSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, bLen, 4), branchMat);
+        bSeg.position.set((bx + nbx) / 2, (by + nby) / 2, (bz + nbz) / 2);
+        bSeg.lookAt(nbx, nby, nbz);
+        bSeg.rotateX(Math.PI / 2);
+        group.add(bSeg);
+        bx = nbx; by = nby; bz = nbz;
+      }
+    }
+
+    // Impact glow at ground
+    const impactGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 12, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0xaabbff, emissive: 0x6688ff, emissiveIntensity: 4.0,
+        transparent: true, opacity: 0.4, depthWrite: false,
+      }),
+    );
+    impactGlow.position.set(cx, botY + 0.2, cz);
+    impactGlow.scale.set(1, 0.3, 1);
+    group.add(impactGlow);
+
+    // Bright point light at impact
+    const impactLight = new THREE.PointLight(0xaabbff, 3.0, 15, 2);
+    impactLight.position.set(cx, botY + 1, cz);
+    group.add(impactLight);
+
+    this._scene.add(group);
+    this._lightningBoltGroup = group;
+    this._lightningBoltTimer = 0.3; // visible for 0.3 seconds then fades
   }
 
   private _updateRain(state: DiabloState, dt: number): void {

@@ -2,11 +2,16 @@
 // DiabloScreens  --  extracted large _show* UI methods from DiabloGame.ts
 // ────────────────────────────────────────────────────────────────────────────
 
+import davinciBg from './davinci.jpg';
+
+/** Shared fullscreen background style with davinci.jpg overlay for all menu/screen panels. */
+const SCREEN_BG = `background:rgba(0,0,0,0.88);background-image:url('${davinciBg}');background-size:cover;background-position:center;background-blend-mode:overlay;`;
+
 import {
   DiabloState, DiabloClass, DiabloMapId, DiabloPhase, ItemRarity,
   DiabloDifficulty, SkillId, TimeOfDay, DiabloItem, DiabloEquipment,
   DiabloLoot, TalentEffectType, Weather, MapModifier,
-  DiabloVendor, VendorType, DiabloPotion, PotionType, DiabloPortalNpc,
+  DiabloVendor, VendorType, DiabloPotion, PotionType, DiabloPortalNpc, MAX_POTION_STACK,
   CraftType, CraftingStationType, MaterialType, AdvancedCraftingRecipe,
   DiabloQuest, QuestType,
   createDefaultPlayer,
@@ -458,7 +463,7 @@ export function showClassSelect(ctx: ScreenContext): void {
       ::-webkit-scrollbar-thumb:hover { background: #8a7a4a; }
     </style>
     <div style="
-      width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
+      width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
       align-items:center;color:#fff;position:relative;overflow-y:auto;overflow-x:hidden;
       padding:30px 20px;box-sizing:border-box;
       scrollbar-width:thin;scrollbar-color:#5a4a2a rgba(0,0,0,0.3);
@@ -1023,8 +1028,7 @@ export function showMapSelect(ctx: ScreenContext): void {
     </style>
     <div style="
       width:100%;height:100%;
-      background:rgba(0,0,0,0.92);
-      background-image:radial-gradient(ellipse at center,rgba(200,168,78,0.04) 0%,transparent 60%);
+      ${SCREEN_BG}
       display:flex;flex-direction:column;
       align-items:center;justify-content:center;color:#fff;
       position:relative;overflow:hidden;
@@ -1378,8 +1382,7 @@ export function showInventory(ctx: ScreenContext): void {
   ctx.menuEl.innerHTML = `
     <div style="
       width:100%;height:100%;
-      background:rgba(0,0,0,0.90);
-      background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
+      ${SCREEN_BG}
       display:flex;flex-direction:column;
       align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;
     ">
@@ -2870,7 +2873,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
         }
       </style>
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;flex-direction:column;
+        width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;position:relative;
       ">
         <!-- Decorative stone frame around button column -->
@@ -3077,7 +3080,7 @@ export function showControls(ctx: ScreenContext): void {
         .diablo-controls-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #7a6a4a, #5a4a2a); }
       </style>
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;overflow:hidden;
         background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
       ">
@@ -3228,7 +3231,7 @@ export function showGameOver(ctx: ScreenContext): void {
         }
       </style>
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
+        width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;font-family:'Georgia',serif;
         animation: go-fade-in 0.6s ease-out;
       ">
@@ -3445,7 +3448,7 @@ export function showVictory(ctx: ScreenContext): void {
       </style>
       <div style="
         width:100%;height:100%;
-        background:radial-gradient(ellipse at 50% 40%, rgba(80,65,10,0.35) 0%, rgba(0,0,0,0.95) 65%);
+        ${SCREEN_BG}
         display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;
         font-family:'Georgia',serif;
         animation:victory-fade-in 0.6s ease-out;
@@ -4005,7 +4008,7 @@ export function showSkillTreeScreen(ctx: ScreenContext): void {
 
     ctx.menuEl.innerHTML = `
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+        width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
       ">
         <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin-bottom:4px;font-family:'Georgia',serif;
@@ -4172,7 +4175,7 @@ export function showTalentTree(ctx: ScreenContext): void {
 
       ctx.menuEl.innerHTML = `
         <div style="
-          width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+          width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
           align-items:center;justify-content:center;color:#fff;pointer-events:auto;position:relative;
         ">
           <!-- Stone tablet background -->
@@ -4353,7 +4356,7 @@ export function showVendorShop(ctx: ScreenContext, vendor: DiabloVendor): void {
 
       ctx.menuEl.innerHTML = `
         <div style="
-          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
           align-items:center;justify-content:center;color:#fff;pointer-events:auto;
         ">
           <div style="
@@ -4537,13 +4540,24 @@ export function showVendorShop(ctx: ScreenContext, vendor: DiabloVendor): void {
           p.gold -= pot.cost;
           p.stats.totalGoldSpent += pot.cost;
           const newPot: DiabloPotion = { ...pot, id: ctx.genId() };
-          // Try to assign to an empty potion slot first
           let assigned = false;
+          // Try to stack into existing slot of same type
           for (let s = 0; s < 4; s++) {
-            if (!p.potionSlots[s]) {
-              p.potionSlots[s] = newPot;
+            const slot = p.potionSlots[s];
+            if (slot && slot.potion.name === pot.name && slot.count < MAX_POTION_STACK) {
+              slot.count++;
               assigned = true;
               break;
+            }
+          }
+          // Try empty slot
+          if (!assigned) {
+            for (let s = 0; s < 4; s++) {
+              if (!p.potionSlots[s]) {
+                p.potionSlots[s] = { potion: newPot, count: 1 };
+                assigned = true;
+                break;
+              }
             }
           }
           if (!assigned) {
@@ -4797,7 +4811,7 @@ export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapI
       ctx.menuEl.innerHTML = `
         <div style="
           position:fixed;top:0;left:0;width:100%;height:100%;
-          background:rgba(5,3,1,0.92);display:flex;flex-direction:column;
+          ${SCREEN_BG}display:flex;flex-direction:column;
           align-items:center;justify-content:center;z-index:1000;
           font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;color:#e8dcc8;
           pointer-events:auto;
@@ -4942,10 +4956,20 @@ export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapI
           const newPot: DiabloPotion = { ...pot, id: ctx.genId() };
           let assigned = false;
           for (let s = 0; s < 4; s++) {
-            if (!p.potionSlots[s]) {
-              p.potionSlots[s] = newPot;
+            const slot = p.potionSlots[s];
+            if (slot && slot.potion.name === pot.name && slot.count < MAX_POTION_STACK) {
+              slot.count++;
               assigned = true;
               break;
+            }
+          }
+          if (!assigned) {
+            for (let s = 0; s < 4; s++) {
+              if (!p.potionSlots[s]) {
+                p.potionSlots[s] = { potion: newPot, count: 1 };
+                assigned = true;
+                break;
+              }
             }
           }
           if (!assigned) {
@@ -5069,7 +5093,7 @@ export function showCraftingUI(ctx: ScreenContext, vendor: DiabloVendor, mode: '
 
       ctx.menuEl.innerHTML = `
         <div style="
-          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
           align-items:center;justify-content:center;color:#fff;pointer-events:auto;
         ">
           <div style="
@@ -5350,7 +5374,7 @@ export function showAdvancedCraftingUI(ctx: ScreenContext): void {
 
       ctx.menuEl.innerHTML = `
         <div style="
-          width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+          width:100%;height:100%;${SCREEN_BG}display:flex;flex-direction:column;
           align-items:center;justify-content:center;color:#fff;pointer-events:auto;
         ">
           <div style="

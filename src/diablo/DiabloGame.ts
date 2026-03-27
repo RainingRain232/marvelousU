@@ -35,7 +35,7 @@ import {
   ItemSlot, ItemType, DiabloItemStats,
   MultiplayerState,
   GRLeaderboardEntry, KeyBindings, DEFAULT_KEYBINDINGS,
-  createDefaultPlayer, createDefaultState
+  createDefaultPlayer, createDefaultState, MAX_POTION_STACK
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, MAP_CONFIGS, ENEMY_DEFS, ITEM_DATABASE, SET_BONUSES,
@@ -3177,7 +3177,28 @@ export class DiabloGame {
     if (Math.random() < 0.30) {
       const pot = POTION_DROP_POOL[Math.floor(Math.random() * POTION_DROP_POOL.length)];
       const droppedPotion: DiabloPotion = { ...pot, id: this._genId() };
-      p.potions.push(droppedPotion);
+      // Try to stack into existing slot of same type
+      let added = false;
+      for (let s = 0; s < 4; s++) {
+        const slot = p.potionSlots[s];
+        if (slot && slot.potion.name === pot.name && slot.count < MAX_POTION_STACK) {
+          slot.count++;
+          added = true;
+          break;
+        }
+      }
+      // Try empty slot
+      if (!added) {
+        for (let s = 0; s < 4; s++) {
+          if (!p.potionSlots[s]) {
+            p.potionSlots[s] = { potion: droppedPotion, count: 1 };
+            added = true;
+            break;
+          }
+        }
+      }
+      // Overflow to inventory
+      if (!added) p.potions.push(droppedPotion);
       this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `+${pot.name}`, "#44ff44");
     }
 
@@ -5369,10 +5390,10 @@ export class DiabloGame {
 
     // Find from potion slots first, then inventory
     for (let i = 0; i < 4; i++) {
-      const pot = p.potionSlots[i];
-      if (pot && ((type === PotionType.HEALTH && (pot.type === PotionType.HEALTH || pot.type === PotionType.REJUVENATION))
-        || (type === PotionType.MANA && (pot.type === PotionType.MANA || pot.type === PotionType.REJUVENATION)))) {
-        this._consumePotion(pot, i);
+      const slot = p.potionSlots[i];
+      if (slot && ((type === PotionType.HEALTH && (slot.potion.type === PotionType.HEALTH || slot.potion.type === PotionType.REJUVENATION))
+        || (type === PotionType.MANA && (slot.potion.type === PotionType.MANA || slot.potion.type === PotionType.REJUVENATION)))) {
+        this._consumePotion(slot.potion, i);
         return;
       }
     }
@@ -5390,15 +5411,19 @@ export class DiabloGame {
   private _usePotionSlot(slotIdx: number): void {
     const p = this._state.player;
     if (p.potionCooldown > 0) return;
-    const pot = p.potionSlots[slotIdx];
-    if (!pot) return;
-    this._consumePotion(pot, slotIdx);
+    const slot = p.potionSlots[slotIdx];
+    if (!slot) return;
+    this._consumePotion(slot.potion, slotIdx);
   }
 
   private _consumePotion(pot: DiabloPotion, slotIdx: number): void {
     const p = this._state.player;
     this._applyPotionEffect(pot);
-    p.potionSlots[slotIdx] = null;
+    const slot = p.potionSlots[slotIdx];
+    if (slot) {
+      slot.count--;
+      if (slot.count <= 0) p.potionSlots[slotIdx] = null;
+    }
     p.potionCooldown = pot.cooldown;
   }
 
