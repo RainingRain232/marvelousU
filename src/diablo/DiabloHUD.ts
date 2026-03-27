@@ -261,13 +261,43 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <defs>
       <radialGradient id="hpGG" cx="50%" cy="48%"><stop offset="0%" stop-color="#18120c"/><stop offset="70%" stop-color="#0e0a06"/><stop offset="100%" stop-color="#060402"/></radialGradient>
       <linearGradient id="hpHorn" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a1410"/><stop offset="100%" stop-color="#0a0806"/></linearGradient>
+      <radialGradient id="hpEyeGlow" cx="50%" cy="50%"><stop offset="0%" stop-color="#ff4444"/><stop offset="50%" stop-color="#cc2222"/><stop offset="100%" stop-color="#661111" stop-opacity="0"/></radialGradient>
+      <linearGradient id="hpWingMem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#14100a"/><stop offset="100%" stop-color="#0a0806"/></linearGradient>
     </defs>
+    <!-- Wings (folded behind body, visible at edges) -->
+    <!-- Left wing membrane -->
+    <path d="M 38 50 Q 8 30 2 8 Q 0 2 4 6 Q 12 18 20 32 Q 10 42 6 58 Q 2 72 6 68 Q 12 60 22 52 Q 14 72 8 90 Q 4 100 8 96 Q 16 82 28 66 Z"
+      fill="url(#hpWingMem)" stroke="#1a1410" stroke-width="0.6" opacity="0.7"/>
+    <!-- Left wing bone spars -->
+    <path d="M 38 50 Q 18 28 4 6" fill="none" stroke="#201810" stroke-width="1.8" opacity="0.5"/>
+    <path d="M 36 54 Q 16 50 6 58" fill="none" stroke="#201810" stroke-width="1.2" opacity="0.4"/>
+    <path d="M 34 60 Q 18 68 8 90" fill="none" stroke="#201810" stroke-width="1.2" opacity="0.4"/>
+    <!-- Left wing vein details -->
+    <path d="M 20 32 Q 14 38 12 48" fill="none" stroke="#1a1410" stroke-width="0.5" opacity="0.35"/>
+    <path d="M 16 42 Q 12 55 10 65" fill="none" stroke="#1a1410" stroke-width="0.4" opacity="0.3"/>
+    <!-- Right wing membrane -->
+    <path d="M 182 50 Q 212 30 218 8 Q 220 2 216 6 Q 208 18 200 32 Q 210 42 214 58 Q 218 72 214 68 Q 208 60 198 52 Q 206 72 212 90 Q 216 100 212 96 Q 204 82 192 66 Z"
+      fill="url(#hpWingMem)" stroke="#1a1410" stroke-width="0.6" opacity="0.7"/>
+    <!-- Right wing bone spars -->
+    <path d="M 182 50 Q 202 28 216 6" fill="none" stroke="#201810" stroke-width="1.8" opacity="0.5"/>
+    <path d="M 184 54 Q 204 50 214 58" fill="none" stroke="#201810" stroke-width="1.2" opacity="0.4"/>
+    <path d="M 186 60 Q 202 68 212 90" fill="none" stroke="#201810" stroke-width="1.2" opacity="0.4"/>
+    <!-- Right wing vein details -->
+    <path d="M 200 32 Q 206 38 208 48" fill="none" stroke="#1a1410" stroke-width="0.5" opacity="0.35"/>
+    <path d="M 204 42 Q 208 55 210 65" fill="none" stroke="#1a1410" stroke-width="0.4" opacity="0.3"/>
     <!-- Body mass behind orb -->
     <path d="M 110 8 C 70 5 28 28 16 62 C 6 90 4 110 8 135 C 14 160 32 182 60 196
              C 78 205 95 210 110 210 C 125 210 142 205 160 196
              C 188 182 206 160 212 135 C 216 110 214 90 204 62
              C 192 28 150 5 110 8 Z"
       fill="url(#hpGG)" stroke="#1a1208" stroke-width="1.5" opacity="0.85"/>
+    <!-- Scale texture (overlapping rows across body) -->
+    <path d="M 46 72 Q 48 68 52 72 Q 54 68 58 72" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.3"/>
+    <path d="M 44 82 Q 47 78 50 82 Q 53 78 56 82 Q 59 78 62 82" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.25"/>
+    <path d="M 42 94 Q 45 90 48 94 Q 51 90 54 94" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.25"/>
+    <path d="M 162 72 Q 164 68 168 72 Q 170 68 174 72" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.3"/>
+    <path d="M 158 82 Q 161 78 164 82 Q 167 78 170 82 Q 173 78 176 82" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.25"/>
+    <path d="M 160 94 Q 163 90 166 94 Q 169 90 172 94" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.25"/>
     <!-- Muscle/rib texture lines on body -->
     <path d="M 50 70 Q 55 80 48 95" fill="none" stroke="#1a1410" stroke-width="1.2" opacity="0.4"/>
     <path d="M 42 90 Q 48 105 40 120" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.3"/>
@@ -275,13 +305,24 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <path d="M 178 90 Q 172 105 180 120" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.3"/>
     <path d="M 55 150 Q 60 160 52 172" fill="none" stroke="#1a1410" stroke-width="0.8" opacity="0.3"/>
     <path d="M 165 150 Q 160 160 168 172" fill="none" stroke="#1a1410" stroke-width="0.8" opacity="0.3"/>
-    <!-- Shoulder masses -->
-    <ellipse cx="38" cy="65" rx="18" ry="14" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
-    <ellipse cx="182" cy="65" rx="18" ry="14" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
+    <!-- Spine ridge bumps down center back -->
+    <ellipse cx="110" cy="190" rx="3" ry="2" fill="#14100a" opacity="0.5"/>
+    <ellipse cx="110" cy="198" rx="2.5" ry="1.8" fill="#14100a" opacity="0.4"/>
+    <ellipse cx="110" cy="205" rx="2" ry="1.5" fill="#14100a" opacity="0.3"/>
+    <!-- Shoulder masses (larger, more muscular) -->
+    <ellipse cx="38" cy="62" rx="20" ry="16" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
+    <ellipse cx="182" cy="62" rx="20" ry="16" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
+    <!-- Shoulder muscle striations -->
+    <path d="M 28 56 Q 34 60 30 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
+    <path d="M 192 56 Q 186 60 190 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
     <!-- LEFT CLAW gripping orb (3 fingers + thumb wrapping around) -->
     <path d="M 32 82 Q 22 90 18 100 Q 16 108 20 112 Q 22 108 24 102 Q 26 96 30 90 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
     <path d="M 28 95 Q 16 105 12 118 Q 10 126 14 130 Q 16 124 20 116 Q 22 108 26 100 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
     <path d="M 26 112 Q 14 124 10 140 Q 8 148 12 150 Q 16 144 18 136 Q 20 128 24 118 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
+    <!-- Left finger joint knuckles -->
+    <circle cx="25" cy="92" r="1.5" fill="#1a1410" opacity="0.4"/>
+    <circle cx="20" cy="108" r="1.5" fill="#1a1410" opacity="0.4"/>
+    <circle cx="18" cy="126" r="1.5" fill="#1a1410" opacity="0.4"/>
     <!-- Left claw tips (sharp, curved) -->
     <path d="M 18 100 Q 14 96 12 92 Q 11 90 13 90 Q 15 92 18 100" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
     <path d="M 12 118 Q 8 114 6 110 Q 5 108 7 108 Q 9 110 12 118" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
@@ -292,6 +333,10 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <path d="M 188 82 Q 198 90 202 100 Q 204 108 200 112 Q 198 108 196 102 Q 194 96 190 90 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
     <path d="M 192 95 Q 204 105 208 118 Q 210 126 206 130 Q 204 124 200 116 Q 198 108 194 100 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
     <path d="M 194 112 Q 206 124 210 140 Q 212 148 208 150 Q 204 144 202 136 Q 200 128 196 118 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
+    <!-- Right finger joint knuckles -->
+    <circle cx="195" cy="92" r="1.5" fill="#1a1410" opacity="0.4"/>
+    <circle cx="200" cy="108" r="1.5" fill="#1a1410" opacity="0.4"/>
+    <circle cx="202" cy="126" r="1.5" fill="#1a1410" opacity="0.4"/>
     <!-- Right claw tips -->
     <path d="M 202 100 Q 206 96 208 92 Q 209 90 207 90 Q 205 92 202 100" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
     <path d="M 208 118 Q 212 114 214 110 Q 215 108 213 108 Q 211 110 208 118" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
@@ -301,12 +346,21 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <!-- Head (larger, more detailed) -->
     <path d="M 110 14 C 90 12 76 18 74 30 C 72 42 80 50 95 52 C 100 52 110 53 120 52
              C 140 50 148 42 146 30 C 144 18 130 12 110 14 Z" fill="#12100a" stroke="#1a1410" stroke-width="1"/>
+    <!-- Cranial ridges / wrinkled skin on forehead -->
+    <path d="M 84 20 Q 90 17 96 20" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 86 22 Q 92 19 98 22" fill="none" stroke="#1a1410" stroke-width="0.5" opacity="0.35"/>
+    <path d="M 122 20 Q 128 17 134 20" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 120 22 Q 126 19 132 22" fill="none" stroke="#1a1410" stroke-width="0.5" opacity="0.35"/>
     <!-- Brow ridge (heavy, overhanging) -->
     <path d="M 80 24 C 88 18 100 17 110 20 C 120 17 132 18 140 24" fill="none" stroke="#1e1810" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Brow ridge underside shadow -->
+    <path d="M 82 25 C 90 20 100 19 110 21 C 120 19 130 20 138 25" fill="none" stroke="#0a0806" stroke-width="1" opacity="0.4"/>
     <!-- Deep-set eye sockets -->
     <ellipse cx="95" cy="28" rx="7" ry="5" fill="#060402" stroke="#0e0a06" stroke-width="0.8"/>
     <ellipse cx="125" cy="28" rx="7" ry="5" fill="#060402" stroke="#0e0a06" stroke-width="0.8"/>
-    <!-- Glowing red eyes -->
+    <!-- Glowing red eyes with radial glow -->
+    <ellipse cx="95" cy="28" rx="6" ry="4" fill="url(#hpEyeGlow)" opacity="0.4"/>
+    <ellipse cx="125" cy="28" rx="6" ry="4" fill="url(#hpEyeGlow)" opacity="0.4"/>
     <ellipse cx="95" cy="28" rx="3.5" ry="2.2" fill="#661111"/>
     <ellipse cx="125" cy="28" rx="3.5" ry="2.2" fill="#661111"/>
     <ellipse cx="95" cy="28" rx="1.5" ry="1" fill="#cc2222"/>
@@ -317,24 +371,50 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <path d="M 107 32 Q 110 36 113 32" fill="none" stroke="#1a1410" stroke-width="1.2"/>
     <circle cx="107" cy="34" r="1.2" fill="#0a0806"/>
     <circle cx="113" cy="34" r="1.2" fill="#0a0806"/>
+    <!-- Nasal ridge wrinkles -->
+    <path d="M 108 30 Q 110 29 112 30" fill="none" stroke="#1a1410" stroke-width="0.5" opacity="0.3"/>
+    <path d="M 108.5 31 Q 110 30.5 111.5 31" fill="none" stroke="#1a1410" stroke-width="0.4" opacity="0.25"/>
     <!-- Mouth with fangs -->
     <path d="M 94 40 Q 100 43 110 42 Q 120 43 126 40" fill="none" stroke="#1a1410" stroke-width="1.2" stroke-linecap="round"/>
-    <!-- Upper fangs -->
-    <path d="M 100 41 L 99 46 L 101 41" fill="#1e1a12" stroke="#1a1410" stroke-width="0.4"/>
-    <path d="M 120 41 L 121 46 L 119 41" fill="#1e1a12" stroke="#1a1410" stroke-width="0.4"/>
+    <!-- Upper fangs (larger, more prominent) -->
+    <path d="M 100 41 L 98.5 47 L 101.5 41" fill="#1e1a12" stroke="#1a1410" stroke-width="0.4"/>
+    <path d="M 120 41 L 121.5 47 L 118.5 41" fill="#1e1a12" stroke="#1a1410" stroke-width="0.4"/>
+    <!-- Smaller inner teeth -->
+    <path d="M 104 41.5 L 103.5 44 L 104.5 41.5" fill="#1e1a12" stroke="#1a1410" stroke-width="0.3"/>
+    <path d="M 116 41.5 L 116.5 44 L 115.5 41.5" fill="#1e1a12" stroke="#1a1410" stroke-width="0.3"/>
+    <!-- Lower jaw fangs poking up -->
+    <path d="M 102 43 L 101.5 40 L 102.5 43" fill="#1a1610" stroke="#1a1410" stroke-width="0.3"/>
+    <path d="M 118 43 L 118.5 40 L 117.5 43" fill="#1a1610" stroke="#1a1410" stroke-width="0.3"/>
     <!-- Cheekbone ridges -->
     <path d="M 82 30 Q 86 36 88 42" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.6"/>
     <path d="M 138 30 Q 134 36 132 42" fill="none" stroke="#1a1410" stroke-width="1" opacity="0.6"/>
+    <!-- Jaw muscle lines -->
+    <path d="M 84 38 Q 88 44 90 48" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.35"/>
+    <path d="M 136 38 Q 132 44 130 48" fill="none" stroke="#1a1410" stroke-width="0.6" opacity="0.35"/>
+    <!-- Pointed ears -->
+    <path d="M 74 28 Q 66 22 62 16 Q 60 14 64 18 Q 68 24 74 30" fill="#12100a" stroke="#1a1410" stroke-width="0.6" opacity="0.6"/>
+    <path d="M 146 28 Q 154 22 158 16 Q 160 14 156 18 Q 152 24 146 30" fill="#12100a" stroke="#1a1410" stroke-width="0.6" opacity="0.6"/>
     <!-- Horns (thick, curved, textured) -->
-    <path d="M 78 20 Q 62 6 48 0" fill="none" stroke="url(#hpHorn)" stroke-width="7" stroke-linecap="round"/>
-    <path d="M 142 20 Q 158 6 172 0" fill="none" stroke="url(#hpHorn)" stroke-width="7" stroke-linecap="round"/>
-    <!-- Horn ridges (rings) -->
-    <path d="M 72 16 Q 70 14 72 12" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 78 20 Q 62 6 48 0" fill="none" stroke="url(#hpHorn)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M 142 20 Q 158 6 172 0" fill="none" stroke="url(#hpHorn)" stroke-width="8" stroke-linecap="round"/>
+    <!-- Horn ridges (more rings for texture) -->
+    <path d="M 74 18 Q 72 16 74 14" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 70 15 Q 68 13 70 11" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
     <path d="M 65 12 Q 63 10 65 8" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.4"/>
-    <path d="M 148 16 Q 150 14 148 12" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 60 9 Q 58 7 60 5" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.35"/>
+    <path d="M 55 6 Q 53 4 55 2" fill="none" stroke="#201810" stroke-width="0.5" opacity="0.3"/>
+    <path d="M 146 18 Q 148 16 146 14" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 150 15 Q 152 13 150 11" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
     <path d="M 155 12 Q 157 10 155 8" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.4"/>
-    <!-- Chin/jaw detail -->
-    <path d="M 98 48 Q 110 54 122 48" fill="#0e0c08" stroke="#1a1410" stroke-width="0.6" opacity="0.5"/>
+    <path d="M 160 9 Q 162 7 160 5" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.35"/>
+    <path d="M 165 6 Q 167 4 165 2" fill="none" stroke="#201810" stroke-width="0.5" opacity="0.3"/>
+    <!-- Chin/jaw detail (more defined) -->
+    <path d="M 96 48 Q 103 52 110 54 Q 117 52 124 48" fill="#0e0c08" stroke="#1a1410" stroke-width="0.6" opacity="0.5"/>
+    <!-- Chin bump -->
+    <ellipse cx="110" cy="52" rx="4" ry="2.5" fill="#10100a" opacity="0.4"/>
+    <!-- Neck folds visible below jaw -->
+    <path d="M 94 50 Q 102 56 110 56 Q 118 56 126 50" fill="none" stroke="#1a1410" stroke-width="0.5" opacity="0.3"/>
+    <path d="M 96 53 Q 103 58 110 58 Q 117 58 124 53" fill="none" stroke="#1a1410" stroke-width="0.4" opacity="0.25"/>
   </svg>`;
   hpOrbWrap.appendChild(hpCreature);
   // Outer decorative ring
