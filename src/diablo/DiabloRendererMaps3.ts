@@ -2502,22 +2502,58 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       mctx.scene.add(tree);
     }
 
-    // ── Creek / stream (winding water) ──
-    const streamParts = 12;
+    // ── Creek / stream (narrow winding water with banks) ──
+    const streamBankMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.92 });
+    const streamBedMat = new THREE.MeshStandardMaterial({ color: 0x3a5566, roughness: 0.4, metalness: 0.1 });
+    const streamParts = 20;
+    let sX = -hw * 0.4, sZ = -hd * 0.15;
+    let sAngle = 0.3;
     for (let i = 0; i < streamParts; i++) {
-      const seg = new THREE.Mesh(
-        new THREE.PlaneGeometry(3 + Math.random() * 2, 12),
-        waterMat,
-      );
+      sAngle += (Math.random() - 0.5) * 0.4;
+      const segLen = 3 + Math.random() * 2;
+      const nextX = sX + Math.cos(sAngle) * segLen;
+      const nextZ = sZ + Math.sin(sAngle) * segLen;
+      const midX = (sX + nextX) / 2;
+      const midZ = (sZ + nextZ) / 2;
+      const ty = getTerrainHeight(midX, midZ, 1.4);
+      const streamW = 1.2 + Math.sin(i * 0.8) * 0.3;
+
+      // Water surface
+      const seg = new THREE.Mesh(new THREE.PlaneGeometry(streamW, segLen + 0.5), waterMat);
       seg.rotation.x = -Math.PI / 2;
-      const t = i / streamParts;
-      seg.position.set(
-        -hw * 0.5 + t * w * 0.7 + Math.sin(t * 6) * 8,
-        0.04,
-        -hd * 0.2 + Math.cos(t * 4) * 15,
-      );
-      seg.rotation.z = Math.atan2(Math.cos(t * 6) * 8, w * 0.7 / streamParts);
+      seg.rotation.z = -sAngle + Math.PI / 2;
+      seg.position.set(midX, ty + 0.02, midZ);
       mctx.scene.add(seg);
+
+      // Stream bed (slightly darker, wider)
+      const bed = new THREE.Mesh(new THREE.PlaneGeometry(streamW + 0.4, segLen + 0.6), streamBedMat);
+      bed.rotation.x = -Math.PI / 2;
+      bed.rotation.z = -sAngle + Math.PI / 2;
+      bed.position.set(midX, ty + 0.01, midZ);
+      mctx.scene.add(bed);
+
+      // Dirt banks on both sides
+      for (const bankSide of [-1, 1]) {
+        const bankOff = (streamW / 2 + 0.25) * bankSide;
+        const bank = new THREE.Mesh(new THREE.PlaneGeometry(0.5, segLen), streamBankMat);
+        bank.rotation.x = -Math.PI / 2;
+        bank.rotation.z = -sAngle + Math.PI / 2;
+        const bOffX = Math.sin(sAngle) * bankOff;
+        const bOffZ = -Math.cos(sAngle) * bankOff;
+        bank.position.set(midX + bOffX, ty + 0.015, midZ + bOffZ);
+        mctx.scene.add(bank);
+      }
+
+      // Occasional rocks in stream
+      if (Math.random() > 0.6) {
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + Math.random() * 0.1, 1), stoneMat);
+        rock.position.set(midX + (Math.random() - 0.5) * streamW * 0.5, ty + 0.08, midZ + (Math.random() - 0.5) * streamW * 0.5);
+        rock.scale.y = 0.5;
+        mctx.scene.add(rock);
+      }
+
+      sX = nextX;
+      sZ = nextZ;
     }
 
     // ── Stone bridge over stream ──
@@ -3383,18 +3419,106 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
 
     // ── Windmill ──
     const wmX = -hw * 0.35, wmZ = hd * 0.3;
-    const wmBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 27), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
-    wmBase.position.set(wmX, 3, wmZ);
+    const wmY = getTerrainHeight(wmX, wmZ, 1.4);
+    const wmWallMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 });
+    const wmMortarMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.95 });
+    const wmBrickDarkMat = new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 0.8 });
+    const wmRoofMat = new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 });
+    const wmDoorMat = new THREE.MeshStandardMaterial({ color: 0x4a3218, roughness: 0.85 });
+    const wmWindowMat = new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.5 });
+
+    // Main body
+    const wmBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 20), wmWallMat);
+    wmBase.position.set(wmX, wmY + 3, wmZ);
     mctx.scene.add(wmBase);
-    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 27), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
-    wmRoof.position.set(wmX, 7, wmZ);
+
+    // Horizontal brick mortar lines on body
+    for (let row = 0; row < 10; row++) {
+      const mortarY = wmY + 0.5 + row * 0.55;
+      const rowRadius = 2 - (row / 10) * 0.5; // tapers with the cylinder
+      const mortar = new THREE.Mesh(new THREE.TorusGeometry(rowRadius, 0.015, 6, 24), wmMortarMat);
+      mortar.position.set(wmX, mortarY, wmZ);
+      mortar.rotation.x = Math.PI / 2;
+      mctx.scene.add(mortar);
+    }
+
+    // Vertical brick joints (offset per row)
+    for (let row = 0; row < 9; row++) {
+      const jY = wmY + 0.75 + row * 0.55;
+      const jRadius = 2 - ((row + 0.5) / 10) * 0.5;
+      const jointCount = 12 + row % 2 * 2; // alternate count for offset
+      for (let j = 0; j < jointCount; j++) {
+        const jAngle = (j / jointCount) * Math.PI * 2 + (row % 2) * (Math.PI / jointCount);
+        const jx = wmX + Math.cos(jAngle) * (jRadius + 0.01);
+        const jz = wmZ + Math.sin(jAngle) * (jRadius + 0.01);
+        const joint = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.5, 0.02), wmMortarMat);
+        joint.position.set(jx, jY, jz);
+        joint.rotation.y = -jAngle;
+        mctx.scene.add(joint);
+      }
+    }
+
+    // Foundation base (wider stone ring)
+    const wmFoundation = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.2, 0.3, 20), stoneMat);
+    wmFoundation.position.set(wmX, wmY + 0.15, wmZ);
+    mctx.scene.add(wmFoundation);
+
+    // Door
+    const wmDoor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.6, 0.1), wmDoorMat);
+    wmDoor.position.set(wmX, wmY + 0.8, wmZ + 1.95);
+    mctx.scene.add(wmDoor);
+    // Door frame
+    const wmDoorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.7, 0.05), wmBrickDarkMat);
+    wmDoorFrame.position.set(wmX, wmY + 0.85, wmZ + 1.97);
+    mctx.scene.add(wmDoorFrame);
+    // Door handle
+    const wmHandle = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshStandardMaterial({ color: 0x887744, metalness: 0.5 }));
+    wmHandle.position.set(wmX + 0.25, wmY + 0.8, wmZ + 2.01);
+    mctx.scene.add(wmHandle);
+
+    // Windows (2 on opposite sides)
+    for (const wSide of [0, Math.PI]) {
+      const wxOff = Math.sin(wSide) * 1.55;
+      const wzOff = Math.cos(wSide) * 1.55;
+      // Window opening
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.6), wmWindowMat);
+      win.position.set(wmX + wxOff, wmY + 3.5, wmZ + wzOff);
+      win.rotation.y = wSide;
+      mctx.scene.add(win);
+      // Window frame
+      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.65, 0.06), wmBrickDarkMat);
+      winFrame.position.set(wmX + wxOff, wmY + 3.5, wmZ + wzOff);
+      winFrame.rotation.y = wSide;
+      mctx.scene.add(winFrame);
+      // Window cross bar
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.55, 0.03), wmDoorMat);
+      crossV.position.set(wmX + wxOff, wmY + 3.5, wmZ + wzOff + (wSide === 0 ? 0.04 : -0.04));
+      mctx.scene.add(crossV);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.03, 0.03), wmDoorMat);
+      crossH.position.set(wmX + wxOff, wmY + 3.5, wmZ + wzOff + (wSide === 0 ? 0.04 : -0.04));
+      mctx.scene.add(crossH);
+    }
+
+    // Roof
+    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 20), wmRoofMat);
+    wmRoof.position.set(wmX, wmY + 7, wmZ);
     mctx.scene.add(wmRoof);
+    // Roof ridge beams
+    for (let rb = 0; rb < 8; rb++) {
+      const rbAngle = (rb / 8) * Math.PI * 2;
+      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 6), wmDoorMat);
+      ridge.position.set(wmX + Math.cos(rbAngle) * 1, wmY + 7, wmZ + Math.sin(rbAngle) * 1);
+      ridge.rotation.z = Math.cos(rbAngle) * 0.45;
+      ridge.rotation.x = Math.sin(rbAngle) * 0.45;
+      mctx.scene.add(ridge);
+    }
+
     // Blades
     for (let b = 0; b < 4; b++) {
       const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.05), woodMat);
       blade.position.set(
         wmX + Math.cos(b * Math.PI / 2) * 2,
-        6 + Math.sin(b * Math.PI / 2) * 2,
+        wmY + 6 + Math.sin(b * Math.PI / 2) * 2,
         wmZ - 1.6,
       );
       blade.rotation.z = b * Math.PI / 2;
