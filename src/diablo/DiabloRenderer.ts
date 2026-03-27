@@ -4207,59 +4207,59 @@ export class DiabloRenderer {
   }
 
   private _createTextSprite(text: string, color: string): THREE.Sprite {
-    const isCrit = text.startsWith('CRIT') || text.startsWith('-') && text.length > 3;
+    const isCrit = text.startsWith('CRIT') || (text.startsWith('-') && text.length > 3);
     const isHeal = color === '#44ff44' || color === '#44ffaa';
     const isGold = color === '#ffd700';
     const isSkill = color === '#44ffff' || color === '#ff8844' || color === '#aa44ff';
     const canvas = document.createElement('canvas');
-    canvas.width = isCrit ? 512 : 256;
-    canvas.height = isCrit ? 160 : 80;
+    canvas.width = isCrit ? 512 : 384;
+    canvas.height = isCrit ? 160 : 96;
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Medieval-style font
-    const fontSize = isCrit ? 60 : 30;
-    ctx.font = `bold ${fontSize}px 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Georgia, serif`;
+    const fontSize = isCrit ? 64 : 42;
+    ctx.font = `900 ${fontSize}px 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Georgia, serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
 
-    // Multi-layer glow for crits
     if (isCrit) {
+      // Thick black outline
       ctx.shadowColor = color;
-      ctx.shadowBlur = 25;
+      ctx.shadowBlur = 30;
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 7;
+      ctx.lineWidth = 10;
       ctx.strokeText(text, cx, cy);
+      // Colored fill
       ctx.fillStyle = color;
       ctx.fillText(text, cx, cy);
-      // Second pass for extra glow
-      ctx.shadowBlur = 15;
+      // Extra glow pass
+      ctx.shadowBlur = 18;
       ctx.fillText(text, cx, cy);
       ctx.shadowBlur = 0;
-      // Inner highlight
+      // White inner highlight
       ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha = 0.35;
       ctx.fillText(text, cx, cy - 1);
       ctx.globalAlpha = 1.0;
     } else if (isHeal) {
       ctx.shadowColor = '#22ff66';
-      ctx.shadowBlur = 12;
-      ctx.strokeStyle = '#003300';
-      ctx.lineWidth = 4;
+      ctx.shadowBlur = 15;
+      ctx.strokeStyle = '#001a00';
+      ctx.lineWidth = 6;
       ctx.strokeText(text, cx, cy);
       ctx.fillStyle = color;
       ctx.fillText(text, cx, cy);
       ctx.shadowBlur = 0;
     } else if (isGold) {
       ctx.shadowColor = '#ffaa00';
-      ctx.shadowBlur = 10;
-      ctx.strokeStyle = '#332200';
-      ctx.lineWidth = 4;
+      ctx.shadowBlur = 14;
+      ctx.strokeStyle = '#1a1100';
+      ctx.lineWidth = 6;
       ctx.strokeText(text, cx, cy);
-      const grad = ctx.createLinearGradient(cx - 40, cy - 15, cx + 40, cy + 15);
+      const grad = ctx.createLinearGradient(cx - 50, cy - 20, cx + 50, cy + 20);
       grad.addColorStop(0, '#fff7aa');
       grad.addColorStop(0.5, '#ffd700');
       grad.addColorStop(1, '#cc9900');
@@ -4268,27 +4268,33 @@ export class DiabloRenderer {
       ctx.shadowBlur = 0;
     } else if (isSkill) {
       ctx.shadowColor = color;
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 20;
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 5;
+      ctx.lineWidth = 7;
       ctx.strokeText(text, cx, cy);
       ctx.fillStyle = color;
       ctx.fillText(text, cx, cy);
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 10;
       ctx.fillText(text, cx, cy);
       ctx.shadowBlur = 0;
     } else {
-      // Regular damage numbers — bold with fire-like gradient
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 8;
+      // Regular damage numbers — bold, high contrast
+      // Thick black outline for readability
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 7;
       ctx.strokeText(text, cx, cy);
-      const grad = ctx.createLinearGradient(cx, cy - fontSize/2, cx, cy + fontSize/2);
+      // Colored glow
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      // Gradient fill (white top to colored bottom)
+      const grad = ctx.createLinearGradient(cx, cy - fontSize / 2, cx, cy + fontSize / 2);
       grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.3, color);
+      grad.addColorStop(0.35, color);
       grad.addColorStop(1, color);
       ctx.fillStyle = grad;
+      ctx.fillText(text, cx, cy);
+      // Extra glow pass
+      ctx.shadowBlur = 6;
       ctx.fillText(text, cx, cy);
       ctx.shadowBlur = 0;
     }
@@ -4302,7 +4308,7 @@ export class DiabloRenderer {
       depthTest: false,
     });
     const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(2, 0.625, 1);
+    sprite.scale.set(isCrit ? 3.2 : 2.8, isCrit ? 1.0 : 0.7, 1);
     return sprite;
   }
 
