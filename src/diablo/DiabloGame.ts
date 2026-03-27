@@ -1706,20 +1706,32 @@ export class DiabloGame {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
         }
+        @keyframes cs-border-pulse {
+          0%, 100% { box-shadow: 0 0 40px rgba(200,168,78,0.15), inset 0 0 60px rgba(0,0,0,0.3); }
+          50% { box-shadow: 0 0 60px rgba(200,168,78,0.25), inset 0 0 80px rgba(0,0,0,0.2); }
+        }
+        .weather-btn:hover, .diff-btn:hover { filter: brightness(1.2); transform: scale(1.03); }
+        .diablo-class-card { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        ::-webkit-scrollbar-thumb { background: #5a4a2a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #8a7a4a; }
       </style>
       <div style="
         width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
-        align-items:center;justify-content:center;color:#fff;position:relative;overflow:hidden;
+        align-items:center;color:#fff;position:relative;overflow-y:auto;overflow-x:hidden;
+        padding:30px 20px;box-sizing:border-box;
+        scrollbar-width:thin;scrollbar-color:#5a4a2a rgba(0,0,0,0.3);
       ">
         <!-- Ornate gothic page border -->
-        <div style="position:absolute;inset:8px;border:2px solid rgba(200,168,78,0.3);border-radius:4px;pointer-events:none;
-          box-shadow:0 0 40px rgba(200,168,78,0.15), inset 0 0 60px rgba(0,0,0,0.3);"></div>
-        <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
+        <div style="position:fixed;inset:8px;border:2px solid rgba(200,168,78,0.3);border-radius:4px;pointer-events:none;
+          animation:cs-border-pulse 4s ease-in-out infinite;z-index:1;"></div>
+        <div style="position:fixed;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;z-index:1;"></div>
         <!-- Corner ornaments -->
-        <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
-        <div style="position:absolute;top:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
-        <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
-        <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
+        <div style="position:fixed;top:14px;left:14px;color:#5a4a2a;font-size:20px;pointer-events:none;z-index:1;">&#9670;</div>
+        <div style="position:fixed;top:14px;right:14px;color:#5a4a2a;font-size:20px;pointer-events:none;z-index:1;">&#9670;</div>
+        <div style="position:fixed;bottom:14px;left:14px;color:#5a4a2a;font-size:20px;pointer-events:none;z-index:1;">&#9670;</div>
+        <div style="position:fixed;bottom:14px;right:14px;color:#5a4a2a;font-size:20px;pointer-events:none;z-index:1;">&#9670;</div>
 
         <!-- Title with flame braziers -->
         <div style="display:flex;align-items:center;gap:24px;margin-bottom:8px;">
@@ -1747,15 +1759,57 @@ export class DiabloGame {
           <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;justify-content:center;">
-          <span style="color:#888;font-size:14px;align-self:center;margin-right:8px;font-family:'Georgia',serif;">DIFFICULTY:</span>
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;align-items:center;">
+          <span style="color:#888;font-size:14px;margin-right:8px;font-family:'Georgia',serif;">DIFFICULTY:</span>
           ${diffHtml}
         </div>
+
+        <!-- Weather selector -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;align-items:center;">
+          <span style="color:#888;font-size:14px;margin-right:8px;font-family:'Georgia',serif;">WEATHER:</span>
+          <button class="weather-btn" data-weather="RANDOM" style="
+            cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
+            background:rgba(60,50,20,0.9);border:2px solid #c8a84e;color:#c8a84e;
+            font-family:'Georgia',serif;font-weight:bold;
+          ">\uD83C\uDFB2 Random</button>
+          <button class="weather-btn" data-weather="NORMAL" style="
+            cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
+            background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
+            font-family:'Georgia',serif;font-weight:bold;
+          ">\u2601\uFE0F Normal</button>
+          <button class="weather-btn" data-weather="CLEAR" style="
+            cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
+            background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
+            font-family:'Georgia',serif;font-weight:bold;
+          ">\u2600\uFE0F Clear</button>
+          <button class="weather-btn" data-weather="FOGGY" style="
+            cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
+            background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
+            font-family:'Georgia',serif;font-weight:bold;
+          ">\uD83C\uDF2B\uFE0F Foggy</button>
+          <button class="weather-btn" data-weather="STORMY" style="
+            cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
+            background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
+            font-family:'Georgia',serif;font-weight:bold;
+          ">\u26C8\uFE0F Stormy</button>
+        </div>
+
+        <!-- Decorative sub-divider -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px;">
+          <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#3a2a1a);"></div>
+          <span style="color:#5a4a2a;font-size:8px;">\u25C6</span>
+          <span style="color:#8a7a4a;font-size:11px;letter-spacing:4px;font-family:'Georgia',serif;">SELECT A CHAMPION</span>
+          <span style="color:#5a4a2a;font-size:8px;">\u25C6</span>
+          <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#3a2a1a);"></div>
+        </div>
+
         <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">${cardsHtml}</div>
         <div style="text-align:center;margin:10px 0;">
-          <label style="color:#ff4444;font-family:Georgia,serif;cursor:pointer;font-size:14px;">
-            <input type="checkbox" id="hardcore-check" style="margin-right:6px;">
-            Hardcore Mode (Permadeath)
+          <label style="color:#ff4444;font-family:Georgia,serif;cursor:pointer;font-size:14px;
+            padding:6px 16px;border:1px solid rgba(255,68,68,0.2);border-radius:4px;
+            background:rgba(80,20,20,0.3);transition:all 0.2s;">
+            <input type="checkbox" id="hardcore-check" style="margin-right:6px;accent-color:#ff4444;">
+            \u2620 Hardcore Mode (Permadeath)
           </label>
         </div>
         ${savedCharHtml}
@@ -1818,6 +1872,26 @@ export class DiabloGame {
           b.style.background = isNowActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)";
           b.style.borderColor = isNowActive ? bCfg.color : "#3a3a2a";
           b.style.color = isNowActive ? bCfg.color : "#666";
+        });
+      });
+    });
+
+    // Wire up weather buttons
+    const weatherBtns = this._menuEl.querySelectorAll(".weather-btn") as NodeListOf<HTMLButtonElement>;
+    const weatherColors: Record<string, string> = {
+      RANDOM: "#c8a84e", NORMAL: "#9999aa", CLEAR: "#ffcc44", FOGGY: "#8899bb", STORMY: "#6688cc",
+    };
+    weatherBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const w = btn.getAttribute("data-weather") as Weather | 'RANDOM';
+        this._state.preferredWeather = w;
+        weatherBtns.forEach((b) => {
+          const bw = b.getAttribute("data-weather")!;
+          const isNowActive = bw === w;
+          const color = weatherColors[bw] || "#c8a84e";
+          b.style.background = isNowActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)";
+          b.style.borderColor = isNowActive ? color : "#3a3a2a";
+          b.style.color = isNowActive ? color : "#666";
         });
       });
     });
@@ -2459,7 +2533,9 @@ export class DiabloGame {
     if (this._fullmapCanvas) this._fullmapCanvas.style.display = "none";
 
     const weathers = [Weather.NORMAL, Weather.FOGGY, Weather.CLEAR, Weather.STORMY];
-    this._state.weather = weathers[Math.floor(Math.random() * weathers.length)];
+    this._state.weather = this._state.preferredWeather === 'RANDOM'
+      ? weathers[Math.floor(Math.random() * weathers.length)]
+      : this._state.preferredWeather as Weather;
 
     // Apply map modifier speed multiplier to spawned enemies
     // (modifiers are already set from map select, stored in this._state.activeMapModifiers)

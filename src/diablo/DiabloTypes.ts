@@ -1675,6 +1675,7 @@ export interface DiabloState {
   respawnTimer: number;
   deathGoldLoss: number;
   weather: Weather;
+  preferredWeather: Weather | 'RANDOM';
   exploredGrid: boolean[][];
   activeQuests: DiabloQuest[];
   completedQuestIds: string[];
@@ -2167,6 +2168,7 @@ export function createDefaultState(): DiabloState {
     respawnTimer: 0,
     deathGoldLoss: 0,
     weather: Weather.NORMAL,
+    preferredWeather: 'RANDOM' as Weather | 'RANDOM',
     exploredGrid: [],
     activeQuests: [],
     completedQuestIds: [],

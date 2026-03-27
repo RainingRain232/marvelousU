@@ -118,6 +118,17 @@ export class DiabloRenderer {
   private _baseAmbientIntensity: number = 0;
   private _baseDirIntensity: number = 0;
 
+  // Rain particle system
+  private _rainGroup: THREE.Group | null = null;
+  private _rainDrops: THREE.Mesh[] = [];
+  private _rainSplashes: THREE.Mesh[] = [];
+  private _rainSplashTimers: number[] = [];
+  private _rainActive: boolean = false;
+
+  // Ambient world particles (dust motes, fireflies)
+  private _ambientParticleGroup: THREE.Group | null = null;
+  private _ambientMotes: { mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number; maxLife: number }[] = [];
+
   // Pet rendering
   private _petMeshes: Map<string, THREE.Group> = new Map();
 
@@ -203,7 +214,7 @@ export class DiabloRenderer {
     this._renderer.setSize(w, h);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.shadowMap.enabled = true;
-    this._renderer.shadowMap.type = THREE.BasicShadowMap;
+    this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this._renderer.toneMappingExposure = 1.0;
 
@@ -227,7 +238,7 @@ export class DiabloRenderer {
     this._dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
     this._dirLight.position.set(15, 25, 10);
     this._dirLight.castShadow = true;
-    this._dirLight.shadow.mapSize.set(1024, 1024);
+    this._dirLight.shadow.mapSize.set(2048, 2048);
     this._dirLight.shadow.camera.near = 0.5;
     this._dirLight.shadow.camera.far = 80;
     this._dirLight.shadow.camera.left = -40;
@@ -261,6 +272,7 @@ export class DiabloRenderer {
     const defaultColors: number[] = [];
     const c1 = new THREE.Color(0x446622);
     const c2 = new THREE.Color(0x668833);
+    const c3 = new THREE.Color(0x335518); // dark patch color
     for (let i = 0; i < posAttr.count; i++) {
       const gx = posAttr.getX(i);
       const gz = posAttr.getZ(i);
@@ -268,6 +280,17 @@ export class DiabloRenderer {
       posAttr.setY(i, h);
       const t = THREE.MathUtils.clamp((h / 1.6) * 0.5 + 0.5, 0, 1);
       const col = new THREE.Color().lerpColors(c1, c2, t);
+      // Micro-noise for natural terrain variation (patchy grass/dirt)
+      const noise = Math.sin(gx * 1.7) * Math.cos(gz * 2.3) * 0.5
+        + Math.sin(gx * 4.1 + gz * 3.7) * 0.25
+        + Math.sin(gx * 8.3 - gz * 6.1) * 0.12;
+      const darkPatch = Math.max(0, noise) * 0.15;
+      col.lerp(c3, darkPatch);
+      // Subtle brightness variation
+      const brightnessNoise = (Math.sin(gx * 0.8 + gz * 1.1) * 0.06);
+      col.r = Math.max(0, col.r + brightnessNoise);
+      col.g = Math.max(0, col.g + brightnessNoise);
+      col.b = Math.max(0, col.b + brightnessNoise * 0.5);
       defaultColors.push(col.r, col.g, col.b);
     }
     groundGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(defaultColors), 3));
@@ -316,6 +339,38 @@ export class DiabloRenderer {
     this._skyDome = new THREE.Mesh(skyGeo, skyMat);
     this._skyDome.position.y = -5;
     this._scene.add(this._skyDome);
+
+    // Rain particle system (initially hidden)
+    this._rainGroup = new THREE.Group();
+    this._rainGroup.visible = false;
+    this._scene.add(this._rainGroup);
+    const rainGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 3);
+    const rainMat = new THREE.MeshBasicMaterial({ color: 0x8899bb, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 400; i++) {
+      const drop = new THREE.Mesh(rainGeo, rainMat);
+      drop.position.set(
+        (Math.random() - 0.5) * 60,
+        Math.random() * 25 + 5,
+        (Math.random() - 0.5) * 60,
+      );
+      this._rainGroup.add(drop);
+      this._rainDrops.push(drop);
+    }
+    // Rain splash pools (ground impact circles)
+    const splashGeo = new THREE.RingGeometry(0, 0.2, 8);
+    splashGeo.rotateX(-Math.PI / 2);
+    const splashMat = new THREE.MeshBasicMaterial({ color: 0xaabbcc, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+    for (let i = 0; i < 30; i++) {
+      const splash = new THREE.Mesh(splashGeo.clone(), splashMat.clone());
+      splash.visible = false;
+      this._rainGroup.add(splash);
+      this._rainSplashes.push(splash);
+      this._rainSplashTimers.push(0);
+    }
+
+    // Ambient world particle group
+    this._ambientParticleGroup = new THREE.Group();
+    this._scene.add(this._ambientParticleGroup);
   }
 
   /** Re-color the terrain mesh with height-based blending between two colors.
@@ -27088,12 +27143,30 @@ export class DiabloRenderer {
         this._dirLight.intensity = this._baseDirIntensity * 1.2;
         break;
       case Weather.STORMY:
-        this._ambientLight.intensity = this._baseAmbientIntensity * 0.6;
-        this._dirLight.intensity = this._baseDirIntensity * 0.7;
+        this._ambientLight.intensity = this._baseAmbientIntensity * 0.45;
+        this._dirLight.intensity = this._baseDirIntensity * 0.5;
+        this._hemiLight.intensity = 0.25;
         this._stormFlashTimer = 5 + Math.random() * 10;
+        // Dark stormy fog
+        fog.density = this._baseFogDensity * 1.8;
+        fog.color.setHex(0x1a2a2a);
+        // Darken sky
+        if (this._skyDome) {
+          (this._skyDome.material as THREE.MeshBasicMaterial).color.setHex(0x222833);
+        }
+        // Enable rain
+        this._rainActive = true;
+        if (this._rainGroup) this._rainGroup.visible = true;
+        // Lower exposure for moody atmosphere
+        this._renderer.toneMappingExposure = 0.75;
         break;
       case Weather.NORMAL:
         break;
+    }
+    // Disable rain for non-stormy weather
+    if (weather !== Weather.STORMY) {
+      this._rainActive = false;
+      if (this._rainGroup) this._rainGroup.visible = false;
     }
   }
 
@@ -27103,12 +27176,115 @@ export class DiabloRenderer {
     if (this._stormFlashTimer <= 0) {
       if (!this._stormFlashActive) {
         this._stormFlashActive = true;
-        this._ambientLight.intensity = this._baseAmbientIntensity * 3;
-        this._stormFlashTimer = 0.1;
+        // Dramatic lightning flash — both ambient and directional
+        this._ambientLight.intensity = this._baseAmbientIntensity * 4;
+        this._dirLight.intensity = this._baseDirIntensity * 3;
+        this._hemiLight.intensity = 1.5;
+        this._renderer.toneMappingExposure = 1.5;
+        // Double flash sometimes
+        this._stormFlashTimer = Math.random() > 0.6 ? 0.05 : 0.12;
       } else {
         this._stormFlashActive = false;
-        this._ambientLight.intensity = this._baseAmbientIntensity * 0.6;
-        this._stormFlashTimer = 5 + Math.random() * 10;
+        this._ambientLight.intensity = this._baseAmbientIntensity * 0.45;
+        this._dirLight.intensity = this._baseDirIntensity * 0.5;
+        this._hemiLight.intensity = 0.25;
+        this._renderer.toneMappingExposure = 0.75;
+        this._stormFlashTimer = 3 + Math.random() * 8;
+      }
+    }
+  }
+
+  private _updateRain(state: DiabloState, dt: number): void {
+    if (!this._rainActive || !this._rainGroup) return;
+    const px = state.player.x;
+    const pz = state.player.z;
+    const fallSpeed = 35;
+    const windX = Math.sin(this._time * 0.3) * 3;
+
+    for (const drop of this._rainDrops) {
+      drop.position.y -= fallSpeed * dt;
+      drop.position.x += windX * dt;
+      // Reset drops that fall below ground
+      if (drop.position.y < 0) {
+        drop.position.y = 20 + Math.random() * 10;
+        drop.position.x = px + (Math.random() - 0.5) * 60;
+        drop.position.z = pz + (Math.random() - 0.5) * 60;
+        // Trigger a splash
+        for (let i = 0; i < this._rainSplashes.length; i++) {
+          if (this._rainSplashTimers[i] <= 0) {
+            const splash = this._rainSplashes[i];
+            splash.position.set(drop.position.x, getTerrainHeight(drop.position.x, drop.position.z) + 0.05, drop.position.z);
+            splash.visible = true;
+            splash.scale.set(0.3, 0.3, 0.3);
+            this._rainSplashTimers[i] = 0.3;
+            break;
+          }
+        }
+      }
+    }
+
+    // Update splashes
+    for (let i = 0; i < this._rainSplashes.length; i++) {
+      if (this._rainSplashTimers[i] > 0) {
+        this._rainSplashTimers[i] -= dt;
+        const t = 1 - this._rainSplashTimers[i] / 0.3;
+        this._rainSplashes[i].scale.setScalar(0.3 + t * 1.5);
+        (this._rainSplashes[i].material as THREE.MeshBasicMaterial).opacity = 0.3 * (1 - t);
+        if (this._rainSplashTimers[i] <= 0) {
+          this._rainSplashes[i].visible = false;
+        }
+      }
+    }
+
+    // Keep rain centered on player
+    this._rainGroup.position.set(0, 0, 0);
+  }
+
+  private _updateAmbientMotes(state: DiabloState, dt: number): void {
+    if (!this._ambientParticleGroup) return;
+    const px = state.player.x;
+    const pz = state.player.z;
+
+    // Spawn new motes periodically
+    if (this._ambientMotes.length < 25 && Math.random() < dt * 3) {
+      const moteGeo = new THREE.SphereGeometry(0.04, 4, 4);
+      const isFirefly = Math.random() > 0.5;
+      const moteMat = new THREE.MeshBasicMaterial({
+        color: isFirefly ? 0xaaff66 : 0xddddcc,
+        transparent: true,
+        opacity: isFirefly ? 0.7 : 0.3,
+      });
+      const mesh = new THREE.Mesh(moteGeo, moteMat);
+      mesh.position.set(
+        px + (Math.random() - 0.5) * 30,
+        1 + Math.random() * 4,
+        pz + (Math.random() - 0.5) * 30,
+      );
+      this._ambientParticleGroup.add(mesh);
+      this._ambientMotes.push({
+        mesh,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.3) * 0.3,
+        vz: (Math.random() - 0.5) * 0.5,
+        life: 4 + Math.random() * 6,
+        maxLife: 4 + Math.random() * 6,
+      });
+    }
+
+    // Update motes
+    for (let i = this._ambientMotes.length - 1; i >= 0; i--) {
+      const m = this._ambientMotes[i];
+      m.life -= dt;
+      m.mesh.position.x += m.vx * dt;
+      m.mesh.position.y += m.vy * dt + Math.sin(this._time * 2 + i) * 0.003;
+      m.mesh.position.z += m.vz * dt;
+      // Fade in/out
+      const alpha = m.life < 1 ? m.life : (m.maxLife - m.life < 1 ? m.maxLife - m.life : 1);
+      (m.mesh.material as THREE.MeshBasicMaterial).opacity = alpha * 0.5;
+
+      if (m.life <= 0) {
+        this._ambientParticleGroup.remove(m.mesh);
+        this._ambientMotes.splice(i, 1);
       }
     }
   }
@@ -27123,6 +27299,8 @@ export class DiabloRenderer {
 
     this._updateShake(dt);
     this._updateWeather(dt);
+    this._updateRain(state, dt);
+    this._updateAmbientMotes(state, dt);
     this._updateDestroyingProps(dt);
     this._updateParticles(state.particles, dt);
     this._renderParticles(state.particles);
