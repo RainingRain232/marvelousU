@@ -6,8 +6,6 @@ import {
   BossAbility,
   BossPhaseConfig,
   EnemyBehavior,
-  StatusEffect,
-  ItemRarity,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------

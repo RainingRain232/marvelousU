@@ -4,7 +4,6 @@ import {
   ItemRarity,
   MapCompletionReward,
   EnemyType,
-  TimeOfDay,
 } from './DiabloTypes';
 
 // ---------------------------------------------------------------------------

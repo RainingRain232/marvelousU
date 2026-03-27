@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { getTerrainHeight } from './DiabloRenderer';
+import { VendorType } from './DiabloTypes';
+import { VENDOR_DEFS } from './DiabloConfig';
 
 export interface MapBuildContext {
   scene: THREE.Scene;
@@ -8,18 +10,18 @@ export interface MapBuildContext {
   ambientLight: THREE.AmbientLight;
   hemiLight: THREE.HemisphereLight;
   torchLights: THREE.PointLight[];
-  buildingColliders: { x: number; z: number; r: number }[];
+  buildingColliders: any[];
   applyTerrainColors: (baseColor: number, secondaryColor: number, amplitude?: number) => void;
 }
 
-export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult: number = 1.0): void {
-    ctx.scene.fog = new THREE.FogExp2(0x2a4a2a, 0.015);
-    ctx.applyTerrainColors(0x2a4a1a, 0x4b6a3b);
-    ctx.dirLight.color.setHex(0xffe8b0);
-    ctx.dirLight.intensity = 1.5;
-    ctx.ambientLight.color.setHex(0x354525);
-    ctx.hemiLight.color.setHex(0x88aa66);
-    ctx.hemiLight.groundColor.setHex(0x443322);
+export function buildForest(mctx: MapBuildContext, w: number, d: number, propMult: number = 1.0): void {
+    mctx.scene.fog = new THREE.FogExp2(0x2a4a2a, 0.015);
+    mctx.applyTerrainColors(0x2a4a1a, 0x4b6a3b);
+    mctx.dirLight.color.setHex(0xffe8b0);
+    mctx.dirLight.intensity = 1.5;
+    mctx.ambientLight.color.setHex(0x354525);
+    mctx.hemiLight.color.setHex(0x88aa66);
+    mctx.hemiLight.groundColor.setHex(0x443322);
 
     const hw = w / 2;
 
@@ -316,7 +318,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const tx = (Math.random() - 0.5) * w;
       const tz = (Math.random() - 0.5) * d;
       tree.position.set(tx, getTerrainHeight(tx, tz), tz);
-      ctx.envGroup.add(tree);
+      mctx.envGroup.add(tree);
     }
 
     // Rocks (55) - varied sizes, shapes with moss
@@ -370,7 +372,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const rz = (Math.random() - 0.5) * d;
       rockGrp.position.set(rx, getTerrainHeight(rx, rz) + 0.05 + Math.random() * 0.08, rz);
       rockGrp.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.envGroup.add(rockGrp);
+      mctx.envGroup.add(rockGrp);
     }
 
     // Path segments (20)
@@ -382,7 +384,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const sz = Math.sin(i * 0.4) * 3;
       seg.position.set(sx, getTerrainHeight(sx, sz) + 0.02, sz);
       seg.rotation.y = Math.sin(i * 0.3) * 0.15;
-      ctx.envGroup.add(seg);
+      mctx.envGroup.add(seg);
     }
 
     // Grass tufts (100) - varied heights and greens
@@ -401,7 +403,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const tuftX = (Math.random() - 0.5) * w;
       const tuftZ = (Math.random() - 0.5) * d;
       tuft.position.set(tuftX, getTerrainHeight(tuftX, tuftZ), tuftZ);
-      ctx.envGroup.add(tuft);
+      mctx.envGroup.add(tuft);
     }
 
     // Fallen logs (15) with fungus and moss detail
@@ -475,7 +477,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const logZ = (Math.random() - 0.5) * d * 0.85;
       logGrp.position.set(logX, getTerrainHeight(logX, logZ), logZ);
       logGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(logGrp);
+      mctx.envGroup.add(logGrp);
     }
 
     // Mushrooms (28) - varied cap colors and spotted detail
@@ -507,7 +509,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const mushX = (Math.random() - 0.5) * w;
       const mushZ = (Math.random() - 0.5) * d;
       mush.position.set(mushX, getTerrainHeight(mushX, mushZ), mushZ);
-      ctx.envGroup.add(mush);
+      mctx.envGroup.add(mush);
     }
 
     // Winding stream with transparent water, riverbed stones and sparkles
@@ -523,7 +525,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       );
       streamSeg.rotation.x = -Math.PI / 2;
       streamSeg.position.set(sx, getTerrainHeight(sx, sz) + 0.02, sz);
-      ctx.envGroup.add(streamSeg);
+      mctx.envGroup.add(streamSeg);
       // Riverbed stones with varied shapes and detail
       for (let rs = 0; rs < 5; rs++) {
         const riverStoneSize = 0.04 + Math.random() * 0.06;
@@ -537,7 +539,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
         rStone.scale.set(0.8 + Math.random() * 0.5, 0.3 + Math.random() * 0.25, 0.8 + Math.random() * 0.5);
         const rsSubmerge = Math.random() > 0.6 ? -0.01 : 0.01;
         rStone.position.set(sx + (Math.random() - 0.5) * segW * 0.8, getTerrainHeight(sx, sz) + rsSubmerge, sz + (Math.random() - 0.5) * 1.5);
-        ctx.envGroup.add(rStone);
+        mctx.envGroup.add(rStone);
       }
       // Water plants/reeds along stream banks
       for (let reedIdx = 0; reedIdx < 2; reedIdx++) {
@@ -551,14 +553,14 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
         reedStem.position.set(reedX, getTerrainHeight(sx, sz) + reedH / 2, reedZ);
         reedStem.rotation.z = (Math.random() - 0.5) * 0.15;
         reedStem.rotation.x = (Math.random() - 0.5) * 0.1;
-        ctx.envGroup.add(reedStem);
+        mctx.envGroup.add(reedStem);
         // Reed leaf/blade at top
         const reedLeaf = new THREE.Mesh(
           new THREE.BoxGeometry(0.015, 0.06, 0.003),
           new THREE.MeshStandardMaterial({ color: 0x558844, roughness: 0.8 }));
         reedLeaf.position.set(reedX, getTerrainHeight(sx, sz) + reedH, reedZ);
         reedLeaf.rotation.z = (Math.random() - 0.5) * 0.4;
-        ctx.envGroup.add(reedLeaf);
+        mctx.envGroup.add(reedLeaf);
       }
     }
     // Stream sparkle highlights
@@ -569,7 +571,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const spSz = -d * 0.35 + Math.random() * d * 0.7;
       const spSx = streamBaseX + Math.sin(spSz * 0.04) * 2.5;
       sparkle.position.set(spSx + (Math.random() - 0.5) * 1, getTerrainHeight(spSx, spSz) + 0.04, spSz);
-      ctx.envGroup.add(sparkle);
+      mctx.envGroup.add(sparkle);
     }
 
     // Flower patches (40) - with proper petals, pistils, and variety
@@ -605,7 +607,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const patchX = (Math.random() - 0.5) * w;
       const patchZ = (Math.random() - 0.5) * d;
       patch.position.set(patchX, getTerrainHeight(patchX, patchZ), patchZ);
-      ctx.envGroup.add(patch);
+      mctx.envGroup.add(patch);
     }
 
     // Boulders (14) - with moss, lichen, and varied rock tones
@@ -651,7 +653,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const bx2 = (Math.random() - 0.5) * w;
       const bz2 = (Math.random() - 0.5) * d;
       boulderGroup.position.set(bx2, getTerrainHeight(bx2, bz2), bz2);
-      ctx.envGroup.add(boulderGroup);
+      mctx.envGroup.add(boulderGroup);
     }
 
     // Animal bones (5)
@@ -669,7 +671,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const boneX = (Math.random() - 0.5) * w;
       const boneZ = (Math.random() - 0.5) * d;
       bonesGroup.position.set(boneX, getTerrainHeight(boneX, boneZ), boneZ);
-      ctx.envGroup.add(bonesGroup);
+      mctx.envGroup.add(bonesGroup);
     }
 
     // Wooden bridge over stream
@@ -678,14 +680,14 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
     const wBridge = new THREE.Mesh(wBridgeGeo, wBridgeMat);
     wBridge.position.set(hw * 0.4, getTerrainHeight(hw * 0.4, 0) + 0.1, 0);
     wBridge.castShadow = true;
-    ctx.envGroup.add(wBridge);
+    mctx.envGroup.add(wBridge);
     for (let side = -1; side <= 1; side += 2) {
       for (let pi = 0; pi < 2; pi++) {
         const railGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 20);
         const railMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
         const rail = new THREE.Mesh(railGeo, railMat);
         rail.position.set(hw * 0.4 + (pi === 0 ? -1.2 : 1.2), 0.4, side * 0.65);
-        ctx.envGroup.add(rail);
+        mctx.envGroup.add(rail);
       }
     }
 
@@ -775,7 +777,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const cfX = (Math.random() - 0.5) * w * 0.7;
       const cfZ = (Math.random() - 0.5) * d * 0.7;
       campfire.position.set(cfX, getTerrainHeight(cfX, cfZ), cfZ);
-      ctx.envGroup.add(campfire);
+      mctx.envGroup.add(campfire);
     }
 
     // Beehives (2) with layered construction bands, entrance ledge, and bees
@@ -823,7 +825,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const hiveY = 3.0 + Math.random();
       const hiveZ = (Math.random() - 0.5) * d * 0.6;
       hiveGroup.position.set(hiveX, hiveY, hiveZ);
-      ctx.envGroup.add(hiveGroup);
+      mctx.envGroup.add(hiveGroup);
     }
 
     // Spider webs between trees (4)
@@ -840,7 +842,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       web.position.set((Math.random() - 0.5) * w * 0.5, 1.5 + Math.random() * 1.5, (Math.random() - 0.5) * d * 0.5);
       web.rotation.y = Math.random() * Math.PI;
       web.rotation.x = (Math.random() - 0.5) * 0.4;
-      ctx.envGroup.add(web);
+      mctx.envGroup.add(web);
     }
 
     // Fog ground layer
@@ -855,7 +857,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
     const fogPlane = new THREE.Mesh(fogGeo, fogMat);
     fogPlane.rotation.x = -Math.PI / 2;
     fogPlane.position.y = 0.3;
-    ctx.envGroup.add(fogPlane);
+    mctx.envGroup.add(fogPlane);
 
     // Puddles on the ground (12) - flat reflective circles
     for (let i = 0; i < 12; i++) {
@@ -870,14 +872,14 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const pdX = (Math.random() - 0.5) * w * 0.85;
       const pdZ = (Math.random() - 0.5) * d * 0.85;
       puddle.position.set(pdX, getTerrainHeight(pdX, pdZ) + 0.012, pdZ);
-      ctx.envGroup.add(puddle);
+      mctx.envGroup.add(puddle);
       // Slight rim of mud around puddle
       const rimGeo = new THREE.RingGeometry(puddleR - 0.02, puddleR + 0.04, 24);
       const rim = new THREE.Mesh(rimGeo,
         new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 1.0, side: THREE.DoubleSide }));
       rim.rotation.x = -Math.PI / 2;
       rim.position.set(pdX, getTerrainHeight(pdX, pdZ) + 0.011, pdZ);
-      ctx.envGroup.add(rim);
+      mctx.envGroup.add(rim);
     }
 
     // Small ground-level vegetation patches (20) - ferns, small plants using cone/sphere combos
@@ -911,7 +913,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const vX = (Math.random() - 0.5) * w * 0.9;
       const vZ = (Math.random() - 0.5) * d * 0.9;
       vegGrp.position.set(vX, getTerrainHeight(vX, vZ), vZ);
-      ctx.envGroup.add(vegGrp);
+      mctx.envGroup.add(vegGrp);
     }
 
     // Light shafts (12) - volumetric god rays with dust motes
@@ -926,13 +928,13 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       });
       const shaft = new THREE.Mesh(shaftGeo, shaftMat);
       shaft.position.set((Math.random() - 0.5) * w * 0.65, shaftH * 0.4, (Math.random() - 0.5) * d * 0.65);
-      ctx.envGroup.add(shaft);
+      mctx.envGroup.add(shaft);
       // Dust motes in shaft
       for (let dm = 0; dm < 4; dm++) {
         const mote = new THREE.Mesh(new THREE.SphereGeometry(0.01, 16, 8),
           new THREE.MeshStandardMaterial({ color: 0xffffee, emissive: 0xffffcc, emissiveIntensity: 0.8, transparent: true, opacity: 0.3 }));
         mote.position.set(shaft.position.x + (Math.random() - 0.5) * shaftR, Math.random() * shaftH * 0.6 + 1, shaft.position.z + (Math.random() - 0.5) * shaftR);
-        ctx.envGroup.add(mote);
+        mctx.envGroup.add(mote);
       }
     }
 
@@ -940,7 +942,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
     for (let i = 0; i < 8; i++) {
       const dappleLight = new THREE.PointLight(0xffeeaa, 0.3 + Math.random() * 0.2, 8);
       dappleLight.position.set((Math.random() - 0.5) * w * 0.7, 3 + Math.random() * 2, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(dappleLight);
+      mctx.scene.add(dappleLight);
     }
 
     // Deer / animal silhouettes (4)
@@ -971,7 +973,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const deerZ = (Math.random() - 0.5) * d * 0.8;
       deerGrp.position.set(deerX, getTerrainHeight(deerX, deerZ), deerZ);
       deerGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(deerGrp);
+      mctx.envGroup.add(deerGrp);
     }
 
     // Berry bushes (12)
@@ -1004,7 +1006,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const bushX = (Math.random() - 0.5) * w * 0.85;
       const bushZ = (Math.random() - 0.5) * d * 0.85;
       bushGrp.position.set(bushX, getTerrainHeight(bushX, bushZ), bushZ);
-      ctx.envGroup.add(bushGrp);
+      mctx.envGroup.add(bushGrp);
     }
 
     // Toadstools / colorful mushroom clusters (8)
@@ -1029,7 +1031,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const toadX = (Math.random() - 0.5) * w * 0.8;
       const toadZ = (Math.random() - 0.5) * d * 0.8;
       toadGrp.position.set(toadX, getTerrainHeight(toadX, toadZ), toadZ);
-      ctx.envGroup.add(toadGrp);
+      mctx.envGroup.add(toadGrp);
     }
 
     // Old wooden signpost (2)
@@ -1051,7 +1053,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const signZ = (Math.random() - 0.5) * d * 0.5;
       signGrp.position.set(signX, getTerrainHeight(signX, signZ), signZ);
       signGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(signGrp);
+      mctx.envGroup.add(signGrp);
     }
 
     // Fern patches (40) - denser, varied
@@ -1071,7 +1073,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const fernX = (Math.random() - 0.5) * w * 0.9;
       const fernZ = (Math.random() - 0.5) * d * 0.9;
       fernGrp.position.set(fernX, getTerrainHeight(fernX, fernZ), fernZ);
-      ctx.envGroup.add(fernGrp);
+      mctx.envGroup.add(fernGrp);
     }
 
     // Hollow tree stump (3)
@@ -1124,7 +1126,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const stumpX = (Math.random() - 0.5) * w * 0.7;
       const stumpZ = (Math.random() - 0.5) * d * 0.7;
       stumpGrp.position.set(stumpX, getTerrainHeight(stumpX, stumpZ), stumpZ);
-      ctx.envGroup.add(stumpGrp);
+      mctx.envGroup.add(stumpGrp);
     }
 
     // Fireflies / glowing particles (35) - varied glow
@@ -1138,7 +1140,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
         0.3 + Math.random() * 3.0,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(fly);
+      mctx.envGroup.add(fly);
     }
 
     // Fallen logs (5)
@@ -1163,7 +1165,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const logGZ = (Math.random() - 0.5) * d * 0.7;
       logGrp.position.set(logGX, getTerrainHeight(logGX, logGZ), logGZ);
       logGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(logGrp);
+      mctx.envGroup.add(logGrp);
     }
 
     // Woodland flowers (25) - small ground-level color spots
@@ -1183,7 +1185,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const flGX = (Math.random() - 0.5) * w * 0.9;
       const flGZ = (Math.random() - 0.5) * d * 0.9;
       flGrp.position.set(flGX, getTerrainHeight(flGX, flGZ), flGZ);
-      ctx.envGroup.add(flGrp);
+      mctx.envGroup.add(flGrp);
     }
 
     // Hanging vines from trees (10) - thin green strands
@@ -1196,7 +1198,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
         2.5 + Math.random() * 1.5,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(vine);
+      mctx.envGroup.add(vine);
     }
 
     // Owl nests in trees (3)
@@ -1215,7 +1217,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
         nestGrp.add(egg);
       }
       nestGrp.position.set((Math.random() - 0.5) * w * 0.5, 2.5 + Math.random(), (Math.random() - 0.5) * d * 0.5);
-      ctx.envGroup.add(nestGrp);
+      mctx.envGroup.add(nestGrp);
     }
 
     // Leaf litter on ground (30) - varied leaf shapes and colors
@@ -1230,7 +1232,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const lpX = (Math.random() - 0.5) * w * 0.9;
       const lpZ = (Math.random() - 0.5) * d * 0.9;
       leafPile.position.set(lpX, getTerrainHeight(lpX, lpZ) + 0.015, lpZ);
-      ctx.envGroup.add(leafPile);
+      mctx.envGroup.add(leafPile);
     }
 
     // Moss patches on ground (25) - varied green tones
@@ -1243,7 +1245,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const mpX = (Math.random() - 0.5) * w * 0.9;
       const mpZ = (Math.random() - 0.5) * d * 0.9;
       mossPatch.position.set(mpX, getTerrainHeight(mpX, mpZ) + 0.015, mpZ);
-      ctx.envGroup.add(mossPatch);
+      mctx.envGroup.add(mossPatch);
     }
 
     // Wildflower meadow spots (15)
@@ -1266,7 +1268,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const mX = (Math.random() - 0.5) * w * 0.85;
       const mZ = (Math.random() - 0.5) * d * 0.85;
       meadowGrp.position.set(mX, getTerrainHeight(mX, mZ), mZ);
-      ctx.envGroup.add(meadowGrp);
+      mctx.envGroup.add(meadowGrp);
     }
 
     // Butterflies (10)
@@ -1283,7 +1285,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       }
       bfGrp.position.set((Math.random() - 0.5) * w * 0.7, 0.5 + Math.random() * 2.5, (Math.random() - 0.5) * d * 0.7);
       bfGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(bfGrp);
+      mctx.envGroup.add(bfGrp);
     }
 
     // Rabbits (4)
@@ -1311,7 +1313,7 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const rbZ = (Math.random() - 0.5) * d * 0.7;
       rabbitGrp.position.set(rbX, getTerrainHeight(rbX, rbZ), rbZ);
       rabbitGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(rabbitGrp);
+      mctx.envGroup.add(rabbitGrp);
     }
 
     // ── Dense ground grass ──
@@ -1337,18 +1339,18 @@ export function buildForest(ctx: MapBuildContext, w: number, d: number, propMult
       const gx = (Math.random() - 0.5) * w * 0.9;
       const gz = (Math.random() - 0.5) * d * 0.9;
       grassClump.position.set(gx, getTerrainHeight(gx, gz, 1.4), gz);
-      ctx.scene.add(grassClump);
+      mctx.scene.add(grassClump);
     }
 }
 
-export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x334466, 0.01);
-    ctx.applyTerrainColors(0x3a5a3a, 0x5a7a5a);
-    ctx.dirLight.color.setHex(0xaabbdd);
-    ctx.dirLight.intensity = 0.9;
-    ctx.ambientLight.color.setHex(0x3a4a6a);
-    ctx.hemiLight.color.setHex(0x6688bb);
-    ctx.hemiLight.groundColor.setHex(0x223322);
+export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x334466, 0.01);
+    mctx.applyTerrainColors(0x3a5a3a, 0x5a7a5a);
+    mctx.dirLight.color.setHex(0xaabbdd);
+    mctx.dirLight.intensity = 0.9;
+    mctx.ambientLight.color.setHex(0x3a4a6a);
+    mctx.hemiLight.color.setHex(0x6688bb);
+    mctx.hemiLight.groundColor.setHex(0x223322);
 
     // 18 elven buildings with ornate details
     for (let i = 0; i < 18; i++) {
@@ -1877,7 +1879,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
           bldgStoneMat,
         );
         stone.position.set(stoneX, getTerrainHeight(stoneX, stoneZ) + 0.02, stoneZ);
-        ctx.envGroup.add(stone);
+        mctx.envGroup.add(stone);
       }
 
       // --- Garden plot near building with paving, borders, and varied plants ---
@@ -1893,7 +1895,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         );
         dirtPatch.position.set(gardenGX, gardenTerrainY + 0.02, gardenGZ);
         dirtPatch.rotation.y = gardenAngle;
-        ctx.envGroup.add(dirtPatch);
+        mctx.envGroup.add(dirtPatch);
         // Decorative border stones around garden
         const gardenBorderMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.8 });
         for (let gb = 0; gb < 8; gb++) {
@@ -1906,7 +1908,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
             gardenTerrainY + 0.03,
             gardenGZ + Math.sin(gardenAngle + gbAngle2) * 0.22);
           gbStone.rotation.y = gardenAngle + gbAngle2;
-          ctx.envGroup.add(gbStone);
+          mctx.envGroup.add(gbStone);
         }
         // Paving stones (small stepping path to garden)
         for (let gp = 0; gp < 2; gp++) {
@@ -1917,7 +1919,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
             gardenGX - Math.cos(gardenAngle) * (0.35 + gp * 0.2),
             gardenTerrainY + 0.02,
             gardenGZ - Math.sin(gardenAngle) * (0.35 + gp * 0.2));
-          ctx.envGroup.add(gardenPaver);
+          mctx.envGroup.add(gardenPaver);
         }
         // Varied plants: vegetables, flowers, leafy greens
         const vegColors = [0x44aa33, 0xaa3322, 0xddaa22, 0x8844cc, 0xff6633];
@@ -1936,7 +1938,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
                 vegX + (Math.random() - 0.5) * 0.03,
                 gardenTerrainY + 0.05 + lf * 0.01,
                 vegZ + (Math.random() - 0.5) * 0.03);
-              ctx.envGroup.add(gardenLeaf);
+              mctx.envGroup.add(gardenLeaf);
             }
           } else {
             // Fruit/vegetable sphere
@@ -1944,18 +1946,18 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
               new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 10, 8),
               new THREE.MeshStandardMaterial({ color: vegColor, roughness: 0.7 }));
             veg.position.set(vegX, gardenTerrainY + 0.06, vegZ);
-            ctx.envGroup.add(veg);
+            mctx.envGroup.add(veg);
             // Small stem on top
             const vegStemlet = new THREE.Mesh(
               new THREE.CylinderGeometry(0.003, 0.003, 0.02, 4),
               new THREE.MeshStandardMaterial({ color: 0x33aa22, roughness: 0.8 }));
             vegStemlet.position.set(vegX, gardenTerrainY + 0.08, vegZ);
-            ctx.envGroup.add(vegStemlet);
+            mctx.envGroup.add(vegStemlet);
           }
         }
       }
 
-      ctx.envGroup.add(building);
+      mctx.envGroup.add(building);
 
     }
 
@@ -2001,7 +2003,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const lanX = (Math.random() - 0.5) * w * 0.9;
       const lanZ = (Math.random() - 0.5) * d * 0.9;
       lantern.position.set(lanX, getTerrainHeight(lanX, lanZ), lanZ);
-      ctx.envGroup.add(lantern);
+      mctx.envGroup.add(lantern);
     }
 
     // Crystalline spires (8) - tall glowing crystal formations
@@ -2032,7 +2034,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const spX = (Math.random() - 0.5) * w * 0.7;
       const spZ = (Math.random() - 0.5) * d * 0.7;
       spireGrp.position.set(spX, getTerrainHeight(spX, spZ), spZ);
-      ctx.envGroup.add(spireGrp);
+      mctx.envGroup.add(spireGrp);
     }
 
     // Ancient trees (25) with glowing roots
@@ -2087,7 +2089,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const etX = (Math.random() - 0.5) * w;
       const etZ = (Math.random() - 0.5) * d;
       tree.position.set(etX, getTerrainHeight(etX, etZ), etZ);
-      ctx.envGroup.add(tree);
+      mctx.envGroup.add(tree);
     }
 
     // Stone bridge over moonlit pond
@@ -2102,14 +2104,14 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
     const pond = new THREE.Mesh(pondGeo, pondMat);
     pond.rotation.x = -Math.PI / 2;
     pond.position.set(5, getTerrainHeight(5, -5) + 0.02, -5);
-    ctx.envGroup.add(pond);
+    mctx.envGroup.add(pond);
 
     const bridgeGeo = new THREE.BoxGeometry(2, 0.3, 8);
     const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.7 });
     const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
     bridge.position.set(5, getTerrainHeight(5, -5) + 0.5, -5);
     bridge.castShadow = true;
-    ctx.envGroup.add(bridge);
+    mctx.envGroup.add(bridge);
 
     // Railings with elven-style decorative arches
     const bridgeRailGoldMat = new THREE.MeshStandardMaterial({ color: 0xddc866, metalness: 0.5, roughness: 0.25 });
@@ -2118,7 +2120,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         const pillarGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 23);
         const pillar = new THREE.Mesh(pillarGeo, bridgeMat);
         pillar.position.set(5 + side * 0.9, 0.9, -5 - 3 + pi * 1.5);
-        ctx.envGroup.add(pillar);
+        mctx.envGroup.add(pillar);
         // Decorative elven curved torus arch between railing posts
         if (pi < 4) {
           const railArch = new THREE.Mesh(
@@ -2128,7 +2130,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
           railArch.position.set(5 + side * 0.9, 1.3, -5 - 3 + pi * 1.5 + 0.75);
           railArch.rotation.y = Math.PI / 2;
           railArch.rotation.z = Math.PI;
-          ctx.envGroup.add(railArch);
+          mctx.envGroup.add(railArch);
         }
       }
       // Horizontal top rail bar
@@ -2138,7 +2140,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       );
       topRail.position.set(5 + side * 0.9, 1.32, -5);
       topRail.rotation.x = Math.PI / 2;
-      ctx.envGroup.add(topRail);
+      mctx.envGroup.add(topRail);
     }
 
     // Ruins with moss (8 pillars) - detailed fluted columns with capitals, bases, damage
@@ -2269,7 +2271,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const ruinX = -15 + (Math.random() - 0.5) * 10;
       const ruinZ = 10 + (Math.random() - 0.5) * 8;
       ruin.position.set(ruinX, getTerrainHeight(ruinX, ruinZ), ruinZ);
-      ctx.envGroup.add(ruin);
+      mctx.envGroup.add(ruin);
     }
 
     // Elvish rune patterns on ground (15) - glowing geometric patterns
@@ -2299,7 +2301,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const rnX = (Math.random() - 0.5) * w * 0.8;
       const rnZ = (Math.random() - 0.5) * d * 0.8;
       runeGrp.position.set(rnX, getTerrainHeight(rnX, rnZ) + 0.02, rnZ);
-      ctx.envGroup.add(runeGrp);
+      mctx.envGroup.add(runeGrp);
     }
 
     // Enchanted garden flowers (35) - luminescent magical flora
@@ -2323,7 +2325,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const fgX = (Math.random() - 0.5) * w * 0.8;
       const fgZ = (Math.random() - 0.5) * d * 0.8;
       flowerGroup.position.set(fgX, getTerrainHeight(fgX, fgZ), fgZ);
-      ctx.envGroup.add(flowerGroup);
+      mctx.envGroup.add(flowerGroup);
     }
 
     // Vine-covered archways (4) - detailed with carved stone, keystone, runes, realistic ivy
@@ -2451,7 +2453,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const archZ = (Math.random() - 0.5) * d * 0.6;
       archGroup.position.set(archX, getTerrainHeight(archX, archZ), archZ);
       archGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(archGroup);
+      mctx.envGroup.add(archGroup);
     }
 
     // Fountain - central feature with decorative detail
@@ -2525,7 +2527,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       fountainGroup.add(fountPaver);
     }
     fountainGroup.position.set(0, getTerrainHeight(0, 0), 0);
-    ctx.envGroup.add(fountainGroup);
+    mctx.envGroup.add(fountainGroup);
 
     // Statues (3)
     for (let i = 0; i < 3; i++) {
@@ -2552,7 +2554,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const stX = (Math.random() - 0.5) * w * 0.5;
       const stZ = (Math.random() - 0.5) * d * 0.5;
       statueGroup.position.set(stX, getTerrainHeight(stX, stZ), stZ);
-      ctx.envGroup.add(statueGroup);
+      mctx.envGroup.add(statueGroup);
     }
 
     // Floating crystals (14) with particle trails
@@ -2581,10 +2583,10 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         fcGrp.add(sparkle);
       }
       fcGrp.position.set((Math.random() - 0.5) * w * 0.7, 2.0 + Math.random() * 3.0, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(fcGrp);
+      mctx.envGroup.add(fcGrp);
       const cPt = new THREE.PointLight(cc, 0.5, 7);
       cPt.position.copy(fcGrp.position);
-      ctx.envGroup.add(cPt);
+      mctx.envGroup.add(cPt);
     }
 
     // Mushroom circle (fairy ring)
@@ -2605,7 +2607,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
     const frX = (Math.random() - 0.5) * w * 0.4;
     const frZ = (Math.random() - 0.5) * d * 0.4;
     fairyRingGroup.position.set(frX, getTerrainHeight(frX, frZ), frZ);
-    ctx.envGroup.add(fairyRingGroup);
+    mctx.envGroup.add(fairyRingGroup);
 
     // Fallen leaves (15)
     const leafColors = [0xddaa33, 0xcc7722, 0xbb3322];
@@ -2618,7 +2620,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const lfX = (Math.random() - 0.5) * w * 0.8;
       const lfZ = (Math.random() - 0.5) * d * 0.8;
       leaf.position.set(lfX, getTerrainHeight(lfX, lfZ) + 0.02, lfZ);
-      ctx.envGroup.add(leaf);
+      mctx.envGroup.add(leaf);
     }
 
     // Benches (3)
@@ -2639,7 +2641,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const benchZ = (Math.random() - 0.5) * d * 0.6;
       benchGroup.position.set(benchX, getTerrainHeight(benchX, benchZ), benchZ);
       benchGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(benchGroup);
+      mctx.envGroup.add(benchGroup);
     }
 
     // Stepping stone paths (3 paths of 8 stones each)
@@ -2655,7 +2657,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         const ssX = startX + dirX * s * 1.2;
         const ssZ = startZ + dirZ * s * 1.2;
         ss.position.set(ssX, getTerrainHeight(ssX, ssZ) + 0.03, ssZ);
-        ctx.envGroup.add(ss);
+        mctx.envGroup.add(ss);
       }
     }
 
@@ -2685,7 +2687,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const shZ = (Math.random() - 0.5) * d * 0.5;
       shelfGroup.position.set(shX, getTerrainHeight(shX, shZ), shZ);
       shelfGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(shelfGroup);
+      mctx.envGroup.add(shelfGroup);
     }
 
     // Elven banners (4)
@@ -2704,7 +2706,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const bnX = (Math.random() - 0.5) * w * 0.7;
       const bnZ = (Math.random() - 0.5) * d * 0.7;
       bannerGroup.position.set(bnX, getTerrainHeight(bnX, bnZ), bnZ);
-      ctx.envGroup.add(bannerGroup);
+      mctx.envGroup.add(bannerGroup);
     }
 
     // Moonwell / enchanted pool (1)
@@ -2722,7 +2724,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
     const mwLight = new THREE.PointLight(0x4488ff, 2, 12);
     mwLight.position.y = 1;
     moonwellGrp.add(mwLight);
-    ctx.torchLights.push(mwLight);
+    mctx.torchLights.push(mwLight);
     // Rune symbols around the rim
     for (let r = 0; r < 8; r++) {
       const runeAng = (r / 8) * Math.PI * 2;
@@ -2733,7 +2735,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       moonwellGrp.add(rune);
     }
     moonwellGrp.position.set(w * 0.15, getTerrainHeight(w * 0.15, -d * 0.15), -d * 0.15);
-    ctx.envGroup.add(moonwellGrp);
+    mctx.envGroup.add(moonwellGrp);
 
     // Glowing vines on trees (10)
     const vineGlowMat = new THREE.MeshStandardMaterial({ color: 0x44dd88, emissive: 0x22aa44, emissiveIntensity: 0.5, roughness: 0.7 });
@@ -2752,7 +2754,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       bud.position.y = 3 - vineLen;
       vineGrp.add(bud);
       vineGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(vineGrp);
+      mctx.envGroup.add(vineGrp);
     }
 
     // Elven gazebo / pavilion (1)
@@ -2775,7 +2777,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
     gazFloor.position.y = 0.02;
     gazGrp.add(gazFloor);
     gazGrp.position.set(-w * 0.2, 0, d * 0.15);
-    ctx.envGroup.add(gazGrp);
+    mctx.envGroup.add(gazGrp);
 
     // Butterflies / pixie lights (20) with trails
     for (let i = 0; i < 20; i++) {
@@ -2808,7 +2810,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         1 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(pixieGrp);
+      mctx.envGroup.add(pixieGrp);
     }
 
     // Ethereal mist layers (8) - floating at various heights
@@ -2818,7 +2820,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
       const mist = new THREE.Mesh(mistGeo, mistMat);
       mist.rotation.x = -Math.PI / 2;
       mist.position.set((Math.random() - 0.5) * w * 0.7, 0.2 + Math.random() * 0.6, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(mist);
+      mctx.envGroup.add(mist);
     }
 
     // Floating magical particles (25) - ambient sparkles
@@ -2831,7 +2833,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         0.5 + Math.random() * 4,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(sparkle);
+      mctx.envGroup.add(sparkle);
     }
 
     // Ancient tree roots above ground (10)
@@ -2848,7 +2850,7 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         rootGrp.add(root);
       }
       rootGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(rootGrp);
+      mctx.envGroup.add(rootGrp);
     }
 
     // Elvish wind chimes (4)
@@ -2867,19 +2869,19 @@ export function buildElvenVillage(ctx: MapBuildContext, w: number, d: number): v
         3 + Math.random() * 1.5,
         (Math.random() - 0.5) * d * 0.6
       );
-      ctx.envGroup.add(chimeGrp);
+      mctx.envGroup.add(chimeGrp);
     }
 }
 
-export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x110815, 0.025);
-    ctx.applyTerrainColors(0x121218, 0x22222c, 0.4);
-    ctx.dirLight.color.setHex(0x554466);
-    ctx.dirLight.intensity = 0.3;
-    ctx.ambientLight.color.setHex(0x130a18);
-    ctx.ambientLight.intensity = 0.35;
-    ctx.hemiLight.color.setHex(0x221133);
-    ctx.hemiLight.groundColor.setHex(0x110808);
+export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x110815, 0.025);
+    mctx.applyTerrainColors(0x121218, 0x22222c, 0.4);
+    mctx.dirLight.color.setHex(0x554466);
+    mctx.dirLight.intensity = 0.3;
+    mctx.ambientLight.color.setHex(0x130a18);
+    mctx.ambientLight.intensity = 0.35;
+    mctx.hemiLight.color.setHex(0x221133);
+    mctx.hemiLight.groundColor.setHex(0x110808);
 
     // Pillars (28) with capitals, bases, and crack details
     for (let i = 0; i < 28; i++) {
@@ -2911,7 +2913,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const px = (Math.random() - 0.5) * w * 0.8;
       const pz = (Math.random() - 0.5) * d * 0.8;
       pilGrp.position.set(px, getTerrainHeight(px, pz, 0.4), pz);
-      ctx.envGroup.add(pilGrp);
+      mctx.envGroup.add(pilGrp);
     }
 
     // Walls with exposed brickwork (20 segments)
@@ -3138,7 +3140,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const wz = (Math.random() - 0.5) * d * 0.7;
       wallGrp.position.set(wx, getTerrainHeight(wx, wz, 0.4), wz);
       wallGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(wallGrp);
+      mctx.envGroup.add(wallGrp);
     }
 
     // Rune-engraved floor tiles (18)
@@ -3161,7 +3163,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const tZ = (Math.random() - 0.5) * d * 0.8;
       tileGrp.position.set(tX, getTerrainHeight(tX, tZ, 0.4) + 0.02, tZ);
       tileGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(tileGrp);
+      mctx.envGroup.add(tileGrp);
     }
 
     // Dripping water pools (6)
@@ -3179,7 +3181,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const dpX = (Math.random() - 0.5) * w * 0.7;
       const dpZ = (Math.random() - 0.5) * d * 0.7;
       poolGrp.position.set(dpX, getTerrainHeight(dpX, dpZ, 0.4), dpZ);
-      ctx.envGroup.add(poolGrp);
+      mctx.envGroup.add(poolGrp);
     }
 
     // Skull piles (18)
@@ -3200,7 +3202,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const pileX = (Math.random() - 0.5) * w * 0.8;
       const pileZ = (Math.random() - 0.5) * d * 0.8;
       pile.position.set(pileX, getTerrainHeight(pileX, pileZ, 0.4), pileZ);
-      ctx.envGroup.add(pile);
+      mctx.envGroup.add(pile);
     }
 
     // Glowing rune circles (12)
@@ -3217,7 +3219,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const torusX = (Math.random() - 0.5) * w * 0.7;
       const torusZ = (Math.random() - 0.5) * d * 0.7;
       torus.position.set(torusX, getTerrainHeight(torusX, torusZ, 0.4) + 0.05, torusZ);
-      ctx.envGroup.add(torus);
+      mctx.envGroup.add(torus);
     }
 
     // Bone piles (15)
@@ -3274,7 +3276,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const bpX = (Math.random() - 0.5) * w * 0.8;
       const bpZ = (Math.random() - 0.5) * d * 0.8;
       bonePile.position.set(bpX, getTerrainHeight(bpX, bpZ, 0.4), bpZ);
-      ctx.envGroup.add(bonePile);
+      mctx.envGroup.add(bonePile);
     }
 
     // Coffins (12) with lid details, carved borders, handles, cracks
@@ -3353,7 +3355,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const cofZ = (Math.random() - 0.5) * d * 0.7;
       coffin.position.set(cofX, getTerrainHeight(cofX, cofZ, 0.4), cofZ);
       coffin.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(coffin);
+      mctx.envGroup.add(coffin);
     }
 
     // Torch brackets with flickering point lights (14)
@@ -3393,8 +3395,8 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
         2.35,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.scene.add(tLight);
-      ctx.torchLights.push(tLight);
+      mctx.scene.add(tLight);
+      mctx.torchLights.push(tLight);
 
       // Soot marks around the torch bracket
       for (let sm = 0; sm < 2; sm++) {
@@ -3411,7 +3413,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
         torch.add(soot);
       }
       torch.position.set(tLight.position.x, getTerrainHeight(tLight.position.x, tLight.position.z, 0.4), tLight.position.z);
-      ctx.envGroup.add(torch);
+      mctx.envGroup.add(torch);
     }
 
     // Iron maidens (2)
@@ -3439,7 +3441,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const imZ = (Math.random() - 0.5) * d * 0.6;
       imGroup.position.set(imX, getTerrainHeight(imX, imZ, 0.4), imZ);
       imGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(imGroup);
+      mctx.envGroup.add(imGroup);
     }
 
     // Chains hanging from ceiling (16)
@@ -3484,7 +3486,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const chX = (Math.random() - 0.5) * w * 0.7;
       const chZ = (Math.random() - 0.5) * d * 0.7;
       chainGroup.position.set(chX, getTerrainHeight(chX, chZ, 0.4), chZ);
-      ctx.envGroup.add(chainGroup);
+      mctx.envGroup.add(chainGroup);
     }
 
     // Rat swarms (5)
@@ -3543,7 +3545,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const ratX = (Math.random() - 0.5) * w * 0.8;
       const ratZ = (Math.random() - 0.5) * d * 0.8;
       ratGroup.position.set(ratX, getTerrainHeight(ratX, ratZ, 0.4), ratZ);
-      ctx.envGroup.add(ratGroup);
+      mctx.envGroup.add(ratGroup);
     }
 
     // Blood pools (6)
@@ -3617,7 +3619,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
           bpGroup.add(finger);
         }
       }
-      ctx.envGroup.add(bpGroup);
+      mctx.envGroup.add(bpGroup);
     }
 
     // Skeleton remains (8) - decorative
@@ -3721,7 +3723,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const skX = (Math.random() - 0.5) * w * 0.7;
       const skZ = (Math.random() - 0.5) * d * 0.7;
       skelGroup.position.set(skX, getTerrainHeight(skX, skZ, 0.4), skZ);
-      ctx.envGroup.add(skelGroup);
+      mctx.envGroup.add(skelGroup);
     }
 
     // Cobweb curtains (10) - between pillars and walls
@@ -3749,7 +3751,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const cwZ = (Math.random() - 0.5) * d * 0.7;
       cwGroup.position.set(cwX, getTerrainHeight(cwX, cwZ, 0.4), cwZ);
       cwGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(cwGroup);
+      mctx.envGroup.add(cwGroup);
     }
 
     // Braziers (4)
@@ -3787,11 +3789,11 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
         brazierGroup.add(bSoot);
       }
       brazierGroup.position.set(bx, getTerrainHeight(bx, bz, 0.4), bz);
-      ctx.envGroup.add(brazierGroup);
+      mctx.envGroup.add(brazierGroup);
       const bLight = new THREE.PointLight(0xff4422, 1.0, 10);
       bLight.position.set(bx, 1.2, bz);
-      ctx.scene.add(bLight);
-      ctx.torchLights.push(bLight);
+      mctx.scene.add(bLight);
+      mctx.torchLights.push(bLight);
     }
 
     // Sarcophagus with lid ajar (3)
@@ -3882,7 +3884,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const sarcZ = (Math.random() - 0.5) * d * 0.6;
       sarcGroup.position.set(sarcX, getTerrainHeight(sarcX, sarcZ, 0.4), sarcZ);
       sarcGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(sarcGroup);
+      mctx.envGroup.add(sarcGroup);
     }
 
     // Altar (1) - central
@@ -3911,7 +3913,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
     dagger.position.set(0, 1.02, 0.3);
     altarGroup.add(dagger);
     altarGroup.position.set(0, getTerrainHeight(0, 0, 0.4), 0);
-    ctx.envGroup.add(altarGroup);
+    mctx.envGroup.add(altarGroup);
 
     // Crumbling archways (3)
     for (let i = 0; i < 3; i++) {
@@ -3942,7 +3944,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const caZ = (Math.random() - 0.5) * d * 0.6;
       caGroup.position.set(caX, getTerrainHeight(caX, caZ, 0.4), caZ);
       caGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(caGroup);
+      mctx.envGroup.add(caGroup);
     }
 
     // Dungeon grate/drain (4)
@@ -3965,7 +3967,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const grX = (Math.random() - 0.5) * w * 0.7;
       const grZ = (Math.random() - 0.5) * d * 0.7;
       grateGroup.position.set(grX, getTerrainHeight(grX, grZ, 0.4), grZ);
-      ctx.envGroup.add(grateGroup);
+      mctx.envGroup.add(grateGroup);
     }
 
     // Poison gas vents (3)
@@ -3984,7 +3986,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const ventX = (Math.random() - 0.5) * w * 0.7;
       const ventZ = (Math.random() - 0.5) * d * 0.7;
       ventGroup.position.set(ventX, getTerrainHeight(ventX, ventZ, 0.4), ventZ);
-      ctx.envGroup.add(ventGroup);
+      mctx.envGroup.add(ventGroup);
     }
 
     // Caged skeletons (2)
@@ -4023,7 +4025,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const cgX = (Math.random() - 0.5) * w * 0.6;
       const cgZ = (Math.random() - 0.5) * d * 0.6;
       cageGroup.position.set(cgX, getTerrainHeight(cgX, cgZ, 0.4), cgZ);
-      ctx.envGroup.add(cageGroup);
+      mctx.envGroup.add(cageGroup);
     }
 
     // Additional wall-mounted torches at varying heights (6)
@@ -4048,8 +4050,8 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
         wtGroup.position.set(wtx, getTerrainHeight(wtx, wtz, 0.4), wtz);
         const wtLight = new THREE.PointLight(0xff6622, 0.8, 8);
         wtLight.position.set(wtx, wallY + 0.25, wtz);
-        ctx.scene.add(wtLight);
-        ctx.torchLights.push(wtLight);
+        mctx.scene.add(wtLight);
+        mctx.torchLights.push(wtLight);
       } else {
         const wtCharGeo = new THREE.SphereGeometry(0.06, 20, 17);
         const wtCharMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0 });
@@ -4073,7 +4075,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
         wtSoot.rotation.y = Math.random() * Math.PI;
         wtGroup.add(wtSoot);
       }
-      ctx.envGroup.add(wtGroup);
+      mctx.envGroup.add(wtGroup);
     }
 
     // Ghostly wisp trails (14)
@@ -4092,7 +4094,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       const wiZ = (Math.random() - 0.5) * d * 0.7;
       wispGrp.position.set(wiX, getTerrainHeight(wiX, wiZ, 0.4), wiZ);
       wispGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(wispGrp);
+      mctx.envGroup.add(wispGrp);
     }
 
     // Broken statues (4) - detailed with anatomical torso, drapery, weapon fragments, broken head
@@ -4256,7 +4258,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       }
 
       statGrp.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
-      ctx.envGroup.add(statGrp);
+      mctx.envGroup.add(statGrp);
     }
 
     // Crypt entrances (3)
@@ -4319,7 +4321,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       }
       cryptGrp.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
       cryptGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(cryptGrp);
+      mctx.envGroup.add(cryptGrp);
     }
 
     // Ethereal mist layers (8) - eerie green fog wisps
@@ -4330,7 +4332,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       );
       mist.rotation.x = -Math.PI / 2;
       mist.position.set((Math.random() - 0.5) * w * 0.8, 0.2 + Math.random() * 0.4, (Math.random() - 0.5) * d * 0.8);
-      ctx.envGroup.add(mist);
+      mctx.envGroup.add(mist);
     }
 
     // Cursed tombstones (18) with inscriptions, weathering, ornaments
@@ -4410,7 +4412,7 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
       }
       tombGrp.position.set((Math.random() - 0.5) * w * 0.75, 0, (Math.random() - 0.5) * d * 0.75);
       tombGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(tombGrp);
+      mctx.envGroup.add(tombGrp);
     }
 
     // Pentagram on ground (1)
@@ -4421,24 +4423,24 @@ export function buildNecropolis(ctx: MapBuildContext, w: number, d: number): voi
     const pentaRing = new THREE.Mesh(new THREE.RingGeometry(2.5, 2.7, 10), pentaMat);
     pentaRing.rotation.x = -Math.PI / 2;
     pentaRing.position.set(w * 0.2, 0.03, d * 0.2);
-    ctx.envGroup.add(pentaRing);
+    mctx.envGroup.add(pentaRing);
     const pentaInner = new THREE.Mesh(new THREE.RingGeometry(1.8, 2.0, 10), pentaMat);
     pentaInner.rotation.x = -Math.PI / 2;
     pentaInner.rotation.z = Math.PI / 5;
     pentaInner.position.set(w * 0.2, 0.04, d * 0.2);
-    ctx.envGroup.add(pentaInner);
+    mctx.envGroup.add(pentaInner);
 }
 
-export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
+export function buildCamelot(mctx: MapBuildContext, w: number, d: number): void {
     // ── Lighting / Atmosphere ──
-    ctx.scene.fog = new THREE.FogExp2(0x8899aa, 0.008);
-    ctx.applyTerrainColors(0x887766, 0xaa9988, 0.8);
-    ctx.dirLight.color.setHex(0xffeedd);
-    ctx.dirLight.intensity = 1.3;
-    ctx.ambientLight.color.setHex(0x556677);
-    ctx.ambientLight.intensity = 0.6;
-    ctx.hemiLight.color.setHex(0x99bbdd);
-    ctx.hemiLight.groundColor.setHex(0x665544);
+    mctx.scene.fog = new THREE.FogExp2(0x8899aa, 0.008);
+    mctx.applyTerrainColors(0x887766, 0xaa9988, 0.8);
+    mctx.dirLight.color.setHex(0xffeedd);
+    mctx.dirLight.intensity = 1.3;
+    mctx.ambientLight.color.setHex(0x556677);
+    mctx.ambientLight.intensity = 0.6;
+    mctx.hemiLight.color.setHex(0x99bbdd);
+    mctx.hemiLight.groundColor.setHex(0x665544);
 
     const hw = w / 2;
     const hd = d / 2;
@@ -4449,7 +4451,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     const paved = new THREE.Mesh(pavedGeo, pavedMat);
     paved.position.set(0, 0.02, 0);
     paved.receiveShadow = true;
-    ctx.envGroup.add(paved);
+    mctx.envGroup.add(paved);
 
     // Cobblestone tile grid on market square
     const tileColors = [0xaa9988, 0xbbaa99, 0xccbbaa, 0x998877, 0xb0a090, 0xc4b4a4];
@@ -4464,7 +4466,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         const tile = new THREE.Mesh(tileGeo, tileMat);
         tile.position.set(tx, 0.055, tz);
         tile.receiveShadow = true;
-        ctx.envGroup.add(tile);
+        mctx.envGroup.add(tile);
       }
     }
 
@@ -4482,7 +4484,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         cam_cobbleYOffset,
         (Math.random() - 0.5) * 28
       );
-      ctx.envGroup.add(cobbleCircle);
+      mctx.envGroup.add(cobbleCircle);
       // Mortar line (dark thin box around some cobblestones)
       if (Math.random() > 0.5) {
         const cam_mortarMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 1.0 });
@@ -4491,7 +4493,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         cam_mortar.rotation.x = -Math.PI / 2;
         cam_mortar.rotation.z = cam_mortarAngle;
         cam_mortar.position.set(cobbleCircle.position.x, cam_cobbleYOffset - 0.002, cobbleCircle.position.z);
-        ctx.envGroup.add(cam_mortar);
+        mctx.envGroup.add(cam_mortar);
       }
     }
     // Decorative stone border around market square
@@ -4501,22 +4503,22 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const bN = new THREE.Mesh(borderGeo, borderMat);
       bN.position.set(bi, 0.06, -15);
       bN.receiveShadow = true;
-      ctx.envGroup.add(bN);
+      mctx.envGroup.add(bN);
       const bS = new THREE.Mesh(borderGeo, borderMat);
       bS.position.set(bi, 0.06, 15);
       bS.receiveShadow = true;
-      ctx.envGroup.add(bS);
+      mctx.envGroup.add(bS);
     }
     for (let bi = -15; bi <= 15; bi += 1.5) {
       const borderGeo = new THREE.BoxGeometry(0.3, 0.08, 1.4);
       const bE = new THREE.Mesh(borderGeo, borderMat);
       bE.position.set(15, 0.06, bi);
       bE.receiveShadow = true;
-      ctx.envGroup.add(bE);
+      mctx.envGroup.add(bE);
       const bW = new THREE.Mesh(borderGeo, borderMat);
       bW.position.set(-15, 0.06, bi);
       bW.receiveShadow = true;
-      ctx.envGroup.add(bW);
+      mctx.envGroup.add(bW);
     }
 
     // ── City-wide floor tiles (outside market square) ──
@@ -4532,7 +4534,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         const ct = new THREE.Mesh(cityTileGeo, ctMat);
         ct.position.set(ctx + (Math.random() - 0.5) * 0.1, 0.025, ctz + (Math.random() - 0.5) * 0.1);
         ct.receiveShadow = true;
-        ctx.envGroup.add(ct);
+        mctx.envGroup.add(ct);
       }
     }
 
@@ -4543,7 +4545,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const road = new THREE.Mesh(roadGeo, roadMat);
       road.position.set(0, 0.035, -30 + 15 + i * 4);
       road.receiveShadow = true;
-      ctx.envGroup.add(road);
+      mctx.envGroup.add(road);
       // Road detail - individual stone slabs
       for (let rs = -2; rs <= 2; rs += 1.3) {
         for (let rd = -1.5; rd <= 1.5; rd += 1.3) {
@@ -4555,7 +4557,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
           const slab = new THREE.Mesh(slabGeo, slabMat);
           slab.position.set(rs, 0.065, -30 + 15 + i * 4 + rd);
           slab.receiveShadow = true;
-          ctx.envGroup.add(slab);
+          mctx.envGroup.add(slab);
         }
       }
     }
@@ -4568,7 +4570,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const sx = (i < 4 ? -1 : 1) * (5 + (i % 4) * 3);
       sideRoad.position.set(sx, 0.035, (i % 4) * 4 - 6);
       sideRoad.receiveShadow = true;
-      ctx.envGroup.add(sideRoad);
+      mctx.envGroup.add(sideRoad);
     }
 
     // ═══════════════════════════════════════════════
@@ -4753,7 +4755,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     }
 
     castleGroup.position.set(0, 0, -30);
-    ctx.envGroup.add(castleGroup);
+    mctx.envGroup.add(castleGroup);
 
     // ═══════════════════════════════════════════════
     // TOWN WALLS
@@ -4765,28 +4767,28 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     const nWall = new THREE.Mesh(nWallGeo, wallMat);
     nWall.position.set(0, 2, -hd);
     nWall.castShadow = true;
-    ctx.envGroup.add(nWall);
+    mctx.envGroup.add(nWall);
     // South wall (split for gatehouse gap)
     const sWallLeftGeo = new THREE.BoxGeometry(hw - 3, 4, 1);
     const sWallLeft = new THREE.Mesh(sWallLeftGeo, wallMat);
     sWallLeft.position.set(-(hw - 3) / 2 - 3, 2, hd);
     sWallLeft.castShadow = true;
-    ctx.envGroup.add(sWallLeft);
+    mctx.envGroup.add(sWallLeft);
     const sWallRight = new THREE.Mesh(sWallLeftGeo, wallMat);
     sWallRight.position.set((hw - 3) / 2 + 3, 2, hd);
     sWallRight.castShadow = true;
-    ctx.envGroup.add(sWallRight);
+    mctx.envGroup.add(sWallRight);
     // East wall
     const eWallGeo = new THREE.BoxGeometry(1, 4, d);
     const eWall = new THREE.Mesh(eWallGeo, wallMat);
     eWall.position.set(hw, 2, 0);
     eWall.castShadow = true;
-    ctx.envGroup.add(eWall);
+    mctx.envGroup.add(eWall);
     // West wall
     const wWall = new THREE.Mesh(eWallGeo, wallMat);
     wWall.position.set(-hw, 2, 0);
     wWall.castShadow = true;
-    ctx.envGroup.add(wWall);
+    mctx.envGroup.add(wWall);
 
     // Moss on lower sections of town walls
     const cam_wallMossMat = new THREE.MeshStandardMaterial({ color: 0x2a5a1a, roughness: 0.95, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
@@ -4807,7 +4809,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         cam_mossPatch.position.set(-hw - 0.52, 0.3 + Math.random() * 0.8, (Math.random() - 0.5) * d * 0.8);
         cam_mossPatch.rotation.y = Math.PI / 2;
       }
-      ctx.envGroup.add(cam_mossPatch);
+      mctx.envGroup.add(cam_mossPatch);
     }
 
     // Stone block lines on town walls (horizontal grooves at intervals)
@@ -4817,15 +4819,15 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       // North wall block lines
       const nBlockLine = new THREE.Mesh(new THREE.BoxGeometry(w - 2, 0.03, 0.06), wallBlockLineMat);
       nBlockLine.position.set(0, wblY, -hd + 0.53);
-      ctx.envGroup.add(nBlockLine);
+      mctx.envGroup.add(nBlockLine);
       // East wall block lines
       const eBlockLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, d - 2), wallBlockLineMat);
       eBlockLine.position.set(hw + 0.53, wblY, 0);
-      ctx.envGroup.add(eBlockLine);
+      mctx.envGroup.add(eBlockLine);
       // West wall block lines
       const wBlockLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, d - 2), wallBlockLineMat);
       wBlockLine.position.set(-hw - 0.53, wblY, 0);
-      ctx.envGroup.add(wBlockLine);
+      mctx.envGroup.add(wBlockLine);
     }
     // Wall corner towers (4)
     const wallTowerPositions = [
@@ -4836,12 +4838,12 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const wt = new THREE.Mesh(wtGeo, wallMat);
       wt.position.set(wtx, 8, wtz);
       wt.castShadow = true;
-      ctx.envGroup.add(wt);
+      mctx.envGroup.add(wt);
       const wtRoofGeo = new THREE.ConeGeometry(1.8, 2, 30);
       const wtRoofMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 });
       const wtRoof = new THREE.Mesh(wtRoofGeo, wtRoofMat);
       wtRoof.position.set(wtx, 7, wtz);
-      ctx.envGroup.add(wtRoof);
+      mctx.envGroup.add(wtRoof);
       // Wall tower arrow slit windows
       const wtSlitMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
       for (let wsi = 0; wsi < 2; wsi++) {
@@ -4849,7 +4851,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         const wtSlit = new THREE.Mesh(wtSlitGeo, wtSlitMat);
         const wsAngle = (wsi / 2) * Math.PI;
         wtSlit.position.set(wtx + Math.cos(wsAngle) * 1.52, 7.5 + wsi * 1.2, wtz + Math.sin(wsAngle) * 1.52);
-        ctx.envGroup.add(wtSlit);
+        mctx.envGroup.add(wtSlit);
       }
       // Wall tower foundation stones
       const wtFoundMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
@@ -4858,7 +4860,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         const wtFStone = new THREE.Mesh(wtFStoneGeo, wtFoundMat);
         const wtfAngle = (wtfi / 4) * Math.PI * 2;
         wtFStone.position.set(wtx + Math.cos(wtfAngle) * 1.55, 5.1, wtz + Math.sin(wtfAngle) * 1.55);
-        ctx.envGroup.add(wtFStone);
+        mctx.envGroup.add(wtFStone);
       }
     }
 
@@ -4868,19 +4870,19 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const ghTower = new THREE.Mesh(ghTowerGeo, wallMat);
       ghTower.position.set(gSide, 3.5, hd);
       ghTower.castShadow = true;
-      ctx.envGroup.add(ghTower);
+      mctx.envGroup.add(ghTower);
       const ghRoofGeo = new THREE.ConeGeometry(1.8, 2.5, 30);
       const ghRoofMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 });
       const ghRoof = new THREE.Mesh(ghRoofGeo, ghRoofMat);
       ghRoof.position.set(gSide, 8, hd);
-      ctx.envGroup.add(ghRoof);
+      mctx.envGroup.add(ghRoof);
       // Gatehouse arrow slit windows
       const ghSlitMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
       for (let ghi = 0; ghi < 3; ghi++) {
         const ghSlitGeo = new THREE.BoxGeometry(0.1, 0.6, 0.06);
         const ghSlit = new THREE.Mesh(ghSlitGeo, ghSlitMat);
         ghSlit.position.set(gSide, 2.5 + ghi * 1.8, hd + 1.52);
-        ctx.envGroup.add(ghSlit);
+        mctx.envGroup.add(ghSlit);
       }
       // Gatehouse foundation stones
       const ghFoundMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.9 });
@@ -4889,7 +4891,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         const ghFStone = new THREE.Mesh(ghFStoneGeo, ghFoundMat);
         const gfAngle = (gfi / 4) * Math.PI * 2;
         ghFStone.position.set(gSide + Math.cos(gfAngle) * 1.5, 0.12, hd + Math.sin(gfAngle) * 1.5);
-        ctx.envGroup.add(ghFStone);
+        mctx.envGroup.add(ghFStone);
       }
     }
 
@@ -4992,7 +4994,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
 
       stallGroup.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
       stallGroup.rotation.y = -angle + Math.PI;
-      ctx.envGroup.add(stallGroup);
+      mctx.envGroup.add(stallGroup);
     }
 
     // Central well
@@ -5093,7 +5095,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       wellGroup.add(wellMoss);
     }
     wellGroup.position.set(0, 0, 0);
-    ctx.envGroup.add(wellGroup);
+    mctx.envGroup.add(wellGroup);
 
     // ═══════════════════════════════════════════════
     // BUILDINGS (25 scattered)
@@ -5294,7 +5296,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
 
       buildGroup.position.set(bx, 0, bz);
-      ctx.envGroup.add(buildGroup);
+      mctx.envGroup.add(buildGroup);
     }
 
     // ── Tavern (larger, near center, x=6, z=5) ──
@@ -5341,8 +5343,8 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     // Warm interior glow
     const tavernLight = new THREE.PointLight(0xffaa44, 0.8, 12);
     tavernLight.position.set(6, 2, 5);
-    ctx.scene.add(tavernLight);
-    ctx.torchLights.push(tavernLight);
+    mctx.scene.add(tavernLight);
+    mctx.torchLights.push(tavernLight);
     // Tavern door frame
     const tvDoorLintelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.9, 27);
     const tvDoorFrameMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.85 });
@@ -5380,7 +5382,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
     }
     tavernGroup.position.set(6, 0, 5);
-    ctx.envGroup.add(tavernGroup);
+    mctx.envGroup.add(tavernGroup);
 
     // ── Chapel (near castle, x=-6, z=-20) ──
     const chapelGroup = new THREE.Group();
@@ -5458,7 +5460,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     chWfBot.position.set(0, 2.95, 2.55);
     chapelGroup.add(chWfBot);
     chapelGroup.position.set(-6, 0, -20);
-    ctx.envGroup.add(chapelGroup);
+    mctx.envGroup.add(chapelGroup);
 
     // ═══════════════════════════════════════════════
     // BLACKSMITH AREA (x=-15, z=-10)
@@ -5504,8 +5506,8 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     // Forge point light
     const forgeLight = new THREE.PointLight(0xff6622, 1.0, 10);
     forgeLight.position.set(-15 - 1.2, 1.0, -10);
-    ctx.scene.add(forgeLight);
-    ctx.torchLights.push(forgeLight);
+    mctx.scene.add(forgeLight);
+    mctx.torchLights.push(forgeLight);
     // Weapon rack
     const rackGeo = new THREE.BoxGeometry(0.1, 1.5, 1.5);
     const rackMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 });
@@ -5522,7 +5524,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       forgeGroup.add(wp);
     }
     forgeGroup.position.set(-15, 0, -10);
-    ctx.envGroup.add(forgeGroup);
+    mctx.envGroup.add(forgeGroup);
 
     // ═══════════════════════════════════════════════
     // VENDOR MARKERS
@@ -5560,11 +5562,11 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       // Point light
       const vLight = new THREE.PointLight(vColor, 0.5, 6);
       vLight.position.set(vdef.x, 3.2, vdef.z);
-      ctx.scene.add(vLight);
-      ctx.torchLights.push(vLight);
+      mctx.scene.add(vLight);
+      mctx.torchLights.push(vLight);
 
       vendorMarker.position.set(vdef.x, 0, vdef.z);
-      ctx.envGroup.add(vendorMarker);
+      mctx.envGroup.add(vendorMarker);
     }
 
     // ═══════════════════════════════════════════════
@@ -5581,7 +5583,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       hay.rotation.z = Math.PI / 2;
       hay.rotation.y = Math.random() * 0.5;
       hay.castShadow = true;
-      ctx.envGroup.add(hay);
+      mctx.envGroup.add(hay);
     }
 
     // Barrels (10)
@@ -5597,14 +5599,14 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         Math.sin(bAngle) * bRadius + (Math.random() - 0.5) * 2
       );
       barrel.castShadow = true;
-      ctx.envGroup.add(barrel);
+      mctx.envGroup.add(barrel);
       // Band on barrel
       const bandGeo = new THREE.CylinderGeometry(0.27, 0.27, 0.04, 27);
       const bandMtl = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.4 });
       const band = new THREE.Mesh(bandGeo, bandMtl);
       band.position.copy(barrel.position);
       band.position.y += 0.1;
-      ctx.envGroup.add(band);
+      mctx.envGroup.add(band);
       // Extra torus rings on barrel
       for (const ringY of [-0.1, 0.15]) {
         const ringGeo = new THREE.TorusGeometry(0.255, 0.012, 27, 36);
@@ -5612,7 +5614,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         ring.position.copy(barrel.position);
         ring.position.y += ringY;
         ring.rotation.x = Math.PI / 2;
-        ctx.envGroup.add(ring);
+        mctx.envGroup.add(ring);
       }
       // Shadow disc under barrel
       const bShadowGeo = new THREE.CircleGeometry(0.32, 36);
@@ -5620,7 +5622,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const bShadow = new THREE.Mesh(bShadowGeo, bShadowMat);
       bShadow.rotation.x = -Math.PI / 2;
       bShadow.position.set(barrel.position.x, 0.01, barrel.position.z);
-      ctx.envGroup.add(bShadow);
+      mctx.envGroup.add(bShadow);
     }
 
     // Carts (3)
@@ -5669,7 +5671,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       cartGroup.add(cShadow);
       cartGroup.position.set(cx, 0, cz);
       cartGroup.rotation.y = cRot;
-      ctx.envGroup.add(cartGroup);
+      mctx.envGroup.add(cartGroup);
     }
 
     // Trees (8) - small deciduous, placed far from center to not block buildings
@@ -5720,7 +5722,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         0,
         Math.sin(tAngle) * tRadius
       );
-      ctx.envGroup.add(treeGroup);
+      mctx.envGroup.add(treeGroup);
     }
 
     // Flower boxes (8) - near buildings (detailed)
@@ -5819,7 +5821,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const fbi = fi < buildingPositions.length ? fi : 0;
       const [fbx, fbz] = buildingPositions[fbi];
       fboxGroup.position.set(fbx, 1.5, fbz + 1.8);
-      ctx.envGroup.add(fboxGroup);
+      mctx.envGroup.add(fboxGroup);
     }
 
     // Street lamps (6) with glass panes, decorative metalwork, chain links
@@ -5890,8 +5892,8 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       // Point light
       const lampLight = new THREE.PointLight(0xffcc66, 0.6, 10);
       lampLight.position.set(lx, 3.6, lz);
-      ctx.scene.add(lampLight);
-      ctx.torchLights.push(lampLight);
+      mctx.scene.add(lampLight);
+      mctx.torchLights.push(lampLight);
       // Shadow disc under lamp post
       const lpShadowGeo = new THREE.CircleGeometry(0.4, 36);
       const lpShadowMat = new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.25, depthWrite: false });
@@ -5900,7 +5902,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       lpShadow.position.y = 0.01;
       lampGroup.add(lpShadow);
       lampGroup.position.set(lx, 0, lz);
-      ctx.envGroup.add(lampGroup);
+      mctx.envGroup.add(lampGroup);
     }
 
     // Flags/Pennants (4) on tall poles
@@ -5919,7 +5921,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       flag.position.set(0.6, 4.5, 0);
       flagGroup.add(flag);
       flagGroup.position.set(fx, 0, fz);
-      ctx.envGroup.add(flagGroup);
+      mctx.envGroup.add(flagGroup);
     }
 
     // Horse troughs (2) - detailed wooden plank construction
@@ -6011,7 +6013,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         troughGroup.add(moss);
       }
       troughGroup.position.set(tx, 0, tz);
-      ctx.envGroup.add(troughGroup);
+      mctx.envGroup.add(troughGroup);
     }
 
     // Stone benches (4) - detailed with beveled edges, scroll legs, moss
@@ -6097,7 +6099,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
       benchGroup.position.set(bx, 0, bz);
       benchGroup.rotation.y = bRot;
-      ctx.envGroup.add(benchGroup);
+      mctx.envGroup.add(benchGroup);
     }
 
     // Additional small rocks / cobblestones scattered (15)
@@ -6111,7 +6113,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         (Math.random() - 0.5) * d * 0.8
       );
       rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-      ctx.envGroup.add(rock);
+      mctx.envGroup.add(rock);
     }
 
     // Sacks of grain near market (4) - detailed burlap sacks with ties and spilled grain
@@ -6179,7 +6181,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         0.1,
         7 + (Math.random() - 0.5) * 0.3
       );
-      ctx.envGroup.add(sackGroup);
+      mctx.envGroup.add(sackGroup);
     }
 
     // Wooden crates near blacksmith (5) - detailed with planks, nails, reinforcements
@@ -6258,7 +6260,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       crateGroup.position.set(-13 + ci * 0.6, 0.25, -8 + (Math.random() - 0.5));
       crateGroup.rotation.y = Math.random() * 0.5;
       crateGroup.castShadow = true;
-      ctx.envGroup.add(crateGroup);
+      mctx.envGroup.add(crateGroup);
     }
 
     // Potted plants near chapel (4) - detailed
@@ -6358,7 +6360,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
 
       potGroup.position.set(-6 + pi * 0.8, 0, -18);
-      ctx.envGroup.add(potGroup);
+      mctx.envGroup.add(potGroup);
     }
 
     // Hanging lanterns on building overhangs (6)
@@ -6378,7 +6380,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       if (bIdx < buildingPositions.length) {
         const [blx, blz] = buildingPositions[bIdx];
         lanternGroup.position.set(blx, 0, blz + 1.5);
-        ctx.envGroup.add(lanternGroup);
+        mctx.envGroup.add(lanternGroup);
       }
     }
 
@@ -6392,7 +6394,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         0.015,
         (Math.random() - 0.5) * 25
       );
-      ctx.envGroup.add(cs);
+      mctx.envGroup.add(cs);
     }
 
     // Clotheslines between buildings (3)
@@ -6415,7 +6417,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
       const clX = -14 + cli * 14;
       clGroup.position.set(clX, 0, 3 + cli * 3);
-      ctx.envGroup.add(clGroup);
+      mctx.envGroup.add(clGroup);
     }
 
     // Stacked logs near buildings (4 piles)
@@ -6431,7 +6433,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
       const lpAngle = (lpi / 4) * Math.PI * 2 + 0.5;
       logPile.position.set(Math.cos(lpAngle) * 16, 0, Math.sin(lpAngle) * 16);
-      ctx.envGroup.add(logPile);
+      mctx.envGroup.add(logPile);
     }
 
     // Bird bath / fountain near chapel (1)
@@ -6451,7 +6453,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     fWater.position.y = 1.22;
     fountainGroup.add(fWater);
     fountainGroup.position.set(-3, 0, -18);
-    ctx.envGroup.add(fountainGroup);
+    mctx.envGroup.add(fountainGroup);
 
     // Notice board near center (1)
     const boardGroup = new THREE.Group();
@@ -6478,7 +6480,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       boardGroup.add(note);
     }
     boardGroup.position.set(3, 0, -2);
-    ctx.envGroup.add(boardGroup);
+    mctx.envGroup.add(boardGroup);
 
     // ═══════════════════════════════════════════════
     // MOAT & DRAWBRIDGE (around castle)
@@ -6488,13 +6490,13 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     const moatN = new THREE.Mesh(new THREE.BoxGeometry(20, 0.08, 2.5), moatMat);
     moatN.position.set(0, 0.04, -38);
     moatN.receiveShadow = true;
-    ctx.envGroup.add(moatN);
+    mctx.envGroup.add(moatN);
     // Side moats
     for (const sx of [-10, 10]) {
       const moatSide = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.08, 18), moatMat);
       moatSide.position.set(sx, 0.04, -29);
       moatSide.receiveShadow = true;
-      ctx.envGroup.add(moatSide);
+      mctx.envGroup.add(moatSide);
     }
     // Drawbridge planks (south of castle gate) - individual plank construction
     const bridgeGrp = new THREE.Group();
@@ -6537,14 +6539,14 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         new THREE.MeshStandardMaterial({ color: 0x5B3A1C, roughness: 0.85 }));
       supportBeam.position.set(bx, 0.03, -23.6); bridgeGrp.add(supportBeam);
     }
-    ctx.envGroup.add(bridgeGrp);
+    mctx.envGroup.add(bridgeGrp);
     // Bridge chains with torus links
     const chainMtl = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.3 });
     for (const cx of [-1.6, 1.6]) {
       const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 3.5, 8), chainMtl);
       ch.rotation.x = Math.PI * 0.35;
       ch.position.set(cx, 4, -24);
-      ctx.envGroup.add(ch);
+      mctx.envGroup.add(ch);
       // Chain link detail - torus rings along chain length
       for (let cl = 0; cl < 10; cl++) {
         const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.007, 6, 8), chainMtl);
@@ -6552,17 +6554,17 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         chainLink.position.set(cx, 1.8 + clT * 3.5, -24 + clT * 1.4);
         chainLink.rotation.x = cl % 2 === 0 ? 0 : Math.PI / 2;
         chainLink.rotation.y = (Math.random() - 0.5) * 0.15;
-        ctx.envGroup.add(chainLink);
+        mctx.envGroup.add(chainLink);
       }
       // Chain mount bracket on wall (with bolts)
       const chainBracket = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.1), chainMtl);
       chainBracket.position.set(cx, 5.5, -24.5);
-      ctx.envGroup.add(chainBracket);
+      mctx.envGroup.add(chainBracket);
       for (const [bbx, bby] of [[0.05, 0.05], [-0.05, 0.05], [0.05, -0.05], [-0.05, -0.05]]) {
         const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.04, 6), chainMtl);
         bolt.rotation.x = Math.PI / 2;
         bolt.position.set(cx + bbx, 5.5 + bby, -24.46);
-        ctx.envGroup.add(bolt);
+        mctx.envGroup.add(bolt);
       }
     }
 
@@ -6580,14 +6582,14 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const hedge = new THREE.Mesh(new THREE.BoxGeometry(hw2, 0.8, hd2), hedgeMat);
       hedge.position.set(hx, 0.4, hz);
       hedge.castShadow = true;
-      ctx.envGroup.add(hedge);
+      mctx.envGroup.add(hedge);
     }
     // Topiary spheres in gardens
     for (const [tx, tz] of [[-8.5, -15], [-10, -15], [15, 1], [15, 4]] as [number, number][]) {
       const topiary = new THREE.Mesh(new THREE.SphereGeometry(0.5, 27, 23), hedgeMat);
       topiary.position.set(tx, 0.7, tz);
       topiary.castShadow = true;
-      ctx.envGroup.add(topiary);
+      mctx.envGroup.add(topiary);
     }
     // Garden flowers inside hedges
     const gardenFlowerColors = [0xff6688, 0xffdd44, 0xaa44ff, 0xff4444, 0x44aaff, 0xffaacc];
@@ -6605,7 +6607,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         0,
         -15.5 + Math.floor(gf / 4) * 0.8
       );
-      ctx.envGroup.add(fGroup);
+      mctx.envGroup.add(fGroup);
     }
 
     // ═══════════════════════════════════════════════
@@ -6634,24 +6636,24 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
       gsGroup.position.set(-9 + (gi % 4) * 1.0, 0, -22 + Math.floor(gi / 4) * 1.2);
       gsGroup.rotation.y = (Math.random() - 0.5) * 0.15;
-      ctx.envGroup.add(gsGroup);
+      mctx.envGroup.add(gsGroup);
     }
     // Iron fence around graveyard
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.4 });
     for (let fi = 0; fi < 12; fi++) {
       const fenceBar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.0, 17), fenceMat);
       fenceBar.position.set(-10.5 + fi * 0.5, 0.5, -23.5);
-      ctx.envGroup.add(fenceBar);
+      mctx.envGroup.add(fenceBar);
       // Finial on fence post
       const finialGeo = new THREE.ConeGeometry(0.025, 0.06, 27);
       const finial = new THREE.Mesh(finialGeo, fenceMat);
       finial.position.set(-10.5 + fi * 0.5, 1.03, -23.5);
-      ctx.envGroup.add(finial);
+      mctx.envGroup.add(finial);
     }
     const fenceRail = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 6, 17), fenceMat);
     fenceRail.rotation.z = Math.PI / 2;
     fenceRail.position.set(-8, 0.8, -23.5);
-    ctx.envGroup.add(fenceRail);
+    mctx.envGroup.add(fenceRail);
 
     // ═══════════════════════════════════════════════
     // TRAINING GROUNDS (southeast, x=15, z=-15)
@@ -6794,7 +6796,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
 
       dummyGroup.position.set(14 + di * 1.5, 0, -15);
       dummyGroup.castShadow = true;
-      ctx.envGroup.add(dummyGroup);
+      mctx.envGroup.add(dummyGroup);
     }
 
     // Archery targets (detailed)
@@ -6896,7 +6898,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
 
       targetGroup.position.set(18, 0, -13 + ai * 3);
       targetGroup.rotation.y = -Math.PI / 2;
-      ctx.envGroup.add(targetGroup);
+      mctx.envGroup.add(targetGroup);
     }
 
     // Weapon racks at training ground (detailed)
@@ -7030,7 +7032,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
 
       rackGroup.position.set(13, 0, -16);
-      ctx.envGroup.add(rackGroup);
+      mctx.envGroup.add(rackGroup);
     }
 
     // ═══════════════════════════════════════════════
@@ -7081,7 +7083,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       horseGroup.add(saddle);
       horseGroup.position.set(hx, 0, hz);
       horseGroup.rotation.y = hRot;
-      ctx.envGroup.add(horseGroup);
+      mctx.envGroup.add(horseGroup);
     }
 
     // Chickens (5) near market
@@ -7113,7 +7115,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         6 + (Math.random() - 0.5) * 2
       );
       chickenGroup.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(chickenGroup);
+      mctx.envGroup.add(chickenGroup);
     }
 
     // Cat on barrel (1)
@@ -7140,7 +7142,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     catTail.position.set(-0.25, 0.15, 0);
     catGroup.add(catTail);
     catGroup.position.set(10, 0.6, -2);
-    ctx.envGroup.add(catGroup);
+    mctx.envGroup.add(catGroup);
 
     // ═══════════════════════════════════════════════
     // HALF-TIMBER DETAILS on buildings
@@ -7153,13 +7155,13 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       for (const by of [0.5, tbh * 0.5, tbh * 0.85]) {
         const hBeam = new THREE.Mesh(new THREE.BoxGeometry(tbw2 + 0.05, 0.06, 0.06), timberMat);
         hBeam.position.set(tbx, by, tbz + tbd / 2 + 0.04);
-        ctx.envGroup.add(hBeam);
+        mctx.envGroup.add(hBeam);
       }
       // Vertical beams at edges
       for (const vx of [-tbw2 / 2, tbw2 / 2]) {
         const vBeam = new THREE.Mesh(new THREE.BoxGeometry(0.06, tbh, 0.06), timberMat);
         vBeam.position.set(tbx + vx, tbh / 2, tbz + tbd / 2 + 0.04);
-        ctx.envGroup.add(vBeam);
+        mctx.envGroup.add(vBeam);
       }
       // Diagonal cross beam (X pattern)
       const diagLen = Math.sqrt(tbw2 * tbw2 + (tbh * 0.35) * (tbh * 0.35));
@@ -7167,7 +7169,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const diag = new THREE.Mesh(new THREE.BoxGeometry(diagLen, 0.04, 0.04), timberMat);
       diag.rotation.z = diagAngle;
       diag.position.set(tbx, tbh * 0.65, tbz + tbd / 2 + 0.04);
-      ctx.envGroup.add(diag);
+      mctx.envGroup.add(diag);
     }
 
     // ═══════════════════════════════════════════════
@@ -7184,12 +7186,12 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         const shutterL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.03), shutterMat);
         shutterL.position.set(wx - 0.22, sbh * 0.6, sz + buildingPositions[si][3] / 2 + 0.06);
         shutterL.rotation.y = 0.3;
-        ctx.envGroup.add(shutterL);
+        mctx.envGroup.add(shutterL);
         // Right shutter
         const shutterR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.03), shutterMat);
         shutterR.position.set(wx + 0.22, sbh * 0.6, sz + buildingPositions[si][3] / 2 + 0.06);
         shutterR.rotation.y = -0.3;
-        ctx.envGroup.add(shutterR);
+        mctx.envGroup.add(shutterR);
       }
     }
 
@@ -7214,7 +7216,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         ivyPatch.position.set(-5 + iv * 3, 1.2 + Math.random(), hd - 0.55);
         ivyPatch.rotation.y = Math.PI;
       }
-      ctx.envGroup.add(ivyPatch);
+      mctx.envGroup.add(ivyPatch);
     }
 
     // ═══════════════════════════════════════════════
@@ -7229,7 +7231,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         0.02,
         (Math.random() - 0.5) * 20
       );
-      ctx.envGroup.add(puddle);
+      mctx.envGroup.add(puddle);
     }
 
     // ═══════════════════════════════════════════════
@@ -7263,7 +7265,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       vGroup.add(ewBar);
       vGroup.position.set(vx, 5 + Math.random(), vz);
       vGroup.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(vGroup);
+      mctx.envGroup.add(vGroup);
     }
 
     // ═══════════════════════════════════════════════
@@ -7297,7 +7299,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       archGroup.add(keystone);
       archGroup.position.set(ax, 0, az);
       archGroup.rotation.y = aRot;
-      ctx.envGroup.add(archGroup);
+      mctx.envGroup.add(archGroup);
     }
 
     // ═══════════════════════════════════════════════
@@ -7308,16 +7310,16 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     // North wall walkway
     const nWalkway = new THREE.Mesh(new THREE.BoxGeometry(w - 4, 0.1, 1.2), walkwayMat);
     nWalkway.position.set(0, 4.05, -hd);
-    ctx.envGroup.add(nWalkway);
+    mctx.envGroup.add(nWalkway);
     // Crenellations on town walls
     for (let ci = 0; ci < 30; ci++) {
       const cren = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.3), wallMat);
       cren.position.set(-hw + 1.5 + ci * (w / 30), 4.4, -hd + 0.4);
-      ctx.envGroup.add(cren);
+      mctx.envGroup.add(cren);
       // Arrow slit in each crenellation merlon
       const crenSlit = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.05), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 }));
       crenSlit.position.set(-hw + 1.5 + ci * (w / 30), 4.4, -hd + 0.55);
-      ctx.envGroup.add(crenSlit);
+      mctx.envGroup.add(crenSlit);
     }
     // Guard torches on walls (4)
     for (const [gtx, gtz] of [[-hw * 0.5, -hd], [hw * 0.5, -hd], [-hw, 0], [hw, 0]] as [number, number][]) {
@@ -7331,11 +7333,11 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       tFlame.position.y = 0.85;
       torchGroup.add(tFlame);
       torchGroup.position.set(gtx, 4.1, gtz);
-      ctx.envGroup.add(torchGroup);
+      mctx.envGroup.add(torchGroup);
       const gtLight = new THREE.PointLight(0xff8844, 0.4, 8);
       gtLight.position.set(gtx, 5, gtz);
-      ctx.scene.add(gtLight);
-      ctx.torchLights.push(gtLight);
+      mctx.scene.add(gtLight);
+      mctx.torchLights.push(gtLight);
     }
 
     // ═══════════════════════════════════════════════
@@ -7360,7 +7362,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         awGroup.add(rod);
       }
       awGroup.position.set(awx, 0, awz);
-      ctx.envGroup.add(awGroup);
+      mctx.envGroup.add(awGroup);
     }
 
     // ═══════════════════════════════════════════════
@@ -7385,7 +7387,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const gAngle = (gi / 8) * Math.PI * 2 + 0.3;
       const gR = 6.5;
       goodsGroup.position.set(Math.cos(gAngle) * gR, 0, Math.sin(gAngle) * gR);
-      ctx.envGroup.add(goodsGroup);
+      mctx.envGroup.add(goodsGroup);
     }
 
     // ═══════════════════════════════════════════════
@@ -7402,14 +7404,14 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         hBanner.position.set(-hw * 0.5 + (hbi - 3) * hw * 0.5, 2.5, hd - 0.55);
         hBanner.rotation.y = Math.PI;
       }
-      ctx.envGroup.add(hBanner);
+      mctx.envGroup.add(hBanner);
       // Gold fringe at bottom
       const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.02),
         new THREE.MeshStandardMaterial({ color: 0xddaa22, metalness: 0.5, roughness: 0.3, side: THREE.DoubleSide }));
       fringe.position.copy(hBanner.position);
       fringe.position.y -= 1.25;
       fringe.rotation.y = hBanner.rotation.y;
-      ctx.envGroup.add(fringe);
+      mctx.envGroup.add(fringe);
     }
 
     // ═══════════════════════════════════════════════
@@ -7421,7 +7423,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 })
       );
       stepStone.position.set(-3 + (Math.random() - 0.5) * 0.3, 0.02, -10 - ss * 1.3);
-      ctx.envGroup.add(stepStone);
+      mctx.envGroup.add(stepStone);
     }
 
     // ═══════════════════════════════════════════════
@@ -7435,7 +7437,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         const puff = new THREE.Mesh(new THREE.SphereGeometry(0.15 + sp * 0.08, 16, 12), smokeMat2);
         puff.position.set(scx + scw * 0.25, scH + 1.8 + sp * 0.4, scz);
         puff.scale.set(1 + sp * 0.3, 1 + sp * 0.2, 1 + sp * 0.3);
-        ctx.envGroup.add(puff);
+        mctx.envGroup.add(puff);
       }
     }
 
@@ -7445,7 +7447,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         new THREE.MeshStandardMaterial({ color: 0x555544, roughness: 1.0, side: THREE.DoubleSide }));
       cobble.rotation.x = -Math.PI / 2;
       cobble.position.set((Math.random() - 0.5) * w * 0.4, 0.02, (Math.random() - 0.5) * d * 0.4);
-      ctx.envGroup.add(cobble);
+      mctx.envGroup.add(cobble);
     }
 
     // Hanging banners on buildings (6)
@@ -7463,7 +7465,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const bAngle = (i / 6) * Math.PI * 2;
       bannerGrp.position.set(Math.cos(bAngle) * 8, 2.5, Math.sin(bAngle) * 8);
       bannerGrp.rotation.y = bAngle;
-      ctx.envGroup.add(bannerGrp);
+      mctx.envGroup.add(bannerGrp);
     }
 
     // Puddles (5) - flat reflective circles
@@ -7472,7 +7474,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.1, metalness: 0.8, side: THREE.DoubleSide }));
       puddle.rotation.x = -Math.PI / 2;
       puddle.position.set((Math.random() - 0.5) * w * 0.5, 0.01, (Math.random() - 0.5) * d * 0.5);
-      ctx.envGroup.add(puddle);
+      mctx.envGroup.add(puddle);
     }
 
     // Chickens wandering (4)
@@ -7493,7 +7495,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       chickenGrp.add(comb);
       chickenGrp.position.set((Math.random() - 0.5) * w * 0.3, 0, (Math.random() - 0.5) * d * 0.3);
       chickenGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(chickenGrp);
+      mctx.envGroup.add(chickenGrp);
     }
 
     // Wooden barrels (6) - near tavern area
@@ -7502,14 +7504,14 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
       barrel.position.set(8 + (i % 3) * 0.5, 0.2, -5 + Math.floor(i / 3) * 0.5);
       barrel.castShadow = true;
-      ctx.envGroup.add(barrel);
+      mctx.envGroup.add(barrel);
       // Metal band
       const band = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.01, 44, 62),
         new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.4 }));
       band.position.copy(barrel.position);
       band.position.y += 0.05;
       band.rotation.x = Math.PI / 2;
-      ctx.envGroup.add(band);
+      mctx.envGroup.add(band);
     }
 
     // Hanging lanterns (8) - warm glow along pathways
@@ -7523,7 +7525,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       lanternGrp.add(lGlow);
       const lAngle = (i / 8) * Math.PI * 2;
       lanternGrp.position.set(Math.cos(lAngle) * 6, 2.8, Math.sin(lAngle) * 6);
-      ctx.envGroup.add(lanternGrp);
+      mctx.envGroup.add(lanternGrp);
     }
 
     // ── Central fountain with water ──
@@ -7553,7 +7555,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     }
     // Fountain light
     const fntLight = new THREE.PointLight(0x4499bb, 0.5, 8);
-    fntLight.position.set(5, 1, -8); ctx.scene.add(fntLight); ctx.torchLights.push(fntLight);
+    fntLight.position.set(5, 1, -8); mctx.scene.add(fntLight); mctx.torchLights.push(fntLight);
     // Fountain decorative detail - carved stone rim segments
     for (let fr = 0; fr < 8; fr++) {
       const fRimAngle = (fr / 8) * Math.PI * 2;
@@ -7579,7 +7581,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       splash.position.set(Math.cos(fsAngle) * 0.6, 0.7 + Math.random() * 0.4, Math.sin(fsAngle) * 0.6);
       fountainGrp.add(splash);
     }
-    fountainGrp.position.set(5, 0, -8); ctx.envGroup.add(fountainGrp);
+    fountainGrp.position.set(5, 0, -8); mctx.envGroup.add(fountainGrp);
 
     // ── More detailed market stalls with produce displays ──
     for (let i = 0; i < 6; i++) {
@@ -7603,7 +7605,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const drape = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), new THREE.MeshStandardMaterial({ color: produceColors[i % produceColors.length], roughness: 0.7, side: THREE.DoubleSide }));
       drape.position.set(0, 1.5, -0.65); stall.add(drape);
       stall.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-      stall.rotation.y = -angle + Math.PI; ctx.envGroup.add(stall);
+      stall.rotation.y = -angle + Math.PI; mctx.envGroup.add(stall);
     }
 
     // ── Hanging lanterns along streets ──
@@ -7622,7 +7624,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const cap = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.08, 44), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6 }));
       cap.position.y = 3.0; lantern.add(cap);
       const lx = (Math.random() - 0.5) * w * 0.6; const lz = (Math.random() - 0.5) * d * 0.6;
-      lantern.position.set(lx, 0, lz); ctx.envGroup.add(lantern);
+      lantern.position.set(lx, 0, lz); mctx.envGroup.add(lantern);
     }
 
     // ── Flower boxes with varied flowers ──
@@ -7644,7 +7646,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
       const fbAngle = (i / 12) * Math.PI * 2;
       fb.position.set(Math.cos(fbAngle) * 17, 1.8, Math.sin(fbAngle) * 17);
-      ctx.envGroup.add(fb);
+      mctx.envGroup.add(fb);
     }
 
     // ── Benches around town ──
@@ -7668,7 +7670,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       }
       const bAngle = (i / 8) * Math.PI * 2; const bR = 7 + (i % 2) * 4;
       bench.position.set(Math.cos(bAngle) * bR, 0, Math.sin(bAngle) * bR);
-      bench.rotation.y = -bAngle + Math.PI / 2; ctx.envGroup.add(bench);
+      bench.rotation.y = -bAngle + Math.PI / 2; mctx.envGroup.add(bench);
     }
 
     // ── NPC-like figures (simple geometry humans) ──
@@ -7697,7 +7699,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 62, 44, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: [0x443322, 0x887744, 0x222222, 0xaa7733][i % 4], roughness: 0.9 }));
       hair.position.y = 1.4; npc.add(hair);
       const nx = (Math.random() - 0.5) * w * 0.5; const nz = (Math.random() - 0.5) * d * 0.5;
-      npc.position.set(nx, 0, nz); npc.rotation.y = Math.random() * Math.PI * 2; ctx.envGroup.add(npc);
+      npc.position.set(nx, 0, nz); npc.rotation.y = Math.random() * Math.PI * 2; mctx.envGroup.add(npc);
     }
 
     // ── Vendor cart with goods ──
@@ -7729,7 +7731,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const cover = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1), new THREE.MeshStandardMaterial({ color: [0xcc3333, 0x3366cc, 0x33aa55][i], roughness: 0.7, side: THREE.DoubleSide }));
       cover.position.set(0, 1.5, 0); cover.rotation.x = -0.5; cart.add(cover);
       const cx = (Math.random() - 0.5) * w * 0.4; const cz = (Math.random() - 0.5) * d * 0.4;
-      cart.position.set(cx, 0, cz); cart.rotation.y = Math.random() * Math.PI; ctx.envGroup.add(cart);
+      cart.position.set(cx, 0, cz); cart.rotation.y = Math.random() * Math.PI; mctx.envGroup.add(cart);
     }
 
     // ── Cobblestone path variations ──
@@ -7743,7 +7745,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         cobbleGrp.add(stone);
       }
       cobbleGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(cobbleGrp);
+      mctx.envGroup.add(cobbleGrp);
     }
 
     // ── Stable area ──
@@ -7912,8 +7914,8 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
     stableBucketHandle.position.set(2.8, 0.3, 1.2); stableGrp.add(stableBucketHandle);
     // Stable light
     const stableLight = new THREE.PointLight(0xffaa44, 0.4, 8);
-    stableLight.position.set(15, 2.5, 8); ctx.scene.add(stableLight); ctx.torchLights.push(stableLight);
-    stableGrp.position.set(15, 0, 8); ctx.envGroup.add(stableGrp);
+    stableLight.position.set(15, 2.5, 8); mctx.scene.add(stableLight); mctx.torchLights.push(stableLight);
+    stableGrp.position.set(15, 0, 8); mctx.envGroup.add(stableGrp);
 
     // ── Market fruit/vegetable stalls (4) ──
     const stallWoodMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 });
@@ -8021,7 +8023,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const signBorder = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, 0.02), stallWoodDarkMat2);
       signBorder.position.set(1.25, 1.39, 0.6); stall.add(signBorder);
       const stx = -12 + i * 7 + (Math.random() - 0.5) * 2; const stz = -10 + (Math.random() - 0.5) * 4;
-      stall.position.set(stx, 0, stz); stall.rotation.y = (Math.random() - 0.5) * 0.4; ctx.envGroup.add(stall);
+      stall.position.set(stx, 0, stz); stall.rotation.y = (Math.random() - 0.5) * 0.4; mctx.envGroup.add(stall);
     }
 
     // ── Town fountain enhanced (1) ──
@@ -8051,7 +8053,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         bench.position.set(Math.cos(bAngle) * 3, 0.25, Math.sin(bAngle) * 3);
         bench.rotation.y = bAngle + Math.PI / 2; fountain.add(bench);
       }
-      fountain.position.set(2, 0, 2); ctx.envGroup.add(fountain);
+      fountain.position.set(2, 0, 2); mctx.envGroup.add(fountain);
     }
 
     // ── Street lamps (8) ──
@@ -8069,9 +8071,9 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       const lanternBox = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.25, 0.2), lampGlowMat);
       lanternBox.position.set(0.55, 3.1, 0); lamp.add(lanternBox);
       const lampLight = new THREE.PointLight(0xffaa44, 0.5, 10);
-      lampLight.position.set(0.55, 3.1, 0); lamp.add(lampLight); ctx.torchLights.push(lampLight);
+      lampLight.position.set(0.55, 3.1, 0); lamp.add(lampLight); mctx.torchLights.push(lampLight);
       const lx = (Math.random() - 0.5) * w * 0.6; const lz = (Math.random() - 0.5) * d * 0.6;
-      lamp.position.set(lx, 0, lz); ctx.envGroup.add(lamp);
+      lamp.position.set(lx, 0, lz); mctx.envGroup.add(lamp);
     }
 
     // ── Blacksmith shop details (1) ──
@@ -8104,8 +8106,8 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         new THREE.MeshStandardMaterial({ color: 0x4488cc, transparent: true, opacity: 0.5, roughness: 0.1 }));
       barrelWater.rotation.x = -Math.PI / 2; barrelWater.position.set(1.8, 0.61, 0.3); smithy.add(barrelWater);
       const forgeLight = new THREE.PointLight(0xff6633, 0.8, 8);
-      forgeLight.position.set(0, 1.2, 0.5); smithy.add(forgeLight); ctx.torchLights.push(forgeLight);
-      smithy.position.set(-18, 0, 5); ctx.envGroup.add(smithy);
+      forgeLight.position.set(0, 1.2, 0.5); smithy.add(forgeLight); mctx.torchLights.push(forgeLight);
+      smithy.position.set(-18, 0, 5); mctx.envGroup.add(smithy);
     }
 
     // ── Horse hitching posts (4) ──
@@ -8133,7 +8135,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         new THREE.MeshStandardMaterial({ color: 0x4488aa, transparent: true, opacity: 0.5, roughness: 0.1 }));
       troughWater.rotation.x = -Math.PI / 2; troughWater.position.set(0, 0.28, 0.5); hitchGrp.add(troughWater);
       const hpx = -8 + i * 6 + (Math.random() - 0.5) * 2; const hpz = 12 + (Math.random() - 0.5) * 4;
-      hitchGrp.position.set(hpx, 0, hpz); ctx.envGroup.add(hitchGrp);
+      hitchGrp.position.set(hpx, 0, hpz); mctx.envGroup.add(hitchGrp);
     }
 
     // ── Hay carts in street (2) ──
@@ -8158,7 +8160,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         hayBale.rotation.set(Math.random(), Math.random(), Math.random()); hayCart.add(hayBale);
       }
       const hcx = 8 + i * 10; const hcz = -5 + i * 8;
-      hayCart.position.set(hcx, 0, hcz); hayCart.rotation.y = Math.random() * 0.5; ctx.envGroup.add(hayCart);
+      hayCart.position.set(hcx, 0, hcz); hayCart.rotation.y = Math.random() * 0.5; mctx.envGroup.add(hayCart);
     }
 
     // ── Barrel stacks (6) ──
@@ -8176,7 +8178,7 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
         barrelGrp.add(brl);
       }
       const bsx = (Math.random() - 0.5) * w * 0.5; const bsz = (Math.random() - 0.5) * d * 0.5;
-      barrelGrp.position.set(bsx, 0, bsz); barrelGrp.rotation.y = Math.random() * Math.PI; ctx.envGroup.add(barrelGrp);
+      barrelGrp.position.set(bsx, 0, bsz); barrelGrp.rotation.y = Math.random() * Math.PI; mctx.envGroup.add(barrelGrp);
     }
 
     // ── Cat/dog props (4) ──
@@ -8210,22 +8212,22 @@ export function buildCamelot(ctx: MapBuildContext, w: number, d: number): void {
       tail.position.set(-bodyLen / 2 - 0.08, isCat ? 0.25 : 0.3, 0);
       tail.rotation.z = isCat ? 0.8 : -0.5; animal.add(tail);
       const anx = (Math.random() - 0.5) * w * 0.4; const anz = (Math.random() - 0.5) * d * 0.4;
-      animal.position.set(anx, 0, anz); animal.rotation.y = Math.random() * Math.PI * 2; ctx.envGroup.add(animal);
+      animal.position.set(anx, 0, anz); animal.rotation.y = Math.random() * Math.PI * 2; mctx.envGroup.add(animal);
     }
 
     // Register building colliders for Camelot
-    ctx.buildingColliders = buildingPositions.map(([x, z, bw, bd]) => [x, z, bw / 2 + 0.5, bd / 2 + 0.5] as [number, number, number, number]);
+    mctx.buildingColliders = buildingPositions.map(([x, z, bw, bd]) => [x, z, bw / 2 + 0.5, bd / 2 + 0.5] as [number, number, number, number]);
 }
 
-export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x331100, 0.017);
-    ctx.applyTerrainColors(0x1a0a00, 0x3a2a1a, 1.6);
-    ctx.dirLight.color.setHex(0xff6633);
-    ctx.dirLight.intensity = 1.0;
-    ctx.ambientLight.color.setHex(0x441100);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0xff4400);
-    ctx.hemiLight.groundColor.setHex(0x220000);
+export function buildVolcanicWastes(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x331100, 0.017);
+    mctx.applyTerrainColors(0x1a0a00, 0x3a2a1a, 1.6);
+    mctx.dirLight.color.setHex(0xff6633);
+    mctx.dirLight.intensity = 1.0;
+    mctx.ambientLight.color.setHex(0x441100);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0xff4400);
+    mctx.hemiLight.groundColor.setHex(0x220000);
 
     // Lava rivers (glowing strips) with enhanced glow
     const lavaMat = new THREE.MeshStandardMaterial({
@@ -8241,19 +8243,19 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const rvZ = (Math.random() - 0.5) * d * 0.7;
       river.position.set(rvX, getTerrainHeight(rvX, rvZ, 1.6) + 0.05, rvZ);
       river.rotation.z = Math.random() * Math.PI;
-      ctx.envGroup.add(river);
+      mctx.envGroup.add(river);
 
       // Lava glow light
       const lavaLight = new THREE.PointLight(0xff4400, 2, 15);
       lavaLight.position.set(river.position.x, 1, river.position.z);
-      ctx.scene.add(lavaLight);
-      ctx.torchLights.push(lavaLight);
+      mctx.scene.add(lavaLight);
+      mctx.torchLights.push(lavaLight);
       // Heat shimmer particles near lava river
       for (let h = 0; h < 3; h++) {
         const shimmer = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 36, 36),
           new THREE.MeshStandardMaterial({ color: 0xff8844, emissive: 0xff6622, emissiveIntensity: 0.6, transparent: true, opacity: 0.15 }));
         shimmer.position.set(rvX + (Math.random() - 0.5) * riverW, getTerrainHeight(rvX, rvZ, 1.6) + 0.4 + Math.random() * 0.8, rvZ + (Math.random() - 0.5) * 2);
-        ctx.envGroup.add(shimmer);
+        mctx.envGroup.add(shimmer);
       }
       // Ground crack lines near lava river
       for (let cr = 0; cr < 2; cr++) {
@@ -8262,7 +8264,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         crackLine.rotation.z = Math.PI / 2;
         crackLine.rotation.y = Math.random() * Math.PI;
         crackLine.position.set(rvX + (Math.random() - 0.5) * riverW * 2, getTerrainHeight(rvX, rvZ, 1.6) + 0.02, rvZ + (Math.random() - 0.5) * 3);
-        ctx.envGroup.add(crackLine);
+        mctx.envGroup.add(crackLine);
       }
     }
 
@@ -8278,7 +8280,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       rock.position.set(vrX, getTerrainHeight(vrX, vrZ, 1.6) + rSize * 0.3, vrZ);
       rock.rotation.set(Math.random(), Math.random(), Math.random());
       rock.castShadow = true;
-      ctx.envGroup.add(rock);
+      mctx.envGroup.add(rock);
 
       // Lava crust details on rock surface (dark overlapping thin spheres with orange emissive edges)
       for (let lc = 0; lc < 3; lc++) {
@@ -8293,13 +8295,13 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
           vrZ + Math.sin(crustAng) * rSize * 0.4
         );
         crustShell.scale.y = 0.3;
-        ctx.envGroup.add(crustShell);
+        mctx.envGroup.add(crustShell);
         // Orange emissive edge ring around crust
         const crustEdge = new THREE.Mesh(new THREE.TorusGeometry(crustR * 0.85, 0.015, 8, 16),
           new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 }));
         crustEdge.position.copy(crustShell.position);
         crustEdge.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.4;
-        ctx.envGroup.add(crustEdge);
+        mctx.envGroup.add(crustEdge);
       }
 
       // Ember particles resting on rock surface (tiny emissive spheres)
@@ -8311,7 +8313,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
           getTerrainHeight(vrX, vrZ, 1.6) + rSize * 0.5 + Math.random() * rSize * 0.2,
           vrZ + (Math.random() - 0.5) * rSize * 0.6
         );
-        ctx.envGroup.add(restEmber);
+        mctx.envGroup.add(restEmber);
       }
     }
 
@@ -8394,7 +8396,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const oscX = (Math.random() - 0.5) * w * 0.85;
       const oscZ = (Math.random() - 0.5) * d * 0.85;
       clusterGrp.position.set(oscX, getTerrainHeight(oscX, oscZ, 1.6), oscZ);
-      ctx.envGroup.add(clusterGrp);
+      mctx.envGroup.add(clusterGrp);
     }
 
     // Cracked ground detail lines (20) - glowing lava-lit cracks with raised edges and steam vents
@@ -8489,7 +8491,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const cgZ = (Math.random() - 0.5) * d * 0.85;
       crackDetailGrp.position.set(cgX, getTerrainHeight(cgX, cgZ, 1.6) + 0.01, cgZ);
       crackDetailGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(crackDetailGrp);
+      mctx.envGroup.add(crackDetailGrp);
     }
 
     // Ash pillars / volcanic columns (28) - layered basalt columns with lava veins and rubble
@@ -8583,7 +8585,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const pX = (Math.random() - 0.5) * w * 0.85;
       const pZ = (Math.random() - 0.5) * d * 0.85;
       pillarGrp.position.set(pX, getTerrainHeight(pX, pZ, 1.6), pZ);
-      ctx.envGroup.add(pillarGrp);
+      mctx.envGroup.add(pillarGrp);
     }
 
     // Ember particles (60 ground + 30 floating)
@@ -8598,7 +8600,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         0.1 + Math.random() * 0.3,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(ember);
+      mctx.envGroup.add(ember);
     }
     // Floating ember particles rising in air
     const floatEmberMat = new THREE.MeshStandardMaterial({
@@ -8612,7 +8614,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         0.5 + Math.random() * 4,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(fEmber);
+      mctx.envGroup.add(fEmber);
     }
 
     // Ruined structures (8) - brick construction, collapsed sections, scorch marks, openings
@@ -8751,7 +8753,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const ruZ = (Math.random() - 0.5) * d * 0.7;
       ruinGroup.position.set(ruX, getTerrainHeight(ruX, ruZ, 1.6), ruZ);
       ruinGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(ruinGroup);
+      mctx.envGroup.add(ruinGroup);
     }
 
     // Steam vents (16) with heat haze effect
@@ -8798,7 +8800,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const svX = (Math.random() - 0.5) * w * 0.8;
       const svZ = (Math.random() - 0.5) * d * 0.8;
       ventGroup.position.set(svX, getTerrainHeight(svX, svZ, 1.6), svZ);
-      ctx.envGroup.add(ventGroup);
+      mctx.envGroup.add(ventGroup);
     }
 
     // Bone piles (15)
@@ -8820,7 +8822,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const bgX = (Math.random() - 0.5) * w * 0.8;
       const bgZ = (Math.random() - 0.5) * d * 0.8;
       boneGroup.position.set(bgX, getTerrainHeight(bgX, bgZ, 1.6), bgZ);
-      ctx.envGroup.add(boneGroup);
+      mctx.envGroup.add(boneGroup);
     }
 
     // Cracked ground patches (30)
@@ -8838,7 +8840,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         0.02,
         (Math.random() - 0.5) * d * 0.85
       );
-      ctx.envGroup.add(crack);
+      mctx.envGroup.add(crack);
     }
 
     // Charred dead trees (22) with more detailed branches
@@ -8899,7 +8901,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const ctX = (Math.random() - 0.5) * w * 0.85;
       const ctZ = (Math.random() - 0.5) * d * 0.85;
       treeGrp.position.set(ctX, getTerrainHeight(ctX, ctZ, 1.6), ctZ);
-      ctx.envGroup.add(treeGrp);
+      mctx.envGroup.add(treeGrp);
     }
 
     // Scorched dead tree stumps (10) with charred detail
@@ -8937,7 +8939,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const tsX = (Math.random() - 0.5) * w * 0.8;
       const tsZ = (Math.random() - 0.5) * d * 0.8;
       stumpGrp.position.set(tsX, getTerrainHeight(tsX, tsZ, 1.6), tsZ);
-      ctx.envGroup.add(stumpGrp);
+      mctx.envGroup.add(stumpGrp);
     }
 
     // Lava pools (circular, bubbling) (7) with cooling formations
@@ -8972,7 +8974,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const poolLight = new THREE.PointLight(0xff4400, 3, 12);
       poolLight.position.y = 1;
       poolGrp.add(poolLight);
-      ctx.torchLights.push(poolLight);
+      mctx.torchLights.push(poolLight);
       // Heat shimmer particles above lava pool
       for (let hs = 0; hs < 3; hs++) {
         const poolShimmer = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 36, 36),
@@ -8995,7 +8997,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const plX = (Math.random() - 0.5) * w * 0.65;
       const plZ = (Math.random() - 0.5) * d * 0.65;
       poolGrp.position.set(plX, getTerrainHeight(plX, plZ, 1.6), plZ);
-      ctx.envGroup.add(poolGrp);
+      mctx.envGroup.add(poolGrp);
     }
 
     // Volcanic caldera (center-ish) - large terrain feature
@@ -9013,9 +9015,9 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
     const calderaLight = new THREE.PointLight(0xff4400, 5, 25);
     calderaLight.position.y = 2;
     calderaGrp.add(calderaLight);
-    ctx.torchLights.push(calderaLight);
+    mctx.torchLights.push(calderaLight);
     calderaGrp.position.set(w * 0.15, getTerrainHeight(w * 0.15, -d * 0.15, 1.6), -d * 0.15);
-    ctx.envGroup.add(calderaGrp);
+    mctx.envGroup.add(calderaGrp);
 
     // Obsidian shards (sharp crystals) (30)
     const obsidianShardMat = new THREE.MeshStandardMaterial({ color: 0x0a0a15, roughness: 0.1, metalness: 0.7 });
@@ -9030,7 +9032,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       shard.rotation.z = (Math.random() - 0.5) * 0.4;
       shard.rotation.x = (Math.random() - 0.5) * 0.4;
       shard.castShadow = true;
-      ctx.envGroup.add(shard);
+      mctx.envGroup.add(shard);
       // Obsidian fragment chips scattered at base
       for (let oc = 0; oc < 2; oc++) {
         const chip = new THREE.Mesh(new THREE.OctahedronGeometry(0.04 + Math.random() * 0.05, 2),
@@ -9041,7 +9043,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
           shard.position.z + (Math.random() - 0.5) * 0.4
         );
         chip.rotation.set(Math.random(), Math.random(), Math.random());
-        ctx.envGroup.add(chip);
+        mctx.envGroup.add(chip);
       }
     }
 
@@ -9055,7 +9057,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         0.03,
         (Math.random() - 0.5) * d * 0.9
       );
-      ctx.envGroup.add(ash);
+      mctx.envGroup.add(ash);
     }
 
     // Fallen demonic statues (4)
@@ -9084,7 +9086,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         (Math.random() - 0.5) * d * 0.7
       );
       statGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(statGrp);
+      mctx.envGroup.add(statGrp);
     }
 
     // Fire geysers (8) - tall erupting columns
@@ -9106,7 +9108,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const gLight = new THREE.PointLight(0xff4400, 3, 15);
       gLight.position.y = fireH / 2;
       geyserGrp.add(gLight);
-      ctx.torchLights.push(gLight);
+      mctx.torchLights.push(gLight);
       // Rising ember particles from geyser
       for (let em = 0; em < 3; em++) {
         const gEmber = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 36, 36),
@@ -9115,7 +9117,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         geyserGrp.add(gEmber);
       }
       geyserGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(geyserGrp);
+      mctx.envGroup.add(geyserGrp);
     }
 
     // Scorched earth patches (15)
@@ -9125,7 +9127,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         new THREE.MeshStandardMaterial({ color: 0x0a0500, roughness: 1.0, transparent: true, opacity: 0.7 }));
       scorch.rotation.x = -Math.PI / 2;
       scorch.position.set((Math.random() - 0.5) * w * 0.85, 0.02, (Math.random() - 0.5) * d * 0.85);
-      ctx.envGroup.add(scorch);
+      mctx.envGroup.add(scorch);
     }
 
     // Magma rock formations (10) - stacked boulders
@@ -9147,7 +9149,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       crackGlow.rotation.y = Math.random() * Math.PI;
       formGrp.add(crackGlow);
       formGrp.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(formGrp);
+      mctx.envGroup.add(formGrp);
     }
 
     // Demon summoning circles (5) with more detail
@@ -9179,7 +9181,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       circLight.position.y = 0.5;
       circGrp.add(circLight);
       circGrp.position.set((Math.random() - 0.5) * w * 0.6, 0.03, (Math.random() - 0.5) * d * 0.6);
-      ctx.envGroup.add(circGrp);
+      mctx.envGroup.add(circGrp);
     }
 
     // Cooling lava formations (8) - dark rock with glowing cracks
@@ -9202,7 +9204,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const clX = (Math.random() - 0.5) * w * 0.8;
       const clZ = (Math.random() - 0.5) * d * 0.8;
       coolGrp.position.set(clX, getTerrainHeight(clX, clZ, 1.6), clZ);
-      ctx.envGroup.add(coolGrp);
+      mctx.envGroup.add(coolGrp);
     }
 
     // Charred skeleton remains (6)
@@ -9222,7 +9224,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const csX = (Math.random() - 0.5) * w * 0.8;
       const csZ = (Math.random() - 0.5) * d * 0.8;
       skelGrp.position.set(csX, getTerrainHeight(csX, csZ, 1.6), csZ);
-      ctx.envGroup.add(skelGrp);
+      mctx.envGroup.add(skelGrp);
     }
 
     // Heat haze ambient planes (6)
@@ -9235,7 +9237,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const haze = new THREE.Mesh(hazeGeo, hazeMat);
       haze.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
       haze.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(haze);
+      mctx.envGroup.add(haze);
     }
 
     // ── Volcanic bomb rocks (8) ──
@@ -9250,7 +9252,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       crater.rotation.x = -Math.PI / 2; crater.position.y = 0.01; bombGrp.add(crater);
       const vbx = (Math.random() - 0.5) * w * 0.8; const vbz = (Math.random() - 0.5) * d * 0.8;
       bombGrp.position.set(vbx, getTerrainHeight(vbx, vbz, 1.6), vbz);
-      ctx.envGroup.add(bombGrp);
+      mctx.envGroup.add(bombGrp);
     }
 
     // ── Lava tubes (3) ──
@@ -9266,11 +9268,11 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       inner.rotation.z = Math.PI / 2; tube.add(inner);
       // Open end glow
       const endGlow = new THREE.PointLight(0xff4400, 1.0, 10);
-      endGlow.position.set(tubeLen / 2, 0, 0); tube.add(endGlow); ctx.torchLights.push(endGlow);
+      endGlow.position.set(tubeLen / 2, 0, 0); tube.add(endGlow); mctx.torchLights.push(endGlow);
       const ltx = (Math.random() - 0.5) * w * 0.6; const ltz = (Math.random() - 0.5) * d * 0.6;
       tube.position.set(ltx, getTerrainHeight(ltx, ltz, 1.6) + 0.5, ltz);
       tube.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(tube);
+      mctx.envGroup.add(tube);
     }
 
     // ── Petrified victims (5) ──
@@ -9298,7 +9300,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const pvx = (Math.random() - 0.5) * w * 0.7; const pvz = (Math.random() - 0.5) * d * 0.7;
       victim.position.set(pvx, getTerrainHeight(pvx, pvz, 1.6), pvz);
       victim.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(victim);
+      mctx.envGroup.add(victim);
     }
 
     // ── Sulfur crystal clusters (10) ──
@@ -9314,10 +9316,10 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
         cluster.add(cone);
       }
       const sLight = new THREE.PointLight(0xaacc33, 0.2, 3);
-      sLight.position.y = 0.3; cluster.add(sLight); ctx.torchLights.push(sLight);
+      sLight.position.y = 0.3; cluster.add(sLight); mctx.torchLights.push(sLight);
       const scx = (Math.random() - 0.5) * w * 0.8; const scz = (Math.random() - 0.5) * d * 0.8;
       cluster.position.set(scx, getTerrainHeight(scx, scz, 1.6), scz);
-      ctx.envGroup.add(cluster);
+      mctx.envGroup.add(cluster);
     }
 
     // ── Volcanic rock formations / basalt columns (6) ──
@@ -9333,7 +9335,7 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       }
       const bfx = (Math.random() - 0.5) * w * 0.75; const bfz = (Math.random() - 0.5) * d * 0.75;
       formation.position.set(bfx, getTerrainHeight(bfx, bfz, 1.6), bfz);
-      ctx.envGroup.add(formation);
+      mctx.envGroup.add(formation);
     }
 
     // ── Heat shimmer markers (4) ──
@@ -9353,19 +9355,19 @@ export function buildVolcanicWastes(ctx: MapBuildContext, w: number, d: number):
       const smx = (Math.random() - 0.5) * w * 0.6; const smz = (Math.random() - 0.5) * d * 0.6;
       shimmer.position.set(smx, getTerrainHeight(smx, smz, 1.6) + shimmerH / 2, smz);
       shimmer.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(shimmer);
+      mctx.envGroup.add(shimmer);
     }
 }
 
-export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x0a0020, 0.03);
-    ctx.applyTerrainColors(0x080616, 0x120e26, 0.5);
-    ctx.dirLight.color.setHex(0x6644aa);
-    ctx.dirLight.intensity = 0.6;
-    ctx.ambientLight.color.setHex(0x110033);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x4422aa);
-    ctx.hemiLight.groundColor.setHex(0x000011);
+export function buildAbyssalRift(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x0a0020, 0.03);
+    mctx.applyTerrainColors(0x080616, 0x120e26, 0.5);
+    mctx.dirLight.color.setHex(0x6644aa);
+    mctx.dirLight.intensity = 0.6;
+    mctx.ambientLight.color.setHex(0x110033);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x4422aa);
+    mctx.hemiLight.groundColor.setHex(0x000011);
 
     // Floating stone islands (30) with more crystals and chains
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.8 });
@@ -9392,7 +9394,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         -1 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.9
       );
-      ctx.envGroup.add(islandGroup);
+      mctx.envGroup.add(islandGroup);
     }
 
     // Floating platform chains (10) - connecting islands
@@ -9412,7 +9414,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.7
       );
       fChainGrp.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.envGroup.add(fChainGrp);
+      mctx.envGroup.add(fChainGrp);
     }
 
     // Crystalline fragments (15) - small glowing shards scattered
@@ -9433,7 +9435,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         0.05,
         (Math.random() - 0.5) * d * 0.85
       );
-      ctx.envGroup.add(fragGrp);
+      mctx.envGroup.add(fragGrp);
     }
 
     // Pulsing energy veins on ground (12) - branching patterns
@@ -9460,7 +9462,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const vZ = (Math.random() - 0.5) * d * 0.8;
       veinGrp.position.set(vX, getTerrainHeight(vX, vZ, 0.5) + 0.02, vZ);
       veinGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(veinGrp);
+      mctx.envGroup.add(veinGrp);
     }
 
     // Dark matter formations (8) - amorphous dark objects
@@ -9480,7 +9482,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         1 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(darkGrp);
+      mctx.envGroup.add(darkGrp);
     }
 
     // Floating debris (15) - small rock chunks orbiting
@@ -9501,7 +9503,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         1 + Math.random() * 4,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(debrisGrp);
+      mctx.envGroup.add(debrisGrp);
     }
 
     // Floating debris/rock fragments (20) - small boxes/spheres at various heights
@@ -9521,7 +9523,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.85
       );
       fragMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.envGroup.add(fragMesh);
+      mctx.envGroup.add(fragMesh);
     }
 
     // Void cracks in the ground (glowing purple fissures) (18)
@@ -9538,7 +9540,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const fiZ = (Math.random() - 0.5) * d * 0.8;
       fissure.position.set(fiX, getTerrainHeight(fiX, fiZ, 0.5) + 0.03, fiZ);
       fissure.rotation.z = Math.random() * Math.PI;
-      ctx.envGroup.add(fissure);
+      mctx.envGroup.add(fissure);
     }
 
     // Void lights
@@ -9549,8 +9551,8 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         2,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.scene.add(voidLight);
-      ctx.torchLights.push(voidLight);
+      mctx.scene.add(voidLight);
+      mctx.torchLights.push(voidLight);
     }
 
     // Twisted spires (15)
@@ -9568,7 +9570,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const spX = (Math.random() - 0.5) * w * 0.85;
       const spZ = (Math.random() - 0.5) * d * 0.85;
       spireGroup.position.set(spX, getTerrainHeight(spX, spZ, 0.5), spZ);
-      ctx.envGroup.add(spireGroup);
+      mctx.envGroup.add(spireGroup);
     }
 
     // Eldritch runes on ground (20 glowing circles)
@@ -9585,7 +9587,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const rnX = (Math.random() - 0.5) * w * 0.8;
       const rnZ = (Math.random() - 0.5) * d * 0.8;
       rune.position.set(rnX, getTerrainHeight(rnX, rnZ, 0.5) + 0.02, rnZ);
-      ctx.envGroup.add(rune);
+      mctx.envGroup.add(rune);
     }
 
     // Shattered pillars (12) - fractured tops, visible core, cracks, fallen fragments, glowing runes
@@ -9762,7 +9764,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const piZ = (Math.random() - 0.5) * d * 0.8;
       pillarGroup.position.set(piX, getTerrainHeight(piX, piZ, 0.5), piZ);
       pillarGroup.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(pillarGroup);
+      mctx.envGroup.add(pillarGroup);
     }
 
     // Chains hanging from nothing (8)
@@ -9781,7 +9783,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         6 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(chainGroup);
+      mctx.envGroup.add(chainGroup);
     }
 
     // Entropy orbs (floating glowing spheres) (15)
@@ -9796,7 +9798,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         2 + Math.random() * 4,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(orb);
+      mctx.envGroup.add(orb);
     }
 
     // Dark fog patches (15)
@@ -9814,7 +9816,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         0.3 + Math.random() * 0.5,
         (Math.random() - 0.5) * d * 0.9
       );
-      ctx.envGroup.add(fog);
+      mctx.envGroup.add(fog);
     }
 
     // Void tentacles (12) - curved segmented cylinders reaching up
@@ -9838,7 +9840,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const tnX = (Math.random() - 0.5) * w * 0.8;
       const tnZ = (Math.random() - 0.5) * d * 0.8;
       tentGrp.position.set(tnX, getTerrainHeight(tnX, tnZ, 0.5), tnZ);
-      ctx.envGroup.add(tentGrp);
+      mctx.envGroup.add(tentGrp);
     }
 
     // Void tendrils (10) - curved cylinder chains with dark purple material
@@ -9869,7 +9871,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const tdX = (Math.random() - 0.5) * w * 0.75;
       const tdZ = (Math.random() - 0.5) * d * 0.75;
       tendrilGrp.position.set(tdX, getTerrainHeight(tdX, tdZ, 0.5), tdZ);
-      ctx.envGroup.add(tendrilGrp);
+      mctx.envGroup.add(tendrilGrp);
     }
 
     // Rift edge crystal formations (14) - pointed cones with emissive glow
@@ -9889,7 +9891,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const rcX = (Math.random() - 0.5) * w * 0.85;
       const rcZ = (Math.random() - 0.5) * d * 0.85;
       riftCrystalGrp.position.set(rcX, getTerrainHeight(rcX, rcZ, 0.5), rcZ);
-      ctx.envGroup.add(riftCrystalGrp);
+      mctx.envGroup.add(riftCrystalGrp);
     }
 
     // Unstable portals (6) with portal energy effects - torus rings with glowing center
@@ -9936,14 +9938,14 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       // Portal light
       const portalLight = new THREE.PointLight(0x6622ff, 4, 15);
       portalGrp.add(portalLight);
-      ctx.torchLights.push(portalLight);
+      mctx.torchLights.push(portalLight);
       portalGrp.position.set(
         (Math.random() - 0.5) * w * 0.6,
         2 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.6
       );
       portalGrp.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.envGroup.add(portalGrp);
+      mctx.envGroup.add(portalGrp);
     }
 
     // Corrupted altar (centerpiece)
@@ -9984,9 +9986,9 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
     const altarLight = new THREE.PointLight(0x8844ff, 5, 20);
     altarLight.position.y = 4.5;
     altarGrp.add(altarLight);
-    ctx.torchLights.push(altarLight);
+    mctx.torchLights.push(altarLight);
     altarGrp.position.set(0, 0, 0);
-    ctx.envGroup.add(altarGrp);
+    mctx.envGroup.add(altarGrp);
 
     // Soul wisps (30) - small ghostly floating lights
     const wispMat = new THREE.MeshStandardMaterial({
@@ -10000,7 +10002,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         1 + Math.random() * 5,
         (Math.random() - 0.5) * d * 0.85
       );
-      ctx.envGroup.add(wisp);
+      mctx.envGroup.add(wisp);
       // Wisp trail
       const trail = new THREE.Mesh(
         new THREE.CylinderGeometry(0.02, 0.005, 0.3, 44),
@@ -10008,7 +10010,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       );
       trail.position.copy(wisp.position);
       trail.position.y -= 0.2;
-      ctx.envGroup.add(trail);
+      mctx.envGroup.add(trail);
     }
 
     // Dimensional tears (6) - vertical glowing cracks in space
@@ -10039,14 +10041,14 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       const tearLight = new THREE.PointLight(0xaa88ff, 2, 10);
       tearLight.position.y = tearH / 2 + 1;
       tearGrp.add(tearLight);
-      ctx.torchLights.push(tearLight);
+      mctx.torchLights.push(tearLight);
       tearGrp.position.set(
         (Math.random() - 0.5) * w * 0.75,
         0,
         (Math.random() - 0.5) * d * 0.75
       );
       tearGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(tearGrp);
+      mctx.envGroup.add(tearGrp);
     }
 
     // Corrupted growth / void coral (18)
@@ -10067,7 +10069,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         0,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(coralGrp);
+      mctx.envGroup.add(coralGrp);
     }
 
     // Gravity-defying rock arches (4)
@@ -10091,7 +10093,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       archGrp.add(voidEnergy);
       archGrp.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
       archGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(archGrp);
+      mctx.envGroup.add(archGrp);
     }
 
     // Abyssal eye formations (5) - watching from the void
@@ -10110,7 +10112,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.7
       );
       eyeGrp.lookAt(0, 0, 0);
-      ctx.envGroup.add(eyeGrp);
+      mctx.envGroup.add(eyeGrp);
     }
 
     // Fractured ground platforms (8)
@@ -10126,7 +10128,7 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
       );
       plat.rotation.y = Math.random() * Math.PI;
       plat.receiveShadow = true;
-      ctx.envGroup.add(plat);
+      mctx.envGroup.add(plat);
     }
 
     // Void lightning bolts (frozen) (6)
@@ -10151,19 +10153,19 @@ export function buildAbyssalRift(ctx: MapBuildContext, w: number, d: number): vo
         1,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(boltGrp);
+      mctx.envGroup.add(boltGrp);
     }
 }
 
-export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x221100, 0.012);
-    ctx.applyTerrainColors(0x2a1a0a, 0x4a3a2a, 1.2);
-    ctx.dirLight.color.setHex(0xffaa44);
-    ctx.dirLight.intensity = 1.2;
-    ctx.ambientLight.color.setHex(0x332200);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0xffcc66);
-    ctx.hemiLight.groundColor.setHex(0x221100);
+export function buildDragonsSanctum(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x221100, 0.012);
+    mctx.applyTerrainColors(0x2a1a0a, 0x4a3a2a, 1.2);
+    mctx.dirLight.color.setHex(0xffaa44);
+    mctx.dirLight.intensity = 1.2;
+    mctx.ambientLight.color.setHex(0x332200);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0xffcc66);
+    mctx.hemiLight.groundColor.setHex(0x221100);
 
     // Gold piles (45) with more coins and detail
     const goldMat = new THREE.MeshStandardMaterial({
@@ -10208,7 +10210,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const gpX = (Math.random() - 0.5) * w * 0.85;
       const gpZ = (Math.random() - 0.5) * d * 0.85;
       pileGroup.position.set(gpX, getTerrainHeight(gpX, gpZ, 1.2), gpZ);
-      ctx.envGroup.add(pileGroup);
+      mctx.envGroup.add(pileGroup);
     }
 
     // Massive stone columns (cavern pillars) (20)
@@ -10242,7 +10244,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const clX = (Math.random() - 0.5) * w * 0.85;
       const clZ = (Math.random() - 0.5) * d * 0.85;
       colGroup.position.set(clX, getTerrainHeight(clX, clZ, 1.2), clZ);
-      ctx.envGroup.add(colGroup);
+      mctx.envGroup.add(colGroup);
     }
 
     // Dragon eggs (14)
@@ -10260,7 +10262,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const egZ = (Math.random() - 0.5) * d * 0.6;
       egg.position.set(egX, getTerrainHeight(egX, egZ, 1.2) + 0.2, egZ);
       egg.castShadow = true;
-      ctx.envGroup.add(egg);
+      mctx.envGroup.add(egg);
     }
 
     // Stalactites (hanging from above) (40)
@@ -10274,7 +10276,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         10 + Math.random() * 4,
         (Math.random() - 0.5) * d * 0.9
       );
-      ctx.envGroup.add(stal);
+      mctx.envGroup.add(stal);
     }
 
     // Stalagmites (floor) (35)
@@ -10287,7 +10289,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         (Math.random() - 0.5) * d * 0.9
       );
       stalag.castShadow = true;
-      ctx.envGroup.add(stalag);
+      mctx.envGroup.add(stalag);
     }
 
     // Fire braziers (12)
@@ -10312,12 +10314,12 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const fireLight = new THREE.PointLight(0xff6600, 3, 18);
       fireLight.position.set(0, 2, 0);
       bGroup.add(fireLight);
-      ctx.torchLights.push(fireLight);
+      mctx.torchLights.push(fireLight);
 
       const brX = (Math.random() - 0.5) * w * 0.8;
       const brZ = (Math.random() - 0.5) * d * 0.8;
       bGroup.position.set(brX, getTerrainHeight(brX, brZ, 1.2), brZ);
-      ctx.envGroup.add(bGroup);
+      mctx.envGroup.add(bGroup);
     }
 
     // Dragon skulls (6)
@@ -10349,7 +10351,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const dsZ = (Math.random() - 0.5) * d * 0.7;
       skullGroup.position.set(dsX, getTerrainHeight(dsX, dsZ, 1.2) + 0.3, dsZ);
       skullGroup.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(skullGroup);
+      mctx.envGroup.add(skullGroup);
     }
 
     // Dragon skull/bone trophy wall displays (8) - mounted on cavern walls
@@ -10390,7 +10392,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const trR = w * 0.39;
       trophyGrp.position.set(Math.cos(trAng) * trR, 4 + Math.random() * 3, Math.sin(trAng) * trR);
       trophyGrp.rotation.y = -trAng + Math.PI;
-      ctx.envGroup.add(trophyGrp);
+      mctx.envGroup.add(trophyGrp);
     }
 
     // Broken weapon piles (14)
@@ -10406,7 +10408,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const wpX = (Math.random() - 0.5) * w * 0.8;
       const wpZ = (Math.random() - 0.5) * d * 0.8;
       wpGroup.position.set(wpX, getTerrainHeight(wpX, wpZ, 1.2), wpZ);
-      ctx.envGroup.add(wpGroup);
+      mctx.envGroup.add(wpGroup);
     }
 
     // Molten cracks (12)
@@ -10423,7 +10425,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         (Math.random() - 0.5) * d * 0.7
       );
       crack.rotation.z = Math.random() * Math.PI;
-      ctx.envGroup.add(crack);
+      mctx.envGroup.add(crack);
     }
 
     // Treasure chests (12)
@@ -10453,7 +10455,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const tcZ = (Math.random() - 0.5) * d * 0.7;
       chestGrp.position.set(tcX, getTerrainHeight(tcX, tcZ, 1.2), tcZ);
       chestGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(chestGrp);
+      mctx.envGroup.add(chestGrp);
     }
 
     // Gem clusters (18)
@@ -10476,7 +10478,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         0.05,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(gemGrp);
+      mctx.envGroup.add(gemGrp);
     }
 
     // Ancient rune-carved pillars (8)
@@ -10503,7 +10505,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const rpX = (Math.random() - 0.5) * w * 0.75;
       const rpZ = (Math.random() - 0.5) * d * 0.75;
       rpGrp.position.set(rpX, getTerrainHeight(rpX, rpZ, 1.2), rpZ);
-      ctx.envGroup.add(rpGrp);
+      mctx.envGroup.add(rpGrp);
     }
 
     // Hanging chains with shackles (10)
@@ -10527,7 +10529,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         8 + Math.random() * 4,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(chainGrp);
+      mctx.envGroup.add(chainGrp);
     }
 
     // Cavern wall segments (curved backdrop) (6)
@@ -10541,7 +10543,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       wallSeg.rotation.y = -wallAngle + Math.PI / 2;
       wallSeg.castShadow = true;
       wallSeg.receiveShadow = true;
-      ctx.envGroup.add(wallSeg);
+      mctx.envGroup.add(wallSeg);
       // Scale-pattern wall decoration using overlapping small flat circles
       for (let sc = 0; sc < 8; sc++) {
         const scaleCirc = new THREE.Mesh(new THREE.CircleGeometry(0.12 + Math.random() * 0.06, 12),
@@ -10554,7 +10556,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
           Math.sin(wallAngle) * wallR + Math.sin(wallAngle + Math.PI / 2) * scOff
         );
         scaleCirc.rotation.y = -wallAngle + Math.PI / 2;
-        ctx.envGroup.add(scaleCirc);
+        mctx.envGroup.add(scaleCirc);
       }
     }
 
@@ -10584,7 +10586,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const nsX = (Math.random() - 0.5) * w * 0.6;
       const nsZ = (Math.random() - 0.5) * d * 0.6;
       nestGrp.position.set(nsX, getTerrainHeight(nsX, nsZ, 1.2), nsZ);
-      ctx.envGroup.add(nestGrp);
+      mctx.envGroup.add(nestGrp);
     }
 
     // Ancient weapon racks (6) with weapon silhouettes
@@ -10631,7 +10633,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const wrR = w * 0.38;
       rackGrp.position.set(Math.cos(wrAng) * wrR, getTerrainHeight(Math.cos(wrAng) * wrR, Math.sin(wrAng) * wrR, 1.2), Math.sin(wrAng) * wrR);
       rackGrp.rotation.y = -wrAng + Math.PI;
-      ctx.envGroup.add(rackGrp);
+      mctx.envGroup.add(rackGrp);
     }
 
     // Scattered armor pieces (10)
@@ -10652,7 +10654,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const arZ = (Math.random() - 0.5) * d * 0.75;
       armorGrp.position.set(arX, getTerrainHeight(arX, arZ, 1.2), arZ);
       armorGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(armorGrp);
+      mctx.envGroup.add(armorGrp);
     }
 
     // Dragon sleeping mound (1 centerpiece)
@@ -10707,7 +10709,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       moundGrp.add(smoke);
     }
     moundGrp.position.set(-w * 0.15, getTerrainHeight(-w * 0.15, d * 0.15, 1.2), d * 0.15);
-    ctx.envGroup.add(moundGrp);
+    mctx.envGroup.add(moundGrp);
 
     // Jeweled goblets (15)
     const gobletMat = new THREE.MeshStandardMaterial({ color: 0xddaa22, metalness: 0.7, roughness: 0.2 });
@@ -10732,7 +10734,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         0.02,
         (Math.random() - 0.5) * d * 0.7
       );
-      ctx.envGroup.add(gobGrp);
+      mctx.envGroup.add(gobGrp);
     }
 
     // Lava veins in cavern floor (15)
@@ -10750,7 +10752,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         (Math.random() - 0.5) * d * 0.8
       );
       vein.rotation.z = Math.random() * Math.PI;
-      ctx.envGroup.add(vein);
+      mctx.envGroup.add(vein);
     }
 
     // Cavern ceiling stalactite clusters (6)
@@ -10769,7 +10771,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
         12 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.8
       );
-      ctx.envGroup.add(clustGrp);
+      mctx.envGroup.add(clustGrp);
     }
 
     // Ancient dragon claw marks on ground (14)
@@ -10784,7 +10786,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       }
       clawGrp.position.set((Math.random() - 0.5) * w * 0.8, 0, (Math.random() - 0.5) * d * 0.8);
       clawGrp.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(clawGrp);
+      mctx.envGroup.add(clawGrp);
     }
 
     // Dragon statues (4) - imposing stone guardians
@@ -10838,7 +10840,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const stZ = (Math.random() - 0.5) * d * 0.6;
       statGrp.position.set(stX, getTerrainHeight(stX, stZ, 1.2), stZ);
       statGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(statGrp);
+      mctx.envGroup.add(statGrp);
     }
 
     // Dragon scales scattered on floor (20)
@@ -10850,7 +10852,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const scX = (Math.random() - 0.5) * w * 0.8;
       const scZ = (Math.random() - 0.5) * d * 0.8;
       scale.position.set(scX, getTerrainHeight(scX, scZ, 1.2) + 0.02, scZ);
-      ctx.envGroup.add(scale);
+      mctx.envGroup.add(scale);
     }
 
     // Ancient dragon murals on walls (6)
@@ -10883,7 +10885,7 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const mR = w * 0.38;
       muralGrp.position.set(Math.cos(mAng) * mR, 3 + Math.random() * 2, Math.sin(mAng) * mR);
       muralGrp.rotation.y = -mAng + Math.PI;
-      ctx.envGroup.add(muralGrp);
+      mctx.envGroup.add(muralGrp);
     }
 
     // Lava pools with glow (4) - scattered pools with rim rocks
@@ -10911,11 +10913,11 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const lpLight = new THREE.PointLight(0xff4400, 2, 10);
       lpLight.position.y = 0.5;
       lpGrp.add(lpLight);
-      ctx.torchLights.push(lpLight);
+      mctx.torchLights.push(lpLight);
       const lpX = (Math.random() - 0.5) * w * 0.6;
       const lpZ = (Math.random() - 0.5) * d * 0.6;
       lpGrp.position.set(lpX, getTerrainHeight(lpX, lpZ, 1.2), lpZ);
-      ctx.envGroup.add(lpGrp);
+      mctx.envGroup.add(lpGrp);
     }
 
     // Flame braziers (extra 6 floor-standing)
@@ -10935,11 +10937,11 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const fbLight = new THREE.PointLight(0xff6600, 1.5, 8);
       fbLight.position.y = 0.4;
       fbGrp.add(fbLight);
-      ctx.torchLights.push(fbLight);
+      mctx.torchLights.push(fbLight);
       const fbX = (Math.random() - 0.5) * w * 0.75;
       const fbZ = (Math.random() - 0.5) * d * 0.75;
       fbGrp.position.set(fbX, getTerrainHeight(fbX, fbZ, 1.2), fbZ);
-      ctx.envGroup.add(fbGrp);
+      mctx.envGroup.add(fbGrp);
     }
 
     // Scattered crown jewels (8)
@@ -10965,19 +10967,19 @@ export function buildDragonsSanctum(ctx: MapBuildContext, w: number, d: number):
       const crX = (Math.random() - 0.5) * w * 0.7;
       const crZ = (Math.random() - 0.5) * d * 0.7;
       crownGrp.position.set(crX, getTerrainHeight(crX, crZ, 1.2) + 0.02, crZ);
-      ctx.envGroup.add(crownGrp);
+      mctx.envGroup.add(crownGrp);
     }
 }
 
-export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0xddcc99, 0.008);
-    ctx.applyTerrainColors(0xbb9955, 0xddbb77, 1.4);
-    ctx.dirLight.color.setHex(0xffeebb);
-    ctx.dirLight.intensity = 1.8;
-    ctx.ambientLight.color.setHex(0x665533);
-    ctx.ambientLight.intensity = 0.7;
-    ctx.hemiLight.color.setHex(0xeedd99);
-    ctx.hemiLight.groundColor.setHex(0x886644);
+export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0xddcc99, 0.008);
+    mctx.applyTerrainColors(0xbb9955, 0xddbb77, 1.4);
+    mctx.dirLight.color.setHex(0xffeebb);
+    mctx.dirLight.intensity = 1.8;
+    mctx.ambientLight.color.setHex(0x665533);
+    mctx.ambientLight.intensity = 0.7;
+    mctx.hemiLight.color.setHex(0xeedd99);
+    mctx.hemiLight.groundColor.setHex(0x886644);
     const hw = w / 2, hd = d / 2;
 
     const sandMat = new THREE.MeshStandardMaterial({ color: 0xd4b87a, roughness: 0.95 });
@@ -11062,7 +11064,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         sy * 0.25,
         (Math.random() - 0.5) * d * 0.9,
       );
-      ctx.scene.add(duneGrp);
+      mctx.scene.add(duneGrp);
     }
 
     // ── Cacti scattered around ──
@@ -11099,7 +11101,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const cacX = (Math.random() - 0.5) * w * 0.85;
       const cacZ = (Math.random() - 0.5) * d * 0.85;
       cactus.position.set(cacX, getTerrainHeight(cacX, cacZ, 1.4), cacZ);
-      ctx.scene.add(cactus);
+      mctx.scene.add(cactus);
     }
 
     // ── Ancient ruins (broken pillars, walls, arches) ──
@@ -11199,7 +11201,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       }
 
       ruin.position.set(cx, getTerrainHeight(cx, cz, 1.4), cz);
-      ctx.scene.add(ruin);
+      mctx.scene.add(ruin);
     }
 
     // ── Oasis (water pool with palm trees, lily pads, ripples, water plants) ──
@@ -11207,7 +11209,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
     const oasisPool = new THREE.Mesh(new THREE.CircleGeometry(8, 44), oasisWaterMat);
     oasisPool.rotation.x = -Math.PI / 2;
     oasisPool.position.set(oasisX, getTerrainHeight(oasisX, oasisZ, 1.4) + 0.05, oasisZ);
-    ctx.scene.add(oasisPool);
+    mctx.scene.add(oasisPool);
     // Green ring around oasis
     const grassRing = new THREE.Mesh(
       new THREE.RingGeometry(7, 10, 36),
@@ -11215,7 +11217,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
     );
     grassRing.rotation.x = -Math.PI / 2;
     grassRing.position.set(oasisX, getTerrainHeight(oasisX, oasisZ, 1.4) + 0.02, oasisZ);
-    ctx.scene.add(grassRing);
+    mctx.scene.add(grassRing);
 
     // Lily pads floating on oasis surface
     const oasisLilyMat = new THREE.MeshStandardMaterial({ color: 0x448833, roughness: 0.6, side: THREE.DoubleSide });
@@ -11230,13 +11232,13 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         getTerrainHeight(oasisX, oasisZ, 1.4) + 0.07,
         oasisZ + Math.sin(oasisLilyAngle) * oasisLilyDist,
       );
-      ctx.scene.add(oasisLilyPad);
+      mctx.scene.add(oasisLilyPad);
       // Flower on some lily pads
       if (Math.random() > 0.5) {
         const oasisLilyFlower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), oasisLilyFlowerMat);
         oasisLilyFlower.scale.y = 0.6;
         oasisLilyFlower.position.set(oasisLilyPad.position.x, oasisLilyPad.position.y + 0.06, oasisLilyPad.position.z);
-        ctx.scene.add(oasisLilyFlower);
+        mctx.scene.add(oasisLilyFlower);
       }
     }
 
@@ -11252,7 +11254,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         getTerrainHeight(oasisX, oasisZ, 1.4) + 0.06,
         oasisZ + Math.sin(oasisRippleAngle) * oasisRippleDist,
       );
-      ctx.scene.add(oasisRippleRing);
+      mctx.scene.add(oasisRippleRing);
     }
 
     // Reeds / water plants at oasis edge
@@ -11279,7 +11281,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const oasisReedX = oasisX + Math.cos(oasisReedAngle) * oasisReedDist;
       const oasisReedZ = oasisZ + Math.sin(oasisReedAngle) * oasisReedDist;
       oasisReedGrp.position.set(oasisReedX, getTerrainHeight(oasisReedX, oasisReedZ, 1.4), oasisReedZ);
-      ctx.scene.add(oasisReedGrp);
+      mctx.scene.add(oasisReedGrp);
     }
     // Palm trees around oasis (detailed trunks with ring bumps, fronds, coconuts)
     const palmCoconutMat = new THREE.MeshStandardMaterial({ color: 0x885522, roughness: 0.6 });
@@ -11347,7 +11349,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const palmX = oasisX + Math.cos(angle) * (8 + Math.random() * 2);
       const palmZ = oasisZ + Math.sin(angle) * (8 + Math.random() * 2);
       palm.position.set(palmX, getTerrainHeight(palmX, palmZ, 1.4), palmZ);
-      ctx.scene.add(palm);
+      mctx.scene.add(palm);
     }
 
     // ── Bones and skulls (scattered) ──
@@ -11368,7 +11370,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const bnZ2 = (Math.random() - 0.5) * d * 0.8;
       bone.position.set(bnX2, getTerrainHeight(bnX2, bnZ2, 1.4), bnZ2);
       bone.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(bone);
+      mctx.scene.add(bone);
     }
     // Skulls
     for (let i = 0; i < 12; i++) {
@@ -11379,7 +11381,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         0.15,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(skull);
+      mctx.scene.add(skull);
     }
 
     // ── Bandit camp (tents, fire pit, flags) ──
@@ -11398,17 +11400,17 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const tentX = campX + (t - 1) * 6;
       const tentZ = campZ + (Math.random() - 0.5) * 4;
       tent.position.set(tentX, getTerrainHeight(tentX, tentZ, 1.4), tentZ);
-      ctx.scene.add(tent);
+      mctx.scene.add(tent);
     }
     // Fire pit
     const pitRing = new THREE.Mesh(new THREE.TorusGeometry(1, 0.25, 23, 36), stoneMat);
     pitRing.rotation.x = Math.PI / 2;
     pitRing.position.set(campX, 0.25, campZ);
-    ctx.scene.add(pitRing);
+    mctx.scene.add(pitRing);
     // Ember glow
     const campFire = new THREE.PointLight(0xff6622, 1.5, 12);
     campFire.position.set(campX, 1.5, campZ);
-    ctx.scene.add(campFire);
+    mctx.scene.add(campFire);
     // Flag poles
     for (let f = 0; f < 2; f++) {
       const flagGroup = new THREE.Group();
@@ -11421,7 +11423,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       flagGroup.add(flag);
       const fgX2 = campX + (f === 0 ? -8 : 8);
       flagGroup.position.set(fgX2, getTerrainHeight(fgX2, campZ, 1.4), campZ);
-      ctx.scene.add(flagGroup);
+      mctx.scene.add(flagGroup);
     }
 
     // ── Rock formations (high detail with sedimentary layers, sand bases, desert plants) ──
@@ -11519,7 +11521,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const rgX = (Math.random() - 0.5) * w * 0.85;
       const rgZ = (Math.random() - 0.5) * d * 0.85;
       rockGroup.position.set(rgX, getTerrainHeight(rgX, rgZ, 1.4), rgZ);
-      ctx.scene.add(rockGroup);
+      mctx.scene.add(rockGroup);
     }
 
     // ── Cracked earth patterns (network of thin dark lines) ──
@@ -11555,7 +11557,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const crackedEarthX = (Math.random() - 0.5) * w * 0.75;
       const crackedEarthZ = (Math.random() - 0.5) * d * 0.75;
       crackedEarthGrp.position.set(crackedEarthX, getTerrainHeight(crackedEarthX, crackedEarthZ, 1.4), crackedEarthZ);
-      ctx.scene.add(crackedEarthGrp);
+      mctx.scene.add(crackedEarthGrp);
     }
 
     // ── Dried shrubs (small branching cylinders) ──
@@ -11592,7 +11594,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const driedShrubX = (Math.random() - 0.5) * w * 0.8;
       const driedShrubZ = (Math.random() - 0.5) * d * 0.8;
       driedShrubGrp.position.set(driedShrubX, getTerrainHeight(driedShrubX, driedShrubZ, 1.4), driedShrubZ);
-      ctx.scene.add(driedShrubGrp);
+      mctx.scene.add(driedShrubGrp);
     }
 
     // ── Quicksand patches (dark circles) ──
@@ -11605,7 +11607,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         0.03,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(qs);
+      mctx.scene.add(qs);
     }
 
     // ── Desert sand trails (paths) ──
@@ -11622,7 +11624,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         0.01,
         (Math.random() - 0.5) * d * 0.6,
       );
-      ctx.scene.add(trail);
+      mctx.scene.add(trail);
     }
 
     // ── Dry tumbleweed bushes ──
@@ -11635,7 +11637,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         0.15,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(bush);
+      mctx.scene.add(bush);
     }
 
     // ── Sand ripple patterns ──
@@ -11651,7 +11653,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const riZ = (Math.random() - 0.5) * d * 0.7;
       rippleGroup.position.set(riX, getTerrainHeight(riX, riZ, 1.4), riZ);
       rippleGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(rippleGroup);
+      mctx.scene.add(rippleGroup);
     }
 
 
@@ -11676,7 +11678,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const wrZ = (Math.random() - 0.5) * d * 0.85;
       wavyGroup.position.set(wrX, getTerrainHeight(wrX, wrZ, 1.4), wrZ);
       wavyGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(wavyGroup);
+      mctx.scene.add(wavyGroup);
     }
 
     // ── Oasis palm tree frond detail (multiple thin cones fanning out) ──
@@ -11722,7 +11724,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const fpX = oasisX + Math.cos(fpAngle) * (9.5 + Math.random() * 2);
       const fpZ = oasisZ + Math.sin(fpAngle) * (9.5 + Math.random() * 2);
       frondPalm.position.set(fpX, getTerrainHeight(fpX, fpZ, 1.4), fpZ);
-      ctx.scene.add(frondPalm);
+      mctx.scene.add(frondPalm);
     }
 
     // ── Ancient ruin column fragments (broken cylinders at varying heights) ──
@@ -11759,7 +11761,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const cfgZ = (Math.random() - 0.5) * d * 0.7;
       fragGroup.position.set(cfgX, getTerrainHeight(cfgX, cfgZ, 1.4), cfgZ);
       fragGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fragGroup);
+      mctx.scene.add(fragGroup);
     }
 
     // ── Desert shrine details with carved stone patterns ──
@@ -11803,7 +11805,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const shZ = (Math.random() - 0.5) * d * 0.65;
       shrine.position.set(shX, getTerrainHeight(shX, shZ, 1.4), shZ);
       shrine.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(shrine);
+      mctx.scene.add(shrine);
     }
 
     // ── Sun-bleached bone fragments scattered on ground ──
@@ -11843,7 +11845,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const bfZ = (Math.random() - 0.5) * d * 0.85;
       boneFragGroup.position.set(bfX, getTerrainHeight(bfX, bfZ, 1.4), bfZ);
       boneFragGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(boneFragGroup);
+      mctx.scene.add(boneFragGroup);
     }
 
     // ── Vulture perches (dead tree stumps with vultures) ──
@@ -11874,7 +11876,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const prX = (Math.random() - 0.5) * w * 0.8;
       const prZ = (Math.random() - 0.5) * d * 0.8;
       perch.position.set(prX, getTerrainHeight(prX, prZ, 1.4), prZ);
-      ctx.scene.add(perch);
+      mctx.scene.add(perch);
     }
 
     // ── Pottery shards (broken urns) ──
@@ -11896,7 +11898,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const sdX = (Math.random() - 0.5) * w * 0.7;
       const sdZ = (Math.random() - 0.5) * d * 0.7;
       shardGroup.position.set(sdX, getTerrainHeight(sdX, sdZ, 1.4), sdZ);
-      ctx.scene.add(shardGroup);
+      mctx.scene.add(shardGroup);
     }
 
     // ── Scorpion burrow holes ──
@@ -11909,13 +11911,13 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         0.01,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(burrow);
+      mctx.scene.add(burrow);
       // Sand mound around burrow
       const mound = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 17), sandMat);
       mound.scale.y = 0.2;
       mound.position.copy(burrow.position);
       mound.position.y = 0.03;
-      ctx.scene.add(mound);
+      mctx.scene.add(mound);
     }
 
     // ── Sun-bleached wagon wreck ──
@@ -11945,7 +11947,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       wagonGroup.add(cargo);
     }
     wagonGroup.position.set(hw * 0.2, 0, hd * 0.15);
-    ctx.scene.add(wagonGroup);
+    mctx.scene.add(wagonGroup);
 
     // ── Desert rose crystal clusters ──
     const crystalMat = new THREE.MeshStandardMaterial({ color: 0xddaa88, roughness: 0.4, metalness: 0.2 });
@@ -11963,7 +11965,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         0,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(cluster);
+      mctx.scene.add(cluster);
     }
 
     // ── Snake tracks in sand ──
@@ -11982,7 +11984,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         (Math.random() - 0.5) * d * 0.6,
       );
       track.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(track);
+      mctx.scene.add(track);
     }
 
     // ── Large sand dune formations with height variation ──
@@ -12010,7 +12012,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const duneZ = (Math.random() - 0.5) * d * 0.95;
       duneGroup.position.set(duneX, getTerrainHeight(duneX, duneZ, 1.4) - 0.5, duneZ);
       duneGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(duneGroup);
+      mctx.scene.add(duneGroup);
     }
 
     // ── Ancient ruins with columns, arches, and inscribed walls ──
@@ -12068,7 +12070,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       temple.add(wallFrag);
       temple.position.set(cx, getTerrainHeight(cx, cz, 1.4), cz);
       temple.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(temple);
+      mctx.scene.add(temple);
     }
 
     // ── Oasis reeds and water plants ──
@@ -12088,7 +12090,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const rdX = oasisX + Math.cos(angle) * dist;
       const rdZ = oasisZ + Math.sin(angle) * dist;
       reedGroup.position.set(rdX, getTerrainHeight(rdX, rdZ, 1.4), rdZ);
-      ctx.scene.add(reedGroup);
+      mctx.scene.add(reedGroup);
     }
 
     // ── Desert grass tufts ──
@@ -12106,7 +12108,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const tgX = (Math.random() - 0.5) * w * 0.85;
       const tgZ = (Math.random() - 0.5) * d * 0.85;
       tuft.position.set(tgX, getTerrainHeight(tgX, tgZ, 1.4), tgZ);
-      ctx.scene.add(tuft);
+      mctx.scene.add(tuft);
     }
 
     // ── Sun-bleached rock arches and formations ──
@@ -12134,7 +12136,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const raZ = (Math.random() - 0.5) * d * 0.75;
       archGroup.position.set(raX, getTerrainHeight(raX, raZ, 1.4), raZ);
       archGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(archGroup);
+      mctx.scene.add(archGroup);
     }
 
     // ── Mirage shimmer effects (semi-transparent rising planes) ──
@@ -12149,7 +12151,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         (Math.random() - 0.5) * d * 0.7,
       );
       mirage.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(mirage);
+      mctx.scene.add(mirage);
     }
 
     // ── Cracked earth patches ──
@@ -12174,7 +12176,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const cpX = (Math.random() - 0.5) * w * 0.75;
       const cpZ = (Math.random() - 0.5) * d * 0.75;
       patchGroup.position.set(cpX, getTerrainHeight(cpX, cpZ, 1.4), cpZ);
-      ctx.scene.add(patchGroup);
+      mctx.scene.add(patchGroup);
     }
 
     // ── Camel skeleton remains ──
@@ -12213,7 +12215,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const csZ = (Math.random() - 0.5) * d * 0.7;
       camelSkel.position.set(csX, getTerrainHeight(csX, csZ, 1.4), csZ);
       camelSkel.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(camelSkel);
+      mctx.scene.add(camelSkel);
     }
 
     // ── Atmospheric desert point lights (heat shimmer) ──
@@ -12225,7 +12227,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
         3 + Math.random() * 2,
         (Math.random() - 0.5) * d * 0.6,
       );
-      ctx.scene.add(sunGlow);
+      mctx.scene.add(sunGlow);
     }
 
     // ── Large scattered skulls (giant creature remains) ──
@@ -12259,7 +12261,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const gsZ = (Math.random() - 0.5) * d * 0.6;
       giantSkull.position.set(gsX, getTerrainHeight(gsX, gsZ, 1.4), gsZ);
       giantSkull.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(giantSkull);
+      mctx.scene.add(giantSkull);
     }
 
     // ── Sand ripple texture patches (larger, more detailed) ──
@@ -12281,7 +12283,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const rpZ = (Math.random() - 0.5) * d * 0.8;
       ripplePatch.position.set(rpX, getTerrainHeight(rpX, rpZ, 1.4), rpZ);
       ripplePatch.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(ripplePatch);
+      mctx.scene.add(ripplePatch);
     }
 
     // ── Scattered ancient coins and artifacts ──
@@ -12292,7 +12294,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const coX = (Math.random() - 0.5) * w * 0.7;
       const coZ = (Math.random() - 0.5) * d * 0.7;
       coin.position.set(coX, getTerrainHeight(coX, coZ, 1.4) + 0.01, coZ);
-      ctx.scene.add(coin);
+      mctx.scene.add(coin);
     }
 
     // ── Second oasis pool (smaller, distant) ──
@@ -12300,14 +12302,14 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
     const oasis2Pool = new THREE.Mesh(new THREE.CircleGeometry(4, 37), oasisWaterMat);
     oasis2Pool.rotation.x = -Math.PI / 2;
     oasis2Pool.position.set(oasis2X, getTerrainHeight(oasis2X, oasis2Z, 1.4) + 0.04, oasis2Z);
-    ctx.scene.add(oasis2Pool);
+    mctx.scene.add(oasis2Pool);
     const grassRing2 = new THREE.Mesh(
       new THREE.RingGeometry(3.5, 5, 27),
       new THREE.MeshStandardMaterial({ color: 0x558833, roughness: 0.8 }),
     );
     grassRing2.rotation.x = -Math.PI / 2;
     grassRing2.position.set(oasis2X, getTerrainHeight(oasis2X, oasis2Z, 1.4) + 0.02, oasis2Z);
-    ctx.scene.add(grassRing2);
+    mctx.scene.add(grassRing2);
     // Palm trees for second oasis
     for (let i = 0; i < 5; i++) {
       const angle2 = (i / 5) * Math.PI * 2;
@@ -12329,7 +12331,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const p2X = oasis2X + Math.cos(angle2) * (4.5 + Math.random() * 1.5);
       const p2Z = oasis2Z + Math.sin(angle2) * (4.5 + Math.random() * 1.5);
       palm2.position.set(p2X, getTerrainHeight(p2X, p2Z, 1.4), p2Z);
-      ctx.scene.add(palm2);
+      mctx.scene.add(palm2);
     }
 
     // ── Half-buried statue ──
@@ -12354,7 +12356,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const stZ = (Math.random() - 0.5) * d * 0.6;
       statue.position.set(stX, getTerrainHeight(stX, stZ, 1.4) - 0.8, stZ);
       statue.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(statue);
+      mctx.scene.add(statue);
     }
 
     // ── Mirage shimmer markers ──
@@ -12367,7 +12369,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const shZ = (Math.random() - 0.5) * d * 0.7;
       shimmer.position.set(shX, 1.5 + Math.random() * 2, shZ);
       shimmer.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(shimmer);
+      mctx.scene.add(shimmer);
     }
 
     // ── Scorpion burrow holes ──
@@ -12386,7 +12388,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const bX = (Math.random() - 0.5) * w * 0.7;
       const bZ = (Math.random() - 0.5) * d * 0.7;
       burrow.position.set(bX, getTerrainHeight(bX, bZ, 1.4), bZ);
-      burrow.rotation.y = Math.random() * Math.PI; ctx.scene.add(burrow);
+      burrow.rotation.y = Math.random() * Math.PI; mctx.scene.add(burrow);
     }
 
     // ── Sand-buried statue ──
@@ -12401,7 +12403,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const bsX = (Math.random() - 0.5) * w * 0.6;
       const bsZ = (Math.random() - 0.5) * d * 0.6;
       buriedStatue.position.set(bsX, getTerrainHeight(bsX, bsZ, 1.4) - 0.2, bsZ);
-      buriedStatue.rotation.y = Math.random() * Math.PI; ctx.scene.add(buriedStatue);
+      buriedStatue.rotation.y = Math.random() * Math.PI; mctx.scene.add(buriedStatue);
     }
 
     // ── Desert outpost tower ──
@@ -12429,7 +12431,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const twX = (Math.random() - 0.5) * w * 0.5;
       const twZ = (Math.random() - 0.5) * d * 0.5;
       tower.position.set(twX, getTerrainHeight(twX, twZ, 1.4), twZ);
-      ctx.scene.add(tower);
+      mctx.scene.add(tower);
     }
 
     // ── Dried riverbed ──
@@ -12456,7 +12458,7 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       }
       riverbedGroup.position.set(0, getTerrainHeight(0, 0, 1.4) - 0.1, d * 0.15);
       riverbedGroup.rotation.y = Math.random() * 0.3;
-      ctx.scene.add(riverbedGroup);
+      mctx.scene.add(riverbedGroup);
     }
 
     // ── Vulture perch props ──
@@ -12489,19 +12491,19 @@ export function buildSunscorchDesert(ctx: MapBuildContext, w: number, d: number)
       const vpX = (Math.random() - 0.5) * w * 0.6;
       const vpZ = (Math.random() - 0.5) * d * 0.6;
       perch.position.set(vpX, getTerrainHeight(vpX, vpZ, 1.4), vpZ);
-      ctx.scene.add(perch);
+      mctx.scene.add(perch);
     }
 }
 
-export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0xaaccaa, 0.006);
-    ctx.applyTerrainColors(0x449922, 0x66bb44, 1.4);
-    ctx.dirLight.color.setHex(0xfff5dd);
-    ctx.dirLight.intensity = 1.6;
-    ctx.ambientLight.color.setHex(0x336622);
-    ctx.ambientLight.intensity = 0.7;
-    ctx.hemiLight.color.setHex(0xbbdd88);
-    ctx.hemiLight.groundColor.setHex(0x445522);
+export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0xaaccaa, 0.006);
+    mctx.applyTerrainColors(0x449922, 0x66bb44, 1.4);
+    mctx.dirLight.color.setHex(0xfff5dd);
+    mctx.dirLight.intensity = 1.6;
+    mctx.ambientLight.color.setHex(0x336622);
+    mctx.ambientLight.intensity = 0.7;
+    mctx.hemiLight.color.setHex(0xbbdd88);
+    mctx.hemiLight.groundColor.setHex(0x445522);
     const hw = w / 2, hd = d / 2;
 
     const grassDarkMat = new THREE.MeshStandardMaterial({ color: 0x448822, roughness: 0.85 });
@@ -12531,7 +12533,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         sy * 0.3,
         (Math.random() - 0.5) * d * 0.9,
       );
-      ctx.scene.add(hill);
+      mctx.scene.add(hill);
     }
 
     // ── Wildflower patches ──
@@ -12546,14 +12548,14 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         0.15 + Math.random() * 0.1,
         (Math.random() - 0.5) * d * 0.85,
       );
-      ctx.scene.add(flower);
+      mctx.scene.add(flower);
       // Stem
       const stem = new THREE.Mesh(
         new THREE.CylinderGeometry(0.015, 0.02, 0.2, 16),
         new THREE.MeshStandardMaterial({ color: 0x337722 }),
       );
       stem.position.set(flower.position.x, 0.05, flower.position.z);
-      ctx.scene.add(stem);
+      mctx.scene.add(stem);
     }
 
     // ── Deciduous trees (scattered) ──
@@ -12580,7 +12582,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const trX = (Math.random() - 0.5) * w * 0.85;
       const trZ = (Math.random() - 0.5) * d * 0.85;
       tree.position.set(trX, getTerrainHeight(trX, trZ, 1.4), trZ);
-      ctx.scene.add(tree);
+      mctx.scene.add(tree);
     }
 
     // ── Creek / stream (winding water) ──
@@ -12598,25 +12600,25 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         -hd * 0.2 + Math.cos(t * 4) * 15,
       );
       seg.rotation.z = Math.atan2(Math.cos(t * 6) * 8, w * 0.7 / streamParts);
-      ctx.scene.add(seg);
+      mctx.scene.add(seg);
     }
 
     // ── Stone bridge over stream ──
     const bridgeX = 0, bridgeZ = -hd * 0.15;
     const bridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(5, 0.4, 3), stoneMat);
     bridgeDeck.position.set(bridgeX, 1.2, bridgeZ);
-    ctx.scene.add(bridgeDeck);
+    mctx.scene.add(bridgeDeck);
     const rail1 = new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, 0.2), stoneMat);
     rail1.position.set(bridgeX, 1.8, bridgeZ - 1.4);
-    ctx.scene.add(rail1);
+    mctx.scene.add(rail1);
     const rail2 = new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, 0.2), stoneMat);
     rail2.position.set(bridgeX, 1.8, bridgeZ + 1.4);
-    ctx.scene.add(rail2);
+    mctx.scene.add(rail2);
     // Arched support
     const archSupport = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.25, 23, 27, Math.PI), stoneMat);
     archSupport.rotation.y = Math.PI / 2;
     archSupport.position.set(bridgeX, 0.2, bridgeZ);
-    ctx.scene.add(archSupport);
+    mctx.scene.add(archSupport);
 
     // ── Hay bales (round & rectangular with detail) ──
     const hayDarkMat = new THREE.MeshStandardMaterial({ color: 0xb89930, roughness: 0.92 });
@@ -12669,7 +12671,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         baleGroup.position.set(hayX, baseY + 0.15, hayZ);
       }
       baleGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(baleGroup);
+      mctx.scene.add(baleGroup);
     }
 
     // ── Farmstead (detailed buildings + fences) ──
@@ -12694,12 +12696,12 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     // Stone foundation
     const fhFoundation = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.6, 5.5), darkStoneMat);
     fhFoundation.position.set(farmX, 0.3, farmZ);
-    ctx.scene.add(fhFoundation);
+    mctx.scene.add(fhFoundation);
 
     // Main walls
     const fhWalls = new THREE.Mesh(new THREE.BoxGeometry(5, 3.2, 5), new THREE.MeshStandardMaterial({ color: 0xddc89e, roughness: 0.75 }));
     fhWalls.position.set(farmX, 2.2, farmZ);
-    ctx.scene.add(fhWalls);
+    mctx.scene.add(fhWalls);
 
     // Timber frame - horizontal beams
     const hBeamGeo = new THREE.BoxGeometry(5.1, 0.12, 0.12);
@@ -12707,7 +12709,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       for (const bz of [farmZ - 2.51, farmZ + 2.51]) {
         const hb = new THREE.Mesh(hBeamGeo, timberMat);
         hb.position.set(farmX, by, bz);
-        ctx.scene.add(hb);
+        mctx.scene.add(hb);
       }
     }
     const hBeamSideGeo = new THREE.BoxGeometry(0.12, 0.12, 5.1);
@@ -12715,7 +12717,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       for (const bx of [farmX - 2.51, farmX + 2.51]) {
         const hbs = new THREE.Mesh(hBeamSideGeo, timberMat);
         hbs.position.set(bx, by, farmZ);
-        ctx.scene.add(hbs);
+        mctx.scene.add(hbs);
       }
     }
     // Timber frame - vertical beams on front/back
@@ -12724,7 +12726,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       for (const bz of [farmZ - 2.51, farmZ + 2.51]) {
         const vb = new THREE.Mesh(vBeamGeo, timberMat);
         vb.position.set(farmX + vx, 2.2, bz);
-        ctx.scene.add(vb);
+        mctx.scene.add(vb);
       }
     }
     // Vertical beams on sides
@@ -12732,7 +12734,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       for (const bx of [farmX - 2.51, farmX + 2.51]) {
         const vbs = new THREE.Mesh(vBeamGeo, timberMat);
         vbs.position.set(bx, 2.2, farmZ + vz);
-        ctx.scene.add(vbs);
+        mctx.scene.add(vbs);
       }
     }
 
@@ -12741,48 +12743,48 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       // Window pane
       const winPane = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.06), windowMat);
       winPane.position.set(farmX + wx, 2.4, farmZ + 2.53);
-      ctx.scene.add(winPane);
+      mctx.scene.add(winPane);
       // Window frame (4 thin boxes)
       const wfTop = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.08), timberMat);
       wfTop.position.set(farmX + wx, 2.9, farmZ + 2.54);
-      ctx.scene.add(wfTop);
+      mctx.scene.add(wfTop);
       const wfBot = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.08), timberMat);
       wfBot.position.set(farmX + wx, 1.9, farmZ + 2.54);
-      ctx.scene.add(wfBot);
+      mctx.scene.add(wfBot);
       const wfL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.08, 0.08), timberMat);
       wfL.position.set(farmX + wx - 0.46, 2.4, farmZ + 2.54);
-      ctx.scene.add(wfL);
+      mctx.scene.add(wfL);
       const wfR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.08, 0.08), timberMat);
       wfR.position.set(farmX + wx + 0.46, 2.4, farmZ + 2.54);
-      ctx.scene.add(wfR);
+      mctx.scene.add(wfR);
       // Cross mullion
       const mullionH = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.07), timberMat);
       mullionH.position.set(farmX + wx, 2.4, farmZ + 2.55);
-      ctx.scene.add(mullionH);
+      mctx.scene.add(mullionH);
       const mullionV = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 0.07), timberMat);
       mullionV.position.set(farmX + wx, 2.4, farmZ + 2.55);
-      ctx.scene.add(mullionV);
+      mctx.scene.add(mullionV);
       // Shutters
       const shutterL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.0, 0.06), timberMat);
       shutterL.position.set(farmX + wx - 0.65, 2.4, farmZ + 2.56);
-      ctx.scene.add(shutterL);
+      mctx.scene.add(shutterL);
       const shutterR = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.0, 0.06), timberMat);
       shutterR.position.set(farmX + wx + 0.65, 2.4, farmZ + 2.56);
-      ctx.scene.add(shutterR);
+      mctx.scene.add(shutterR);
       // Flower box under window
       const flowerBox = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.2, 0.25), timberMat);
       flowerBox.position.set(farmX + wx, 1.8, farmZ + 2.6);
-      ctx.scene.add(flowerBox);
+      mctx.scene.add(flowerBox);
       // Flowers (small spheres)
       const flowerMats = [flowerRedMat, flowerYellowMat, flowerPinkMat];
       for (let fi = 0; fi < 5; fi++) {
         const fl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), flowerMats[fi % 3]);
         fl.position.set(farmX + wx - 0.3 + fi * 0.15, 1.98, farmZ + 2.6);
-        ctx.scene.add(fl);
+        mctx.scene.add(fl);
         // Tiny green leaf
         const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), greenMat);
         leaf.position.set(farmX + wx - 0.3 + fi * 0.15, 1.92, farmZ + 2.6);
-        ctx.scene.add(leaf);
+        mctx.scene.add(leaf);
       }
     }
 
@@ -12790,49 +12792,49 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     for (const side of [-1, 1]) {
       const winPane = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.8), windowMat);
       winPane.position.set(farmX + side * 2.53, 2.4, farmZ);
-      ctx.scene.add(winPane);
+      mctx.scene.add(winPane);
       const swfTop = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.0), timberMat);
       swfTop.position.set(farmX + side * 2.54, 2.9, farmZ);
-      ctx.scene.add(swfTop);
+      mctx.scene.add(swfTop);
       const swfBot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.0), timberMat);
       swfBot.position.set(farmX + side * 2.54, 1.9, farmZ);
-      ctx.scene.add(swfBot);
+      mctx.scene.add(swfBot);
       const swfL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.08, 0.08), timberMat);
       swfL.position.set(farmX + side * 2.54, 2.4, farmZ - 0.46);
-      ctx.scene.add(swfL);
+      mctx.scene.add(swfL);
       const swfR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.08, 0.08), timberMat);
       swfR.position.set(farmX + side * 2.54, 2.4, farmZ + 0.46);
-      ctx.scene.add(swfR);
+      mctx.scene.add(swfR);
       // Shutters on sides
       const sShutL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.0, 0.35), timberMat);
       sShutL.position.set(farmX + side * 2.56, 2.4, farmZ - 0.65);
-      ctx.scene.add(sShutL);
+      mctx.scene.add(sShutL);
       const sShutR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.0, 0.35), timberMat);
       sShutR.position.set(farmX + side * 2.56, 2.4, farmZ + 0.65);
-      ctx.scene.add(sShutR);
+      mctx.scene.add(sShutR);
     }
 
     // Front door with frame, handle, doorstep
     const doorStep = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.6), darkStoneMat);
     doorStep.position.set(farmX, 0.68, farmZ + 2.8);
-    ctx.scene.add(doorStep);
+    mctx.scene.add(doorStep);
     const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.2, 0.1), darkWoodMat);
     doorPanel.position.set(farmX, 1.7, farmZ + 2.53);
-    ctx.scene.add(doorPanel);
+    mctx.scene.add(doorPanel);
     // Door frame
     const dfTop = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.12, 0.14), timberMat);
     dfTop.position.set(farmX, 2.86, farmZ + 2.54);
-    ctx.scene.add(dfTop);
+    mctx.scene.add(dfTop);
     const dfL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.3, 0.14), timberMat);
     dfL.position.set(farmX - 0.58, 1.7, farmZ + 2.54);
-    ctx.scene.add(dfL);
+    mctx.scene.add(dfL);
     const dfR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.3, 0.14), timberMat);
     dfR.position.set(farmX + 0.58, 1.7, farmZ + 2.54);
-    ctx.scene.add(dfR);
+    mctx.scene.add(dfR);
     // Door handle
     const doorHandle = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), metalMat);
     doorHandle.position.set(farmX + 0.35, 1.7, farmZ + 2.62);
-    ctx.scene.add(doorHandle);
+    mctx.scene.add(doorHandle);
 
     // Peaked roof (2 slopes using rotated boxes)
     const roofW = 6.0, roofSlope = 2.0; void 0.6; // roofOverhang reserved
@@ -12842,16 +12844,16 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     const roofL = new THREE.Mesh(new THREE.BoxGeometry(roofLen, 0.15, 5.8), roofMat);
     roofL.position.set(farmX - roofW / 4 + 0.2, 3.8 + roofSlope / 2, farmZ);
     roofL.rotation.z = roofAngle;
-    ctx.scene.add(roofL);
+    mctx.scene.add(roofL);
     // Right slope
     const roofR = new THREE.Mesh(new THREE.BoxGeometry(roofLen, 0.15, 5.8), roofMat);
     roofR.position.set(farmX + roofW / 4 - 0.2, 3.8 + roofSlope / 2, farmZ);
     roofR.rotation.z = -roofAngle;
-    ctx.scene.add(roofR);
+    mctx.scene.add(roofR);
     // Ridge beam
     const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 5.9), timberMat);
     ridgeBeam.position.set(farmX, 3.8 + roofSlope, farmZ);
-    ctx.scene.add(ridgeBeam);
+    mctx.scene.add(ridgeBeam);
     // Gable fill (front and back triangular fill with wall material)
     const gableShape = new THREE.Shape();
     gableShape.moveTo(-2.5, 0);
@@ -12861,24 +12863,24 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     const gableGeo = new THREE.ShapeGeometry(gableShape);
     const gableFront = new THREE.Mesh(gableGeo, new THREE.MeshStandardMaterial({ color: 0xddc89e, roughness: 0.75 }));
     gableFront.position.set(farmX, 3.8, farmZ + 2.5);
-    ctx.scene.add(gableFront);
+    mctx.scene.add(gableFront);
     const gableBack = new THREE.Mesh(gableGeo, new THREE.MeshStandardMaterial({ color: 0xddc89e, roughness: 0.75 }));
     gableBack.position.set(farmX, 3.8, farmZ - 2.5);
     gableBack.rotation.y = Math.PI;
-    ctx.scene.add(gableBack);
+    mctx.scene.add(gableBack);
 
     // Chimney
     const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.7, 2.0, 0.7), darkStoneMat);
     chimney.position.set(farmX + 1.5, 4.8, farmZ - 1.0);
-    ctx.scene.add(chimney);
+    mctx.scene.add(chimney);
     const chimneyCap = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.9), darkStoneMat);
     chimneyCap.position.set(farmX + 1.5, 5.86, farmZ - 1.0);
-    ctx.scene.add(chimneyCap);
+    mctx.scene.add(chimneyCap);
     // Smoke puffs
     for (let si = 0; si < 5; si++) {
       const smokeS = new THREE.Mesh(new THREE.SphereGeometry(0.12 + si * 0.04, 6, 6), smokeMat);
       smokeS.position.set(farmX + 1.5 + (Math.random() - 0.5) * 0.3, 6.0 + si * 0.4, farmZ - 1.0 + (Math.random() - 0.5) * 0.3);
-      ctx.scene.add(smokeS);
+      mctx.scene.add(smokeS);
     }
 
     // ─── 2. BARN ───
@@ -12886,11 +12888,11 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     // Barn body
     const barnBody = new THREE.Mesh(new THREE.BoxGeometry(7, 4.5, 5), redPaintMat);
     barnBody.position.set(barnX, 2.25, barnZ);
-    ctx.scene.add(barnBody);
+    mctx.scene.add(barnBody);
     // Barn foundation
     const barnFound = new THREE.Mesh(new THREE.BoxGeometry(7.3, 0.4, 5.3), darkStoneMat);
     barnFound.position.set(barnX, 0.2, barnZ);
-    ctx.scene.add(barnFound);
+    mctx.scene.add(barnFound);
 
     // Barn peaked roof
     const barnRoofLen = Math.sqrt(2.0 * 2.0 + 3.5 * 3.5);
@@ -12898,15 +12900,15 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     const barnRoofL = new THREE.Mesh(new THREE.BoxGeometry(barnRoofLen, 0.15, 5.6), roofMat);
     barnRoofL.position.set(barnX - 1.6, 4.5 + 1.0, barnZ);
     barnRoofL.rotation.z = barnRoofAng;
-    ctx.scene.add(barnRoofL);
+    mctx.scene.add(barnRoofL);
     const barnRoofR = new THREE.Mesh(new THREE.BoxGeometry(barnRoofLen, 0.15, 5.6), roofMat);
     barnRoofR.position.set(barnX + 1.6, 4.5 + 1.0, barnZ);
     barnRoofR.rotation.z = -barnRoofAng;
-    ctx.scene.add(barnRoofR);
+    mctx.scene.add(barnRoofR);
     // Barn ridge
     const barnRidge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 5.7), timberMat);
     barnRidge.position.set(barnX, 4.5 + 2.0, barnZ);
-    ctx.scene.add(barnRidge);
+    mctx.scene.add(barnRidge);
     // Barn gable fill
     const barnGableShape = new THREE.Shape();
     barnGableShape.moveTo(-3.5, 0);
@@ -12916,93 +12918,93 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     const barnGableGeo = new THREE.ShapeGeometry(barnGableShape);
     const barnGableFront = new THREE.Mesh(barnGableGeo, redPaintMat);
     barnGableFront.position.set(barnX, 4.5, barnZ + 2.5);
-    ctx.scene.add(barnGableFront);
+    mctx.scene.add(barnGableFront);
     const barnGableBack = new THREE.Mesh(barnGableGeo, redPaintMat);
     barnGableBack.position.set(barnX, 4.5, barnZ - 2.5);
     barnGableBack.rotation.y = Math.PI;
-    ctx.scene.add(barnGableBack);
+    mctx.scene.add(barnGableBack);
 
     // Large barn door (front face, +Z)
     const barnDoor = new THREE.Mesh(new THREE.BoxGeometry(3.0, 3.5, 0.1), darkWoodMat);
     barnDoor.position.set(barnX, 1.75, barnZ + 2.51);
-    ctx.scene.add(barnDoor);
+    mctx.scene.add(barnDoor);
     // Cross-beam X pattern on door
     const barnXLen = Math.sqrt(3.0 * 3.0 + 3.5 * 3.5);
     const barnXAng = Math.atan2(3.5, 3.0);
     const barnCross1 = new THREE.Mesh(new THREE.BoxGeometry(barnXLen, 0.1, 0.06), timberMat);
     barnCross1.position.set(barnX, 1.75, barnZ + 2.56);
     barnCross1.rotation.z = barnXAng;
-    ctx.scene.add(barnCross1);
+    mctx.scene.add(barnCross1);
     const barnCross2 = new THREE.Mesh(new THREE.BoxGeometry(barnXLen, 0.1, 0.06), timberMat);
     barnCross2.position.set(barnX, 1.75, barnZ + 2.56);
     barnCross2.rotation.z = -barnXAng;
-    ctx.scene.add(barnCross2);
+    mctx.scene.add(barnCross2);
     // Door frame trim
     const bdFrTop = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.12, 0.12), timberMat);
     bdFrTop.position.set(barnX, 3.55, barnZ + 2.54);
-    ctx.scene.add(bdFrTop);
+    mctx.scene.add(bdFrTop);
     const bdFrL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.5, 0.12), timberMat);
     bdFrL.position.set(barnX - 1.55, 1.75, barnZ + 2.54);
-    ctx.scene.add(bdFrL);
+    mctx.scene.add(bdFrL);
     const bdFrR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.5, 0.12), timberMat);
     bdFrR.position.set(barnX + 1.55, 1.75, barnZ + 2.54);
-    ctx.scene.add(bdFrR);
+    mctx.scene.add(bdFrR);
 
     // Hay loft opening (high on front)
     const hayloftOpening = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.12), darkWoodMat);
     hayloftOpening.position.set(barnX, 4.8, barnZ + 2.52);
-    ctx.scene.add(hayloftOpening);
+    mctx.scene.add(hayloftOpening);
     // Hay visible in loft
     const hayloftHay = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.3), hayMat);
     hayloftHay.position.set(barnX, 4.65, barnZ + 2.4);
-    ctx.scene.add(hayloftHay);
+    mctx.scene.add(hayloftHay);
 
     // Weathervane on top of barn
     const wvPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 6), metalMat);
     wvPole.position.set(barnX, 7.1, barnZ);
-    ctx.scene.add(wvPole);
+    mctx.scene.add(wvPole);
     const wvArrow = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6), metalMat);
     wvArrow.position.set(barnX, 7.6, barnZ);
     wvArrow.rotation.z = Math.PI / 2;
-    ctx.scene.add(wvArrow);
+    mctx.scene.add(wvArrow);
     // Arrow tip
     const wvTip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 4), metalMat);
     wvTip.position.set(barnX + 0.45, 7.6, barnZ);
     wvTip.rotation.z = -Math.PI / 2;
-    ctx.scene.add(wvTip);
+    mctx.scene.add(wvTip);
     // Arrow tail fins
     const wvTail = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.25, 0.15), metalMat);
     wvTail.position.set(barnX - 0.4, 7.6, barnZ);
-    ctx.scene.add(wvTail);
+    mctx.scene.add(wvTail);
 
     // ─── 3. SILO ───
     const siloX = barnX + 5, siloZ = barnZ - 1;
     const siloBody = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 6, 16), metalMat);
     siloBody.position.set(siloX, 3.0, siloZ);
-    ctx.scene.add(siloBody);
+    mctx.scene.add(siloBody);
     // Metal ring bands
     for (const ry of [1.0, 2.5, 4.0, 5.5]) {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.06, 8, 20), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.3 }));
       ring.position.set(siloX, ry, siloZ);
       ring.rotation.x = Math.PI / 2;
-      ctx.scene.add(ring);
+      mctx.scene.add(ring);
     }
     // Silo conical roof
     const siloRoof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.5, 16), roofMat);
     siloRoof.position.set(siloX, 6.75, siloZ);
-    ctx.scene.add(siloRoof);
+    mctx.scene.add(siloRoof);
     // Ladder on silo
     const ladderL = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 6), timberMat);
     ladderL.position.set(siloX + 1.0, 3.0, siloZ + 0.55);
-    ctx.scene.add(ladderL);
+    mctx.scene.add(ladderL);
     const ladderR = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 6), timberMat);
     ladderR.position.set(siloX + 1.0, 3.0, siloZ - 0.55);
-    ctx.scene.add(ladderR);
+    mctx.scene.add(ladderR);
     // Ladder rungs
     for (let lr = 0; lr < 10; lr++) {
       const rung = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.8), timberMat);
       rung.position.set(siloX + 1.0, 0.5 + lr * 0.6, siloZ);
-      ctx.scene.add(rung);
+      mctx.scene.add(rung);
     }
 
     // ─── 4. CHICKEN COOP ───
@@ -13010,37 +13012,37 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     // Coop body
     const coopBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 1.5), woodMat);
     coopBody.position.set(coopX, 0.8, coopZ);
-    ctx.scene.add(coopBody);
+    mctx.scene.add(coopBody);
     // Coop roof (slight slope)
     const coopRoof = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 1.8), roofMat);
     coopRoof.position.set(coopX, 1.5, coopZ);
     coopRoof.rotation.z = 0.15;
-    ctx.scene.add(coopRoof);
+    mctx.scene.add(coopRoof);
     // Wire mesh front (grid of thin boxes)
     for (let gx = 0; gx < 6; gx++) {
       const vWire = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.0, 0.02), chickenWireMat);
       vWire.position.set(coopX - 0.8 + gx * 0.32, 0.8, coopZ + 0.76);
-      ctx.scene.add(vWire);
+      mctx.scene.add(vWire);
     }
     for (let gy = 0; gy < 4; gy++) {
       const hWire = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.02, 0.02), chickenWireMat);
       hWire.position.set(coopX, 0.45 + gy * 0.3, coopZ + 0.76);
-      ctx.scene.add(hWire);
+      mctx.scene.add(hWire);
     }
     // Ramp leading in
     const coopRamp = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.8), woodMat);
     coopRamp.position.set(coopX + 0.6, 0.35, coopZ + 0.9);
     coopRamp.rotation.x = -0.4;
-    ctx.scene.add(coopRamp);
+    mctx.scene.add(coopRamp);
     // Nest boxes on side
     for (let nb = 0; nb < 2; nb++) {
       const nestBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.4), woodMat);
       nestBox.position.set(coopX + 1.1, 0.6, coopZ - 0.3 + nb * 0.5);
-      ctx.scene.add(nestBox);
+      mctx.scene.add(nestBox);
       // Hay in nest
       const nestHay = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), hayMat);
       nestHay.position.set(coopX + 1.1, 0.75, coopZ - 0.3 + nb * 0.5);
-      ctx.scene.add(nestHay);
+      mctx.scene.add(nestHay);
     }
 
     // ─── 5. WATER WELL ───
@@ -13048,110 +13050,110 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     // Stone base (short cylinder)
     const wellBase = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.0, 0.8, 16), darkStoneMat);
     wellBase.position.set(wellX, 0.4, wellZ);
-    ctx.scene.add(wellBase);
+    mctx.scene.add(wellBase);
     // Inner darkness (black cylinder inside)
     const wellInner = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.6, 16), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1 }));
     wellInner.position.set(wellX, 0.5, wellZ);
-    ctx.scene.add(wellInner);
+    mctx.scene.add(wellInner);
     // Wooden frame posts
     const wellPost1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.0, 0.12), woodMat);
     wellPost1.position.set(wellX - 0.7, 1.8, wellZ);
-    ctx.scene.add(wellPost1);
+    mctx.scene.add(wellPost1);
     const wellPost2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.0, 0.12), woodMat);
     wellPost2.position.set(wellX + 0.7, 1.8, wellZ);
-    ctx.scene.add(wellPost2);
+    mctx.scene.add(wellPost2);
     // Horizontal beam
     const wellBeam = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 0.12), woodMat);
     wellBeam.position.set(wellX, 2.85, wellZ);
-    ctx.scene.add(wellBeam);
+    mctx.scene.add(wellBeam);
     // Well roof (small peaked)
     const wellRoofL = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.08, 1.2), roofMat);
     wellRoofL.position.set(wellX - 0.35, 3.1, wellZ);
     wellRoofL.rotation.z = 0.45;
-    ctx.scene.add(wellRoofL);
+    mctx.scene.add(wellRoofL);
     const wellRoofR = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.08, 1.2), roofMat);
     wellRoofR.position.set(wellX + 0.35, 3.1, wellZ);
     wellRoofR.rotation.z = -0.45;
-    ctx.scene.add(wellRoofR);
+    mctx.scene.add(wellRoofR);
     // Rope (thin cylinder from beam down)
     const wellRope = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.8, 4), ropeMat);
     wellRope.position.set(wellX, 1.9, wellZ);
-    ctx.scene.add(wellRope);
+    mctx.scene.add(wellRope);
     // Bucket (small cylinder)
     const wellBucket = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.2, 8), metalMat);
     wellBucket.position.set(wellX, 1.0, wellZ);
-    ctx.scene.add(wellBucket);
+    mctx.scene.add(wellBucket);
     // Bucket handle
     const bucketHandle = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.015, 6, 10, Math.PI), metalMat);
     bucketHandle.position.set(wellX, 1.15, wellZ);
-    ctx.scene.add(bucketHandle);
+    mctx.scene.add(bucketHandle);
 
     // ─── 6. ANIMAL TROUGH ───
     const troughX = farmX + 3, troughZ = farmZ + 6;
     // U-shape: bottom + two sides
     const troughBottom = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 0.6), woodMat);
     troughBottom.position.set(troughX, 0.55, troughZ);
-    ctx.scene.add(troughBottom);
+    mctx.scene.add(troughBottom);
     const troughSide1 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 0.08), woodMat);
     troughSide1.position.set(troughX, 0.8, troughZ + 0.3);
-    ctx.scene.add(troughSide1);
+    mctx.scene.add(troughSide1);
     const troughSide2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 0.08), woodMat);
     troughSide2.position.set(troughX, 0.8, troughZ - 0.3);
-    ctx.scene.add(troughSide2);
+    mctx.scene.add(troughSide2);
     // End caps
     const troughEnd1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.6), woodMat);
     troughEnd1.position.set(troughX - 1.25, 0.8, troughZ);
-    ctx.scene.add(troughEnd1);
+    mctx.scene.add(troughEnd1);
     const troughEnd2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.6), woodMat);
     troughEnd2.position.set(troughX + 1.25, 0.8, troughZ);
-    ctx.scene.add(troughEnd2);
+    mctx.scene.add(troughEnd2);
     // Water surface inside
     const troughWater = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.02, 0.5), waterMat);
     troughWater.position.set(troughX, 0.9, troughZ);
-    ctx.scene.add(troughWater);
+    mctx.scene.add(troughWater);
     // Support legs
     const troughLeg1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.12), woodMat);
     troughLeg1.position.set(troughX - 0.9, 0.25, troughZ);
-    ctx.scene.add(troughLeg1);
+    mctx.scene.add(troughLeg1);
     const troughLeg2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.12), woodMat);
     troughLeg2.position.set(troughX + 0.9, 0.25, troughZ);
-    ctx.scene.add(troughLeg2);
+    mctx.scene.add(troughLeg2);
 
     // ─── 7. TOOL SHED (lean-to against barn) ───
     const shedX = barnX - 3.8, shedZ = barnZ - 2.8;
     const shedBody = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.0, 2.0), woodMat);
     shedBody.position.set(shedX, 1.0, shedZ);
-    ctx.scene.add(shedBody);
+    mctx.scene.add(shedBody);
     // Sloped single-pitch roof
     const shedRoof = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 2.4), roofMat);
     shedRoof.position.set(shedX, 2.15, shedZ);
     shedRoof.rotation.z = -0.2;
-    ctx.scene.add(shedRoof);
+    mctx.scene.add(shedRoof);
     // Shed door
     const shedDoor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.06), darkWoodMat);
     shedDoor.position.set(shedX, 0.75, shedZ + 1.01);
-    ctx.scene.add(shedDoor);
+    mctx.scene.add(shedDoor);
     // Garden tools leaning against wall (thin cylinders at angles)
     const toolCyl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.0, 6), woodMat);
     toolCyl1.position.set(shedX + 1.05, 1.0, shedZ + 0.3);
     toolCyl1.rotation.z = -0.2;
-    ctx.scene.add(toolCyl1);
+    mctx.scene.add(toolCyl1);
     const toolCyl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.8, 6), woodMat);
     toolCyl2.position.set(shedX + 1.05, 0.9, shedZ - 0.2);
     toolCyl2.rotation.z = -0.25;
-    ctx.scene.add(toolCyl2);
+    mctx.scene.add(toolCyl2);
     const toolCyl3 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.9, 6), woodMat);
     toolCyl3.position.set(shedX + 1.05, 0.95, shedZ - 0.6);
     toolCyl3.rotation.z = -0.18;
-    ctx.scene.add(toolCyl3);
+    mctx.scene.add(toolCyl3);
     // Rake head on tool 1
     const rakeHead = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 0.04), metalMat);
     rakeHead.position.set(shedX + 1.35, 1.95, shedZ + 0.3);
-    ctx.scene.add(rakeHead);
+    mctx.scene.add(rakeHead);
     // Shovel head on tool 2
     const shovelHead = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.25, 0.02), metalMat);
     shovelHead.position.set(shedX + 1.35, 1.78, shedZ - 0.2);
-    ctx.scene.add(shovelHead);
+    mctx.scene.add(shovelHead);
 
     // ─── 8. WOODPILE ───
     const wpX = farmX - 5, wpZ = farmZ - 1;
@@ -13160,35 +13162,35 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.5, 8), woodMat);
       log.rotation.z = Math.PI / 2;
       log.position.set(wpX, 0.15, wpZ + wl * 0.32 - 0.64);
-      ctx.scene.add(log);
+      mctx.scene.add(log);
     }
     // Middle row (4 logs)
     for (let wl = 0; wl < 4; wl++) {
       const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.5, 8), woodMat);
       log.rotation.z = Math.PI / 2;
       log.position.set(wpX, 0.45, wpZ + wl * 0.32 - 0.48);
-      ctx.scene.add(log);
+      mctx.scene.add(log);
     }
     // Top row (3 logs)
     for (let wl = 0; wl < 3; wl++) {
       const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.5, 8), woodMat);
       log.rotation.z = Math.PI / 2;
       log.position.set(wpX, 0.75, wpZ + wl * 0.32 - 0.32);
-      ctx.scene.add(log);
+      mctx.scene.add(log);
     }
     // Chopping stump
     const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.5, 12), woodMat);
     stump.position.set(wpX + 1.5, 0.25, wpZ);
-    ctx.scene.add(stump);
+    mctx.scene.add(stump);
     // Axe in stump (handle + head)
     const axeHandle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 0.04), woodMat);
     axeHandle.position.set(wpX + 1.5, 0.75, wpZ);
     axeHandle.rotation.z = 0.3;
-    ctx.scene.add(axeHandle);
+    mctx.scene.add(axeHandle);
     const axeHead = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 0.04), metalMat);
     axeHead.position.set(wpX + 1.62, 1.08, wpZ);
     axeHead.rotation.z = 0.3;
-    ctx.scene.add(axeHead);
+    mctx.scene.add(axeHead);
 
     // ─── Circular fence with gate opening ───
     const fenceR = 14;
@@ -13203,7 +13205,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         0.6,
         farmZ + Math.sin(angle) * fenceR,
       );
-      ctx.scene.add(post);
+      mctx.scene.add(post);
       // Horizontal rails (top and bottom)
       const nextI = (i + 1) % fenceSegments;
       if (nextI !== gateIndex1) {
@@ -13214,11 +13216,11 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         const fRail1 = new THREE.Mesh(new THREE.BoxGeometry(railLen, 0.08, 0.08), fenceMat);
         fRail1.position.set(midX, 0.9, midZ);
         fRail1.rotation.y = -(angle + nextAngle) / 2 + Math.PI / 2;
-        ctx.scene.add(fRail1);
+        mctx.scene.add(fRail1);
         const fRail2 = new THREE.Mesh(new THREE.BoxGeometry(railLen, 0.08, 0.08), fenceMat);
         fRail2.position.set(midX, 0.4, midZ);
         fRail2.rotation.y = -(angle + nextAngle) / 2 + Math.PI / 2;
-        ctx.scene.add(fRail2);
+        mctx.scene.add(fRail2);
       }
     }
     // Gate posts (taller, thicker)
@@ -13226,10 +13228,10 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     const gateAngleB = ((gateIndex1 + 1) / fenceSegments) * Math.PI * 2;
     const gatePostA = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.6, 0.2), timberMat);
     gatePostA.position.set(farmX + Math.cos(gateAngleA) * fenceR, 0.8, farmZ + Math.sin(gateAngleA) * fenceR);
-    ctx.scene.add(gatePostA);
+    mctx.scene.add(gatePostA);
     const gatePostB = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.6, 0.2), timberMat);
     gatePostB.position.set(farmX + Math.cos(gateAngleB) * fenceR, 0.8, farmZ + Math.sin(gateAngleB) * fenceR);
-    ctx.scene.add(gatePostB);
+    mctx.scene.add(gatePostB);
 
     // ── Rock outcrops ──
     for (let i = 0; i < 12; i++) {
@@ -13246,7 +13248,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const roX = (Math.random() - 0.5) * w * 0.85;
       const roZ = (Math.random() - 0.5) * d * 0.85;
       rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4) - 0.2, roZ);
-      ctx.scene.add(rockGroup);
+      mctx.scene.add(rockGroup);
     }
 
     // ── Dirt paths ──
@@ -13262,17 +13264,17 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         0.01,
         (Math.random() - 0.5) * d * 0.5,
       );
-      ctx.scene.add(path);
+      mctx.scene.add(path);
     }
 
     // ── Windmill ──
     const wmX = -hw * 0.35, wmZ = hd * 0.3;
     const wmBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 27), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
     wmBase.position.set(wmX, 3, wmZ);
-    ctx.scene.add(wmBase);
+    mctx.scene.add(wmBase);
     const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 27), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
     wmRoof.position.set(wmX, 7, wmZ);
-    ctx.scene.add(wmRoof);
+    mctx.scene.add(wmRoof);
     // Blades
     for (let b = 0; b < 4; b++) {
       const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.05), woodMat);
@@ -13282,7 +13284,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         wmZ - 1.6,
       );
       blade.rotation.z = b * Math.PI / 2;
-      ctx.scene.add(blade);
+      mctx.scene.add(blade);
     }
 
     // ── Campfire in open field ──
@@ -13290,10 +13292,10 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     const fireRing = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.2, 23, 30), stoneMat);
     fireRing.rotation.x = Math.PI / 2;
     fireRing.position.set(cfX, 0.2, cfZ);
-    ctx.scene.add(fireRing);
+    mctx.scene.add(fireRing);
     const fieldFire = new THREE.PointLight(0xff8833, 1.2, 10);
     fieldFire.position.set(cfX, 1.5, cfZ);
-    ctx.scene.add(fieldFire);
+    mctx.scene.add(fieldFire);
     // Log seats
     for (let i = 0; i < 3; i++) {
       const logAngle = (i / 3) * Math.PI * 2 + 0.3;
@@ -13305,7 +13307,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         cfZ + Math.sin(logAngle) * 2.5,
       );
       log.rotation.y = logAngle;
-      ctx.scene.add(log);
+      mctx.scene.add(log);
     }
 
     // ── Tall grass tufts ──
@@ -13318,7 +13320,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         (Math.random() - 0.5) * d * 0.85,
       );
       tuft.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(tuft);
+      mctx.scene.add(tuft);
     }
 
     // ── Dense tall swaying grass clusters ──
@@ -13344,7 +13346,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const gcX = (Math.random() - 0.5) * w * 0.9;
       const gcZ = (Math.random() - 0.5) * d * 0.9;
       grassCluster.position.set(gcX, getTerrainHeight(gcX, gcZ, 1.4), gcZ);
-      ctx.scene.add(grassCluster);
+      mctx.scene.add(grassCluster);
     }
 
     // ── Detailed wildflower patches with daisies and poppies ──
@@ -13377,7 +13379,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const dX = (Math.random() - 0.5) * w * 0.85;
       const dZ = (Math.random() - 0.5) * d * 0.85;
       daisy.position.set(dX, getTerrainHeight(dX, dZ, 1.4), dZ);
-      ctx.scene.add(daisy);
+      mctx.scene.add(daisy);
     }
     // Poppy clusters
     for (let i = 0; i < 30; i++) {
@@ -13396,7 +13398,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const ppX = (Math.random() - 0.5) * w * 0.85;
       const ppZ = (Math.random() - 0.5) * d * 0.85;
       poppy.position.set(ppX, getTerrainHeight(ppX, ppZ, 1.4), ppZ);
-      ctx.scene.add(poppy);
+      mctx.scene.add(poppy);
     }
     // Bluebell & lavender scattered
     for (let i = 0; i < 25; i++) {
@@ -13413,7 +13415,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const bbX = (Math.random() - 0.5) * w * 0.85;
       const bbZ = (Math.random() - 0.5) * d * 0.85;
       bell.position.set(bbX, getTerrainHeight(bbX, bbZ, 1.4), bbZ);
-      ctx.scene.add(bell);
+      mctx.scene.add(bell);
     }
 
     // ── Scattered boulders with moss ──
@@ -13439,7 +13441,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const mrX = (Math.random() - 0.5) * w * 0.85;
       const mrZ = (Math.random() - 0.5) * d * 0.85;
       mossRock.position.set(mrX, getTerrainHeight(mrX, mrZ, 1.4), mrZ);
-      ctx.scene.add(mossRock);
+      mctx.scene.add(mossRock);
     }
 
     // ── Butterflies (small colored planes hovering) ──
@@ -13466,7 +13468,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const bfZ = (Math.random() - 0.5) * d * 0.8;
       butterfly.position.set(bfX, 0.8 + Math.random() * 2, bfZ);
       butterfly.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(butterfly);
+      mctx.scene.add(butterfly);
     }
 
     // ── Small winding streams ──
@@ -13500,7 +13502,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         );
         brook.add(pebble);
       }
-      ctx.scene.add(brook);
+      mctx.scene.add(brook);
     }
 
     // ── Wooden fences (field dividers) ──
@@ -13526,7 +13528,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const frZ = (Math.random() - 0.5) * d * 0.7;
       fenceRun.position.set(frX, getTerrainHeight(frX, frZ, 1.4), frZ);
       fenceRun.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fenceRun);
+      mctx.scene.add(fenceRun);
     }
 
     // ── Additional hay bales (stacked) ──
@@ -13548,17 +13550,17 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const stZ = (Math.random() - 0.5) * d * 0.6;
       stack.position.set(stX, getTerrainHeight(stX, stZ, 1.4), stZ);
       stack.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(stack);
+      mctx.scene.add(stack);
     }
 
     // ── Second windmill ──
     const wm2X = hw * 0.4, wm2Z = -hd * 0.45;
     const wm2Base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 5, 27), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
     wm2Base.position.set(wm2X, 2.5, wm2Z);
-    ctx.scene.add(wm2Base);
+    mctx.scene.add(wm2Base);
     const wm2Roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 1.5, 27), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
     wm2Roof.position.set(wm2X, 6, wm2Z);
-    ctx.scene.add(wm2Roof);
+    mctx.scene.add(wm2Roof);
     // Blades
     for (let b = 0; b < 4; b++) {
       const wBlade = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.5, 0.04), woodMat);
@@ -13568,12 +13570,12 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         wm2Z - 1.3,
       );
       wBlade.rotation.z = b * Math.PI / 2 + 0.4;
-      ctx.scene.add(wBlade);
+      mctx.scene.add(wBlade);
     }
     // Windmill door
     const wm2Door = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.5), new THREE.MeshStandardMaterial({ color: 0x553311 }));
     wm2Door.position.set(wm2X, 0.75, wm2Z + 1.81);
-    ctx.scene.add(wm2Door);
+    mctx.scene.add(wm2Door);
 
     // ── Bird nests in trees (small twig bundles) ──
     const twigMat = new THREE.MeshStandardMaterial({ color: 0x8a6940, roughness: 0.9 });
@@ -13599,7 +13601,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const nX = (Math.random() - 0.5) * w * 0.8;
       const nZ = (Math.random() - 0.5) * d * 0.8;
       nest.position.set(nX, 4 + Math.random() * 3, nZ);
-      ctx.scene.add(nest);
+      mctx.scene.add(nest);
     }
 
     // ── Rolling hills with wildflower meadow patches ──
@@ -13610,7 +13612,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const mX = (Math.random() - 0.5) * w * 0.8;
       const mZ = (Math.random() - 0.5) * d * 0.8;
       meadow.position.set(mX, getTerrainHeight(mX, mZ, 1.4) + 0.03, mZ);
-      ctx.scene.add(meadow);
+      mctx.scene.add(meadow);
       // Sprinkle tiny flowers on each meadow
       for (let f = 0; f < 10; f++) {
         const fColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
@@ -13621,7 +13623,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         const fAngle = Math.random() * Math.PI * 2;
         const fDist = Math.random() * 3;
         tinyFlower.position.set(mX + Math.cos(fAngle) * fDist, getTerrainHeight(mX, mZ, 1.4) + 0.08, mZ + Math.sin(fAngle) * fDist);
-        ctx.scene.add(tinyFlower);
+        mctx.scene.add(tinyFlower);
       }
     }
 
@@ -13634,7 +13636,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
         2.5 + Math.random() * 2,
         (Math.random() - 0.5) * d * 0.6,
       );
-      ctx.scene.add(warmLight);
+      mctx.scene.add(warmLight);
     }
 
     // ── Wooden cart and barrel near farmstead ──
@@ -13664,7 +13666,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     }
     cartGroup.position.set(farmX + 5, getTerrainHeight(farmX + 5, farmZ + 3, 1.4), farmZ + 3);
     cartGroup.rotation.y = 0.3;
-    ctx.scene.add(cartGroup);
+    mctx.scene.add(cartGroup);
 
 
     // ── Wildflower patches with multi-petal detail (small colored spheres in clusters) ──
@@ -13698,7 +13700,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const pcX = (Math.random() - 0.5) * w * 0.8;
       const pcZ = (Math.random() - 0.5) * d * 0.8;
       petalCluster.position.set(pcX, getTerrainHeight(pcX, pcZ, 1.4), pcZ);
-      ctx.scene.add(petalCluster);
+      mctx.scene.add(petalCluster);
     }
 
     // ── Stone fence/wall segments between fields ──
@@ -13737,7 +13739,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const swZ = (Math.random() - 0.5) * d * 0.7;
       stoneWall.position.set(swX, getTerrainHeight(swX, swZ, 1.4), swZ);
       stoneWall.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(stoneWall);
+      mctx.scene.add(stoneWall);
     }
 
     // ── Windmill blade detail and structural supports ──
@@ -13746,7 +13748,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     const wmHub = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 20), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.5 }));
     wmHub.rotation.x = Math.PI / 2;
     wmHub.position.set(wmDetailX, 6, wmDetailZ - 1.6);
-    ctx.scene.add(wmHub);
+    mctx.scene.add(wmHub);
     // Blade lattice detail
     for (let b = 0; b < 4; b++) {
       const bladeAngle = b * Math.PI / 2;
@@ -13760,7 +13762,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
           wmDetailZ - 1.65,
         );
         crossBar.rotation.z = bladeAngle + Math.PI / 2;
-        ctx.scene.add(crossBar);
+        mctx.scene.add(crossBar);
       }
     }
     // Structural braces on windmill body
@@ -13774,7 +13776,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       );
       brace.rotation.z = Math.cos(brAngle) * 0.15;
       brace.rotation.x = Math.sin(brAngle) * 0.15;
-      ctx.scene.add(brace);
+      mctx.scene.add(brace);
     }
 
     // ── Hay bale texture using wrapped cylinder rings ──
@@ -13801,7 +13803,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const dhZ = (Math.random() - 0.5) * d * 0.7;
       detailedHay.position.set(dhX, getTerrainHeight(dhX, dhZ, 1.4) + 0.5, dhZ);
       detailedHay.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(detailedHay);
+      mctx.scene.add(detailedHay);
     }
 
     // ── Butterfly/insect props (tiny colored planes) ──
@@ -13856,7 +13858,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const inZ = (Math.random() - 0.5) * d * 0.8;
       insect.position.set(inX, 0.6 + Math.random() * 2.5, inZ);
       insect.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(insect);
+      mctx.scene.add(insect);
     }
 
     // ── Scarecrow ──
@@ -13880,7 +13882,7 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     scHatBrim.position.y = 3.35;
     scarecrow.add(scHatBrim);
     scarecrow.position.set(farmX - 6, getTerrainHeight(farmX - 6, farmZ + 5, 1.4), farmZ + 5);
-    ctx.scene.add(scarecrow);
+    mctx.scene.add(scarecrow);
 
     // ── Dense ground grass (extra variety layer) ──
     const denseGrassShades = [
@@ -13905,11 +13907,11 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
       const gx = (Math.random() - 0.5) * w * 0.9;
       const gz = (Math.random() - 0.5) * d * 0.9;
       grassClump.position.set(gx, getTerrainHeight(gx, gz, 1.4), gz);
-      ctx.scene.add(grassClump);
+      mctx.scene.add(grassClump);
     }
 
     // ── Building colliders for player collision ──
-    ctx.buildingColliders = [
+    mctx.buildingColliders = [
       [hw * 0.3, -hd * 0.35, 3, 3],                       // Farmhouse
       [hw * 0.3 + 9, -hd * 0.35 - 2, 4, 3],               // Barn
       [hw * 0.3 + 14, -hd * 0.35 - 3, 1.5, 1.5],          // Silo
@@ -13919,15 +13921,15 @@ export function buildEmeraldGrasslands(ctx: MapBuildContext, w: number, d: numbe
     ];
 }
 
-export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x334422, 0.025);
-    ctx.applyTerrainColors(0x2a3a1a, 0x3b4a2b, 0.8);
-    ctx.dirLight.color.setHex(0x99aa66);
-    ctx.dirLight.intensity = 0.6;
-    ctx.ambientLight.color.setHex(0x556633);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x667744);
-    ctx.hemiLight.groundColor.setHex(0x2a3a1a);
+export function buildWhisperingMarsh(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x334422, 0.025);
+    mctx.applyTerrainColors(0x2a3a1a, 0x3b4a2b, 0.8);
+    mctx.dirLight.color.setHex(0x99aa66);
+    mctx.dirLight.intensity = 0.6;
+    mctx.ambientLight.color.setHex(0x556633);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x667744);
+    mctx.hemiLight.groundColor.setHex(0x2a3a1a);
 
     const darkBarkMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
     const deadWoodMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.95 });
@@ -13993,7 +13995,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const tx = (Math.random() - 0.5) * w * 0.9;
       const tz = (Math.random() - 0.5) * d * 0.9;
       tree.position.set(tx, getTerrainHeight(tx, tz, 0.8), tz);
-      ctx.scene.add(tree);
+      mctx.scene.add(tree);
     }
 
     // ── Stagnant water pools ──
@@ -14009,7 +14011,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         0.02 + Math.random() * 0.03,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(pool);
+      mctx.scene.add(pool);
     }
 
     // ── Lily pads on water ──
@@ -14025,7 +14027,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         0.06,
         (Math.random() - 0.5) * d * 0.75,
       );
-      ctx.scene.add(lily);
+      mctx.scene.add(lily);
     }
 
     // ── Willow trees (drooping branches) ──
@@ -14060,7 +14062,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const wx = (Math.random() - 0.5) * w * 0.8;
       const wz = (Math.random() - 0.5) * d * 0.8;
       willow.position.set(wx, getTerrainHeight(wx, wz, 0.8), wz);
-      ctx.scene.add(willow);
+      mctx.scene.add(willow);
     }
 
     // ── Glowing mushroom clusters (bioluminescent) ──
@@ -14088,11 +14090,11 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const glow = new THREE.PointLight(glowColor, 0.4, 4);
       glow.position.set(0, 0.3, 0);
       cluster.add(glow);
-      ctx.torchLights.push(glow);
+      mctx.torchLights.push(glow);
       const mx = (Math.random() - 0.5) * w * 0.85;
       const mz = (Math.random() - 0.5) * d * 0.85;
       cluster.position.set(mx, getTerrainHeight(mx, mz, 0.8), mz);
-      ctx.scene.add(cluster);
+      mctx.scene.add(cluster);
     }
 
     // ── Cattail reeds ──
@@ -14114,7 +14116,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const rx = (Math.random() - 0.5) * w * 0.8;
       const rz = (Math.random() - 0.5) * d * 0.8;
       reed.position.set(rx, getTerrainHeight(rx, rz, 0.8), rz);
-      ctx.scene.add(reed);
+      mctx.scene.add(reed);
     }
 
     // ── Rickety wooden bridges / walkways ──
@@ -14147,7 +14149,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const bz = (Math.random() - 0.5) * d * 0.6;
       bridge.position.set(bx, 0.05, bz);
       bridge.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(bridge);
+      mctx.scene.add(bridge);
     }
 
     // ── Moss-covered rocks ──
@@ -14170,7 +14172,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const rkX = (Math.random() - 0.5) * w * 0.85;
       const rkZ = (Math.random() - 0.5) * d * 0.85;
       rockGroup.position.set(rkX, getTerrainHeight(rkX, rkZ, 0.8), rkZ);
-      ctx.scene.add(rockGroup);
+      mctx.scene.add(rockGroup);
     }
 
     // ── Fog patches (ground-level haze) ──
@@ -14185,7 +14187,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         0.15 + Math.random() * 0.3,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(fogPatch);
+      mctx.scene.add(fogPatch);
     }
 
     // ── Twisted root arches ──
@@ -14221,7 +14223,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const az = (Math.random() - 0.5) * d * 0.7;
       arch.position.set(ax, getTerrainHeight(ax, az, 0.8), az);
       arch.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(arch);
+      mctx.scene.add(arch);
     }
 
     // ── Ancient stone markers (half-submerged pillars) ──
@@ -14245,7 +14247,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const smx = (Math.random() - 0.5) * w * 0.7;
       const smz = (Math.random() - 0.5) * d * 0.7;
       marker.position.set(smx, getTerrainHeight(smx, smz, 0.8) - 0.3, smz);
-      ctx.scene.add(marker);
+      mctx.scene.add(marker);
     }
 
     // ── Fireflies (glowing spheres with PointLights) ──
@@ -14257,11 +14259,11 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const fx = (Math.random() - 0.5) * w * 0.8;
       const fz = (Math.random() - 0.5) * d * 0.8;
       fly.position.set(fx, 0.5 + Math.random() * 2.5, fz);
-      ctx.scene.add(fly);
+      mctx.scene.add(fly);
       const flyLight = new THREE.PointLight(0xddff44, 0.3, 3);
       flyLight.position.copy(fly.position);
-      ctx.scene.add(flyLight);
-      ctx.torchLights.push(flyLight);
+      mctx.scene.add(flyLight);
+      mctx.torchLights.push(flyLight);
     }
 
     // ── Abandoned rowboats ──
@@ -14291,7 +14293,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       boat.position.set(bkx, 0.02, bkz);
       boat.rotation.y = Math.random() * Math.PI * 2;
       boat.rotation.z = (Math.random() - 0.5) * 0.15;
-      ctx.scene.add(boat);
+      mctx.scene.add(boat);
     }
 
     // ── Swamp grass tufts ──
@@ -14306,7 +14308,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         (Math.random() - 0.5) * d * 0.85,
       );
       tuft.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(tuft);
+      mctx.scene.add(tuft);
     }
 
     // ── Bubbling mud patches ──
@@ -14339,7 +14341,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const mpx = (Math.random() - 0.5) * w * 0.7;
       const mpz = (Math.random() - 0.5) * d * 0.7;
       mudGroup.position.set(mpx, getTerrainHeight(mpx, mpz, 0.8), mpz);
-      ctx.scene.add(mudGroup);
+      mctx.scene.add(mudGroup);
     }
 
     // ── Will-o'-wisps (glowing green/blue orbs floating above water) ──
@@ -14371,11 +14373,11 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const wispLight = new THREE.PointLight(wispColor, 0.6, 6);
       wispLight.position.set(0, 0, 0);
       wispGroup.add(wispLight);
-      ctx.torchLights.push(wispLight);
+      mctx.torchLights.push(wispLight);
       const wpx = (Math.random() - 0.5) * w * 0.8;
       const wpz = (Math.random() - 0.5) * d * 0.8;
       wispGroup.position.set(wpx, 0.5 + Math.random() * 2.5, wpz);
-      ctx.scene.add(wispGroup);
+      mctx.scene.add(wispGroup);
     }
 
     // ── Rotting wooden walkways (longer, more decrepit) ──
@@ -14417,7 +14419,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const wkz = (Math.random() - 0.5) * d * 0.65;
       walkway.position.set(wkx, 0.03, wkz);
       walkway.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(walkway);
+      mctx.scene.add(walkway);
     }
 
     // ── More cattails and reeds (dense patches) ──
@@ -14440,7 +14442,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const rcx = (Math.random() - 0.5) * w * 0.85;
       const rcz = (Math.random() - 0.5) * d * 0.85;
       reedCluster.position.set(rcx, getTerrainHeight(rcx, rcz, 0.8), rcz);
-      ctx.scene.add(reedCluster);
+      mctx.scene.add(reedCluster);
     }
 
     // ── Skeletal remains half-submerged in swamp ──
@@ -14477,7 +14479,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const rmz = (Math.random() - 0.5) * d * 0.75;
       remains.position.set(rmx, getTerrainHeight(rmx, rmz, 0.8) - 0.1, rmz);
       remains.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(remains);
+      mctx.scene.add(remains);
     }
 
     // ── Twisted mangrove root systems ──
@@ -14513,7 +14515,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const mgx = (Math.random() - 0.5) * w * 0.8;
       const mgz = (Math.random() - 0.5) * d * 0.8;
       mangrove.position.set(mgx, getTerrainHeight(mgx, mgz, 0.8), mgz);
-      ctx.scene.add(mangrove);
+      mctx.scene.add(mangrove);
     }
 
     // ── Additional fireflies (more, with varying heights) ──
@@ -14525,12 +14527,12 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const ffx = (Math.random() - 0.5) * w * 0.85;
       const ffz = (Math.random() - 0.5) * d * 0.85;
       ff.position.set(ffx, 0.3 + Math.random() * 3.5, ffz);
-      ctx.scene.add(ff);
+      mctx.scene.add(ff);
       if (i < 10) {
         const ffLight = new THREE.PointLight(0xddff44, 0.2, 2.5);
         ffLight.position.copy(ff.position);
-        ctx.scene.add(ffLight);
-        ctx.torchLights.push(ffLight);
+        mctx.scene.add(ffLight);
+        mctx.torchLights.push(ffLight);
       }
     }
 
@@ -14569,7 +14571,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const mpx2 = (Math.random() - 0.5) * w * 0.65;
       const mpz2 = (Math.random() - 0.5) * d * 0.65;
       mudPot.position.set(mpx2, getTerrainHeight(mpx2, mpz2, 0.8), mpz2);
-      ctx.scene.add(mudPot);
+      mctx.scene.add(mudPot);
     }
 
     // ── Murky water pools with lily pad clusters ──
@@ -14599,7 +14601,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const lcx = (Math.random() - 0.5) * w * 0.75;
       const lcz = (Math.random() - 0.5) * d * 0.75;
       lilyCluster.position.set(lcx, 0, lcz);
-      ctx.scene.add(lilyCluster);
+      mctx.scene.add(lilyCluster);
     }
 
     // ── Dense fog banks (layered) ──
@@ -14620,7 +14622,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         0,
         (Math.random() - 0.5) * d * 0.75,
       );
-      ctx.scene.add(fogBank);
+      mctx.scene.add(fogBank);
     }
 
     // ── Atmospheric swamp lighting (eerie green/yellow) ──
@@ -14632,7 +14634,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         0.5 + Math.random() * 1.5,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(swampGlow);
+      mctx.scene.add(swampGlow);
     }
 
     // ── Fallen logs across water ──
@@ -14667,7 +14669,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const flz = (Math.random() - 0.5) * d * 0.75;
       fallenLog.position.set(flx, getTerrainHeight(flx, flz, 0.8), flz);
       fallenLog.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fallenLog);
+      mctx.scene.add(fallenLog);
     }
 
 
@@ -14705,7 +14707,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const dbtX = (Math.random() - 0.5) * w * 0.85;
       const dbtZ = (Math.random() - 0.5) * d * 0.85;
       deadBranchTree.position.set(dbtX, getTerrainHeight(dbtX, dbtZ, 0.8), dbtZ);
-      ctx.scene.add(deadBranchTree);
+      mctx.scene.add(deadBranchTree);
     }
 
     // ── Lily pad clusters on water (flat circles with slight curl) ──
@@ -14747,7 +14749,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const lpcX = (Math.random() - 0.5) * w * 0.75;
       const lpcZ = (Math.random() - 0.5) * d * 0.75;
       lilyPadCluster.position.set(lpcX, 0, lpcZ);
-      ctx.scene.add(lilyPadCluster);
+      mctx.scene.add(lilyPadCluster);
     }
 
     // ── Fog wisps (translucent elongated spheres) ──
@@ -14764,7 +14766,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         (Math.random() - 0.5) * d * 0.8,
       );
       fogWisp.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fogWisp);
+      mctx.scene.add(fogWisp);
     }
 
     // ── Rotting wooden dock/boardwalk planks with gaps ──
@@ -14810,7 +14812,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const dkZ = (Math.random() - 0.5) * d * 0.6;
       dock.position.set(dkX, 0.05, dkZ);
       dock.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(dock);
+      mctx.scene.add(dock);
     }
 
     // ── Hanging moss strands (thin drooping cylinders from branches) ──
@@ -14836,7 +14838,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const msX = (Math.random() - 0.5) * w * 0.8;
       const msZ = (Math.random() - 0.5) * d * 0.8;
       mossCluster.position.set(msX, 3 + Math.random() * 4, msZ);
-      ctx.scene.add(mossCluster);
+      mctx.scene.add(mossCluster);
     }
 
     // ── Hanging vine curtains ──
@@ -14858,7 +14860,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
         4 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(vineGroup);
+      mctx.scene.add(vineGroup);
     }
 
     // ── Sunken ruins ──
@@ -14879,7 +14881,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const rnX = (Math.random() - 0.5) * w * 0.6;
       const rnZ = (Math.random() - 0.5) * d * 0.6;
       ruin.position.set(rnX, getTerrainHeight(rnX, rnZ, 0.8) - 0.2, rnZ);
-      ruin.rotation.y = Math.random() * Math.PI; ctx.scene.add(ruin);
+      ruin.rotation.y = Math.random() * Math.PI; mctx.scene.add(ruin);
     }
 
     // ── Will-o-wisp clusters ──
@@ -14900,7 +14902,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const wcX = (Math.random() - 0.5) * w * 0.7;
       const wcZ = (Math.random() - 0.5) * d * 0.7;
       wispCluster.position.set(wcX, getTerrainHeight(wcX, wcZ, 0.8) + 0.3, wcZ);
-      ctx.scene.add(wispCluster);
+      mctx.scene.add(wispCluster);
     }
 
     // ── Frog/toad props ──
@@ -14916,7 +14918,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const fX = (Math.random() - 0.5) * w * 0.7;
       const fZ = (Math.random() - 0.5) * d * 0.7;
       frog.position.set(fX, getTerrainHeight(fX, fZ, 0.8) + 0.06, fZ);
-      frog.rotation.y = Math.random() * Math.PI; ctx.scene.add(frog);
+      frog.rotation.y = Math.random() * Math.PI; mctx.scene.add(frog);
     }
 
     // ── Fishing net remnants ──
@@ -14937,7 +14939,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const ntZ = (Math.random() - 0.5) * d * 0.6;
       netGroup.position.set(ntX, getTerrainHeight(ntX, ntZ, 0.8) + 1 + Math.random() * 2, ntZ);
       netGroup.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, (Math.random() - 0.5) * 0.3);
-      ctx.scene.add(netGroup);
+      mctx.scene.add(netGroup);
     }
 
     // ── Sunken rowboat ──
@@ -14962,7 +14964,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const btZ = (Math.random() - 0.5) * d * 0.5;
       boat.position.set(btX, getTerrainHeight(btX, btZ, 0.8) - 0.1, btZ);
       boat.rotation.y = Math.random() * Math.PI;
-      boat.rotation.z = (Math.random() - 0.5) * 0.2; ctx.scene.add(boat);
+      boat.rotation.z = (Math.random() - 0.5) * 0.2; mctx.scene.add(boat);
     }
 
     // ── Mangrove root arches ──
@@ -14991,7 +14993,7 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const raX = (Math.random() - 0.5) * w * 0.7;
       const raZ = (Math.random() - 0.5) * d * 0.7;
       rootArch.position.set(raX, getTerrainHeight(raX, raZ, 0.8) + 0.3, raZ);
-      ctx.scene.add(rootArch);
+      mctx.scene.add(rootArch);
     }
 
     // ── Swamp gas vents ──
@@ -15012,19 +15014,19 @@ export function buildWhisperingMarsh(ctx: MapBuildContext, w: number, d: number)
       const gvX = (Math.random() - 0.5) * w * 0.6;
       const gvZ = (Math.random() - 0.5) * d * 0.6;
       gasVent.position.set(gvX, getTerrainHeight(gvX, gvZ, 0.8), gvZ);
-      ctx.scene.add(gasVent);
+      mctx.scene.add(gasVent);
     }
 }
 
-export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x223344, 0.02);
-    ctx.applyTerrainColors(0x2a2a3a, 0x3a3a4a, 0.6);
-    ctx.dirLight.color.setHex(0x6677aa);
-    ctx.dirLight.intensity = 0.3;
-    ctx.ambientLight.color.setHex(0x334466);
-    ctx.ambientLight.intensity = 0.3;
-    ctx.hemiLight.color.setHex(0x445577);
-    ctx.hemiLight.groundColor.setHex(0x222233);
+export function buildCrystalCaverns(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x223344, 0.02);
+    mctx.applyTerrainColors(0x2a2a3a, 0x3a3a4a, 0.6);
+    mctx.dirLight.color.setHex(0x6677aa);
+    mctx.dirLight.intensity = 0.3;
+    mctx.ambientLight.color.setHex(0x334466);
+    mctx.ambientLight.intensity = 0.3;
+    mctx.hemiLight.color.setHex(0x445577);
+    mctx.hemiLight.groundColor.setHex(0x222233);
 
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.9 });
     const caveStoneMat = new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.85 });
@@ -15077,12 +15079,12 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         const cLight = new THREE.PointLight(colorChoice.color, 0.5 + Math.random() * 0.5, 6);
         cLight.position.set(0, 1, 0);
         cluster.add(cLight);
-        ctx.torchLights.push(cLight);
+        mctx.torchLights.push(cLight);
       }
       const cx = (Math.random() - 0.5) * w * 0.9;
       const cz = (Math.random() - 0.5) * d * 0.9;
       cluster.position.set(cx, getTerrainHeight(cx, cz, 0.6), cz);
-      ctx.scene.add(cluster);
+      mctx.scene.add(cluster);
     }
 
     // ── Stalactites (hanging from ceiling) ──
@@ -15099,7 +15101,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         8 + Math.random() * 4,
         (Math.random() - 0.5) * d * 0.85,
       );
-      ctx.scene.add(stalactite);
+      mctx.scene.add(stalactite);
     }
 
     // ── Stalagmites (rising from ground) ──
@@ -15113,7 +15115,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const stX = (Math.random() - 0.5) * w * 0.85;
       const stZ = (Math.random() - 0.5) * d * 0.85;
       stalagmite.position.set(stX, getTerrainHeight(stX, stZ, 0.6) + stagH / 2, stZ);
-      ctx.scene.add(stalagmite);
+      mctx.scene.add(stalagmite);
     }
 
     // ── Glowing crystal pools ──
@@ -15128,11 +15130,11 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const px = (Math.random() - 0.5) * w * 0.75;
       const pz = (Math.random() - 0.5) * d * 0.75;
       pool.position.set(px, 0.02, pz);
-      ctx.scene.add(pool);
+      mctx.scene.add(pool);
       const poolLight = new THREE.PointLight(poolColor, 0.6, 5);
       poolLight.position.set(px, -0.2, pz);
-      ctx.scene.add(poolLight);
-      ctx.torchLights.push(poolLight);
+      mctx.scene.add(poolLight);
+      mctx.torchLights.push(poolLight);
     }
 
     // ── Rock pillars (floor to ceiling) ──
@@ -15146,7 +15148,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const piX = (Math.random() - 0.5) * w * 0.8;
       const piZ = (Math.random() - 0.5) * d * 0.8;
       pillar.position.set(piX, pillarH / 2, piZ);
-      ctx.scene.add(pillar);
+      mctx.scene.add(pillar);
     }
 
     // ── Scattered gemstones ──
@@ -15160,7 +15162,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const gx = (Math.random() - 0.5) * w * 0.85;
       const gz = (Math.random() - 0.5) * d * 0.85;
       gem.position.set(gx, getTerrainHeight(gx, gz, 0.6) + 0.05, gz);
-      ctx.scene.add(gem);
+      mctx.scene.add(gem);
     }
 
     // ── Crystal bridges ──
@@ -15185,7 +15187,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         (Math.random() - 0.5) * d * 0.6,
       );
       bridge.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(bridge);
+      mctx.scene.add(bridge);
     }
 
     // ── Cave moss patches ──
@@ -15199,7 +15201,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const moX = (Math.random() - 0.5) * w * 0.85;
       const moZ = (Math.random() - 0.5) * d * 0.85;
       moss.position.set(moX, getTerrainHeight(moX, moZ, 0.6) + 0.02, moZ);
-      ctx.scene.add(moss);
+      mctx.scene.add(moss);
     }
 
     // ── Dripping water features ──
@@ -15214,7 +15216,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         8 + Math.random() * 2,
         (Math.random() - 0.5) * d * 0.75,
       );
-      ctx.scene.add(drip);
+      mctx.scene.add(drip);
     }
 
     // ── Minecart rails and carts ──
@@ -15240,13 +15242,13 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const rZ = (Math.random() - 0.5) * d * 0.7;
       railGroup.position.set(rX, getTerrainHeight(rX, rZ, 0.6), rZ);
       railGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(railGroup);
+      mctx.scene.add(railGroup);
       // Occasional cart
       if (i < 4) {
         const cart = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.8), cartMat);
         cart.position.set(rX, getTerrainHeight(rX, rZ, 0.6) + 0.25, rZ);
         cart.rotation.y = railGroup.rotation.y;
-        ctx.scene.add(cart);
+        mctx.scene.add(cart);
       }
     }
 
@@ -15264,7 +15266,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         (Math.random() - 0.5) * d * 0.6,
       );
       stream.rotation.z = Math.random() * Math.PI;
-      ctx.scene.add(stream);
+      mctx.scene.add(stream);
     }
 
     // ── Bat nesting areas ──
@@ -15288,7 +15290,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         9 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(batCluster);
+      mctx.scene.add(batCluster);
     }
 
     // ── Loose boulder clusters ──
@@ -15308,7 +15310,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const bgX = (Math.random() - 0.5) * w * 0.85;
       const bgZ = (Math.random() - 0.5) * d * 0.85;
       boulderGroup.position.set(bgX, getTerrainHeight(bgX, bgZ, 0.6), bgZ);
-      ctx.scene.add(boulderGroup);
+      mctx.scene.add(boulderGroup);
     }
 
     // ── Massive crystal clusters (varying colors, multi-shard formations) ──
@@ -15342,11 +15344,11 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const clusterLight = new THREE.PointLight(clrChoice.color, 0.8 + Math.random() * 0.5, 10);
       clusterLight.position.set(0, 2, 0);
       megaCluster.add(clusterLight);
-      ctx.torchLights.push(clusterLight);
+      mctx.torchLights.push(clusterLight);
       const mcx = (Math.random() - 0.5) * w * 0.85;
       const mcz = (Math.random() - 0.5) * d * 0.85;
       megaCluster.position.set(mcx, getTerrainHeight(mcx, mcz, 0.6), mcz);
-      ctx.scene.add(megaCluster);
+      mctx.scene.add(megaCluster);
     }
 
     // ── Bioluminescent mushroom gardens ──
@@ -15397,11 +15399,11 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const mushLight = new THREE.PointLight(mushColor.glow, 0.4, 5);
       mushLight.position.set(0, 0.3, 0);
       mushGroup.add(mushLight);
-      ctx.torchLights.push(mushLight);
+      mctx.torchLights.push(mushLight);
       const mgx = (Math.random() - 0.5) * w * 0.85;
       const mgz = (Math.random() - 0.5) * d * 0.85;
       mushGroup.position.set(mgx, getTerrainHeight(mgx, mgz, 0.6), mgz);
-      ctx.scene.add(mushGroup);
+      mctx.scene.add(mushGroup);
     }
 
     // ── Geode formations (hollow rock with crystal interior) ──
@@ -15454,12 +15456,12 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const geodeLight = new THREE.PointLight(geodeCrystColor.color, 0.6, 6);
       geodeLight.position.set(0, geodeR * 0.4, 0);
       geode.add(geodeLight);
-      ctx.torchLights.push(geodeLight);
+      mctx.torchLights.push(geodeLight);
       const gdx = (Math.random() - 0.5) * w * 0.75;
       const gdz = (Math.random() - 0.5) * d * 0.75;
       geode.position.set(gdx, getTerrainHeight(gdx, gdz, 0.6), gdz);
       geode.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(geode);
+      mctx.scene.add(geode);
     }
 
     // ── Mineral veins on ground (colored streaks) ──
@@ -15475,7 +15477,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const vz = (Math.random() - 0.5) * d * 0.85;
       vein.position.set(vx, getTerrainHeight(vx, vz, 0.6) + 0.01, vz);
       vein.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(vein);
+      mctx.scene.add(vein);
     }
 
     // ── Dripping water pools (ground level puddles with ripple rings) ──
@@ -15509,7 +15511,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const dpx = (Math.random() - 0.5) * w * 0.75;
       const dpz = (Math.random() - 0.5) * d * 0.75;
       dripPool.position.set(dpx, getTerrainHeight(dpx, dpz, 0.6), dpz);
-      ctx.scene.add(dripPool);
+      mctx.scene.add(dripPool);
     }
 
     // ── Light refraction effects (colored point lights scattered) ──
@@ -15522,14 +15524,14 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         1 + Math.random() * 6,
         (Math.random() - 0.5) * d * 0.8,
       );
-      ctx.scene.add(refLight);
+      mctx.scene.add(refLight);
       // Visible light source (tiny crystal)
       const refCrystal = new THREE.Mesh(
         new THREE.OctahedronGeometry(0.08, 2),
         new THREE.MeshStandardMaterial({ color: refColor, emissive: refColor, emissiveIntensity: 1.0, transparent: true, opacity: 0.8 }),
       );
       refCrystal.position.copy(refLight.position);
-      ctx.scene.add(refCrystal);
+      mctx.scene.add(refCrystal);
     }
 
     // ── Crystal bridge improvements (with railings and glow) ──
@@ -15563,14 +15565,14 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const underLight = new THREE.PointLight(bClr.color, 0.5, 6);
       underLight.position.set(0, -0.5, 0);
       detailedBridge.add(underLight);
-      ctx.torchLights.push(underLight);
+      mctx.torchLights.push(underLight);
       detailedBridge.position.set(
         (Math.random() - 0.5) * w * 0.55,
         1.5 + Math.random() * 2.5,
         (Math.random() - 0.5) * d * 0.55,
       );
       detailedBridge.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(detailedBridge);
+      mctx.scene.add(detailedBridge);
     }
 
     // ── Underground river with translucent water ──
@@ -15610,7 +15612,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const riverLight = new THREE.PointLight(0x2244aa, 0.3, 12);
       riverLight.position.set(rx, 0.5, rz - segments * 3);
       river.add(riverLight);
-      ctx.scene.add(river);
+      mctx.scene.add(river);
     }
 
     // ── Ceiling crystal chandeliers ──
@@ -15647,13 +15649,13 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const chanLight = new THREE.PointLight(chanClr.color, 0.7, 8);
       chanLight.position.set(0, -0.5, 0);
       chandelier.add(chanLight);
-      ctx.torchLights.push(chanLight);
+      mctx.torchLights.push(chanLight);
       chandelier.position.set(
         (Math.random() - 0.5) * w * 0.7,
         9 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(chandelier);
+      mctx.scene.add(chandelier);
     }
 
 
@@ -15684,12 +15686,12 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
         const hcLight = new THREE.PointLight(hClrChoice.color, 0.5, 7);
         hcLight.position.set(0, 1.5, 0);
         hexCluster.add(hcLight);
-        ctx.torchLights.push(hcLight);
+        mctx.torchLights.push(hcLight);
       }
       const hcX = (Math.random() - 0.5) * w * 0.85;
       const hcZ = (Math.random() - 0.5) * d * 0.85;
       hexCluster.position.set(hcX, getTerrainHeight(hcX, hcZ, 0.6), hcZ);
-      ctx.scene.add(hexCluster);
+      mctx.scene.add(hexCluster);
     }
 
     // ── Reflective pool surfaces with crystal reflections ──
@@ -15732,7 +15734,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const rpX = (Math.random() - 0.5) * w * 0.7;
       const rpZ = (Math.random() - 0.5) * d * 0.7;
       refPool.position.set(rpX, 0.01, rpZ);
-      ctx.scene.add(refPool);
+      mctx.scene.add(refPool);
     }
 
     // ── Stalactite/stalagmite pairs with drip detail ──
@@ -15776,7 +15778,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const spX = (Math.random() - 0.5) * w * 0.8;
       const spZ = (Math.random() - 0.5) * d * 0.8;
       pairGroup.position.set(spX, getTerrainHeight(spX, spZ, 0.6), spZ);
-      ctx.scene.add(pairGroup);
+      mctx.scene.add(pairGroup);
     }
 
     // ── Mineral vein lines on cave walls (thin colored strips) ──
@@ -15809,7 +15811,7 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const mvZ = (Math.random() - 0.5) * d * 0.8;
       veinGroup.position.set(mvX, 1 + Math.random() * 5, mvZ);
       veinGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(veinGroup);
+      mctx.scene.add(veinGroup);
     }
 
     // ── Fossil imprints on ground ──
@@ -15828,19 +15830,19 @@ export function buildCrystalCaverns(ctx: MapBuildContext, w: number, d: number):
       const fsz = (Math.random() - 0.5) * d * 0.8;
       fossil.position.set(fsx, getTerrainHeight(fsx, fsz, 0.6) + 0.01, fsz);
       fossil.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fossil);
+      mctx.scene.add(fossil);
     }
 }
 
-export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0xbbccdd, 0.018);
-    ctx.applyTerrainColors(0xccddee, 0xaabbcc, 1.4);
-    ctx.dirLight.color.setHex(0xddeeff);
-    ctx.dirLight.intensity = 1.4;
-    ctx.ambientLight.color.setHex(0x8899bb);
-    ctx.ambientLight.intensity = 0.7;
-    ctx.hemiLight.color.setHex(0xccddff);
-    ctx.hemiLight.groundColor.setHex(0x99aacc);
+export function buildFrozenTundra(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0xbbccdd, 0.018);
+    mctx.applyTerrainColors(0xccddee, 0xaabbcc, 1.4);
+    mctx.dirLight.color.setHex(0xddeeff);
+    mctx.dirLight.intensity = 1.4;
+    mctx.ambientLight.color.setHex(0x8899bb);
+    mctx.ambientLight.intensity = 0.7;
+    mctx.hemiLight.color.setHex(0xccddff);
+    mctx.hemiLight.groundColor.setHex(0x99aacc);
 
     const snowMat = new THREE.MeshStandardMaterial({ color: 0xeeeeff, roughness: 0.8 });
     const iceMat = new THREE.MeshStandardMaterial({ color: 0x88bbdd, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.7 });
@@ -15877,7 +15879,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const ix = (Math.random() - 0.5) * w * 0.9;
       const iz = (Math.random() - 0.5) * d * 0.9;
       iceGroup.position.set(ix, getTerrainHeight(ix, iz, 1.4), iz);
-      ctx.scene.add(iceGroup);
+      mctx.scene.add(iceGroup);
     }
 
     // ── Snow drifts ──
@@ -15893,7 +15895,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const driftX = (Math.random() - 0.5) * w * 0.85;
       const driftZ = (Math.random() - 0.5) * d * 0.85;
       drift.position.set(driftX, sy * 0.3, driftZ);
-      ctx.scene.add(drift);
+      mctx.scene.add(drift);
     }
 
     // ── Frozen trees (bare trunks with ice coating) ──
@@ -15933,7 +15935,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const tx = (Math.random() - 0.5) * w * 0.85;
       const tz = (Math.random() - 0.5) * d * 0.85;
       tree.position.set(tx, getTerrainHeight(tx, tz, 1.4), tz);
-      ctx.scene.add(tree);
+      mctx.scene.add(tree);
     }
 
     // ── Frozen lakes ──
@@ -15949,7 +15951,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
         0.01,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(lake);
+      mctx.scene.add(lake);
     }
 
     // ── Aurora borealis pillars ──
@@ -15974,7 +15976,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
         (Math.random() - 0.5) * d * 0.9,
       );
       aurora.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(aurora);
+      mctx.scene.add(aurora);
     }
 
     // ── Snow-covered rocks ──
@@ -15997,7 +15999,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const rx = (Math.random() - 0.5) * w * 0.85;
       const rz = (Math.random() - 0.5) * d * 0.85;
       rGroup.position.set(rx, getTerrainHeight(rx, rz, 1.4), rz);
-      ctx.scene.add(rGroup);
+      mctx.scene.add(rGroup);
     }
 
     // ── Ice spikes ──
@@ -16010,7 +16012,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const spX = (Math.random() - 0.5) * w * 0.85;
       const spZ = (Math.random() - 0.5) * d * 0.85;
       spike.position.set(spX, getTerrainHeight(spX, spZ, 1.4) + spikeH / 2, spZ);
-      ctx.scene.add(spike);
+      mctx.scene.add(spike);
     }
 
     // ── Abandoned camps ──
@@ -16047,7 +16049,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const cpZ = (Math.random() - 0.5) * d * 0.7;
       camp.position.set(cpX, getTerrainHeight(cpX, cpZ, 1.4), cpZ);
       camp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(camp);
+      mctx.scene.add(camp);
     }
 
     // ── Animal skeletons ──
@@ -16081,7 +16083,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const skZ = (Math.random() - 0.5) * d * 0.8;
       skeleton.position.set(skX, getTerrainHeight(skX, skZ, 1.4), skZ);
       skeleton.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(skeleton);
+      mctx.scene.add(skeleton);
     }
 
     // ── Ice caves (arches) ──
@@ -16105,7 +16107,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const cvZ = (Math.random() - 0.5) * d * 0.6;
       cave.position.set(cvX, getTerrainHeight(cvX, cvZ, 1.4), cvZ);
       cave.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(cave);
+      mctx.scene.add(cave);
     }
 
     // ── Snow particles (floating) ──
@@ -16119,7 +16121,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
         1 + Math.random() * 6,
         (Math.random() - 0.5) * d * 0.85,
       );
-      ctx.scene.add(snowflake);
+      mctx.scene.add(snowflake);
     }
 
     // ── Frost patterns on ground ──
@@ -16133,7 +16135,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const frX = (Math.random() - 0.5) * w * 0.8;
       const frZ = (Math.random() - 0.5) * d * 0.8;
       frost.position.set(frX, getTerrainHeight(frX, frZ, 1.4) + 0.02, frZ);
-      ctx.scene.add(frost);
+      mctx.scene.add(frost);
     }
 
     // ── Frozen waterfalls ──
@@ -16148,7 +16150,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const ffZ = (Math.random() - 0.5) * d * 0.7;
       fall.position.set(ffX, fallH / 2 + 1, ffZ);
       fall.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fall);
+      mctx.scene.add(fall);
     }
 
     // ── Snow-covered pine trees ──
@@ -16182,7 +16184,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const ptx = (Math.random() - 0.5) * w * 0.85;
       const ptz = (Math.random() - 0.5) * d * 0.85;
       pine.position.set(ptx, getTerrainHeight(ptx, ptz, 1.4), ptz);
-      ctx.scene.add(pine);
+      mctx.scene.add(pine);
     }
 
     // ── Icicle clusters hanging from edges ──
@@ -16197,7 +16199,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
         icGrp.add(icMesh);
       }
       icGrp.position.set((Math.random() - 0.5) * w * 0.85, 3 + Math.random() * 5, (Math.random() - 0.5) * d * 0.85);
-      ctx.scene.add(icGrp);
+      mctx.scene.add(icGrp);
     }
 
     // ── Deep sculpted snow drifts ──
@@ -16214,7 +16216,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const ddX = (Math.random() - 0.5) * w * 0.9, ddZ = (Math.random() - 0.5) * d * 0.9;
       ddGrp.position.set(ddX, getTerrainHeight(ddX, ddZ, 1.4) - 0.3, ddZ);
       ddGrp.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(ddGrp);
+      mctx.scene.add(ddGrp);
     }
 
     // ── Frozen trees with heavy ice coating ──
@@ -16243,7 +16245,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       }
       const ftX = (Math.random() - 0.5) * w * 0.85, ftZ = (Math.random() - 0.5) * d * 0.85;
       frzT.position.set(ftX, getTerrainHeight(ftX, ftZ, 1.4), ftZ);
-      ctx.scene.add(frzT);
+      mctx.scene.add(frzT);
     }
 
     // ── Aurora borealis curtains ──
@@ -16256,7 +16258,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       aPanel.position.set((Math.random() - 0.5) * w * 0.95, aH / 2 + 6, (Math.random() - 0.5) * d * 0.95);
       aPanel.rotation.y = Math.random() * Math.PI;
       aPanel.rotation.x = (Math.random() - 0.5) * 0.3;
-      ctx.scene.add(aPanel);
+      mctx.scene.add(aPanel);
     }
 
     // ── Ice bridges ──
@@ -16270,7 +16272,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const ibRP = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2, 0.4), iceOpaqueMat); ibRP.position.set(0, -1, ibLen / 2); ibGrp.add(ibRP);
       ibGrp.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
       ibGrp.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(ibGrp);
+      mctx.scene.add(ibGrp);
     }
 
     // ── Frost patterns on ground ──
@@ -16294,7 +16296,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       }
       const fpX = (Math.random() - 0.5) * w * 0.8, fpZ = (Math.random() - 0.5) * d * 0.8;
       fpGrp.position.set(fpX, getTerrainHeight(fpX, fpZ, 1.4), fpZ);
-      ctx.scene.add(fpGrp);
+      mctx.scene.add(fpGrp);
     }
 
     // ── Frozen mammoth skeletons ──
@@ -16319,7 +16321,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const skX = (Math.random() - 0.5) * w * 0.6, skZ = (Math.random() - 0.5) * d * 0.6;
       skelGrp.position.set(skX, getTerrainHeight(skX, skZ, 1.4), skZ);
       skelGrp.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(skelGrp);
+      mctx.scene.add(skelGrp);
     }
 
     // ── Frozen waterfalls (detailed) ──
@@ -16344,7 +16346,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const fallX = (Math.random() - 0.5) * w * 0.65, fallZ = (Math.random() - 0.5) * d * 0.65;
       fallGrp.position.set(fallX, getTerrainHeight(fallX, fallZ, 1.4), fallZ);
       fallGrp.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fallGrp);
+      mctx.scene.add(fallGrp);
     }
 
     // ── Ice cave entrances (atmospheric) ──
@@ -16365,14 +16367,14 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const caveX = (Math.random() - 0.5) * w * 0.6, caveZ = (Math.random() - 0.5) * d * 0.6;
       caveGrp.position.set(caveX, getTerrainHeight(caveX, caveZ, 1.4), caveZ);
       caveGrp.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(caveGrp);
+      mctx.scene.add(caveGrp);
     }
 
     // ── More snow particles ──
     for (let i = 0; i < 50; i++) {
       const snowParticle = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 16, 16), snowMat);
       snowParticle.position.set((Math.random() - 0.5) * w * 0.9, 0.5 + Math.random() * 8, (Math.random() - 0.5) * d * 0.9);
-      ctx.scene.add(snowParticle);
+      mctx.scene.add(snowParticle);
     }
 
     // ── Frozen ponds with cracks ──
@@ -16393,7 +16395,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       snowRim.rotation.x = -Math.PI / 2; snowRim.position.y = 0.03; pondGrp.add(snowRim);
       const pondX = (Math.random() - 0.5) * w * 0.65, pondZ = (Math.random() - 0.5) * d * 0.65;
       pondGrp.position.set(pondX, getTerrainHeight(pondX, pondZ, 1.4), pondZ);
-      ctx.scene.add(pondGrp);
+      mctx.scene.add(pondGrp);
     }
 
 
@@ -16413,7 +16415,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const scX = (Math.random() - 0.5) * w * 0.85;
       const scZ = (Math.random() - 0.5) * d * 0.85;
       spikeCluster.position.set(scX, getTerrainHeight(scX, scZ, 1.4), scZ);
-      ctx.scene.add(spikeCluster);
+      mctx.scene.add(spikeCluster);
     }
 
     // ── Snow drift mounds (white flattened spheres) ──
@@ -16427,7 +16429,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const mdZ = (Math.random() - 0.5) * d * 0.85;
       mound.position.set(mdX, getTerrainHeight(mdX, mdZ, 1.4) + 0.1, mdZ);
       mound.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(mound);
+      mctx.scene.add(mound);
     }
 
     // ── Frozen waterfall detail (translucent stacked cylinders) ──
@@ -16477,7 +16479,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const ffZ2 = (Math.random() - 0.5) * d * 0.65;
       frozenFall.position.set(ffX2, getTerrainHeight(ffX2, ffZ2, 1.4), ffZ2);
       frozenFall.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(frozenFall);
+      mctx.scene.add(frozenFall);
     }
 
     // ── Aurora prop lights (curved translucent colored planes) ──
@@ -16518,7 +16520,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
         (Math.random() - 0.5) * d * 0.9,
       );
       auroraGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(auroraGroup);
+      mctx.scene.add(auroraGroup);
     }
 
     // ── Atmospheric cold lighting ──
@@ -16526,7 +16528,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const coldColor = [0x88aaff, 0xaaccff, 0x99bbee][i % 3];
       const coldPt = new THREE.PointLight(coldColor, 0.3, 15);
       coldPt.position.set((Math.random() - 0.5) * w * 0.7, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(coldPt);
+      mctx.scene.add(coldPt);
     }
 
     // ── Ice cave entrance ──
@@ -16555,7 +16557,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const icX = (Math.random() - 0.5) * w * 0.5;
       const icZ = (Math.random() - 0.5) * d * 0.5;
       iceCave.position.set(icX, getTerrainHeight(icX, icZ, 1.4) + caveOpenR, icZ);
-      iceCave.rotation.y = Math.random() * Math.PI; ctx.scene.add(iceCave);
+      iceCave.rotation.y = Math.random() * Math.PI; mctx.scene.add(iceCave);
     }
 
     // ── Frozen lake surface ──
@@ -16592,7 +16594,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       }
       const flX = w * 0.1, flZ = d * 0.1;
       frozenLake.position.set(flX, getTerrainHeight(flX, flZ, 1.4), flZ);
-      ctx.scene.add(frozenLake);
+      mctx.scene.add(frozenLake);
     }
 
     // ── Mammoth skeleton ──
@@ -16624,7 +16626,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const mmX = (Math.random() - 0.5) * w * 0.4;
       const mmZ = (Math.random() - 0.5) * d * 0.4;
       mammoth.position.set(mmX, getTerrainHeight(mmX, mmZ, 1.4), mmZ);
-      mammoth.rotation.y = Math.random() * Math.PI; ctx.scene.add(mammoth);
+      mammoth.rotation.y = Math.random() * Math.PI; mctx.scene.add(mammoth);
     }
 
     // ── Ice fishing hole ──
@@ -16646,7 +16648,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const fhX = (Math.random() - 0.5) * w * 0.3;
       const fhZ = (Math.random() - 0.5) * d * 0.3;
       fishHole.position.set(fhX, getTerrainHeight(fhX, fhZ, 1.4) + 0.05, fhZ);
-      ctx.scene.add(fishHole);
+      mctx.scene.add(fishHole);
     }
 
     // ── Snowman props ──
@@ -16680,7 +16682,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const smX = (Math.random() - 0.5) * w * 0.5;
       const smZ = (Math.random() - 0.5) * d * 0.5;
       snowman.position.set(smX, getTerrainHeight(smX, smZ, 1.4), smZ);
-      ctx.scene.add(snowman);
+      mctx.scene.add(snowman);
     }
 
     // ── Aurora borealis enhancement ──
@@ -16711,7 +16713,7 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
         (Math.random() - 0.5) * d * 0.8,
       );
       eAurora.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(eAurora);
+      mctx.scene.add(eAurora);
     }
 
     // ── Frost-covered pine trees ──
@@ -16736,19 +16738,19 @@ export function buildFrozenTundra(ctx: MapBuildContext, w: number, d: number): v
       const ptX = (Math.random() - 0.5) * w * 0.7;
       const ptZ = (Math.random() - 0.5) * d * 0.7;
       pine.position.set(ptX, getTerrainHeight(ptX, ptZ, 1.4), ptZ);
-      ctx.scene.add(pine);
+      mctx.scene.add(pine);
     }
 }
 
-export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x332244, 0.03);
-    ctx.applyTerrainColors(0x2a2233, 0x3a3344, 0.4);
-    ctx.dirLight.color.setHex(0x665577);
-    ctx.dirLight.intensity = 0.3;
-    ctx.ambientLight.color.setHex(0x443355);
-    ctx.ambientLight.intensity = 0.25;
-    ctx.hemiLight.color.setHex(0x554466);
-    ctx.hemiLight.groundColor.setHex(0x221133);
+export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x332244, 0.03);
+    mctx.applyTerrainColors(0x2a2233, 0x3a3344, 0.4);
+    mctx.dirLight.color.setHex(0x665577);
+    mctx.dirLight.intensity = 0.3;
+    mctx.ambientLight.color.setHex(0x443355);
+    mctx.ambientLight.intensity = 0.25;
+    mctx.hemiLight.color.setHex(0x554466);
+    mctx.hemiLight.groundColor.setHex(0x221133);
 
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.9 });
     const lightStoneMat = new THREE.MeshStandardMaterial({ color: 0x666677, roughness: 0.85 });
@@ -16794,7 +16796,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const az = (Math.random() - 0.5) * d * 0.7;
       arch.position.set(ax, getTerrainHeight(ax, az, 0.4), az);
       arch.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(arch);
+      mctx.scene.add(arch);
     }
 
     // ── Stained glass windows ──
@@ -16817,12 +16819,12 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const gz = (Math.random() - 0.5) * d * 0.7;
       glass.position.set(gx, 3 + Math.random() * 4, gz);
       glass.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(glass);
+      mctx.scene.add(glass);
       // Light behind window
       const windowLight = new THREE.PointLight(glassColor, 0.4, 6);
       windowLight.position.set(gx, glass.position.y, gz);
-      ctx.scene.add(windowLight);
-      ctx.torchLights.push(windowLight);
+      mctx.scene.add(windowLight);
+      mctx.torchLights.push(windowLight);
     }
 
     // ── Broken pews ──
@@ -16849,7 +16851,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       pew.position.set(px, getTerrainHeight(px, pz, 0.4), pz);
       pew.rotation.y = Math.floor(Math.random() * 2) * Math.PI + (Math.random() - 0.5) * 0.3;
       pew.rotation.z = (Math.random() - 0.5) * 0.15;
-      ctx.scene.add(pew);
+      mctx.scene.add(pew);
     }
 
     // ── Candelabras ──
@@ -16877,12 +16879,12 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
         const candleLight = new THREE.PointLight(0xffaa44, 0.5, 5);
         candleLight.position.set(Math.cos(armAngle) * armLen, baseH + 0.3, Math.sin(armAngle) * armLen);
         candelabra.add(candleLight);
-        ctx.torchLights.push(candleLight);
+        mctx.torchLights.push(candleLight);
       }
       const cx = (Math.random() - 0.5) * w * 0.6;
       const cz = (Math.random() - 0.5) * d * 0.6;
       candelabra.position.set(cx, getTerrainHeight(cx, cz, 0.4), cz);
-      ctx.scene.add(candelabra);
+      mctx.scene.add(candelabra);
     }
 
     // ── Tombstones ──
@@ -16898,15 +16900,15 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       tomb.position.set(tX, getTerrainHeight(tX, tZ, 0.4) + tombH / 2, tZ);
       tomb.rotation.y = (Math.random() - 0.5) * 0.3;
       tomb.rotation.z = (Math.random() - 0.5) * 0.1;
-      ctx.scene.add(tomb);
+      mctx.scene.add(tomb);
       // Small cross on top (some)
       if (Math.random() > 0.5) {
         const cross1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), lightStoneMat);
         cross1.position.set(tX, getTerrainHeight(tX, tZ, 0.4) + tombH + 0.15, tZ);
-        ctx.scene.add(cross1);
+        mctx.scene.add(cross1);
         const cross2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.04), lightStoneMat);
         cross2.position.set(tX, getTerrainHeight(tX, tZ, 0.4) + tombH + 0.2, tZ);
-        ctx.scene.add(cross2);
+        mctx.scene.add(cross2);
       }
     }
 
@@ -16921,7 +16923,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       buttress.position.set(bx, 2.5, bz);
       buttress.rotation.z = (Math.random() - 0.5) * 0.6;
       buttress.rotation.x = (Math.random() - 0.5) * 0.3;
-      ctx.scene.add(buttress);
+      mctx.scene.add(buttress);
     }
 
     // ── Grand altars ──
@@ -16944,12 +16946,12 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const altarLight = new THREE.PointLight(0xffaa44, 0.4, 5);
       altarLight.position.set(0, 1.2, 0);
       altar.add(altarLight);
-      ctx.torchLights.push(altarLight);
+      mctx.torchLights.push(altarLight);
       const altX = (Math.random() - 0.5) * w * 0.5;
       const altZ = (Math.random() - 0.5) * d * 0.5;
       altar.position.set(altX, getTerrainHeight(altX, altZ, 0.4), altZ);
       altar.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(altar);
+      mctx.scene.add(altar);
     }
 
     // ── Hanging chains ──
@@ -16964,7 +16966,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
         8 + Math.random() * 2,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(chain);
+      mctx.scene.add(chain);
     }
 
     // ── Scattered bones and skulls ──
@@ -16980,7 +16982,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
         const boneZ = (Math.random() - 0.5) * d * 0.8;
         bone.position.set(boneX, getTerrainHeight(boneX, boneZ, 0.4) + 0.02, boneZ);
         bone.rotation.y = Math.random() * Math.PI;
-        ctx.scene.add(bone);
+        mctx.scene.add(bone);
       } else {
         // Skull
         const skull = new THREE.Mesh(
@@ -16991,7 +16993,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
         const skX = (Math.random() - 0.5) * w * 0.8;
         const skZ = (Math.random() - 0.5) * d * 0.8;
         skull.position.set(skX, getTerrainHeight(skX, skZ, 0.4) + 0.08, skZ);
-        ctx.scene.add(skull);
+        mctx.scene.add(skull);
       }
     }
 
@@ -17003,7 +17005,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const scLight = new THREE.PointLight(0xaa44ff, 0.6, 8);
       scLight.position.set(0, 0.3, 0.1);
       sconce.add(scLight);
-      ctx.torchLights.push(scLight);
+      mctx.torchLights.push(scLight);
       // Flame visual
       const flame = new THREE.Mesh(
         new THREE.SphereGeometry(0.08, 17, 17),
@@ -17016,7 +17018,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
         3 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(sconce);
+      mctx.scene.add(sconce);
     }
 
     // ── Collapsed wall sections ──
@@ -17032,7 +17034,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       wall.position.set(wX, wallH * 0.3, wZ);
       wall.rotation.z = (Math.random() - 0.5) * 0.5;
       wall.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(wall);
+      mctx.scene.add(wall);
     }
 
     // ── Bell towers ──
@@ -17064,7 +17066,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const twX = (Math.random() - 0.5) * w * 0.7;
       const twZ = (Math.random() - 0.5) * d * 0.7;
       tower.position.set(twX, getTerrainHeight(twX, twZ, 0.4), twZ);
-      ctx.scene.add(tower);
+      mctx.scene.add(tower);
     }
 
     // ── Cracked floor tiles ──
@@ -17078,7 +17080,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const tiZ = (Math.random() - 0.5) * d * 0.7;
       tile.position.set(tiX, getTerrainHeight(tiX, tiZ, 0.4) + 0.04, tiZ);
       tile.rotation.y = Math.random() * 0.3;
-      ctx.scene.add(tile);
+      mctx.scene.add(tile);
     }
 
     // ── Cobwebs ──
@@ -17095,7 +17097,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       );
       web.rotation.y = Math.random() * Math.PI;
       web.rotation.x = (Math.random() - 0.5) * 0.5;
-      ctx.scene.add(web);
+      mctx.scene.add(web);
     }
 
     // ── Ghostly wisps ──
@@ -17113,11 +17115,11 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const wx = (Math.random() - 0.5) * w * 0.7;
       const wz = (Math.random() - 0.5) * d * 0.7;
       wisp.position.set(wx, 1 + Math.random() * 3, wz);
-      ctx.scene.add(wisp);
+      mctx.scene.add(wisp);
       const wispLight = new THREE.PointLight(0x6688dd, 0.3, 5);
       wispLight.position.copy(wisp.position);
-      ctx.scene.add(wispLight);
-      ctx.torchLights.push(wispLight);
+      mctx.scene.add(wispLight);
+      mctx.torchLights.push(wispLight);
     }
 
     // ── Coffins ──
@@ -17141,7 +17143,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const coZ = (Math.random() - 0.5) * d * 0.6;
       coffin.position.set(coX, getTerrainHeight(coX, coZ, 0.4), coZ);
       coffin.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(coffin);
+      mctx.scene.add(coffin);
     }
 
     // ── Organ pipes ──
@@ -17162,7 +17164,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const ogZ = (Math.random() - 0.5) * d * 0.5;
       organ.position.set(ogX, getTerrainHeight(ogX, ogZ, 0.4), ogZ);
       organ.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(organ);
+      mctx.scene.add(organ);
     }
 
     // ── Larger organ pipe wall (grand organ) ──
@@ -17190,7 +17192,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
     grandOrgan.add(organCrown);
     grandOrgan.position.set(goX, getTerrainHeight(goX, goZ, 0.4), goZ);
     grandOrgan.rotation.y = Math.random() * Math.PI;
-    ctx.scene.add(grandOrgan);
+    mctx.scene.add(grandOrgan);
 
     // ── Stained glass rose window (circular) ──
     for (let i = 0; i < 4; i++) {
@@ -17221,12 +17223,12 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const rwLight = new THREE.PointLight(stainedGlassColors[i % stainedGlassColors.length], 0.5, 8);
       rwLight.position.set(0, 0, 0.5);
       roseWindow.add(rwLight);
-      ctx.torchLights.push(rwLight);
+      mctx.torchLights.push(rwLight);
       roseWindow.position.set(
         (Math.random() - 0.5) * w * 0.65, 5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.65,
       );
       roseWindow.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(roseWindow);
+      mctx.scene.add(roseWindow);
     }
 
     // ── More detailed broken pews (scattered debris) ──
@@ -17246,7 +17248,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const dbX = (Math.random() - 0.5) * w * 0.6;
       const dbZ = (Math.random() - 0.5) * d * 0.6;
       debris.position.set(dbX, getTerrainHeight(dbX, dbZ, 0.4), dbZ);
-      ctx.scene.add(debris);
+      mctx.scene.add(debris);
     }
 
     // ── Spectral mist (purple/blue haze layers) ──
@@ -17262,7 +17264,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       mist.position.set(
         (Math.random() - 0.5) * w * 0.7, 0.2 + Math.random() * 0.5, (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(mist);
+      mctx.scene.add(mist);
     }
 
     // ── Floating candles (hovering with warm light) ──
@@ -17282,11 +17284,11 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const cndLight = new THREE.PointLight(0xffaa44, 0.3, 4);
       cndLight.position.y = candleH / 2 + 0.1;
       floatCandle.add(cndLight);
-      ctx.torchLights.push(cndLight);
+      mctx.torchLights.push(cndLight);
       floatCandle.position.set(
         (Math.random() - 0.5) * w * 0.6, 1.5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.6,
       );
-      ctx.scene.add(floatCandle);
+      mctx.scene.add(floatCandle);
     }
 
     // ── Gargoyle statues ──
@@ -17333,7 +17335,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const grgZ = (Math.random() - 0.5) * d * 0.7;
       gargoyle.position.set(grgX, 4 + Math.random() * 4, grgZ);
       gargoyle.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(gargoyle);
+      mctx.scene.add(gargoyle);
     }
 
 
@@ -17383,14 +17385,14 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const sgLight = new THREE.PointLight(stainedGlassColors[i % stainedGlassColors.length], 0.4, 7);
       sgLight.position.set(0, sgH * 0.5, 0.5);
       sgWindow.add(sgLight);
-      ctx.torchLights.push(sgLight);
+      mctx.torchLights.push(sgLight);
       sgWindow.position.set(
         (Math.random() - 0.5) * w * 0.65,
         2 + Math.random() * 3,
         (Math.random() - 0.5) * d * 0.65,
       );
       sgWindow.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(sgWindow);
+      mctx.scene.add(sgWindow);
     }
 
     // ── Broken pew rows (boxes with gaps) ──
@@ -17428,7 +17430,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const prZ = (Math.random() - 0.5) * d * 0.45;
       pewRow.position.set(prX, getTerrainHeight(prX, prZ, 0.4), prZ);
       pewRow.rotation.y = (Math.random() - 0.5) * 0.2;
-      ctx.scene.add(pewRow);
+      mctx.scene.add(pewRow);
     }
 
     // ── Candelabra detail (branching cylinders with small spheres on top) ──
@@ -17482,11 +17484,11 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const dcLight = new THREE.PointLight(0xffaa44, 0.6, 6);
       dcLight.position.set(0, dcBaseH + 0.5, 0);
       detailedCandelabra.add(dcLight);
-      ctx.torchLights.push(dcLight);
+      mctx.torchLights.push(dcLight);
       const dcX = (Math.random() - 0.5) * w * 0.55;
       const dcZ = (Math.random() - 0.5) * d * 0.55;
       detailedCandelabra.position.set(dcX, getTerrainHeight(dcX, dcZ, 0.4), dcZ);
-      ctx.scene.add(detailedCandelabra);
+      mctx.scene.add(detailedCandelabra);
     }
 
     // ── Fallen chandelier wreckage ──
@@ -17537,7 +17539,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const fcZ = (Math.random() - 0.5) * d * 0.5;
       fallenChand.position.set(fcX, getTerrainHeight(fcX, fcZ, 0.4), fcZ);
       fallenChand.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(fallenChand);
+      mctx.scene.add(fallenChand);
     }
 
     // ── Altar with cloth draping detail ──
@@ -17595,12 +17597,12 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const daLight = new THREE.PointLight(0xffaa44, 0.5, 6);
       daLight.position.set(0, 1.3, 0);
       detailedAltar.add(daLight);
-      ctx.torchLights.push(daLight);
+      mctx.torchLights.push(daLight);
       const daX = (Math.random() - 0.5) * w * 0.45;
       const daZ = (Math.random() - 0.5) * d * 0.45;
       detailedAltar.position.set(daX, getTerrainHeight(daX, daZ, 0.4), daZ);
       detailedAltar.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(detailedAltar);
+      mctx.scene.add(detailedAltar);
     }
 
     // ── Cracked floor tiles pattern ──
@@ -17636,7 +17638,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const tpZ = (Math.random() - 0.5) * d * 0.6;
       tilePattern.position.set(tpX, getTerrainHeight(tpX, tpZ, 0.4), tpZ);
       tilePattern.rotation.y = Math.random() * Math.PI * 0.5;
-      ctx.scene.add(tilePattern);
+      mctx.scene.add(tilePattern);
     }
 
     // ── Crumbling pillars with ivy ──
@@ -17682,7 +17684,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const ipX = (Math.random() - 0.5) * w * 0.65;
       const ipZ = (Math.random() - 0.5) * d * 0.65;
       ivyPillar.position.set(ipX, getTerrainHeight(ipX, ipZ, 0.4), ipZ);
-      ctx.scene.add(ivyPillar);
+      mctx.scene.add(ivyPillar);
     }
 
     // ── Chandelier remnants (hanging broken) ──
@@ -17716,7 +17718,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       chandelier.position.set(
         (Math.random() - 0.5) * w * 0.5, 6 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5,
       );
-      ctx.scene.add(chandelier);
+      mctx.scene.add(chandelier);
     }
 
     // ── Tombstones (more varied styles) ──
@@ -17753,7 +17755,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       tombGroup.position.set(tbX, getTerrainHeight(tbX, tbZ, 0.4), tbZ);
       tombGroup.rotation.y = Math.random() * Math.PI;
       tombGroup.rotation.z = (Math.random() - 0.5) * 0.1;
-      ctx.scene.add(tombGroup);
+      mctx.scene.add(tombGroup);
     }
 
     // ── More ghostly wisps with trails ──
@@ -17772,11 +17774,11 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       }
       const wLight = new THREE.PointLight(wispClr, 0.4, 5);
       wispGrp.add(wLight);
-      ctx.torchLights.push(wLight);
+      mctx.torchLights.push(wLight);
       wispGrp.position.set(
         (Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(wispGrp);
+      mctx.scene.add(wispGrp);
     }
 
     // ── More purple fire sconces ──
@@ -17787,14 +17789,14 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const scLight = new THREE.PointLight(0xaa44ff, 0.5, 7);
       scLight.position.set(0, 0.35, 0.12);
       sc.add(scLight);
-      ctx.torchLights.push(scLight);
+      mctx.torchLights.push(scLight);
       const scFlame = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 17),
         new THREE.MeshStandardMaterial({ color: 0xbb55ff, emissive: 0xaa44ff, emissiveIntensity: 1.0 }));
       scFlame.position.set(0, 0.3, 0.12);
       scFlame.scale.y = 1.3;
       sc.add(scFlame);
       sc.position.set((Math.random() - 0.5) * w * 0.7, 2.5 + Math.random() * 3.5, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(sc);
+      mctx.scene.add(sc);
     }
 
     // ── Cracked mosaic floor patterns ──
@@ -17817,7 +17819,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const mX = (Math.random() - 0.5) * w * 0.5;
       const mZ = (Math.random() - 0.5) * d * 0.5;
       mosaic.position.set(mX, getTerrainHeight(mX, mZ, 0.4), mZ);
-      ctx.scene.add(mosaic);
+      mctx.scene.add(mosaic);
     }
 
     // ── Atmospheric eerie lighting ──
@@ -17825,7 +17827,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 6; i++) {
       const eerie = new THREE.PointLight(eerieColors[i % 3], 0.25, 12);
       eerie.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(eerie);
+      mctx.scene.add(eerie);
     }
 
     // ── 1. Flying buttresses (angled supports on exterior walls) ──
@@ -17858,7 +17860,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
         const fbX = (side === 0 ? -1 : 1) * w * 0.3;
         const fbZ = -d * 0.35 + i * (d * 0.7 / 4);
         buttressGrp.position.set(fbX, getTerrainHeight(fbX, fbZ, 0.4), fbZ);
-        ctx.scene.add(buttressGrp);
+        mctx.scene.add(buttressGrp);
       }
     }
 
@@ -17905,12 +17907,12 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const roseLight = new THREE.PointLight(0xffaa44, 0.6, 10);
       roseLight.position.set(0, 0, 1.0);
       roseWin.add(roseLight);
-      ctx.torchLights.push(roseLight);
+      mctx.torchLights.push(roseLight);
       const rwX = (Math.random() - 0.5) * w * 0.3;
       const rwZ2 = rw === 0 ? -d * 0.35 : d * 0.35;
       roseWin.position.set(rwX, 7 + Math.random() * 2, rwZ2);
       roseWin.rotation.y = rw === 0 ? 0 : Math.PI;
-      ctx.scene.add(roseWin);
+      mctx.scene.add(roseWin);
     }
 
     // ── 3. Bell tower detail (bells, ropes, arched openings) ──
@@ -17972,7 +17974,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const btX = (Math.random() - 0.5) * w * 0.5;
       const btZ = (Math.random() - 0.5) * d * 0.5;
       bellTower.position.set(btX, getTerrainHeight(btX, btZ, 0.4), btZ);
-      ctx.scene.add(bellTower);
+      mctx.scene.add(bellTower);
     }
 
     // ── 4. Gargoyle rainspouts (on building corners) ──
@@ -18017,7 +18019,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const grgSpZ = Math.sin(gAngle) * d * 0.32;
       grgSpout.position.set(grgSpX, 5 + Math.random() * 3, grgSpZ);
       grgSpout.rotation.y = gAngle + Math.PI;
-      ctx.scene.add(grgSpout);
+      mctx.scene.add(grgSpout);
     }
 
     // ── 5. Ribbed vault ceiling hints (X-pattern arches overhead) ──
@@ -18045,7 +18047,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const vX = (Math.random() - 0.5) * w * 0.55;
       const vZ = (Math.random() - 0.5) * d * 0.55;
       vaultGrp.position.set(vX, 7 + Math.random() * 2, vZ);
-      ctx.scene.add(vaultGrp);
+      mctx.scene.add(vaultGrp);
     }
 
     // ── 6. Crypt entrance (descending stairway with iron gate) ──
@@ -18098,12 +18100,12 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const cryptLight = new THREE.PointLight(0x44ff66, 0.3, 6);
       cryptLight.position.set(0, -1.0, -2.0);
       cryptEntrance.add(cryptLight);
-      ctx.torchLights.push(cryptLight);
+      mctx.torchLights.push(cryptLight);
       const ceX = (Math.random() - 0.5) * w * 0.4;
       const ceZ = (Math.random() - 0.5) * d * 0.4;
       cryptEntrance.position.set(ceX, getTerrainHeight(ceX, ceZ, 0.4), ceZ);
       cryptEntrance.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(cryptEntrance);
+      mctx.scene.add(cryptEntrance);
     }
 
     // ── 7. Cemetery expansion (varied gravestones + iron fence) ──
@@ -18202,7 +18204,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
         cemeteryGrp.add(mound);
       }
       cemeteryGrp.position.set(cemX, getTerrainHeight(cemX, cemZ, 0.4), cemZ);
-      ctx.scene.add(cemeteryGrp);
+      mctx.scene.add(cemeteryGrp);
     }
 
     // ── 8. Organ pipes (grand wall of graduated pipes with console) ──
@@ -18259,7 +18261,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const opZ = (Math.random() - 0.5) * d * 0.35;
       organWall.position.set(opX, getTerrainHeight(opX, opZ, 0.4), opZ);
       organWall.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(organWall);
+      mctx.scene.add(organWall);
     }
 
     // ── 9. Torn curtains/tapestries ──
@@ -18302,7 +18304,7 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const tcZ = (Math.random() - 0.5) * d * 0.65;
       tapestry.position.set(tcX, 2 + Math.random() * 3, tcZ);
       tapestry.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(tapestry);
+      mctx.scene.add(tapestry);
     }
 
     // ── 10. Scattered debris (broken planks, shattered pottery, fallen books) ──
@@ -18360,19 +18362,19 @@ export function buildHauntedCathedral(ctx: MapBuildContext, w: number, d: number
       const sdX = (Math.random() - 0.5) * w * 0.6;
       const sdZ = (Math.random() - 0.5) * d * 0.6;
       debrisGrp.position.set(sdX, getTerrainHeight(sdX, sdZ, 0.4), sdZ);
-      ctx.scene.add(debrisGrp);
+      mctx.scene.add(debrisGrp);
     }
 }
 
-export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x443322, 0.022);
-    ctx.applyTerrainColors(0x3a2a1a, 0x2a3a22, 1.0);
-    ctx.dirLight.color.setHex(0xaa8855);
-    ctx.dirLight.intensity = 0.5;
-    ctx.ambientLight.color.setHex(0x554422);
-    ctx.ambientLight.intensity = 0.35;
-    ctx.hemiLight.color.setHex(0x776644);
-    ctx.hemiLight.groundColor.setHex(0x332211);
+export function buildThornwoodThicket(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x443322, 0.022);
+    mctx.applyTerrainColors(0x3a2a1a, 0x2a3a22, 1.0);
+    mctx.dirLight.color.setHex(0xaa8855);
+    mctx.dirLight.intensity = 0.5;
+    mctx.ambientLight.color.setHex(0x554422);
+    mctx.ambientLight.intensity = 0.35;
+    mctx.hemiLight.color.setHex(0x776644);
+    mctx.hemiLight.groundColor.setHex(0x332211);
 
     const darkBarkMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.95 });
     const thornMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.85 });
@@ -18456,7 +18458,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const tx = (Math.random() - 0.5) * w * 0.9;
       const tz = (Math.random() - 0.5) * d * 0.9;
       tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz);
-      ctx.scene.add(tree);
+      mctx.scene.add(tree);
     }
 
     // ── Thorn bushes ──
@@ -18488,7 +18490,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const bx = (Math.random() - 0.5) * w * 0.85;
       const bz = (Math.random() - 0.5) * d * 0.85;
       bush.position.set(bx, getTerrainHeight(bx, bz, 1.0) + bushR * 0.5, bz);
-      ctx.scene.add(bush);
+      mctx.scene.add(bush);
     }
 
     // ── Poison mushrooms (glowing green) ──
@@ -18511,7 +18513,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const mx = (Math.random() - 0.5) * w * 0.85;
       const mz = (Math.random() - 0.5) * d * 0.85;
       mush.position.set(mx, getTerrainHeight(mx, mz, 1.0), mz);
-      ctx.scene.add(mush);
+      mctx.scene.add(mush);
     }
 
     // ── Fallen rotting logs with fungus ──
@@ -18544,7 +18546,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const lz = (Math.random() - 0.5) * d * 0.85;
       logGroup.position.set(lx, getTerrainHeight(lx, lz, 1.0), lz);
       logGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(logGroup);
+      mctx.scene.add(logGroup);
     }
 
     // ── Blight pools ──
@@ -18560,7 +18562,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         0.02,
         (Math.random() - 0.5) * d * 0.75,
       );
-      ctx.scene.add(pool);
+      mctx.scene.add(pool);
     }
 
     // ── Creeping vine patches ──
@@ -18575,7 +18577,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const vz = (Math.random() - 0.5) * d * 0.85;
       vine.position.set(vx, getTerrainHeight(vx, vz, 1.0) + 0.02, vz);
       vine.rotation.z = Math.random() * Math.PI;
-      ctx.scene.add(vine);
+      mctx.scene.add(vine);
     }
 
     // ── Web cocoons ──
@@ -18601,7 +18603,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const cx = (Math.random() - 0.5) * w * 0.8;
       const cz = (Math.random() - 0.5) * d * 0.8;
       cocoon.position.set(cx, 1 + Math.random() * 3, cz);
-      ctx.scene.add(cocoon);
+      mctx.scene.add(cocoon);
     }
 
     // ── Ancient blighted totems ──
@@ -18626,11 +18628,11 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const totemLight = new THREE.PointLight(0x44ff33, 0.3, 4);
       totemLight.position.set(0, totemH + 0.3, 0);
       totem.add(totemLight);
-      ctx.torchLights.push(totemLight);
+      mctx.torchLights.push(totemLight);
       const ttx = (Math.random() - 0.5) * w * 0.7;
       const ttz = (Math.random() - 0.5) * d * 0.7;
       totem.position.set(ttx, getTerrainHeight(ttx, ttz, 1.0), ttz);
-      ctx.scene.add(totem);
+      mctx.scene.add(totem);
     }
 
     // ── Root bridges ──
@@ -18660,7 +18662,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const rbz = (Math.random() - 0.5) * d * 0.75;
       bridgeGroup.position.set(rbx, getTerrainHeight(rbx, rbz, 1.0), rbz);
       bridgeGroup.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(bridgeGroup);
+      mctx.scene.add(bridgeGroup);
     }
 
     // ── Spore clouds ──
@@ -18675,7 +18677,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         0.3 + Math.random() * 2.5,
         (Math.random() - 0.5) * d * 0.85,
       );
-      ctx.scene.add(spore);
+      mctx.scene.add(spore);
     }
 
     // ── Petrified animals ──
@@ -18712,7 +18714,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const az = (Math.random() - 0.5) * d * 0.8;
       animal.position.set(ax, getTerrainHeight(ax, az, 1.0), az);
       animal.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(animal);
+      mctx.scene.add(animal);
     }
 
     // ── Gnarled root networks ──
@@ -18737,7 +18739,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const rnx = (Math.random() - 0.5) * w * 0.85;
       const rnz = (Math.random() - 0.5) * d * 0.85;
       rootNet.position.set(rnx, getTerrainHeight(rnx, rnz, 1.0), rnz);
-      ctx.scene.add(rootNet);
+      mctx.scene.add(rootNet);
     }
 
     // ── Corruption nodes ──
@@ -18750,11 +18752,11 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const nx = (Math.random() - 0.5) * w * 0.7;
       const nz = (Math.random() - 0.5) * d * 0.7;
       node.position.set(nx, getTerrainHeight(nx, nz, 1.0) + nodeR + 0.5, nz);
-      ctx.scene.add(node);
+      mctx.scene.add(node);
       const nodeLight = new THREE.PointLight(0x6622aa, 0.5, 6);
       nodeLight.position.copy(node.position);
-      ctx.scene.add(nodeLight);
-      ctx.torchLights.push(nodeLight);
+      mctx.scene.add(nodeLight);
+      mctx.torchLights.push(nodeLight);
     }
 
     // ── Dead flower patches ──
@@ -18785,7 +18787,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const dfx = (Math.random() - 0.5) * w * 0.85;
       const dfz = (Math.random() - 0.5) * d * 0.85;
       flowerGroup.position.set(dfx, getTerrainHeight(dfx, dfz, 1.0), dfz);
-      ctx.scene.add(flowerGroup);
+      mctx.scene.add(flowerGroup);
     }
 
     // ── Abandoned hunter camps ──
@@ -18817,7 +18819,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const cpz = (Math.random() - 0.5) * d * 0.6;
       camp.position.set(cpx, getTerrainHeight(cpx, cpz, 1.0), cpz);
       camp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(camp);
+      mctx.scene.add(camp);
     }
 
     // ── Spider webs between branches ──
@@ -18840,7 +18842,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       if (Math.random() > 0.6) webGrp.add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 })));
       webGrp.position.set((Math.random() - 0.5) * w * 0.8, 1.5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.8);
       webGrp.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.scene.add(webGrp);
+      mctx.scene.add(webGrp);
     }
 
     // ── Carnivorous plants ──
@@ -18862,7 +18864,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         tth.position.set(Math.cos(ta) * jR * 0.7, cpStemH + 0.01, Math.sin(ta) * jR * 0.7); cpGrp.add(tth);
       }
       const cpx2 = (Math.random() - 0.5) * w * 0.8; const cpz2 = (Math.random() - 0.5) * d * 0.8;
-      cpGrp.position.set(cpx2, getTerrainHeight(cpx2, cpz2, 1.0), cpz2); ctx.scene.add(cpGrp);
+      cpGrp.position.set(cpx2, getTerrainHeight(cpx2, cpz2, 1.0), cpz2); mctx.scene.add(cpGrp);
     }
 
     // ── Thorny vines climbing vertical surfaces ──
@@ -18878,7 +18880,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         if (Math.random() > 0.5) { const lf = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.04), vineMat); lf.position.set(vs.position.x - 0.04, vOff - sH * 0.5, 0); lf.rotation.z = Math.random() * Math.PI; vc.add(lf); }
       }
       const vcx = (Math.random() - 0.5) * w * 0.85; const vcz = (Math.random() - 0.5) * d * 0.85;
-      vc.position.set(vcx, getTerrainHeight(vcx, vcz, 1.0), vcz); ctx.scene.add(vc);
+      vc.position.set(vcx, getTerrainHeight(vcx, vcz, 1.0), vcz); mctx.scene.add(vc);
     }
 
     // ── Poison berry clusters ──
@@ -18892,7 +18894,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       bc.add(new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.15, 16), darkBarkMat));
       (bc.children[bc.children.length - 1] as THREE.Mesh).position.y = 0.08;
       const bx2 = (Math.random() - 0.5) * w * 0.85; const bz2 = (Math.random() - 0.5) * d * 0.85;
-      bc.position.set(bx2, getTerrainHeight(bx2, bz2, 1.0) + 0.5 + Math.random() * 2.5, bz2); ctx.scene.add(bc);
+      bc.position.set(bx2, getTerrainHeight(bx2, bz2, 1.0) + 0.5 + Math.random() * 2.5, bz2); mctx.scene.add(bc);
     }
 
     // ── Fallen/broken branches scattered on ground ──
@@ -18905,7 +18907,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         sb.position.set((Math.random() - 0.5) * ml * 0.6, 0.05, (Math.random() - 0.5) * 0.1); sb.rotation.z = (Math.random() - 0.5) * 1.5; bg.add(sb);
       }
       const fbx = (Math.random() - 0.5) * w * 0.9; const fbz = (Math.random() - 0.5) * d * 0.9;
-      bg.position.set(fbx, getTerrainHeight(fbx, fbz, 1.0), fbz); bg.rotation.y = Math.random() * Math.PI; ctx.scene.add(bg);
+      bg.position.set(fbx, getTerrainHeight(fbx, fbz, 1.0), fbz); bg.rotation.y = Math.random() * Math.PI; mctx.scene.add(bg);
     }
 
     // ── Mushroom fairy rings ──
@@ -18920,9 +18922,9 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         const mcap = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 36, 16, 0, Math.PI * 2, 0, Math.PI / 2), fCapMat); mcap.position.y = sh; mg.add(mcap);
         mg.position.set(Math.cos(ma) * rrR, 0, Math.sin(ma) * rrR); rg.add(mg);
       }
-      const rl = new THREE.PointLight(0x44ff44, 0.15, 3); rl.position.y = 0.1; rg.add(rl); ctx.torchLights.push(rl);
+      const rl = new THREE.PointLight(0x44ff44, 0.15, 3); rl.position.y = 0.1; rg.add(rl); mctx.torchLights.push(rl);
       const rgx = (Math.random() - 0.5) * w * 0.7; const rgz = (Math.random() - 0.5) * d * 0.7;
-      rg.position.set(rgx, getTerrainHeight(rgx, rgz, 1.0), rgz); ctx.scene.add(rg);
+      rg.position.set(rgx, getTerrainHeight(rgx, rgz, 1.0), rgz); mctx.scene.add(rg);
     }
 
     // ── Dark undergrowth ──
@@ -18936,7 +18938,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         bl.rotation.y = Math.random() * Math.PI; bl.rotation.z = (Math.random() - 0.5) * 0.3; ug.add(bl);
       }
       const ugx = (Math.random() - 0.5) * w * 0.9; const ugz = (Math.random() - 0.5) * d * 0.9;
-      ug.position.set(ugx, getTerrainHeight(ugx, ugz, 1.0), ugz); ctx.scene.add(ug);
+      ug.position.set(ugx, getTerrainHeight(ugx, ugz, 1.0), ugz); mctx.scene.add(ug);
     }
 
     // ── Dead animal skeletons ──
@@ -18952,16 +18954,16 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const skl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 17), new THREE.MeshStandardMaterial({ color: 0xddccbb, roughness: 0.7 }));
       skl.position.set(0, 0.1, 0.22); skl.scale.set(1, 0.8, 1.2); sk.add(skl);
       const skx = (Math.random() - 0.5) * w * 0.75; const skz = (Math.random() - 0.5) * d * 0.75;
-      sk.position.set(skx, getTerrainHeight(skx, skz, 1.0), skz); sk.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(sk);
+      sk.position.set(skx, getTerrainHeight(skx, skz, 1.0), skz); sk.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(sk);
     }
 
     // ── Atmospheric firefly lights ──
     for (let i = 0; i < 10; i++) {
       const ffL = new THREE.PointLight(0x33ff33, 0.15, 3);
       ffL.position.set((Math.random() - 0.5) * w * 0.8, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.8);
-      ctx.scene.add(ffL); ctx.torchLights.push(ffL);
+      mctx.scene.add(ffL); mctx.torchLights.push(ffL);
       const ffS = new THREE.Mesh(new THREE.SphereGeometry(0.015, 17, 16), new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x44ff44, emissiveIntensity: 1.0 }));
-      ffS.position.copy(ffL.position); ctx.scene.add(ffS);
+      ffS.position.copy(ffL.position); mctx.scene.add(ffS);
     }
 
     // ── Exposed root systems ──
@@ -18974,7 +18976,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         rt.rotation.z = Math.PI / 2 - 0.3; rt.rotation.y = ra; rs.add(rt);
       }
       const rsx = (Math.random() - 0.5) * w * 0.85; const rsz = (Math.random() - 0.5) * d * 0.85;
-      rs.position.set(rsx, getTerrainHeight(rsx, rsz, 1.0), rsz); ctx.scene.add(rs);
+      rs.position.set(rsx, getTerrainHeight(rsx, rsz, 1.0), rsz); mctx.scene.add(rs);
     }
 
     // ── Thorny vine spirals wrapped around trees ──
@@ -18998,7 +19000,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
         }
       }
       const vsx = (Math.random() - 0.5) * w * 0.85; const vsz = (Math.random() - 0.5) * d * 0.85;
-      vineSpiral.position.set(vsx, getTerrainHeight(vsx, vsz, 1.0), vsz); ctx.scene.add(vineSpiral);
+      vineSpiral.position.set(vsx, getTerrainHeight(vsx, vsz, 1.0), vsz); mctx.scene.add(vineSpiral);
     }
 
     // ── Spider web radial patterns between branches ──
@@ -19020,7 +19022,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       }
       webDetail.position.set((Math.random() - 0.5) * w * 0.8, 2 + Math.random() * 4, (Math.random() - 0.5) * d * 0.8);
       webDetail.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
-      ctx.scene.add(webDetail);
+      mctx.scene.add(webDetail);
     }
 
     // ── Poisonous berry clusters on bushes ──
@@ -19039,7 +19041,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       bLeaf.position.set(0.015, 0.04, 0); bLeaf.rotation.z = 0.3; berryCluster.add(bLeaf);
       const bcx2 = (Math.random() - 0.5) * w * 0.85; const bcz2 = (Math.random() - 0.5) * d * 0.85;
       berryCluster.position.set(bcx2, getTerrainHeight(bcx2, bcz2, 1.0) + 0.3 + Math.random() * 1.5, bcz2);
-      ctx.scene.add(berryCluster);
+      mctx.scene.add(berryCluster);
     }
 
     // ── Gnarled root systems breaking through ground ──
@@ -19063,7 +19065,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const knot = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 12, 10), rootMat);
       knot.position.y = 0.03; knot.scale.y = 0.6; rootSys.add(knot);
       const rsx2 = (Math.random() - 0.5) * w * 0.85; const rsz2 = (Math.random() - 0.5) * d * 0.85;
-      rootSys.position.set(rsx2, getTerrainHeight(rsx2, rsz2, 1.0), rsz2); ctx.scene.add(rootSys);
+      rootSys.position.set(rsx2, getTerrainHeight(rsx2, rsz2, 1.0), rsz2); mctx.scene.add(rootSys);
     }
 
     // ── Dead animal skeleton props (detailed) ──
@@ -19095,7 +19097,7 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       }
       const skx2 = (Math.random() - 0.5) * w * 0.8; const skz2 = (Math.random() - 0.5) * d * 0.8;
       skel2.position.set(skx2, getTerrainHeight(skx2, skz2, 1.0), skz2);
-      skel2.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(skel2);
+      skel2.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(skel2);
     }
 
     // ── Dense ground grass ──
@@ -19121,19 +19123,19 @@ export function buildThornwoodThicket(ctx: MapBuildContext, w: number, d: number
       const gx = (Math.random() - 0.5) * w * 0.9;
       const gz = (Math.random() - 0.5) * d * 0.9;
       grassClump.position.set(gx, getTerrainHeight(gx, gz, 1.0), gz);
-      ctx.scene.add(grassClump);
+      mctx.scene.add(grassClump);
     }
 }
 
-export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x554433, 0.015);
-    ctx.applyTerrainColors(0x3a3322, 0x4a4433, 0.4);
-    ctx.dirLight.color.setHex(0xffaa55);
-    ctx.dirLight.intensity = 0.9;
-    ctx.ambientLight.color.setHex(0x443322);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x997755);
-    ctx.hemiLight.groundColor.setHex(0x332211);
+export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x554433, 0.015);
+    mctx.applyTerrainColors(0x3a3322, 0x4a4433, 0.4);
+    mctx.dirLight.color.setHex(0xffaa55);
+    mctx.dirLight.intensity = 0.9;
+    mctx.ambientLight.color.setHex(0x443322);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x997755);
+    mctx.hemiLight.groundColor.setHex(0x332211);
 
     const bronzeMat = new THREE.MeshStandardMaterial({ color: 0xaa8844, roughness: 0.4, metalness: 0.7 });
     const brassMat = new THREE.MeshStandardMaterial({ color: 0xcc9933, roughness: 0.35, metalness: 0.8 });
@@ -19169,7 +19171,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const gZ = (Math.random() - 0.5) * d * 0.85;
       gear.position.set(gX, 0.5 + Math.random() * 4, gZ);
       gear.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(gear);
+      mctx.scene.add(gear);
     }
 
     // ── Steam pipes (18) ──
@@ -19194,7 +19196,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         }
       }
       pipe.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(pipe);
+      mctx.scene.add(pipe);
     }
 
     // ── Forge stations (14) ──
@@ -19211,11 +19213,11 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const forgeLight = new THREE.PointLight(0xff4411, 1.2, 8);
       forgeLight.position.set(0, 1.5, 0);
       forge.add(forgeLight);
-      ctx.torchLights.push(forgeLight);
+      mctx.torchLights.push(forgeLight);
       const fX = (Math.random() - 0.5) * w * 0.7;
       const fZ = (Math.random() - 0.5) * d * 0.7;
       forge.position.set(fX, getTerrainHeight(fX, fZ, 0.4) + 0.2, fZ);
-      ctx.scene.add(forge);
+      mctx.scene.add(forge);
     }
 
     // ── Scattered bolts and screws (25) ──
@@ -19225,7 +19227,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const bZ = (Math.random() - 0.5) * d * 0.8;
       bolt.position.set(bX, getTerrainHeight(bX, bZ, 0.4) + 0.08, bZ);
       bolt.rotation.set(Math.random() * Math.PI, 0, Math.random() * Math.PI);
-      ctx.scene.add(bolt);
+      mctx.scene.add(bolt);
     }
 
     // ── Conveyor belt sections (10) ──
@@ -19254,7 +19256,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       conveyor.add(leg4);
       conveyor.position.set((Math.random() - 0.5) * w * 0.6, 1.1, (Math.random() - 0.5) * d * 0.6);
       conveyor.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(conveyor);
+      mctx.scene.add(conveyor);
     }
 
     // ── Piston mechanisms (8) ──
@@ -19271,7 +19273,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const piX = (Math.random() - 0.5) * w * 0.65;
       const piZ = (Math.random() - 0.5) * d * 0.65;
       piston.position.set(piX, getTerrainHeight(piX, piZ, 0.4), piZ);
-      ctx.scene.add(piston);
+      mctx.scene.add(piston);
     }
 
     // ── Oil puddles (12) ──
@@ -19281,7 +19283,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const oX = (Math.random() - 0.5) * w * 0.75;
       const oZ = (Math.random() - 0.5) * d * 0.75;
       puddle.position.set(oX, getTerrainHeight(oX, oZ, 0.4) + 0.02, oZ);
-      ctx.scene.add(puddle);
+      mctx.scene.add(puddle);
     }
 
     // ── Workbenches (16) ──
@@ -19307,7 +19309,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const wZ = (Math.random() - 0.5) * d * 0.7;
       bench.position.set(wX, getTerrainHeight(wX, wZ, 0.4), wZ);
       bench.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(bench);
+      mctx.scene.add(bench);
     }
 
     // ── Chain mechanisms (10) ──
@@ -19321,7 +19323,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         chain.add(link);
       }
       chain.position.set((Math.random() - 0.5) * w * 0.7, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(chain);
+      mctx.scene.add(chain);
     }
 
     // ── Large furnaces (5) ──
@@ -19338,11 +19340,11 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const fLight = new THREE.PointLight(0xff3300, 2.0, 24);
       fLight.position.set(0, 0, 2);
       furnace.add(fLight);
-      ctx.torchLights.push(fLight);
+      mctx.torchLights.push(fLight);
       const fuX = (Math.random() - 0.5) * w * 0.5;
       const fuZ = (Math.random() - 0.5) * d * 0.5;
       furnace.position.set(fuX, getTerrainHeight(fuX, fuZ, 0.4) + 1.5, fuZ);
-      ctx.scene.add(furnace);
+      mctx.scene.add(furnace);
     }
 
     // ── Metal barrels/containers (14) ──
@@ -19351,7 +19353,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const baX = (Math.random() - 0.5) * w * 0.75;
       const baZ = (Math.random() - 0.5) * d * 0.75;
       barrel.position.set(baX, getTerrainHeight(baX, baZ, 0.4) + 0.5, baZ);
-      ctx.scene.add(barrel);
+      mctx.scene.add(barrel);
     }
 
     // ── Overhead crane tracks (7) ──
@@ -19373,7 +19375,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       crane.add(hook);
       crane.position.set((Math.random() - 0.5) * w * 0.6, 5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
       crane.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(crane);
+      mctx.scene.add(crane);
     }
 
     // ── Tool racks (12) ──
@@ -19392,7 +19394,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const rZ = (Math.random() - 0.5) * d * 0.7;
       rack.position.set(rX, getTerrainHeight(rX, rZ, 0.4) + 1.3, rZ);
       rack.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(rack);
+      mctx.scene.add(rack);
     }
 
     // ── Broken automaton parts (10) ──
@@ -19411,7 +19413,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const aX = (Math.random() - 0.5) * w * 0.7;
       const aZ = (Math.random() - 0.5) * d * 0.7;
       parts.position.set(aX, getTerrainHeight(aX, aZ, 0.4) + 0.2, aZ);
-      ctx.scene.add(parts);
+      mctx.scene.add(parts);
     }
 
     // ── Pressure gauges (6) ──
@@ -19426,7 +19428,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       needle.rotation.z = Math.random() * Math.PI - Math.PI / 2;
       gauge.add(needle);
       gauge.position.set((Math.random() - 0.5) * w * 0.6, 1.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(gauge);
+      mctx.scene.add(gauge);
     }
 
     // ── Control panels (5) ──
@@ -19448,7 +19450,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const pZ = (Math.random() - 0.5) * d * 0.6;
       panel.position.set(pX, getTerrainHeight(pX, pZ, 0.4) + 1.2, pZ);
       panel.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(panel);
+      mctx.scene.add(panel);
     }
 
     // ── Spinning gear assemblies (torus at angles) ──
@@ -19462,7 +19464,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 23), darkMetalMat);
       axle.rotation.x = Math.PI / 2; gearAsm.add(axle);
       gearAsm.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(gearAsm);
+      mctx.scene.add(gearAsm);
     }
 
     // ── Molten metal channels ──
@@ -19475,14 +19477,14 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const lava = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, chLen - 0.2), moltenMat);
       lava.position.y = 0.1; ch.add(lava);
       const chLight = new THREE.PointLight(0xff4400, 0.6, 6);
-      chLight.position.y = 0.5; ch.add(chLight); ctx.torchLights.push(chLight);
+      chLight.position.y = 0.5; ch.add(chLight); mctx.torchLights.push(chLight);
       // Side walls
       for (const sx of [-0.25, 0.25]) {
         const wall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, chLen), channelMat);
         wall.position.set(sx, 0.15, 0); ch.add(wall);
       }
       ch.position.set((Math.random() - 0.5) * w * 0.6, 0.15, (Math.random() - 0.5) * d * 0.6);
-      ch.rotation.y = Math.random() * Math.PI; ctx.scene.add(ch);
+      ch.rotation.y = Math.random() * Math.PI; mctx.scene.add(ch);
     }
 
     // ── Steam vents ──
@@ -19499,7 +19501,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         puff.scale.set(1 + s * 0.3, 1, 1 + s * 0.3); vent.add(puff);
       }
       const vx = (Math.random() - 0.5) * w * 0.75; const vz = (Math.random() - 0.5) * d * 0.75;
-      vent.position.set(vx, getTerrainHeight(vx, vz, 0.4), vz); ctx.scene.add(vent);
+      vent.position.set(vx, getTerrainHeight(vx, vz, 0.4), vz); mctx.scene.add(vent);
     }
 
     // ── Mechanical pipe networks ──
@@ -19520,7 +19522,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         elbow.position.set(px, py, pz); pipeNet.add(elbow);
       }
       pipeNet.position.set((Math.random() - 0.5) * w * 0.6, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(pipeNet);
+      mctx.scene.add(pipeNet);
     }
 
     // ── Pressure gauges (more detailed) ──
@@ -19536,7 +19538,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 23), copperMat);
       conn.position.y = -faceR - 0.15; pg.add(conn);
       pg.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.65);
-      pg.rotation.y = Math.random() * Math.PI; ctx.scene.add(pg);
+      pg.rotation.y = Math.random() * Math.PI; mctx.scene.add(pg);
     }
 
     // ── Anvils (standalone) ──
@@ -19547,7 +19549,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 23), ironMat);
       horn.rotation.z = Math.PI / 2; horn.position.set(0.5, 0.2, 0); anvil.add(horn);
       const ax = (Math.random() - 0.5) * w * 0.7; const az = (Math.random() - 0.5) * d * 0.7;
-      anvil.position.set(ax, getTerrainHeight(ax, az, 0.4) + 0.2, az); ctx.scene.add(anvil);
+      anvil.position.set(ax, getTerrainHeight(ax, az, 0.4) + 0.2, az); mctx.scene.add(anvil);
     }
 
     // ── Sparking wire bundles ──
@@ -19565,11 +19567,11 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         const spark = new THREE.Mesh(new THREE.SphereGeometry(0.02, 17, 16), sparkMat);
         spark.position.set(0, (Math.random() - 0.5) * wLen * 0.6, 0); bundle.add(spark);
         const spL = new THREE.PointLight(0xffaa00, 0.3, 2);
-        spL.position.copy(spark.position); bundle.add(spL); ctx.torchLights.push(spL);
+        spL.position.copy(spark.position); bundle.add(spL); mctx.torchLights.push(spL);
       }
       bundle.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
       bundle.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.scene.add(bundle);
+      mctx.scene.add(bundle);
     }
 
     // ── Clock mechanisms ──
@@ -19594,7 +19596,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       // Center hub
       clock.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 27, 23), bronzeMat));
       clock.position.set((Math.random() - 0.5) * w * 0.5, 3 + Math.random() * 4, (Math.random() - 0.5) * d * 0.5);
-      clock.rotation.y = Math.random() * Math.PI; ctx.scene.add(clock);
+      clock.rotation.y = Math.random() * Math.PI; mctx.scene.add(clock);
     }
 
     // ── Metal catwalks ──
@@ -19621,7 +19623,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         col.position.set(0, -1.5, sz); cw.add(col);
       }
       cw.position.set((Math.random() - 0.5) * w * 0.5, 3 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5);
-      cw.rotation.y = Math.random() * Math.PI; ctx.scene.add(cw);
+      cw.rotation.y = Math.random() * Math.PI; mctx.scene.add(cw);
     }
 
     // ── Furnace openings with emissive glow ──
@@ -19632,7 +19634,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const opening = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.1), new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 1.2 }));
       opening.position.z = 0.11; fo.add(opening);
       const glow = new THREE.PointLight(0xff3300, 1.5, 8);
-      glow.position.set(0, 0, 0.5); fo.add(glow); ctx.torchLights.push(glow);
+      glow.position.set(0, 0, 0.5); fo.add(glow); mctx.torchLights.push(glow);
       // Heat shimmer (transparent planes)
       for (let h = 0; h < 3; h++) {
         const shimmer = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4 + h * 0.3), new THREE.MeshStandardMaterial({ color: 0xff6600, transparent: true, opacity: 0.08, side: THREE.DoubleSide }));
@@ -19640,7 +19642,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       }
       const fox = (Math.random() - 0.5) * w * 0.6; const foz = (Math.random() - 0.5) * d * 0.6;
       fo.position.set(fox, getTerrainHeight(fox, foz, 0.4) + 0.75, foz);
-      fo.rotation.y = Math.random() * Math.PI; ctx.scene.add(fo);
+      fo.rotation.y = Math.random() * Math.PI; mctx.scene.add(fo);
     }
 
     // ── Gear/cog wall decorations (detailed) ──
@@ -19659,7 +19661,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const wgHub = new THREE.Mesh(new THREE.CylinderGeometry(wgR * 0.15, wgR * 0.15, wgR * 0.1, 20), darkMetalMat);
       wgHub.rotation.x = Math.PI / 2; wallGear.add(wgHub);
       wallGear.position.set((Math.random() - 0.5) * w * 0.7, 1.5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
-      wallGear.rotation.y = Math.random() * Math.PI; ctx.scene.add(wallGear);
+      wallGear.rotation.y = Math.random() * Math.PI; mctx.scene.add(wallGear);
     }
 
     // ── Steam pipe networks (connected with elbow joints) ──
@@ -19685,7 +19687,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         }
       }
       steamNet.position.set((Math.random() - 0.5) * w * 0.55, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.55);
-      ctx.scene.add(steamNet);
+      mctx.scene.add(steamNet);
     }
 
     // ── Pressure gauge details on walls ──
@@ -19708,7 +19710,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const pgPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.2, 12), copperMat);
       pgPipe.position.y = -pgR - 0.1; pgDetail.add(pgPipe);
       pgDetail.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.65);
-      pgDetail.rotation.y = Math.random() * Math.PI; ctx.scene.add(pgDetail);
+      pgDetail.rotation.y = Math.random() * Math.PI; mctx.scene.add(pgDetail);
     }
 
     // ── Conveyor belt segments (detailed) ──
@@ -19737,7 +19739,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         convDetail.add(item);
       }
       convDetail.position.set((Math.random() - 0.5) * w * 0.55, 1.0, (Math.random() - 0.5) * d * 0.55);
-      convDetail.rotation.y = Math.random() * Math.PI; ctx.scene.add(convDetail);
+      convDetail.rotation.y = Math.random() * Math.PI; mctx.scene.add(convDetail);
     }
 
     // ── Spark emitter details near machinery ──
@@ -19751,9 +19753,9 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
         sparkCluster.add(sparkSphere);
       }
       const spkL = new THREE.PointLight(0xffaa00, 0.2, 2);
-      sparkCluster.add(spkL); ctx.torchLights.push(spkL);
+      sparkCluster.add(spkL); mctx.torchLights.push(spkL);
       sparkCluster.position.set((Math.random() - 0.5) * w * 0.6, 0.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(sparkCluster);
+      mctx.scene.add(sparkCluster);
     }
 
     // ── Riveted metal plate patterns on walls ──
@@ -19775,7 +19777,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const seam = new THREE.Mesh(new THREE.BoxGeometry(pW, 0.01, 0.002), ironMat);
       seam.position.z = 0.042; plate.add(seam);
       plate.position.set((Math.random() - 0.5) * w * 0.65, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.65);
-      plate.rotation.y = Math.random() * Math.PI; ctx.scene.add(plate);
+      plate.rotation.y = Math.random() * Math.PI; mctx.scene.add(plate);
     }
 
     // ── Furnace structures with chimneys and slag (6) ──
@@ -19793,7 +19795,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const topLight = new THREE.PointLight(0xff5500, 1.5, 12);
       topLight.position.y = 4.0;
       furnaceUnit.add(topLight);
-      ctx.torchLights.push(topLight);
+      mctx.torchLights.push(topLight);
       const chimneyH2 = 4 + Math.random() * 2;
       const chimStack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, chimneyH2, 20), darkMetalMat);
       chimStack.position.set(0.6, 3.5 + chimneyH2 / 2, 0);
@@ -19811,7 +19813,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const fuuZ = (Math.random() - 0.5) * d * 0.55;
       furnaceUnit.position.set(fuuX, getTerrainHeight(fuuX, fuuZ, 0.4), fuuZ);
       furnaceUnit.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(furnaceUnit);
+      mctx.scene.add(furnaceUnit);
     }
 
     // ── Crane/hoist structures (5) ──
@@ -19840,7 +19842,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const csZ = (Math.random() - 0.5) * d * 0.55;
       craneStruct.position.set(csX, getTerrainHeight(csX, csZ, 0.4), csZ);
       craneStruct.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(craneStruct);
+      mctx.scene.add(craneStruct);
     }
 
     // ── Wall-mounted control panels with indicator lights and levers (8) ──
@@ -19872,7 +19874,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const cpnZ = (Math.random() - 0.5) * d * 0.6;
       ctrlPanel.position.set(cpnX, getTerrainHeight(cpnX, cpnZ, 0.4) + 1.5, cpnZ);
       ctrlPanel.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(ctrlPanel);
+      mctx.scene.add(ctrlPanel);
     }
 
     // ── Metal walkways/catwalks with X-brace supports (6) ──
@@ -19917,7 +19919,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const wkZ = (Math.random() - 0.5) * d * 0.5;
       walkway.position.set(wkX, getTerrainHeight(wkX, wkZ, 0.4), wkZ);
       walkway.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(walkway);
+      mctx.scene.add(walkway);
     }
 
     // ── Anvil props (10) ──
@@ -19940,7 +19942,7 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const apZ = (Math.random() - 0.5) * d * 0.65;
       anvilProp.position.set(apX, getTerrainHeight(apX, apZ, 0.4), apZ);
       anvilProp.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(anvilProp);
+      mctx.scene.add(anvilProp);
     }
 
     // ── Water cooling troughs (8) ──
@@ -19968,19 +19970,19 @@ export function buildClockworkFoundry(ctx: MapBuildContext, w: number, d: number
       const ctZ = (Math.random() - 0.5) * d * 0.6;
       coolingTrough.position.set(ctX, getTerrainHeight(ctX, ctZ, 0.4), ctZ);
       coolingTrough.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(coolingTrough);
+      mctx.scene.add(coolingTrough);
     }
 }
 
-export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x331122, 0.02);
-    ctx.applyTerrainColors(0x3a1122, 0x4a2233, 0.6);
-    ctx.dirLight.color.setHex(0x993333);
-    ctx.dirLight.intensity = 0.6;
-    ctx.ambientLight.color.setHex(0x331111);
-    ctx.ambientLight.intensity = 0.35;
-    ctx.hemiLight.color.setHex(0x663333);
-    ctx.hemiLight.groundColor.setHex(0x220808);
+export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x331122, 0.02);
+    mctx.applyTerrainColors(0x3a1122, 0x4a2233, 0.6);
+    mctx.dirLight.color.setHex(0x993333);
+    mctx.dirLight.intensity = 0.6;
+    mctx.ambientLight.color.setHex(0x331111);
+    mctx.ambientLight.intensity = 0.35;
+    mctx.hemiLight.color.setHex(0x663333);
+    mctx.hemiLight.groundColor.setHex(0x220808);
 
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x4a2233, roughness: 0.85 });
     const redStoneMat = new THREE.MeshStandardMaterial({ color: 0x662233, roughness: 0.8 });
@@ -20002,13 +20004,13 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const wZ = (Math.random() - 0.5) * d * 0.8;
       wall.position.set(wX, wallH / 2, wZ);
       wall.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(wall);
+      mctx.scene.add(wall);
       // Crenellations on top
       for (let c = 0; c < Math.floor(wallW / 1.2); c++) {
         const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 1.3), darkStoneMat);
         merlon.position.set(wX + (c - wallW / 2.4) * 1.2, wallH + 0.4, wZ);
         merlon.rotation.y = wall.rotation.y;
-        ctx.scene.add(merlon);
+        mctx.scene.add(merlon);
       }
     }
 
@@ -20032,7 +20034,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         pool.add(spoutTop);
       }
       pool.position.set((Math.random() - 0.5) * w * 0.7, getTerrainHeight(0, 0, 0.6), (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(pool);
+      mctx.scene.add(pool);
     }
 
     // ── Iron cages (20+) ──
@@ -20065,7 +20067,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const cX = (Math.random() - 0.5) * w * 0.75;
       const cZ = (Math.random() - 0.5) * d * 0.75;
       cage.position.set(cX, getTerrainHeight(cX, cZ, 0.6) + 0.5, cZ);
-      ctx.scene.add(cage);
+      mctx.scene.add(cage);
     }
 
     // ── Torture devices (8+) ──
@@ -20108,7 +20110,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const dZ = (Math.random() - 0.5) * d * 0.6;
       device.position.set(dX, getTerrainHeight(dX, dZ, 0.6), dZ);
       device.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(device);
+      mctx.scene.add(device);
     }
 
     // ── Wall-mounted torches (15+) ──
@@ -20122,11 +20124,11 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const tLight = new THREE.PointLight(0xff4422, 1.0, 8);
       tLight.position.set(0, 0.4, 0);
       torch.add(tLight);
-      ctx.torchLights.push(tLight);
+      mctx.torchLights.push(tLight);
       const tX = (Math.random() - 0.5) * w * 0.75;
       const tZ = (Math.random() - 0.5) * d * 0.75;
       torch.position.set(tX, 2 + Math.random() * 3, tZ);
-      ctx.scene.add(torch);
+      mctx.scene.add(torch);
     }
 
     // ── Gargoyle statues (10+) ──
@@ -20148,7 +20150,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const gX = (Math.random() - 0.5) * w * 0.75;
       const gZ = (Math.random() - 0.5) * d * 0.75;
       garg.position.set(gX, 4 + Math.random() * 4, gZ);
-      ctx.scene.add(garg);
+      mctx.scene.add(garg);
     }
 
     // ── Grand staircases (6+) ──
@@ -20164,7 +20166,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const sZ = (Math.random() - 0.5) * d * 0.6;
       stair.position.set(sX, getTerrainHeight(sX, sZ, 0.6), sZ);
       stair.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(stair);
+      mctx.scene.add(stair);
     }
 
     // ── Floor bloodstains (25+) ──
@@ -20174,7 +20176,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const sX = (Math.random() - 0.5) * w * 0.8;
       const sZ = (Math.random() - 0.5) * d * 0.8;
       stain.position.set(sX, getTerrainHeight(sX, sZ, 0.6) + 0.02, sZ);
-      ctx.scene.add(stain);
+      mctx.scene.add(stain);
     }
 
     // ── Chandeliers (8+) ──
@@ -20193,12 +20195,12 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const cLight = new THREE.PointLight(0xff6633, 0.8, 10);
       cLight.position.y = 0.2;
       chandelier.add(cLight);
-      ctx.torchLights.push(cLight);
+      mctx.torchLights.push(cLight);
       const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2 + Math.random() * 2, 17), chainMat);
       chain.position.y = 1.5;
       chandelier.add(chain);
       chandelier.position.set((Math.random() - 0.5) * w * 0.6, 5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(chandelier);
+      mctx.scene.add(chandelier);
     }
 
     // ── Weapon racks (12+) ──
@@ -20219,7 +20221,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const rZ = (Math.random() - 0.5) * d * 0.7;
       rack.position.set(rX, getTerrainHeight(rX, rZ, 0.6) + 1.5, rZ);
       rack.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(rack);
+      mctx.scene.add(rack);
     }
 
     // ── Throne platforms (4+) ──
@@ -20243,7 +20245,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const thZ = (Math.random() - 0.5) * d * 0.5;
       throne.position.set(thX, getTerrainHeight(thX, thZ, 0.6), thZ);
       throne.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(throne);
+      mctx.scene.add(throne);
     }
 
     // ── Crumbling towers (10+) ──
@@ -20256,7 +20258,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       tower.position.set(twX, towerH / 2, twZ);
       tower.rotation.x = (Math.random() - 0.5) * 0.15;
       tower.rotation.z = (Math.random() - 0.5) * 0.15;
-      ctx.scene.add(tower);
+      mctx.scene.add(tower);
     }
 
     // ── Scattered bones (15+) ──
@@ -20269,7 +20271,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const boZ = (Math.random() - 0.5) * d * 0.8;
       bone.position.set(boX, getTerrainHeight(boX, boZ, 0.6) + 0.05, boZ);
       bone.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(bone);
+      mctx.scene.add(bone);
     }
 
     // ── Portrait frames (6+) ──
@@ -20282,7 +20284,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       portrait.add(canvas);
       portrait.position.set((Math.random() - 0.5) * w * 0.7, 2.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.7);
       portrait.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(portrait);
+      mctx.scene.add(portrait);
     }
 
     // ── Candle clusters (8+) ──
@@ -20298,11 +20300,11 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const clLight = new THREE.PointLight(0xff6622, 0.5, 5);
       clLight.position.y = 0.5;
       cluster.add(clLight);
-      ctx.torchLights.push(clLight);
+      mctx.torchLights.push(clLight);
       const clX = (Math.random() - 0.5) * w * 0.7;
       const clZ = (Math.random() - 0.5) * d * 0.7;
       cluster.position.set(clX, getTerrainHeight(clX, clZ, 0.6), clZ);
-      ctx.scene.add(cluster);
+      mctx.scene.add(cluster);
     }
 
     // ── Drawbridge/portcullis (4+) ──
@@ -20333,7 +20335,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const gZ = (Math.random() - 0.5) * d * 0.5;
       gate.position.set(gX, getTerrainHeight(gX, gZ, 0.6), gZ);
       gate.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(gate);
+      mctx.scene.add(gate);
     }
 
     // ── Red crystal formations ──
@@ -20351,9 +20353,9 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         crystal.add(sub);
       }
       const crLight = new THREE.PointLight(0xcc0033, 0.4, 5);
-      crLight.position.y = cH * 0.7; crystal.add(crLight); ctx.torchLights.push(crLight);
+      crLight.position.y = cH * 0.7; crystal.add(crLight); mctx.torchLights.push(crLight);
       const crx = (Math.random() - 0.5) * w * 0.75; const crz = (Math.random() - 0.5) * d * 0.75;
-      crystal.position.set(crx, getTerrainHeight(crx, crz, 0.6), crz); ctx.scene.add(crystal);
+      crystal.position.set(crx, getTerrainHeight(crx, crz, 0.6), crz); mctx.scene.add(crystal);
     }
 
     // ── Banner poles with tattered flags ──
@@ -20375,7 +20377,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const finial = new THREE.Mesh(new THREE.SphereGeometry(0.08, 23, 23), ironMat);
       finial.position.y = poleH + 0.08; bp.add(finial);
       const bpx = (Math.random() - 0.5) * w * 0.7; const bpz = (Math.random() - 0.5) * d * 0.7;
-      bp.position.set(bpx, getTerrainHeight(bpx, bpz, 0.6), bpz); ctx.scene.add(bp);
+      bp.position.set(bpx, getTerrainHeight(bpx, bpz, 0.6), bpz); mctx.scene.add(bp);
     }
 
     // ── Blood pools ──
@@ -20384,7 +20386,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const pool = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 36), bloodPoolMat);
       pool.rotation.x = -Math.PI / 2;
       const bpx2 = (Math.random() - 0.5) * w * 0.8; const bpz2 = (Math.random() - 0.5) * d * 0.8;
-      pool.position.set(bpx2, getTerrainHeight(bpx2, bpz2, 0.6) + 0.02, bpz2); ctx.scene.add(pool);
+      pool.position.set(bpx2, getTerrainHeight(bpx2, bpz2, 0.6) + 0.02, bpz2); mctx.scene.add(pool);
     }
 
     // ── Gargoyle perches (detailed) ──
@@ -20414,7 +20416,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         eye.position.set(ex, 0.78, 0.5); perch.add(eye);
       }
       perch.position.set((Math.random() - 0.5) * w * 0.7, 5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(perch);
+      mctx.scene.add(perch);
     }
 
     // ── Arrow slits in walls ──
@@ -20426,7 +20428,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         2 + Math.random() * 5,
         (Math.random() - 0.5) * d * 0.75
       );
-      slit.rotation.y = Math.random() * Math.PI; ctx.scene.add(slit);
+      slit.rotation.y = Math.random() * Math.PI; mctx.scene.add(slit);
     }
 
     // ── Iron gates (portcullis-style) ──
@@ -20453,7 +20455,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         spike.position.set(-gW / 2 + s * (gW / barCount) + 0.15, gH / 2 + 0.28, 0.08); gate.add(spike);
       }
       const gx = (Math.random() - 0.5) * w * 0.6; const gz = (Math.random() - 0.5) * d * 0.6;
-      gate.position.set(gx, gH / 2, gz); gate.rotation.y = Math.random() * Math.PI; ctx.scene.add(gate);
+      gate.position.set(gx, gH / 2, gz); gate.rotation.y = Math.random() * Math.PI; mctx.scene.add(gate);
     }
 
     // ── Weapon racks (more detail) ──
@@ -20485,7 +20487,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       }
       const wrx = (Math.random() - 0.5) * w * 0.65; const wrz = (Math.random() - 0.5) * d * 0.65;
       wr.position.set(wrx, getTerrainHeight(wrx, wrz, 0.6), wrz);
-      wr.rotation.y = Math.random() * Math.PI; ctx.scene.add(wr);
+      wr.rotation.y = Math.random() * Math.PI; mctx.scene.add(wr);
     }
 
     // ── Torture devices: iron maiden, stocks ──
@@ -20519,7 +20521,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       }
       const tdx = (Math.random() - 0.5) * w * 0.55; const tdz = (Math.random() - 0.5) * d * 0.55;
       td.position.set(tdx, getTerrainHeight(tdx, tdz, 0.6), tdz);
-      td.rotation.y = Math.random() * Math.PI; ctx.scene.add(td);
+      td.rotation.y = Math.random() * Math.PI; mctx.scene.add(td);
     }
 
     // ── Blood-red banner details hanging from walls ──
@@ -20544,7 +20546,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         cap.position.set(ex, 0, 0); banner.add(cap);
       }
       banner.position.set((Math.random() - 0.5) * w * 0.7, 3 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(banner);
+      mctx.scene.add(banner);
     }
 
     // ── Iron spike fencing ──
@@ -20569,7 +20571,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       }
       const fex = (Math.random() - 0.5) * w * 0.7; const fez = (Math.random() - 0.5) * d * 0.7;
       fence.position.set(fex, getTerrainHeight(fex, fez, 0.6), fez);
-      fence.rotation.y = Math.random() * Math.PI; ctx.scene.add(fence);
+      fence.rotation.y = Math.random() * Math.PI; mctx.scene.add(fence);
     }
 
     // ── Throne room carpet detail ──
@@ -20595,7 +20597,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       }
       const cpx = (Math.random() - 0.5) * w * 0.5; const cpz = (Math.random() - 0.5) * d * 0.5;
       carpet.position.set(cpx, getTerrainHeight(cpx, cpz, 0.6) + 0.02, cpz);
-      carpet.rotation.y = Math.random() * Math.PI; ctx.scene.add(carpet);
+      carpet.rotation.y = Math.random() * Math.PI; mctx.scene.add(carpet);
     }
 
     // ── Weapon display racks on walls ──
@@ -20616,7 +20618,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         display.add(sword);
       }
       display.position.set((Math.random() - 0.5) * w * 0.65, 2.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.65);
-      display.rotation.y = Math.random() * Math.PI; ctx.scene.add(display);
+      display.rotation.y = Math.random() * Math.PI; mctx.scene.add(display);
     }
 
     // ── Prison cell bars ──
@@ -20642,7 +20644,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       lock.position.set(-cellW / 2 + 0.05, cellH * 0.45, 0.03); cell.add(lock);
       const clx = (Math.random() - 0.5) * w * 0.6; const clz = (Math.random() - 0.5) * d * 0.6;
       cell.position.set(clx, getTerrainHeight(clx, clz, 0.6), clz);
-      cell.rotation.y = Math.random() * Math.PI; ctx.scene.add(cell);
+      cell.rotation.y = Math.random() * Math.PI; mctx.scene.add(cell);
     }
 
     // ── Gargoyle waterspout detail on building corners ──
@@ -20669,7 +20671,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
         horn.rotation.z = hx > 0 ? -0.2 : 0.2; spout.add(horn);
       }
       spout.position.set((Math.random() - 0.5) * w * 0.7, 5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(spout);
+      mctx.scene.add(spout);
     }
 
     // ── Murder holes (dark boxes inset in ceiling/overhang areas) (10) ──
@@ -20687,7 +20689,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const mhz = (Math.random() - 0.5) * d * 0.6;
       mh.position.set(mhx, 5 + Math.random() * 3, mhz);
       mh.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(mh);
+      mctx.scene.add(mh);
     }
 
     // ── Portcullis gates (grid of vertical and horizontal thin cylinders) (4) ──
@@ -20721,7 +20723,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const pcz = (Math.random() - 0.5) * d * 0.5;
       portcullis.position.set(pcx, getTerrainHeight(pcx, pcz, 0.6), pcz);
       portcullis.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(portcullis);
+      mctx.scene.add(portcullis);
     }
 
     // ── Arrow loops in towers (thin vertical dark box openings) (24) ──
@@ -20736,7 +20738,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const alz = (Math.random() - 0.5) * d * 0.75;
       arrowLoop.position.set(alx, 2 + Math.random() * 6, alz);
       arrowLoop.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(arrowLoop);
+      mctx.scene.add(arrowLoop);
     }
 
     // ── Machicolations (protruding box brackets along wall tops) (8 sections) ──
@@ -20756,7 +20758,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const macz = (Math.random() - 0.5) * d * 0.7;
       machSection.position.set(macx, 6 + Math.random() * 3, macz);
       machSection.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(machSection);
+      mctx.scene.add(machSection);
     }
 
     // ── Inner keep with throne (stepped platform, chair, red carpet) (3) ──
@@ -20791,7 +20793,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const kpz = (Math.random() - 0.5) * d * 0.4;
       keep.position.set(kpx, getTerrainHeight(kpx, kpz, 0.6), kpz);
       keep.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(keep);
+      mctx.scene.add(keep);
     }
 
     // ── Dungeon grate in floor (flat grid of thin dark cylinders) (6) ──
@@ -20820,7 +20822,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const dgrx = (Math.random() - 0.5) * w * 0.6;
       const dgrz = (Math.random() - 0.5) * d * 0.6;
       dgrate.position.set(dgrx, getTerrainHeight(dgrx, dgrz, 0.6) + 0.05, dgrz);
-      ctx.scene.add(dgrate);
+      mctx.scene.add(dgrate);
     }
 
     // ── War room table with map markers and stools (3) ──
@@ -20870,7 +20872,7 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const wrz2 = (Math.random() - 0.5) * d * 0.45;
       warRoom.position.set(wrx2, getTerrainHeight(wrx2, wrz2, 0.6), wrz2);
       warRoom.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(warRoom);
+      mctx.scene.add(warRoom);
     }
 
     // ── Torch bracket detail on walls (iron bracket + flaming sphere + light) (14) ──
@@ -20895,24 +20897,24 @@ export function buildCrimsonCitadel(ctx: MapBuildContext, w: number, d: number):
       const tbLight = new THREE.PointLight(0xff5522, 1.2, 10);
       tbLight.position.set(0, 0.9, 0.38);
       torchBracket.add(tbLight);
-      ctx.torchLights.push(tbLight);
+      mctx.torchLights.push(tbLight);
       const tbx = (Math.random() - 0.5) * w * 0.7;
       const tbz = (Math.random() - 0.5) * d * 0.7;
       torchBracket.position.set(tbx, 2 + Math.random() * 4, tbz);
       torchBracket.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(torchBracket);
+      mctx.scene.add(torchBracket);
     }
 }
 
-export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x667788, 0.012);
-    ctx.applyTerrainColors(0x556677, 0x778899, 2.0);
-    ctx.dirLight.color.setHex(0xaabbdd);
-    ctx.dirLight.intensity = 1.2;
-    ctx.ambientLight.color.setHex(0x445566);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x8899bb);
-    ctx.hemiLight.groundColor.setHex(0x445566);
+export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x667788, 0.012);
+    mctx.applyTerrainColors(0x556677, 0x778899, 2.0);
+    mctx.dirLight.color.setHex(0xaabbdd);
+    mctx.dirLight.intensity = 1.2;
+    mctx.ambientLight.color.setHex(0x445566);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x8899bb);
+    mctx.hemiLight.groundColor.setHex(0x445566);
 
     const greyRockMat = new THREE.MeshStandardMaterial({ color: 0x667788, roughness: 0.85 });
     const darkRockMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.9 });
@@ -20943,7 +20945,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const sX = (Math.random() - 0.5) * w * 0.9;
       const sZ = (Math.random() - 0.5) * d * 0.9;
       spire.position.set(sX, getTerrainHeight(sX, sZ, 2.0), sZ);
-      ctx.scene.add(spire);
+      mctx.scene.add(spire);
     }
 
     // ── Wind-swept platforms (15+) ──
@@ -20954,7 +20956,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const pX = (Math.random() - 0.5) * w * 0.8;
       const pZ = (Math.random() - 0.5) * d * 0.8;
       plat.position.set(pX, getTerrainHeight(pX, pZ, 2.0) + 1 + Math.random() * 4, pZ);
-      ctx.scene.add(plat);
+      mctx.scene.add(plat);
     }
 
     // ── Lightning rods (10+) ──
@@ -20970,11 +20972,11 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const rLight = new THREE.PointLight(0x4488ff, 1.5, 12);
       rLight.position.y = rodH + 0.3;
       rod.add(rLight);
-      ctx.torchLights.push(rLight);
+      mctx.torchLights.push(rLight);
       const rX = (Math.random() - 0.5) * w * 0.75;
       const rZ = (Math.random() - 0.5) * d * 0.75;
       rod.position.set(rX, getTerrainHeight(rX, rZ, 2.0), rZ);
-      ctx.scene.add(rod);
+      mctx.scene.add(rod);
     }
 
     // ── Loose boulders (20+) ──
@@ -20985,7 +20987,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const bX = (Math.random() - 0.5) * w * 0.85;
       const bZ = (Math.random() - 0.5) * d * 0.85;
       boulder.position.set(bX, getTerrainHeight(bX, bZ, 2.0) + boulderR * 0.3, bZ);
-      ctx.scene.add(boulder);
+      mctx.scene.add(boulder);
     }
 
     // ── Cliff edges (8+) ──
@@ -20997,7 +20999,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const cZ = (Math.random() - 0.5) * d * 0.8;
       cliff.position.set(cX, cliffH / 2, cZ);
       cliff.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(cliff);
+      mctx.scene.add(cliff);
     }
 
     // ── Wind streaks (12+) ──
@@ -21009,7 +21011,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         (Math.random() - 0.5) * d * 0.9,
       );
       streak.rotation.set(0, Math.random() * Math.PI, (Math.random() - 0.5) * 0.3);
-      ctx.scene.add(streak);
+      mctx.scene.add(streak);
     }
 
     // ── Eagle nests (6+) ──
@@ -21030,7 +21032,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const nX = (Math.random() - 0.5) * w * 0.7;
       const nZ = (Math.random() - 0.5) * d * 0.7;
       nest.position.set(nX, getTerrainHeight(nX, nZ, 2.0) + 4 + Math.random() * 4, nZ);
-      ctx.scene.add(nest);
+      mctx.scene.add(nest);
     }
 
     // ── Weathered stone pillars (10+) ──
@@ -21050,7 +21052,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const piX = (Math.random() - 0.5) * w * 0.7;
       const piZ = (Math.random() - 0.5) * d * 0.7;
       pillar.position.set(piX, getTerrainHeight(piX, piZ, 2.0), piZ);
-      ctx.scene.add(pillar);
+      mctx.scene.add(pillar);
     }
 
     // ── Ruined mountain shrines (4+) ──
@@ -21072,7 +21074,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const shZ = (Math.random() - 0.5) * d * 0.6;
       shrine.position.set(shX, getTerrainHeight(shX, shZ, 2.0), shZ);
       shrine.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(shrine);
+      mctx.scene.add(shrine);
     }
 
     // ── Snow patches (15+) ──
@@ -21082,7 +21084,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const snX = (Math.random() - 0.5) * w * 0.85;
       const snZ = (Math.random() - 0.5) * d * 0.85;
       snow.position.set(snX, getTerrainHeight(snX, snZ, 2.0) + 0.03, snZ);
-      ctx.scene.add(snow);
+      mctx.scene.add(snow);
     }
 
     // ── Chain bridges (8+) ──
@@ -21108,7 +21110,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const bZ = (Math.random() - 0.5) * d * 0.6;
       bridge.position.set(bX, getTerrainHeight(bX, bZ, 2.0) + 2 + Math.random() * 3, bZ);
       bridge.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(bridge);
+      mctx.scene.add(bridge);
     }
 
     // ── Cavern entrances (6+) ──
@@ -21130,7 +21132,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const cvZ = (Math.random() - 0.5) * d * 0.7;
       cavern.position.set(cvX, getTerrainHeight(cvX, cvZ, 2.0), cvZ);
       cavern.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(cavern);
+      mctx.scene.add(cavern);
     }
 
     // ── Mountain goat remains (10+) ──
@@ -21145,7 +21147,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const mX = (Math.random() - 0.5) * w * 0.8;
       const mZ = (Math.random() - 0.5) * d * 0.8;
       remains.position.set(mX, getTerrainHeight(mX, mZ, 2.0), mZ);
-      ctx.scene.add(remains);
+      mctx.scene.add(remains);
     }
 
     // ── Telescope/observation platforms (5+) ──
@@ -21163,7 +21165,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const oX = (Math.random() - 0.5) * w * 0.6;
       const oZ = (Math.random() - 0.5) * d * 0.6;
       obs.position.set(oX, getTerrainHeight(oX, oZ, 2.0) + 3 + Math.random() * 3, oZ);
-      ctx.scene.add(obs);
+      mctx.scene.add(obs);
     }
 
     // ── Storm cloud wisps (8+) ──
@@ -21178,7 +21180,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         10 + Math.random() * 6,
         (Math.random() - 0.5) * d * 0.9,
       );
-      ctx.scene.add(cloud);
+      mctx.scene.add(cloud);
     }
 
     // ── Ancient rune stones (4+) ──
@@ -21193,12 +21195,12 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const ruLight = new THREE.PointLight(0x4488ff, 0.6, 6);
       ruLight.position.set(0, 1, 0.3);
       rune.add(ruLight);
-      ctx.torchLights.push(ruLight);
+      mctx.torchLights.push(ruLight);
       const ruX = (Math.random() - 0.5) * w * 0.6;
       const ruZ = (Math.random() - 0.5) * d * 0.6;
       rune.position.set(ruX, getTerrainHeight(ruX, ruZ, 2.0), ruZ);
       rune.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(rune);
+      mctx.scene.add(rune);
     }
 
     // ── Mountain peaks with snow caps ──
@@ -21219,7 +21221,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         ridge.position.y = pH * 0.4; peak.add(ridge);
       }
       const pkx = (Math.random() - 0.5) * w * 0.85; const pkz = (Math.random() - 0.5) * d * 0.85;
-      peak.position.set(pkx, getTerrainHeight(pkx, pkz, 2.0), pkz); ctx.scene.add(peak);
+      peak.position.set(pkx, getTerrainHeight(pkx, pkz, 2.0), pkz); mctx.scene.add(peak);
     }
 
     // ── Wind-swept trees ──
@@ -21236,7 +21238,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         branch.rotation.z = -0.8 - Math.random() * 0.5; tree.add(branch);
       }
       const tx2 = (Math.random() - 0.5) * w * 0.8; const tz2 = (Math.random() - 0.5) * d * 0.8;
-      tree.position.set(tx2, getTerrainHeight(tx2, tz2, 2.0), tz2); ctx.scene.add(tree);
+      tree.position.set(tx2, getTerrainHeight(tx2, tz2, 2.0), tz2); mctx.scene.add(tree);
     }
 
     // ── Cloud formations ──
@@ -21250,7 +21252,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         cPart.scale.set(1.5, 0.5, 1); cloudGrp.add(cPart);
       }
       cloudGrp.position.set((Math.random() - 0.5) * w * 0.9, 6 + Math.random() * 8, (Math.random() - 0.5) * d * 0.9);
-      ctx.scene.add(cloudGrp);
+      mctx.scene.add(cloudGrp);
     }
 
     // ── Rocky outcrops ──
@@ -21265,7 +21267,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         rock.rotation.y = Math.random() * Math.PI; outcrop.add(rock);
       }
       const ox = (Math.random() - 0.5) * w * 0.85; const oz = (Math.random() - 0.5) * d * 0.85;
-      outcrop.position.set(ox, getTerrainHeight(ox, oz, 2.0), oz); ctx.scene.add(outcrop);
+      outcrop.position.set(ox, getTerrainHeight(ox, oz, 2.0), oz); mctx.scene.add(outcrop);
     }
 
     // ── Goat skull totems ──
@@ -21295,7 +21297,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         feather.rotation.z = (Math.random() - 0.5) * 0.3; totem.add(feather);
       }
       const ttx = (Math.random() - 0.5) * w * 0.7; const ttz = (Math.random() - 0.5) * d * 0.7;
-      totem.position.set(ttx, getTerrainHeight(ttx, ttz, 2.0), ttz); ctx.scene.add(totem);
+      totem.position.set(ttx, getTerrainHeight(ttx, ttz, 2.0), ttz); mctx.scene.add(totem);
     }
 
     // ── Weather vane structures ──
@@ -21317,7 +21319,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       ewBar.rotation.x = Math.PI / 2; ewBar.position.y = wvH - 0.15; wv.add(ewBar);
       const wvx = (Math.random() - 0.5) * w * 0.7; const wvz = (Math.random() - 0.5) * d * 0.7;
       wv.position.set(wvx, getTerrainHeight(wvx, wvz, 2.0) + 3 + Math.random() * 4, wvz);
-      wv.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(wv);
+      wv.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(wv);
     }
 
     // ── Aurora-like effects ──
@@ -21327,7 +21329,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const aurora = new THREE.Mesh(new THREE.PlaneGeometry(15 + Math.random() * 10, 3 + Math.random() * 2), i % 2 === 0 ? auroraMat : auroraMat2);
       aurora.position.set((Math.random() - 0.5) * w * 0.7, 14 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
       aurora.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.2);
-      ctx.scene.add(aurora);
+      mctx.scene.add(aurora);
     }
 
     // ── Bridge over chasm ──
@@ -21348,7 +21350,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       }
       const bx = (Math.random() - 0.5) * w * 0.5; const bz = (Math.random() - 0.5) * d * 0.5;
       bridge.position.set(bx, getTerrainHeight(bx, bz, 2.0) + 2, bz);
-      bridge.rotation.y = Math.random() * Math.PI; ctx.scene.add(bridge);
+      bridge.rotation.y = Math.random() * Math.PI; mctx.scene.add(bridge);
     }
 
     // ── Lightning rod arrays (thin metallic cylinders with sphere tips) ──
@@ -21375,10 +21377,10 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const basePlate = new THREE.Mesh(new THREE.BoxGeometry(rodCount * 0.5, 0.1, 0.4), metalMat);
       rodArray.add(basePlate);
       const arrL = new THREE.PointLight(0x4488ff, 0.6, 6);
-      arrL.position.y = 4; rodArray.add(arrL); ctx.torchLights.push(arrL);
+      arrL.position.y = 4; rodArray.add(arrL); mctx.torchLights.push(arrL);
       const arx = (Math.random() - 0.5) * w * 0.7; const arz = (Math.random() - 0.5) * d * 0.7;
       rodArray.position.set(arx, getTerrainHeight(arx, arz, 2.0) + 2 + Math.random() * 4, arz);
-      ctx.scene.add(rodArray);
+      mctx.scene.add(rodArray);
     }
 
     // ── Wind-worn rock formations with layered erosion ──
@@ -21399,7 +21401,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       groove.position.y = layers * 0.15; groove.rotation.y = Math.random() * Math.PI;
       erosion.add(groove);
       const erx = (Math.random() - 0.5) * w * 0.8; const erz = (Math.random() - 0.5) * d * 0.8;
-      erosion.position.set(erx, getTerrainHeight(erx, erz, 2.0), erz); ctx.scene.add(erosion);
+      erosion.position.set(erx, getTerrainHeight(erx, erz, 2.0), erz); mctx.scene.add(erosion);
     }
 
     // ── Broken bridge segments with hanging chain details ──
@@ -21430,7 +21432,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       }
       const bbx = (Math.random() - 0.5) * w * 0.6; const bbz = (Math.random() - 0.5) * d * 0.6;
       brokenBridge.position.set(bbx, getTerrainHeight(bbx, bbz, 2.0) + 3 + Math.random() * 3, bbz);
-      brokenBridge.rotation.y = Math.random() * Math.PI; ctx.scene.add(brokenBridge);
+      brokenBridge.rotation.y = Math.random() * Math.PI; mctx.scene.add(brokenBridge);
     }
 
     // ── Storm-damaged structures with tilted/broken elements ──
@@ -21459,7 +21461,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       beam.rotation.z = 0.2 + Math.random() * 0.3; damaged.add(beam);
       const dmx = (Math.random() - 0.5) * w * 0.7; const dmz = (Math.random() - 0.5) * d * 0.7;
       damaged.position.set(dmx, getTerrainHeight(dmx, dmz, 2.0), dmz);
-      damaged.rotation.y = Math.random() * Math.PI; ctx.scene.add(damaged);
+      damaged.rotation.y = Math.random() * Math.PI; mctx.scene.add(damaged);
     }
 
     // ── Tesla coil structures (4) ──
@@ -21478,13 +21480,13 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
         coil.add(spark);
       }
       const coilLight = new THREE.PointLight(0x4488ff, 1.5, 15);
-      coilLight.position.y = baseH + 0.8; coil.add(coilLight); ctx.torchLights.push(coilLight);
+      coilLight.position.y = baseH + 0.8; coil.add(coilLight); mctx.torchLights.push(coilLight);
       const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6 + Math.random() * 4, 6), metalMat);
       conduit.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       conduit.position.y = baseH * 0.7; coil.add(conduit);
       const tcx = (Math.random() - 0.5) * w * 0.6; const tcz = (Math.random() - 0.5) * d * 0.6;
       coil.position.set(tcx, getTerrainHeight(tcx, tcz, 2.0), tcz);
-      ctx.scene.add(coil);
+      mctx.scene.add(coil);
     }
 
     // ── Wind-torn flag remnants (6) ──
@@ -21502,7 +21504,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       }
       const fx = (Math.random() - 0.5) * w * 0.7; const fz = (Math.random() - 0.5) * d * 0.7;
       flagGrp.position.set(fx, getTerrainHeight(fx, fz, 2.0), fz);
-      ctx.scene.add(flagGrp);
+      mctx.scene.add(flagGrp);
     }
 
     // ── Mountain goat skull props (8) ──
@@ -21519,7 +21521,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const gsx = (Math.random() - 0.5) * w * 0.8; const gsz = (Math.random() - 0.5) * d * 0.8;
       skullGrp.position.set(gsx, getTerrainHeight(gsx, gsz, 2.0) + 0.1, gsz);
       skullGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(skullGrp);
+      mctx.scene.add(skullGrp);
     }
 
     // ── Storm-damaged observatory (1) ──
@@ -21541,7 +21543,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       }
       const ox = (Math.random() - 0.5) * w * 0.4; const oz = (Math.random() - 0.5) * d * 0.4;
       obs.position.set(ox, getTerrainHeight(ox, oz, 2.0), oz);
-      ctx.scene.add(obs);
+      mctx.scene.add(obs);
     }
 
     // ── Chain anchors (6) ──
@@ -21565,7 +21567,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       const ax = (Math.random() - 0.5) * w * 0.7; const az = (Math.random() - 0.5) * d * 0.7;
       anchorGrp.position.set(ax, getTerrainHeight(ax, az, 2.0) + 1 + Math.random() * 3, az);
       anchorGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(anchorGrp);
+      mctx.scene.add(anchorGrp);
     }
 
     // ── Wind erosion pillars (5) ──
@@ -21582,7 +21584,7 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       }
       const epx = (Math.random() - 0.5) * w * 0.75; const epz = (Math.random() - 0.5) * d * 0.75;
       pillar.position.set(epx, getTerrainHeight(epx, epz, 2.0), epz);
-      ctx.scene.add(pillar);
+      mctx.scene.add(pillar);
     }
 
     // ── Cracked crystal spheres (4) ──
@@ -21606,19 +21608,19 @@ export function buildStormspirePeak(ctx: MapBuildContext, w: number, d: number):
       }
       const ccx = (Math.random() - 0.5) * w * 0.6; const ccz = (Math.random() - 0.5) * d * 0.6;
       crystalGrp.position.set(ccx, getTerrainHeight(ccx, ccz, 2.0) + crR, ccz);
-      ctx.scene.add(crystalGrp);
+      mctx.scene.add(crystalGrp);
     }
 }
 
-export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x110011, 0.035);
-    ctx.applyTerrainColors(0x0a000a, 0x1a0a1a, 0.8);
-    ctx.dirLight.color.setHex(0x553366);
-    ctx.dirLight.intensity = 0.3;
-    ctx.ambientLight.color.setHex(0x110011);
-    ctx.ambientLight.intensity = 0.2;
-    ctx.hemiLight.color.setHex(0x331144);
-    ctx.hemiLight.groundColor.setHex(0x0a000a);
+export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x110011, 0.035);
+    mctx.applyTerrainColors(0x0a000a, 0x1a0a1a, 0.8);
+    mctx.dirLight.color.setHex(0x553366);
+    mctx.dirLight.intensity = 0.3;
+    mctx.ambientLight.color.setHex(0x110011);
+    mctx.ambientLight.intensity = 0.2;
+    mctx.hemiLight.color.setHex(0x331144);
+    mctx.hemiLight.groundColor.setHex(0x0a000a);
 
     const voidMat = new THREE.MeshStandardMaterial({ color: 0x1a001a, roughness: 0.9 });
     const purpleMat = new THREE.MeshStandardMaterial({ color: 0x440066, roughness: 0.6, emissive: 0x220033, emissiveIntensity: 0.3 });
@@ -21642,7 +21644,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.85,
       );
       frag.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(frag);
+      mctx.scene.add(frag);
     }
 
     // ── Shadow tendrils (15+) ──
@@ -21663,7 +21665,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const tX = (Math.random() - 0.5) * w * 0.8;
       const tZ = (Math.random() - 0.5) * d * 0.8;
       tendril.position.set(tX, getTerrainHeight(tX, tZ, 0.8), tZ);
-      ctx.scene.add(tendril);
+      mctx.scene.add(tendril);
     }
 
     // ── Nightmare eyes (20+) ──
@@ -21682,7 +21684,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.85,
       );
       eyeGroup.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(eyeGroup);
+      mctx.scene.add(eyeGroup);
     }
 
     // ── Void portals (10+) ──
@@ -21695,14 +21697,14 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       portal.add(center);
       const pLight = new THREE.PointLight(0x6600aa, 0.8, 8);
       portal.add(pLight);
-      ctx.torchLights.push(pLight);
+      mctx.torchLights.push(pLight);
       portal.position.set(
         (Math.random() - 0.5) * w * 0.7,
         1 + Math.random() * 5,
         (Math.random() - 0.5) * d * 0.7,
       );
       portal.rotation.set(Math.random() * Math.PI * 0.3, Math.random() * Math.PI, 0);
-      ctx.scene.add(portal);
+      mctx.scene.add(portal);
     }
 
     // ── Distorted mirror shards (12+) ──
@@ -21717,7 +21719,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.8,
       );
       shard.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(shard);
+      mctx.scene.add(shard);
     }
 
     // ── Soul cages (8+) ──
@@ -21730,13 +21732,13 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       soul.add(innerGlow);
       const sLight = new THREE.PointLight(0x8844ff, 0.5, 5);
       soul.add(sLight);
-      ctx.torchLights.push(sLight);
+      mctx.torchLights.push(sLight);
       soul.position.set(
         (Math.random() - 0.5) * w * 0.7,
         1 + Math.random() * 5,
         (Math.random() - 0.5) * d * 0.7,
       );
-      ctx.scene.add(soul);
+      mctx.scene.add(soul);
     }
 
     // ── Corrupted trees (15+) ──
@@ -21762,7 +21764,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const trX = (Math.random() - 0.5) * w * 0.8;
       const trZ = (Math.random() - 0.5) * d * 0.8;
       tree.position.set(trX, getTerrainHeight(trX, trZ, 0.8), trZ);
-      ctx.scene.add(tree);
+      mctx.scene.add(tree);
     }
 
     // ── Nightmare pools (6+) ──
@@ -21776,11 +21778,11 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const poolLight = new THREE.PointLight(0x660099, 0.6, 6);
       poolLight.position.y = -0.5;
       pool.add(poolLight);
-      ctx.torchLights.push(poolLight);
+      mctx.torchLights.push(poolLight);
       const plX = (Math.random() - 0.5) * w * 0.7;
       const plZ = (Math.random() - 0.5) * d * 0.7;
       pool.position.set(plX, getTerrainHeight(plX, plZ, 0.8), plZ);
-      ctx.scene.add(pool);
+      mctx.scene.add(pool);
     }
 
     // ── Floating orbs (20+) ──
@@ -21801,7 +21803,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         0.5 + Math.random() * 8,
         (Math.random() - 0.5) * d * 0.85,
       );
-      ctx.scene.add(orb);
+      mctx.scene.add(orb);
     }
 
     // ── Reality tears (10+) ──
@@ -21816,7 +21818,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.8,
       );
       tear.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.scene.add(tear);
+      mctx.scene.add(tear);
     }
 
     // ── Shadow pillars (8+) ──
@@ -21829,11 +21831,11 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const topLight = new THREE.PointLight(0x8833cc, 0.7, 8);
       topLight.position.y = pilH + 0.3;
       pillar.add(topLight);
-      ctx.torchLights.push(topLight);
+      mctx.torchLights.push(topLight);
       const piX = (Math.random() - 0.5) * w * 0.7;
       const piZ = (Math.random() - 0.5) * d * 0.7;
       pillar.position.set(piX, getTerrainHeight(piX, piZ, 0.8), piZ);
-      ctx.scene.add(pillar);
+      mctx.scene.add(pillar);
     }
 
     // ── Fear totems (5+) ──
@@ -21850,11 +21852,11 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const totemLight = new THREE.PointLight(0x440066, 0.5, 4);
       totemLight.position.y = 2.5;
       totem.add(totemLight);
-      ctx.torchLights.push(totemLight);
+      mctx.torchLights.push(totemLight);
       const ftX = (Math.random() - 0.5) * w * 0.6;
       const ftZ = (Math.random() - 0.5) * d * 0.6;
       totem.position.set(ftX, getTerrainHeight(ftX, ftZ, 0.8), ftZ);
-      ctx.scene.add(totem);
+      mctx.scene.add(totem);
     }
 
     // ── Whispering stones (12+) ──
@@ -21867,7 +21869,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const wsX = (Math.random() - 0.5) * w * 0.8;
       const wsZ = (Math.random() - 0.5) * d * 0.8;
       stone.position.set(wsX, getTerrainHeight(wsX, wsZ, 0.8) + 0.2, wsZ);
-      ctx.scene.add(stone);
+      mctx.scene.add(stone);
     }
 
     // ── Inverted structures (4+) ──
@@ -21890,7 +21892,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         (Math.random() - 0.5) * d * 0.6,
       );
       inverted.rotation.z = Math.PI;
-      ctx.scene.add(inverted);
+      mctx.scene.add(inverted);
     }
 
     // ── Path of torment (10+) ──
@@ -21903,7 +21905,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const ptX = (Math.random() - 0.5) * w * 0.6;
       const ptZ = (Math.random() - 0.5) * d * 0.6;
       pathSeg.position.set(ptX, getTerrainHeight(ptX, ptZ, 0.8) + 0.03, ptZ);
-      ctx.scene.add(pathSeg);
+      mctx.scene.add(pathSeg);
     }
 
     // ── Void tendrils (detailed, rising from ground) ──
@@ -21930,7 +21932,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const tipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x6600cc, emissiveIntensity: 1.0 }));
       tipGlow.position.y = ty; tendril.add(tipGlow);
       const vtx = (Math.random() - 0.5) * w * 0.8; const vtz = (Math.random() - 0.5) * d * 0.8;
-      tendril.position.set(vtx, getTerrainHeight(vtx, vtz, 0.8), vtz); ctx.scene.add(tendril);
+      tendril.position.set(vtx, getTerrainHeight(vtx, vtz, 0.8), vtz); mctx.scene.add(tendril);
     }
 
     // ── Floating shadow fragments ──
@@ -21945,7 +21947,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       frag.add(aura);
       frag.position.set((Math.random() - 0.5) * w * 0.85, 2 + Math.random() * 8, (Math.random() - 0.5) * d * 0.85);
       frag.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(frag);
+      mctx.scene.add(frag);
     }
 
     // ── Dark mirrors ──
@@ -21962,7 +21964,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const distort = new THREE.Mesh(new THREE.PlaneGeometry(mW * 0.8, mH * 0.8), new THREE.MeshStandardMaterial({ color: 0x6600aa, emissive: 0x4400aa, emissiveIntensity: 0.3, transparent: true, opacity: 0.2 }));
       distort.position.z = 0.07; mirror.add(distort);
       mirror.position.set((Math.random() - 0.5) * w * 0.65, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.65);
-      mirror.rotation.y = Math.random() * Math.PI; ctx.scene.add(mirror);
+      mirror.rotation.y = Math.random() * Math.PI; mctx.scene.add(mirror);
     }
 
     // ── Shadow pools (with ripple rings) ──
@@ -21977,9 +21979,9 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         ring.rotation.x = Math.PI / 2; ring.position.y = 0.03; pool.add(ring);
       }
       const pLight = new THREE.PointLight(0x440066, 0.4, 4);
-      pLight.position.y = -0.5; pool.add(pLight); ctx.torchLights.push(pLight);
+      pLight.position.y = -0.5; pool.add(pLight); mctx.torchLights.push(pLight);
       const px = (Math.random() - 0.5) * w * 0.7; const pz = (Math.random() - 0.5) * d * 0.7;
-      pool.position.set(px, getTerrainHeight(px, pz, 0.8), pz); ctx.scene.add(pool);
+      pool.position.set(px, getTerrainHeight(px, pz, 0.8), pz); mctx.scene.add(pool);
     }
 
     // ── Wispy ghost-like forms ──
@@ -22004,7 +22006,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         eye.position.set(ex, 1.22, 0.12); ghost.add(eye);
       }
       ghost.position.set((Math.random() - 0.5) * w * 0.7, 0.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.7);
-      ghost.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(ghost);
+      ghost.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(ghost);
     }
 
     // ── Corrupted crystalline structures ──
@@ -22021,9 +22023,9 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         crystal.add(sub);
       }
       const cLight = new THREE.PointLight(0x6600aa, 0.3, 4);
-      cLight.position.y = cH * 0.8; crystal.add(cLight); ctx.torchLights.push(cLight);
+      cLight.position.y = cH * 0.8; crystal.add(cLight); mctx.torchLights.push(cLight);
       const cx = (Math.random() - 0.5) * w * 0.75; const cz = (Math.random() - 0.5) * d * 0.75;
-      crystal.position.set(cx, getTerrainHeight(cx, cz, 0.8), cz); ctx.scene.add(crystal);
+      crystal.position.set(cx, getTerrainHeight(cx, cz, 0.8), cz); mctx.scene.add(crystal);
     }
 
     // ── Dark energy conduits ──
@@ -22044,7 +22046,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       }
       conduit.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 5, (Math.random() - 0.5) * d * 0.6);
       conduit.rotation.set(Math.random() * Math.PI * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.scene.add(conduit);
+      mctx.scene.add(conduit);
     }
 
     // ── Shadow flame braziers ──
@@ -22062,9 +22064,9 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         flame.position.set((Math.random() - 0.5) * 0.15, 1.6 + f * 0.1, (Math.random() - 0.5) * 0.15); brazier.add(flame);
       }
       const bLight = new THREE.PointLight(0x6600aa, 0.8, 6);
-      bLight.position.y = 1.8; brazier.add(bLight); ctx.torchLights.push(bLight);
+      bLight.position.y = 1.8; brazier.add(bLight); mctx.torchLights.push(bLight);
       const bx = (Math.random() - 0.5) * w * 0.65; const bz = (Math.random() - 0.5) * d * 0.65;
-      brazier.position.set(bx, getTerrainHeight(bx, bz, 0.8), bz); ctx.scene.add(brazier);
+      brazier.position.set(bx, getTerrainHeight(bx, bz, 0.8), bz); mctx.scene.add(brazier);
     }
 
     // ── Shadow tendril pillars (dark twisted cylinders) ──
@@ -22087,9 +22089,9 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const tipOrb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x6600cc, emissiveIntensity: 1.0 }));
       tipOrb.position.y = tpH; tendrilPillar.add(tipOrb);
       const tpL = new THREE.PointLight(0x6600aa, 0.4, 5);
-      tpL.position.y = tpH; tendrilPillar.add(tpL); ctx.torchLights.push(tpL);
+      tpL.position.y = tpH; tendrilPillar.add(tpL); mctx.torchLights.push(tpL);
       const tpx = (Math.random() - 0.5) * w * 0.7; const tpz = (Math.random() - 0.5) * d * 0.7;
-      tendrilPillar.position.set(tpx, getTerrainHeight(tpx, tpz, 0.8), tpz); ctx.scene.add(tendrilPillar);
+      tendrilPillar.position.set(tpx, getTerrainHeight(tpx, tpz, 0.8), tpz); mctx.scene.add(tendrilPillar);
     }
 
     // ── Mirror-like portal surfaces (reflective flat circles) ──
@@ -22111,7 +22113,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         ripple.position.z = 0.005; mirrorPortal.add(ripple);
       }
       mirrorPortal.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.65);
-      mirrorPortal.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, 0); ctx.scene.add(mirrorPortal);
+      mirrorPortal.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, 0); mctx.scene.add(mirrorPortal);
     }
 
     // ── Floating rune symbols (arranged thin boxes forming glyphs) ──
@@ -22145,7 +22147,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       }
       runeGlyph.position.set((Math.random() - 0.5) * w * 0.75, 1 + Math.random() * 7, (Math.random() - 0.5) * d * 0.75);
       runeGlyph.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(runeGlyph);
+      mctx.scene.add(runeGlyph);
     }
 
     // ── Corrupted crystal outcrops (dark translucent cones) ──
@@ -22165,9 +22167,9 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       }
       // Inner glow
       const dcLight = new THREE.PointLight(0x5500aa, 0.3, 4);
-      dcLight.position.y = dcH * 0.5; darkCrystal.add(dcLight); ctx.torchLights.push(dcLight);
+      dcLight.position.y = dcH * 0.5; darkCrystal.add(dcLight); mctx.torchLights.push(dcLight);
       const dcx = (Math.random() - 0.5) * w * 0.75; const dcz = (Math.random() - 0.5) * d * 0.75;
-      darkCrystal.position.set(dcx, getTerrainHeight(dcx, dcz, 0.8), dcz); ctx.scene.add(darkCrystal);
+      darkCrystal.position.set(dcx, getTerrainHeight(dcx, dcz, 0.8), dcz); mctx.scene.add(darkCrystal);
     }
 
     // ── Shadow clone figures (8) ──
@@ -22194,7 +22196,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const scx = (Math.random() - 0.5) * w * 0.75; const scz = (Math.random() - 0.5) * d * 0.75;
       clone.position.set(scx, getTerrainHeight(scx, scz, 0.8), scz);
       clone.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(clone);
+      mctx.scene.add(clone);
     }
 
     // ── Nightmare trees (6) ──
@@ -22225,7 +22227,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       }
       const ntx = (Math.random() - 0.5) * w * 0.7; const ntz = (Math.random() - 0.5) * d * 0.7;
       tree.position.set(ntx, getTerrainHeight(ntx, ntz, 0.8), ntz);
-      ctx.scene.add(tree);
+      mctx.scene.add(tree);
     }
 
     // ── Shadow pools (5) ──
@@ -22239,7 +22241,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       rim.rotation.x = -Math.PI / 2; rim.position.y = 0.03; poolGrp.add(rim);
       const spx = (Math.random() - 0.5) * w * 0.7; const spz = (Math.random() - 0.5) * d * 0.7;
       poolGrp.position.set(spx, getTerrainHeight(spx, spz, 0.8), spz);
-      ctx.scene.add(poolGrp);
+      mctx.scene.add(poolGrp);
     }
 
     // ── Trapped soul lanterns (8) ──
@@ -22256,10 +22258,10 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
         new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x8899ff, emissiveIntensity: 1.0, roughness: 0.2 }));
       soul.position.set(0, 2.8, 0); lantern.add(soul);
       const soulLight = new THREE.PointLight(0x8899ff, 0.6, 6);
-      soulLight.position.set(0, 2.8, 0); lantern.add(soulLight); ctx.torchLights.push(soulLight);
+      soulLight.position.set(0, 2.8, 0); lantern.add(soulLight); mctx.torchLights.push(soulLight);
       const slx = (Math.random() - 0.5) * w * 0.7; const slz = (Math.random() - 0.5) * d * 0.7;
       lantern.position.set(slx, getTerrainHeight(slx, slz, 0.8), slz);
-      ctx.scene.add(lantern);
+      mctx.scene.add(lantern);
     }
 
     // ── Dark altars (3) ──
@@ -22283,7 +22285,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       }
       const alx = (Math.random() - 0.5) * w * 0.6; const alz = (Math.random() - 0.5) * d * 0.6;
       altar.position.set(alx, getTerrainHeight(alx, alz, 0.8), alz);
-      ctx.scene.add(altar);
+      mctx.scene.add(altar);
     }
 
     // ── Shadowy archways (4) ──
@@ -22305,7 +22307,7 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       const arx = (Math.random() - 0.5) * w * 0.65; const arz = (Math.random() - 0.5) * d * 0.65;
       arch.position.set(arx, getTerrainHeight(arx, arz, 0.8), arz);
       arch.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(arch);
+      mctx.scene.add(arch);
     }
 
     // ── Whispering stones (6) ──
@@ -22331,19 +22333,19 @@ export function buildShadowRealm(ctx: MapBuildContext, w: number, d: number): vo
       }
       const wsx = (Math.random() - 0.5) * w * 0.7; const wsz = (Math.random() - 0.5) * d * 0.7;
       stoneRing.position.set(wsx, getTerrainHeight(wsx, wsz, 0.8), wsz);
-      ctx.scene.add(stoneRing);
+      mctx.scene.add(stoneRing);
     }
 }
 
-export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x0a0011, 0.04);
-    ctx.applyTerrainColors(0x050008, 0x0a0a15, 0.5);
-    ctx.dirLight.color.setHex(0x221133);
-    ctx.dirLight.intensity = 0.15;
-    ctx.ambientLight.color.setHex(0x050008);
-    ctx.ambientLight.intensity = 0.1;
-    ctx.hemiLight.color.setHex(0x110022);
-    ctx.hemiLight.groundColor.setHex(0x050005);
+export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x0a0011, 0.04);
+    mctx.applyTerrainColors(0x050008, 0x0a0a15, 0.5);
+    mctx.dirLight.color.setHex(0x221133);
+    mctx.dirLight.intensity = 0.15;
+    mctx.ambientLight.color.setHex(0x050008);
+    mctx.ambientLight.intensity = 0.1;
+    mctx.hemiLight.color.setHex(0x110022);
+    mctx.hemiLight.groundColor.setHex(0x050005);
 
     const voidBlackMat = new THREE.MeshStandardMaterial({ color: 0x080010, roughness: 0.95 });
     const crystalPurpleMat = new THREE.MeshStandardMaterial({ color: 0x5500aa, emissive: 0x4400aa, emissiveIntensity: 0.7, roughness: 0.2, metalness: 0.3 });
@@ -22370,7 +22372,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const cLight = new THREE.PointLight(i % 2 === 0 ? 0x6600cc : 0x2244cc, 1.0 + Math.random() * 0.8, 10 + Math.random() * 5);
       cLight.position.y = cH * 0.7;
       crystal.add(cLight);
-      ctx.torchLights.push(cLight);
+      mctx.torchLights.push(cLight);
       // Secondary smaller shards
       for (let s = 0; s < 2; s++) {
         const subH = cH * (0.3 + Math.random() * 0.3);
@@ -22383,7 +22385,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const crX = (Math.random() - 0.5) * w * 0.85;
       const crZ = (Math.random() - 0.5) * d * 0.85;
       crystal.position.set(crX, getTerrainHeight(crX, crZ, 0.5), crZ);
-      ctx.scene.add(crystal);
+      mctx.scene.add(crystal);
     }
 
     // ── Floating debris islands (20+) ──
@@ -22406,7 +22408,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         (Math.random() - 0.5) * d * 0.85,
       );
       island.rotation.set((Math.random() - 0.5) * 0.2, Math.random() * Math.PI, (Math.random() - 0.5) * 0.2);
-      ctx.scene.add(island);
+      mctx.scene.add(island);
     }
 
     // ── Ancient rune circles (15+) ──
@@ -22427,7 +22429,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const rcX = (Math.random() - 0.5) * w * 0.75;
       const rcZ = (Math.random() - 0.5) * d * 0.75;
       runeCircle.position.set(rcX, getTerrainHeight(rcX, rcZ, 0.5) + 0.03, rcZ);
-      ctx.scene.add(runeCircle);
+      mctx.scene.add(runeCircle);
     }
 
     // ── Energy conduits (12+) ──
@@ -22440,7 +22442,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         (Math.random() - 0.5) * d * 0.7,
       );
       conduit.rotation.set(Math.random() * Math.PI * 0.5, Math.random() * Math.PI, Math.random() * Math.PI * 0.5);
-      ctx.scene.add(conduit);
+      mctx.scene.add(conduit);
     }
 
     // ── Imprisoned titans (8+) ──
@@ -22485,7 +22487,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const tiZ = (Math.random() - 0.5) * d * 0.6;
       titan.position.set(tiX, getTerrainHeight(tiX, tiZ, 0.5) - 0.5, tiZ);
       titan.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(titan);
+      mctx.scene.add(titan);
     }
 
     // ── Reality fractures (10+) ──
@@ -22500,7 +22502,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         (Math.random() - 0.5) * d * 0.8,
       );
       fracture.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
-      ctx.scene.add(fracture);
+      mctx.scene.add(fracture);
     }
 
     // ── Abyssal tentacles (15+) ──
@@ -22522,7 +22524,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const teX = (Math.random() - 0.5) * w * 0.8;
       const teZ = (Math.random() - 0.5) * d * 0.8;
       tentacle.position.set(teX, getTerrainHeight(teX, teZ, 0.5), teZ);
-      ctx.scene.add(tentacle);
+      mctx.scene.add(tentacle);
     }
 
     // ── Ancient gates (6+) ──
@@ -22546,7 +22548,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const gaZ = (Math.random() - 0.5) * d * 0.6;
       gate.position.set(gaX, getTerrainHeight(gaX, gaZ, 0.5), gaZ);
       gate.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(gate);
+      mctx.scene.add(gate);
     }
 
     // ── Starfield particles (20+) ──
@@ -22560,7 +22562,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         Math.random() * 15,
         (Math.random() - 0.5) * d * 0.95,
       );
-      ctx.scene.add(star);
+      mctx.scene.add(star);
     }
 
     // ── Gravitational wells (8+) ──
@@ -22577,7 +22579,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const weX = (Math.random() - 0.5) * w * 0.7;
       const weZ = (Math.random() - 0.5) * d * 0.7;
       well.position.set(weX, getTerrainHeight(weX, weZ, 0.5) + 0.02, weZ);
-      ctx.scene.add(well);
+      mctx.scene.add(well);
     }
 
     // ── Petrified warriors (10+) ──
@@ -22613,7 +22615,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const waZ = (Math.random() - 0.5) * d * 0.7;
       warrior.position.set(waX, getTerrainHeight(waX, waZ, 0.5), waZ);
       warrior.rotation.y = Math.random() * Math.PI * 2;
-      ctx.scene.add(warrior);
+      mctx.scene.add(warrior);
     }
 
     // ── Elder god eyes (5+) ──
@@ -22631,14 +22633,14 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const eLight = new THREE.PointLight(0xff2200, 1.5, 15);
       eLight.position.z = eyeR * 0.5;
       godEye.add(eLight);
-      ctx.torchLights.push(eLight);
+      mctx.torchLights.push(eLight);
       godEye.position.set(
         (Math.random() - 0.5) * w * 0.5,
         3 + Math.random() * 6,
         (Math.random() - 0.5) * d * 0.5,
       );
       godEye.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, 0);
-      ctx.scene.add(godEye);
+      mctx.scene.add(godEye);
     }
 
     // ── Bone spires (12+) ──
@@ -22653,7 +22655,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       spire.position.set(bsX, getTerrainHeight(bsX, bsZ, 0.5) + spireH / 2, bsZ);
       spire.rotation.x = (Math.random() - 0.5) * 0.15;
       spire.rotation.z = (Math.random() - 0.5) * 0.15;
-      ctx.scene.add(spire);
+      mctx.scene.add(spire);
     }
 
     // ── Chaos fountains (4+) ──
@@ -22678,11 +22680,11 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const foLight = new THREE.PointLight(0x6633ff, 0.8, 8);
       foLight.position.y = 2;
       fountain.add(foLight);
-      ctx.torchLights.push(foLight);
+      mctx.torchLights.push(foLight);
       const foX = (Math.random() - 0.5) * w * 0.5;
       const foZ = (Math.random() - 0.5) * d * 0.5;
       fountain.position.set(foX, getTerrainHeight(foX, foZ, 0.5), foZ);
-      ctx.scene.add(fountain);
+      mctx.scene.add(fountain);
     }
 
     // ── Void chains (8+) ──
@@ -22706,7 +22708,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         Math.random() * Math.PI,
         (Math.random() - 0.5) * 0.5,
       );
-      ctx.scene.add(voidChain);
+      mctx.scene.add(voidChain);
     }
 
     // ── Ancient cosmic structures ──
@@ -22729,9 +22731,9 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       orbit.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       orbit.position.y = pyrH * 0.5; cosmic.add(orbit);
       const csLight = new THREE.PointLight(0x4422cc, 0.8, 10);
-      csLight.position.y = pyrH * 0.7; cosmic.add(csLight); ctx.torchLights.push(csLight);
+      csLight.position.y = pyrH * 0.7; cosmic.add(csLight); mctx.torchLights.push(csLight);
       cosmic.position.set((Math.random() - 0.5) * w * 0.5, 2 + Math.random() * 6, (Math.random() - 0.5) * d * 0.5);
-      cosmic.rotation.y = Math.random() * Math.PI; ctx.scene.add(cosmic);
+      cosmic.rotation.y = Math.random() * Math.PI; mctx.scene.add(cosmic);
     }
 
     // ── Tentacle formations ──
@@ -22756,7 +22758,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         }
       }
       const ttx = (Math.random() - 0.5) * w * 0.8; const ttz = (Math.random() - 0.5) * d * 0.8;
-      tent.position.set(ttx, getTerrainHeight(ttx, ttz, 0.5), ttz); ctx.scene.add(tent);
+      tent.position.set(ttx, getTerrainHeight(ttx, ttz, 0.5), ttz); mctx.scene.add(tent);
     }
 
     // ── Eye-like formations ──
@@ -22780,9 +22782,9 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         vein.rotation.z = va + Math.PI / 2; eye.add(vein);
       }
       const eLight = new THREE.PointLight(0xff4400, 0.4, 6);
-      eye.add(eLight); ctx.torchLights.push(eLight);
+      eye.add(eLight); mctx.torchLights.push(eLight);
       eye.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 6, (Math.random() - 0.5) * d * 0.6);
-      eye.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, 0); ctx.scene.add(eye);
+      eye.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, 0); mctx.scene.add(eye);
     }
 
     // ── Reality tears (enhanced) ──
@@ -22803,7 +22805,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         leak.position.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * tH * 0.5, 0.1); tear.add(leak);
       }
       tear.position.set((Math.random() - 0.5) * w * 0.7, 2 + Math.random() * 6, (Math.random() - 0.5) * d * 0.7);
-      tear.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3); ctx.scene.add(tear);
+      tear.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3); mctx.scene.add(tear);
     }
 
     // ── Floating runes in air ──
@@ -22818,7 +22820,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       rune.add(aura);
       rune.position.set((Math.random() - 0.5) * w * 0.8, 1 + Math.random() * 8, (Math.random() - 0.5) * d * 0.8);
       rune.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(rune);
+      mctx.scene.add(rune);
     }
 
     // ── Primordial ooze pools ──
@@ -22835,7 +22837,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         ooze.add(bubble);
       }
       const ox = (Math.random() - 0.5) * w * 0.7; const oz = (Math.random() - 0.5) * d * 0.7;
-      ooze.position.set(ox, getTerrainHeight(ox, oz, 0.5), oz); ctx.scene.add(ooze);
+      ooze.position.set(ox, getTerrainHeight(ox, oz, 0.5), oz); mctx.scene.add(ooze);
     }
 
     // ── Petrified titan bones ──
@@ -22853,7 +22855,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       }
       const bnx = (Math.random() - 0.5) * w * 0.7; const bnz = (Math.random() - 0.5) * d * 0.7;
       bone.position.set(bnx, getTerrainHeight(bnx, bnz, 0.5), bnz);
-      bone.rotation.y = Math.random() * Math.PI; ctx.scene.add(bone);
+      bone.rotation.y = Math.random() * Math.PI; mctx.scene.add(bone);
     }
 
     // ── Dimensional rifts ──
@@ -22874,10 +22876,10 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         arc.rotation.z = arcAngle + Math.PI / 2; rift.add(arc);
       }
       const rLight = new THREE.PointLight(0x6633ff, 1.2, 10);
-      rift.add(rLight); ctx.torchLights.push(rLight);
+      rift.add(rLight); mctx.torchLights.push(rLight);
       rift.position.set((Math.random() - 0.5) * w * 0.5, 3 + Math.random() * 5, (Math.random() - 0.5) * d * 0.5);
       rift.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.scene.add(rift);
+      mctx.scene.add(rift);
     }
 
     // ── Eldritch symbols on ground ──
@@ -22902,7 +22904,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         symGrp.add(line);
       }
       const sx = (Math.random() - 0.5) * w * 0.7; const sz = (Math.random() - 0.5) * d * 0.7;
-      symGrp.position.set(sx, getTerrainHeight(sx, sz, 0.5) + 0.03, sz); ctx.scene.add(symGrp);
+      symGrp.position.set(sx, getTerrainHeight(sx, sz, 0.5) + 0.03, sz); mctx.scene.add(symGrp);
     }
 
     // ── Ancient fossil details embedded in walls (spiral curve approximations) ──
@@ -22931,7 +22933,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const plate = new THREE.Mesh(new THREE.CircleGeometry(0.4, 16), new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.8 }));
       plate.position.z = -0.01; fossil.add(plate);
       fossil.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
-      fossil.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3); ctx.scene.add(fossil);
+      fossil.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3); mctx.scene.add(fossil);
     }
 
     // ── Primordial ooze pools (enhanced with translucent surfaces and bubbles) ──
@@ -22957,9 +22959,9 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         ripple.rotation.x = Math.PI / 2; ripple.position.y = 0.025; oozePool.add(ripple);
       }
       const oLight = new THREE.PointLight(0x225522, 0.3, 4);
-      oLight.position.y = 0.5; oozePool.add(oLight); ctx.torchLights.push(oLight);
+      oLight.position.y = 0.5; oozePool.add(oLight); mctx.torchLights.push(oLight);
       const opx = (Math.random() - 0.5) * w * 0.7; const opz = (Math.random() - 0.5) * d * 0.7;
-      oozePool.position.set(opx, getTerrainHeight(opx, opz, 0.5), opz); ctx.scene.add(oozePool);
+      oozePool.position.set(opx, getTerrainHeight(opx, opz, 0.5), opz); mctx.scene.add(oozePool);
     }
 
     // ── Tentacle props (tapered curved cylinder chains) ──
@@ -22989,7 +22991,7 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
       const tentTip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshStandardMaterial({ color: 0x336633, emissive: 0x224422, emissiveIntensity: 0.5 }));
       tentTip.position.set(tpx2, tpy, tpz2); tentProp.add(tentTip);
       const ttx2 = (Math.random() - 0.5) * w * 0.75; const ttz2 = (Math.random() - 0.5) * d * 0.75;
-      tentProp.position.set(ttx2, getTerrainHeight(ttx2, ttz2, 0.5), ttz2); ctx.scene.add(tentProp);
+      tentProp.position.set(ttx2, getTerrainHeight(ttx2, ttz2, 0.5), ttz2); mctx.scene.add(tentProp);
     }
 
     // ── Eldritch eye motifs on surfaces (concentric circles with iris detail) ──
@@ -23021,19 +23023,19 @@ export function buildPrimordialAbyss(ctx: MapBuildContext, w: number, d: number)
         vein.rotation.z = va + Math.PI / 2; eyeMotif.add(vein);
       }
       eyeMotif.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.65);
-      eyeMotif.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI, 0); ctx.scene.add(eyeMotif);
+      eyeMotif.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI, 0); mctx.scene.add(eyeMotif);
     }
 }
 
-export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x112244, 0.014);
-    ctx.applyTerrainColors(0x1a3322, 0x2a4433, 1.2);
-    ctx.dirLight.color.setHex(0x8899cc);
-    ctx.dirLight.intensity = 0.8;
-    ctx.ambientLight.color.setHex(0x223355);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x6677aa);
-    ctx.hemiLight.groundColor.setHex(0x112211);
+export function buildMoonlitGrove(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x112244, 0.014);
+    mctx.applyTerrainColors(0x1a3322, 0x2a4433, 1.2);
+    mctx.dirLight.color.setHex(0x8899cc);
+    mctx.dirLight.intensity = 0.8;
+    mctx.ambientLight.color.setHex(0x223355);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x6677aa);
+    mctx.hemiLight.groundColor.setHex(0x112211);
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x224466, roughness: 0.5, transparent: true, opacity: 0.7 });
     const glowMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
     const moonMat = new THREE.MeshStandardMaterial({ color: 0xccddff, emissive: 0x6688cc, emissiveIntensity: 0.5 });
@@ -23067,7 +23069,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       }
       const tx = (Math.random()-0.5)*w*0.85, tz = (Math.random()-0.5)*d*0.85;
       tree.position.set(tx, getTerrainHeight(tx, tz, 1.2), tz);
-      ctx.scene.add(tree);
+      mctx.scene.add(tree);
     }
     // Weeping willow trees
     for (let i = 0; i < 8; i++) {
@@ -23085,7 +23087,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       }
       const wx = (Math.random()-0.5)*w*0.6, wz = (Math.random()-0.5)*d*0.6;
       willow.position.set(wx, getTerrainHeight(wx, wz, 1.2), wz);
-      ctx.scene.add(willow);
+      mctx.scene.add(willow);
     }
     // Moonflowers with petals
     for (let i = 0; i < 35; i++) {
@@ -23103,7 +23105,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       center.position.y = stemH + 0.03; flower.add(center);
       const fx = (Math.random()-0.5)*w*0.8, fz = (Math.random()-0.5)*d*0.8;
       flower.position.set(fx, getTerrainHeight(fx, fz, 1.2), fz);
-      ctx.scene.add(flower);
+      mctx.scene.add(flower);
     }
     // Moonbeam shafts (translucent cylinders from above)
     for (let i = 0; i < 12; i++) {
@@ -23112,10 +23114,10 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(beamR * 0.3, beamR, beamH, 27),
         new THREE.MeshStandardMaterial({ color: 0xaabbdd, emissive: 0x667799, emissiveIntensity: 0.4, transparent: true, opacity: 0.08 }));
       const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
-      beam.position.set(bx, beamH / 2 + 1, bz); ctx.scene.add(beam);
+      beam.position.set(bx, beamH / 2 + 1, bz); mctx.scene.add(beam);
       const spot = new THREE.Mesh(new THREE.CircleGeometry(beamR, 30), new THREE.MeshStandardMaterial({ color: 0x99aacc, emissive: 0x556688, emissiveIntensity: 0.5, transparent: true, opacity: 0.25 }));
       spot.rotation.x = -Math.PI / 2;
-      spot.position.set(bx, getTerrainHeight(bx, bz, 1.2) + 0.02, bz); ctx.scene.add(spot);
+      spot.position.set(bx, getTerrainHeight(bx, bz, 1.2) + 0.02, bz); mctx.scene.add(spot);
     }
     // Mushroom fairy rings
     for (let i = 0; i < 6; i++) {
@@ -23130,7 +23132,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         const cap = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 36, 17), glowMat);
         cap.scale.y = 0.5; cap.position.y = 0.14; mush.add(cap);
         const mmx = ringX + Math.cos(mAngle) * ringR, mmz = ringZ + Math.sin(mAngle) * ringR;
-        mush.position.set(mmx, getTerrainHeight(mmx, mmz, 1.2), mmz); ctx.scene.add(mush);
+        mush.position.set(mmx, getTerrainHeight(mmx, mmz, 1.2), mmz); mctx.scene.add(mush);
       }
     }
     // Scattered mushrooms
@@ -23141,7 +23143,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 36, 17), glowMat);
       cap.scale.y = 0.5; cap.position.y = 0.17; mush.add(cap);
       const mx = (Math.random()-0.5)*w*0.8, mz = (Math.random()-0.5)*d*0.8;
-      mush.position.set(mx, getTerrainHeight(mx, mz, 1.2), mz); ctx.scene.add(mush);
+      mush.position.set(mx, getTerrainHeight(mx, mz, 1.2), mz); mctx.scene.add(mush);
     }
     // Crystal clear ponds
     for (let i = 0; i < 5; i++) {
@@ -23149,16 +23151,16 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       const pond = new THREE.Mesh(new THREE.CircleGeometry(pondR, 44), waterMat);
       pond.rotation.x = -Math.PI / 2;
       const px = (Math.random()-0.5)*w*0.5, pz = (Math.random()-0.5)*d*0.5;
-      pond.position.set(px, getTerrainHeight(px, pz, 1.2) - 0.05, pz); ctx.scene.add(pond);
+      pond.position.set(px, getTerrainHeight(px, pz, 1.2) - 0.05, pz); mctx.scene.add(pond);
       const shimmer = new THREE.Mesh(new THREE.CircleGeometry(pondR * 0.3, 27), new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0xaabbdd, emissiveIntensity: 0.6, transparent: true, opacity: 0.3 }));
       shimmer.rotation.x = -Math.PI / 2;
       shimmer.position.set(px + (Math.random()-0.5)*pondR*0.4, getTerrainHeight(px, pz, 1.2) - 0.04, pz + (Math.random()-0.5)*pondR*0.4);
-      ctx.scene.add(shimmer);
+      mctx.scene.add(shimmer);
       for (let l = 0; l < 3; l++) {
         const lily = new THREE.Mesh(new THREE.CircleGeometry(0.15 + Math.random() * 0.1, 27), new THREE.MeshStandardMaterial({ color: 0x336644, roughness: 0.6 }));
         lily.rotation.x = -Math.PI / 2;
         lily.position.set(px + (Math.random()-0.5)*pondR, getTerrainHeight(px, pz, 1.2) - 0.03, pz + (Math.random()-0.5)*pondR);
-        ctx.scene.add(lily);
+        mctx.scene.add(lily);
       }
     }
     // Owl nests in trees
@@ -23171,14 +23173,14 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         egg.scale.y = 1.3; egg.position.set((Math.random()-0.5)*0.12, 0.06, (Math.random()-0.5)*0.12); nest.add(egg);
       }
       const nx = (Math.random()-0.5)*w*0.6, nz = (Math.random()-0.5)*d*0.6;
-      nest.position.set(nx, getTerrainHeight(nx, nz, 1.2) + 3 + Math.random() * 3, nz); ctx.scene.add(nest);
+      nest.position.set(nx, getTerrainHeight(nx, nz, 1.2) + 3 + Math.random() * 3, nz); mctx.scene.add(nest);
     }
     // Silver moss patches
     for (let i = 0; i < 40; i++) {
       const moss = new THREE.Mesh(new THREE.CircleGeometry(0.2 + Math.random() * 0.4, 23), mossMat);
       moss.rotation.x = -Math.PI / 2;
       const mx = (Math.random()-0.5)*w*0.85, mz = (Math.random()-0.5)*d*0.85;
-      moss.position.set(mx, getTerrainHeight(mx, mz, 1.2) + 0.01, mz); ctx.scene.add(moss);
+      moss.position.set(mx, getTerrainHeight(mx, mz, 1.2) + 0.01, mz); mctx.scene.add(moss);
     }
     // Moonlit stones
     for (let i = 0; i < 25; i++) {
@@ -23186,7 +23188,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
       stone.position.set(sx, getTerrainHeight(sx, sz, 1.2)+0.15, sz);
       stone.rotation.set(Math.random(), Math.random(), Math.random());
-      stone.castShadow = true; ctx.scene.add(stone);
+      stone.castShadow = true; mctx.scene.add(stone);
     }
     // Fallen logs with moss
     for (let i = 0; i < 10; i++) {
@@ -23201,7 +23203,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       }
       const lx = (Math.random()-0.5)*w*0.7, lz = (Math.random()-0.5)*d*0.7;
       log.position.set(lx, getTerrainHeight(lx, lz, 1.2), lz);
-      log.rotation.y = Math.random() * Math.PI; ctx.scene.add(log);
+      log.rotation.y = Math.random() * Math.PI; mctx.scene.add(log);
     }
     // Fireflies with glow spheres
     for (let i = 0; i < 12; i++) {
@@ -23210,13 +23212,13 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       const fly = new THREE.PointLight(0x88ccaa, 0.4, 6);
       flyGroup.add(fly);
       flyGroup.position.set((Math.random()-0.5)*w*0.7, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.7);
-      ctx.scene.add(flyGroup); ctx.torchLights.push(fly);
+      mctx.scene.add(flyGroup); mctx.torchLights.push(fly);
     }
     // Flower patches
     for (let i = 0; i < 30; i++) {
       const fl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 17, 16), new THREE.MeshStandardMaterial({ color: [0xcc88ff, 0x88aaff, 0xffffff][i%3], emissive: 0x4444aa, emissiveIntensity: 0.3 }));
       const fx = (Math.random()-0.5)*w*0.8, fz = (Math.random()-0.5)*d*0.8;
-      fl.position.set(fx, getTerrainHeight(fx, fz, 1.2)+0.08, fz); ctx.scene.add(fl);
+      fl.position.set(fx, getTerrainHeight(fx, fz, 1.2)+0.08, fz); mctx.scene.add(fl);
     }
     // Fern clusters
     for (let i = 0; i < 20; i++) {
@@ -23226,7 +23228,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         frond.rotation.y = f * Math.PI / 2; frond.rotation.x = -0.3; frond.position.y = 0.2; fern.add(frond);
       }
       const fx = (Math.random()-0.5)*w*0.8, fz = (Math.random()-0.5)*d*0.8;
-      fern.position.set(fx, getTerrainHeight(fx, fz, 1.2), fz); ctx.scene.add(fern);
+      fern.position.set(fx, getTerrainHeight(fx, fz, 1.2), fz); mctx.scene.add(fern);
     }
     // Ground mist
     for (let i = 0; i < 15; i++) {
@@ -23234,7 +23236,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         new THREE.MeshStandardMaterial({ color: 0x8899cc, emissive: 0x334466, emissiveIntensity: 0.2, transparent: true, opacity: 0.06 }));
       mist.rotation.x = -Math.PI / 2;
       const mx = (Math.random()-0.5)*w*0.7, mz = (Math.random()-0.5)*d*0.7;
-      mist.position.set(mx, getTerrainHeight(mx, mz, 1.2) + 0.15, mz); ctx.scene.add(mist);
+      mist.position.set(mx, getTerrainHeight(mx, mz, 1.2) + 0.15, mz); mctx.scene.add(mist);
     }
     // ── Glowing moonflower petal detail ──
     for (let i = 0; i < 20; i++) {
@@ -23250,7 +23252,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       petalGrp.add(pistil);
       const pfx = (Math.random()-0.5)*w*0.75, pfz = (Math.random()-0.5)*d*0.75;
       petalGrp.position.set(pfx, getTerrainHeight(pfx, pfz, 1.2) + 0.25 + Math.random() * 0.15, pfz);
-      ctx.scene.add(petalGrp);
+      mctx.scene.add(petalGrp);
     }
     // ── Firefly clusters (tiny emissive spheres in groups) ──
     for (let i = 0; i < 10; i++) {
@@ -23262,7 +23264,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         cluster.add(fly);
       }
       cluster.position.set((Math.random()-0.5)*w*0.7, 1.0 + Math.random()*3.5, (Math.random()-0.5)*d*0.7);
-      ctx.scene.add(cluster);
+      mctx.scene.add(cluster);
     }
     // ── Ancient druid stone circles ──
     for (let i = 0; i < 4; i++) {
@@ -23277,12 +23279,12 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         standing.position.set(sx2, getTerrainHeight(sx2, sz2, 1.2) + stoneH / 2, sz2);
         standing.rotation.y = sAngle + Math.PI / 2;
         standing.rotation.z = (Math.random()-0.5)*0.1;
-        standing.castShadow = true; ctx.scene.add(standing);
+        standing.castShadow = true; mctx.scene.add(standing);
       }
       const capA1 = 0, capA2 = (1 / stoneCount) * Math.PI * 2;
       const capstone = new THREE.Mesh(new THREE.BoxGeometry(circleR * 0.4, 0.15, 0.3), moonMat);
       capstone.position.set(circleX + Math.cos((capA1+capA2)/2)*circleR, getTerrainHeight(circleX, circleZ, 1.2) + 1.6, circleZ + Math.sin((capA1+capA2)/2)*circleR);
-      capstone.rotation.y = (capA1+capA2)/2 + Math.PI/2; ctx.scene.add(capstone);
+      capstone.rotation.y = (capA1+capA2)/2 + Math.PI/2; mctx.scene.add(capstone);
     }
     // ── Silvery vine tendrils hanging from trees ──
     for (let i = 0; i < 25; i++) {
@@ -23299,7 +23301,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       }
       const vx = (Math.random()-0.5)*w*0.8, vz = (Math.random()-0.5)*d*0.8;
       vine.position.set(vx, getTerrainHeight(vx, vz, 1.2) + 3 + Math.random() * 4, vz);
-      ctx.scene.add(vine);
+      mctx.scene.add(vine);
     }
 
     // ── Dense ground grass ──
@@ -23325,7 +23327,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       const gx = (Math.random() - 0.5) * w * 0.9;
       const gz = (Math.random() - 0.5) * d * 0.9;
       grassClump.position.set(gx, getTerrainHeight(gx, gz, 1.2), gz);
-      ctx.scene.add(grassClump);
+      mctx.scene.add(grassClump);
     }
     // ── Ancient druid stone circles (detailed) ──
     for (let i = 0; i < 3; i++) {
@@ -23340,12 +23342,12 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         standing.position.set(stX, getTerrainHeight(stX, stZ, 1.2) + sH / 2, stZ);
         standing.rotation.y = sA + Math.PI / 2;
         standing.rotation.z = (Math.random()-0.5)*0.08;
-        standing.castShadow = true; ctx.scene.add(standing);
+        standing.castShadow = true; mctx.scene.add(standing);
         // Moss/lichen patches on stones
         for (let lp = 0; lp < 2; lp++) {
           const lichen = new THREE.Mesh(new THREE.CircleGeometry(0.08 + Math.random() * 0.06, 16), mossMat);
           lichen.position.set(stX + (Math.random()-0.5)*0.1, getTerrainHeight(stX, stZ, 1.2) + sH * (0.3 + Math.random()*0.4), stZ + (Math.random()-0.5)*0.1);
-          lichen.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(lichen);
+          lichen.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(lichen);
         }
         // Capstones on some pairs
         if (s % 3 === 0 && s + 1 < stoneN) {
@@ -23354,7 +23356,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
           const capZ = scZ + Math.sin((sA+nA)/2) * scR;
           const cap = new THREE.Mesh(new THREE.BoxGeometry(scR * 0.35, 0.15, 0.3), moonMat);
           cap.position.set(capX, getTerrainHeight(capX, capZ, 1.2) + sH + 0.1, capZ);
-          cap.rotation.y = (sA+nA)/2 + Math.PI/2; ctx.scene.add(cap);
+          cap.rotation.y = (sA+nA)/2 + Math.PI/2; mctx.scene.add(cap);
         }
       }
     }
@@ -23370,9 +23372,9 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         bush.add(flower);
       }
       const bLight = new THREE.PointLight(0xeeeeff, 0.2, 4);
-      bLight.position.y = 0.5; bush.add(bLight); ctx.torchLights.push(bLight);
+      bLight.position.y = 0.5; bush.add(bLight); mctx.torchLights.push(bLight);
       const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
-      bush.position.set(bx, getTerrainHeight(bx, bz, 1.2), bz); ctx.scene.add(bush);
+      bush.position.set(bx, getTerrainHeight(bx, bz, 1.2), bz); mctx.scene.add(bush);
     }
     // ── Firefly swarms ──
     for (let i = 0; i < 12; i++) {
@@ -23385,7 +23387,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         swarm.add(fly);
       }
       swarm.position.set((Math.random()-0.5)*w*0.7, 1.0 + Math.random()*3.0, (Math.random()-0.5)*d*0.7);
-      ctx.scene.add(swarm);
+      mctx.scene.add(swarm);
     }
     // ── Silver birch trees ──
     for (let i = 0; i < 8; i++) {
@@ -23410,7 +23412,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         can.castShadow = true; birch.add(can);
       }
       const bx = (Math.random()-0.5)*w*0.75, bz = (Math.random()-0.5)*d*0.75;
-      birch.position.set(bx, getTerrainHeight(bx, bz, 1.2), bz); ctx.scene.add(birch);
+      birch.position.set(bx, getTerrainHeight(bx, bz, 1.2), bz); mctx.scene.add(birch);
     }
     // ── Fairy ring mushrooms ──
     for (let i = 0; i < 6; i++) {
@@ -23425,7 +23427,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         const cap = new THREE.Mesh(new THREE.SphereGeometry(0.035 + Math.random()*0.02, 16, 12), glowMat);
         cap.scale.y = 0.5; cap.position.y = 0.1; mush.add(cap);
         const mx = frX + Math.cos(mA) * frR, mz = frZ + Math.sin(mA) * frR;
-        mush.position.set(mx, getTerrainHeight(mx, mz, 1.2), mz); ctx.scene.add(mush);
+        mush.position.set(mx, getTerrainHeight(mx, mz, 1.2), mz); mctx.scene.add(mush);
       }
     }
     // ── Moonlit pools ──
@@ -23435,15 +23437,15 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       const poolSurface = new THREE.Mesh(new THREE.CircleGeometry(poolR, 36),
         new THREE.MeshStandardMaterial({ color: 0x8899bb, metalness: 0.5, roughness: 0.1, transparent: true, opacity: 0.5 }));
       poolSurface.rotation.x = -Math.PI / 2;
-      poolSurface.position.set(px, getTerrainHeight(px, pz, 1.2) - 0.04, pz); ctx.scene.add(poolSurface);
+      poolSurface.position.set(px, getTerrainHeight(px, pz, 1.2) - 0.04, pz); mctx.scene.add(poolSurface);
       // Moss ring around pool
       const mossRing = new THREE.Mesh(new THREE.TorusGeometry(poolR + 0.1, 0.15, 8, 32), mossMat);
       mossRing.rotation.x = -Math.PI / 2;
-      mossRing.position.set(px, getTerrainHeight(px, pz, 1.2) + 0.01, pz); ctx.scene.add(mossRing);
+      mossRing.position.set(px, getTerrainHeight(px, pz, 1.2) + 0.01, pz); mctx.scene.add(mossRing);
       // Moonbeam shaft from above
       const moonShaft = new THREE.Mesh(new THREE.CylinderGeometry(poolR * 0.4, poolR * 0.8, 10, 20),
         new THREE.MeshStandardMaterial({ color: 0xddeeff, emissive: 0x8899cc, emissiveIntensity: 0.3, transparent: true, opacity: 0.05 }));
-      moonShaft.position.set(px, 5, pz); ctx.scene.add(moonShaft);
+      moonShaft.position.set(px, 5, pz); mctx.scene.add(moonShaft);
     }
     // ── Ancient tree stumps with carvings ──
     for (let i = 0; i < 5; i++) {
@@ -23465,7 +23467,7 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
       stumpMoss.position.set((Math.random()-0.5)*stumpR*0.5, stumpH + 0.02, (Math.random()-0.5)*stumpR*0.5);
       stump.add(stumpMoss);
       const stX = (Math.random()-0.5)*w*0.7, stZ = (Math.random()-0.5)*d*0.7;
-      stump.position.set(stX, getTerrainHeight(stX, stZ, 1.2), stZ); ctx.scene.add(stump);
+      stump.position.set(stX, getTerrainHeight(stX, stZ, 1.2), stZ); mctx.scene.add(stump);
     }
     // ── Glowing crystal outcrops ──
     for (let i = 0; i < 8; i++) {
@@ -23480,21 +23482,21 @@ export function buildMoonlitGrove(ctx: MapBuildContext, w: number, d: number): v
         crystalGroup.add(crystal);
       }
       const cLight = new THREE.PointLight(0xaabbdd, 0.2, 3);
-      cLight.position.y = 0.15; crystalGroup.add(cLight); ctx.torchLights.push(cLight);
+      cLight.position.y = 0.15; crystalGroup.add(cLight); mctx.torchLights.push(cLight);
       const cx = (Math.random()-0.5)*w*0.7, cz = (Math.random()-0.5)*d*0.7;
-      crystalGroup.position.set(cx, getTerrainHeight(cx, cz, 1.2), cz); ctx.scene.add(crystalGroup);
+      crystalGroup.position.set(cx, getTerrainHeight(cx, cz, 1.2), cz); mctx.scene.add(crystalGroup);
     }
 }
 
-export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x0a2233, 0.02);
-    ctx.applyTerrainColors(0x0a2a3a, 0x1a3a4a, 0.8);
-    ctx.dirLight.color.setHex(0x44aacc);
-    ctx.dirLight.intensity = 0.6;
-    ctx.ambientLight.color.setHex(0x113344);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x337788);
-    ctx.hemiLight.groundColor.setHex(0x0a1a22);
+export function buildCoralDepths(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x0a2233, 0.02);
+    mctx.applyTerrainColors(0x0a2a3a, 0x1a3a4a, 0.8);
+    mctx.dirLight.color.setHex(0x44aacc);
+    mctx.dirLight.intensity = 0.6;
+    mctx.ambientLight.color.setHex(0x113344);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x337788);
+    mctx.hemiLight.groundColor.setHex(0x0a1a22);
 
     const coralColors = [0xff4466, 0xff8844, 0xffcc44, 0xcc44ff, 0x44ccff, 0xff66aa, 0x44aaff];
     const kelpMat = new THREE.MeshStandardMaterial({ color: 0x226633, roughness: 0.5 });
@@ -23522,7 +23524,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         }
       }
       const cx = (Math.random()-0.5)*w*0.85, cz = (Math.random()-0.5)*d*0.85;
-      coral.position.set(cx, getTerrainHeight(cx, cz, 0.8), cz); ctx.scene.add(coral);
+      coral.position.set(cx, getTerrainHeight(cx, cz, 0.8), cz); mctx.scene.add(coral);
     }
     // Brain corals (round, textured)
     for (let i = 0; i < 12; i++) {
@@ -23530,7 +23532,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         new THREE.MeshStandardMaterial({ color: coralColors[i%coralColors.length], roughness: 0.8 }));
       brain.scale.y = 0.6;
       const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
-      brain.position.set(bx, getTerrainHeight(bx, bz, 0.8)+0.15, bz); ctx.scene.add(brain);
+      brain.position.set(bx, getTerrainHeight(bx, bz, 0.8)+0.15, bz); mctx.scene.add(brain);
     }
     // Sea anemones (clusters of tentacle-like cylinders)
     for (let i = 0; i < 20; i++) {
@@ -23549,7 +23551,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         anemone.add(tent);
       }
       const ax = (Math.random()-0.5)*w*0.75, az = (Math.random()-0.5)*d*0.75;
-      anemone.position.set(ax, getTerrainHeight(ax, az, 0.8), az); ctx.scene.add(anemone);
+      anemone.position.set(ax, getTerrainHeight(ax, az, 0.8), az); mctx.scene.add(anemone);
     }
     // Kelp forests (taller, with leaf blades)
     for (let i = 0; i < 35; i++) {
@@ -23564,7 +23566,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         }
       }
       const kx = (Math.random()-0.5)*w*0.8, kz = (Math.random()-0.5)*d*0.8;
-      kelp.position.set(kx, getTerrainHeight(kx, kz, 0.8), kz); ctx.scene.add(kelp);
+      kelp.position.set(kx, getTerrainHeight(kx, kz, 0.8), kz); mctx.scene.add(kelp);
     }
     // Sea fans (flat fan-shaped coral)
     for (let i = 0; i < 15; i++) {
@@ -23572,7 +23574,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         new THREE.MeshStandardMaterial({ color: [0xff4488, 0xcc66ff, 0xff8844][i%3], side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
       const fx = (Math.random()-0.5)*w*0.7, fz = (Math.random()-0.5)*d*0.7;
       fan.position.set(fx, getTerrainHeight(fx, fz, 0.8)+0.4+Math.random()*0.5, fz);
-      fan.rotation.y = Math.random()*Math.PI; fan.rotation.x = -0.1; ctx.scene.add(fan);
+      fan.rotation.y = Math.random()*Math.PI; fan.rotation.x = -0.1; mctx.scene.add(fan);
     }
     // Sunken ship remains
     for (let i = 0; i < 2; i++) {
@@ -23592,7 +23594,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       const sx = (Math.random()-0.5)*w*0.4, sz = (Math.random()-0.5)*d*0.4;
       ship.position.set(sx, getTerrainHeight(sx, sz, 0.8)-0.3, sz);
       ship.rotation.y = Math.random()*Math.PI; ship.rotation.z = (Math.random()-0.5)*0.3;
-      ctx.scene.add(ship);
+      mctx.scene.add(ship);
     }
     // Treasure chests
     for (let i = 0; i < 4; i++) {
@@ -23605,14 +23607,14 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       band.position.y = 0.15; chest.add(band);
       const chx = (Math.random()-0.5)*w*0.5, chz = (Math.random()-0.5)*d*0.5;
       chest.position.set(chx, getTerrainHeight(chx, chz, 0.8), chz);
-      chest.rotation.y = Math.random()*Math.PI; ctx.scene.add(chest);
+      chest.rotation.y = Math.random()*Math.PI; mctx.scene.add(chest);
     }
     // Sea shells
     for (let i = 0; i < 25; i++) {
       const shell = new THREE.Mesh(new THREE.SphereGeometry(0.06+Math.random()*0.08, 23, 17), shellMat);
       shell.scale.y = 0.4;
       const shx = (Math.random()-0.5)*w*0.8, shz = (Math.random()-0.5)*d*0.8;
-      shell.position.set(shx, getTerrainHeight(shx, shz, 0.8)+0.03, shz); ctx.scene.add(shell);
+      shell.position.set(shx, getTerrainHeight(shx, shz, 0.8)+0.03, shz); mctx.scene.add(shell);
     }
     // Bubble columns
     for (let i = 0; i < 8; i++) {
@@ -23620,7 +23622,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       for (let b = 0; b < 8; b++) {
         const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.04, 20, 17), bubbleMat);
         bubble.position.set(bcX+(Math.random()-0.5)*0.2, getTerrainHeight(bcX, bcZ, 0.8)+0.3+b*0.5+Math.random()*0.3, bcZ+(Math.random()-0.5)*0.2);
-        ctx.scene.add(bubble);
+        mctx.scene.add(bubble);
       }
     }
     // Bioluminescent jellyfish forms
@@ -23637,30 +23639,30 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         jelly.add(tentacle);
       }
       jelly.position.set((Math.random()-0.5)*w*0.6, 1.5+Math.random()*4, (Math.random()-0.5)*d*0.6);
-      ctx.scene.add(jelly);
+      mctx.scene.add(jelly);
       const jLight = new THREE.PointLight(jellyColor, 0.3, 5);
-      jLight.position.copy(jelly.position); ctx.scene.add(jLight); ctx.torchLights.push(jLight);
+      jLight.position.copy(jelly.position); mctx.scene.add(jLight); mctx.torchLights.push(jLight);
     }
     // Sandy patches on ocean floor
     for (let i = 0; i < 20; i++) {
       const sand = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random()*1.5, 27), sandMat);
       sand.rotation.x = -Math.PI / 2;
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
-      sand.position.set(sx, getTerrainHeight(sx, sz, 0.8)+0.01, sz); ctx.scene.add(sand);
+      sand.position.set(sx, getTerrainHeight(sx, sz, 0.8)+0.01, sz); mctx.scene.add(sand);
     }
     // Sea floor rocks
     for (let i = 0; i < 20; i++) {
       const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4+Math.random()*0.6, 2), new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 }));
       const rx = (Math.random()-0.5)*w*0.8, rz = (Math.random()-0.5)*d*0.8;
       rock.position.set(rx, getTerrainHeight(rx, rz, 0.8)+0.1, rz);
-      rock.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(rock);
+      rock.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(rock);
     }
     // Underwater light rays
     for (let i = 0; i < 6; i++) {
       const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 10, 23),
         new THREE.MeshStandardMaterial({ color: 0x44aacc, emissive: 0x226688, emissiveIntensity: 0.3, transparent: true, opacity: 0.04 }));
       ray.position.set((Math.random()-0.5)*w*0.5, 5, (Math.random()-0.5)*d*0.5);
-      ray.rotation.z = (Math.random()-0.5)*0.3; ctx.scene.add(ray);
+      ray.rotation.z = (Math.random()-0.5)*0.3; mctx.scene.add(ray);
     }
     // ── Detailed branching coral trees ──
     for (let i = 0; i < 12; i++) {
@@ -23681,7 +23683,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         }
       }
       const ctx = (Math.random()-0.5)*w*0.7, ctz = (Math.random()-0.5)*d*0.7;
-      coralTree.position.set(ctx, getTerrainHeight(ctx, ctz, 0.8), ctz); ctx.scene.add(coralTree);
+      coralTree.position.set(ctx, getTerrainHeight(ctx, ctz, 0.8), ctz); mctx.scene.add(coralTree);
     }
     // ── Pearl-bearing clam shells ──
     for (let i = 0; i < 10; i++) {
@@ -23697,14 +23699,14 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       }
       const clx = (Math.random()-0.5)*w*0.6, clz = (Math.random()-0.5)*d*0.6;
       clam.position.set(clx, getTerrainHeight(clx, clz, 0.8) + 0.02, clz);
-      clam.rotation.y = Math.random() * Math.PI; ctx.scene.add(clam);
+      clam.rotation.y = Math.random() * Math.PI; mctx.scene.add(clam);
     }
     // ── Shipwreck debris (scattered planks, rope, anchor) ──
     for (let i = 0; i < 15; i++) {
       const plank = new THREE.Mesh(new THREE.BoxGeometry(0.12 + Math.random() * 0.2, 0.03, 0.6 + Math.random() * 0.8), shipWoodMat);
       const plx = (Math.random()-0.5)*w*0.7, plz = (Math.random()-0.5)*d*0.7;
       plank.position.set(plx, getTerrainHeight(plx, plz, 0.8) + 0.02, plz);
-      plank.rotation.set(Math.random()*0.2, Math.random()*Math.PI, Math.random()*0.2); ctx.scene.add(plank);
+      plank.rotation.set(Math.random()*0.2, Math.random()*Math.PI, Math.random()*0.2); mctx.scene.add(plank);
     }
     for (let i = 0; i < 3; i++) {
       const anchor = new THREE.Group();
@@ -23716,7 +23718,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       ring.position.y = 0.35; anchor.add(ring);
       const anx = (Math.random()-0.5)*w*0.5, anz = (Math.random()-0.5)*d*0.5;
       anchor.position.set(anx, getTerrainHeight(anx, anz, 0.8) + 0.1, anz);
-      anchor.rotation.set(Math.random()*0.3, Math.random()*Math.PI, Math.random()*0.5); ctx.scene.add(anchor);
+      anchor.rotation.set(Math.random()*0.3, Math.random()*Math.PI, Math.random()*0.5); mctx.scene.add(anchor);
     }
     // ── Coral reef walls ──
     for (let i = 0; i < 6; i++) {
@@ -23754,7 +23756,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       reefWall.add(brain);
       const rwx = (Math.random()-0.5)*w*0.7, rwz = (Math.random()-0.5)*d*0.7;
       reefWall.position.set(rwx, getTerrainHeight(rwx, rwz, 0.8), rwz);
-      reefWall.rotation.y = Math.random() * Math.PI; ctx.scene.add(reefWall);
+      reefWall.rotation.y = Math.random() * Math.PI; mctx.scene.add(reefWall);
     }
     // ── Underwater current indicators ──
     for (let i = 0; i < 10; i++) {
@@ -23763,7 +23765,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       current.rotation.z = Math.PI / 2;
       current.rotation.y = Math.random() * Math.PI;
       current.position.set((Math.random()-0.5)*w*0.7, 0.8 + Math.random()*3, (Math.random()-0.5)*d*0.7);
-      ctx.scene.add(current);
+      mctx.scene.add(current);
     }
     // ── Sunken treasure scattered ──
     const goldMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 });
@@ -23775,12 +23777,12 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         // Gold coins
         const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.005, 16), goldMat);
         coin.rotation.x = Math.PI / 2 + (Math.random()-0.5)*0.3;
-        coin.position.set(tx, tY, tz); ctx.scene.add(coin);
+        coin.position.set(tx, tY, tz); mctx.scene.add(coin);
       } else if (i < 11) {
         // Gem icosahedrons
         const gem = new THREE.Mesh(new THREE.IcosahedronGeometry(0.02 + Math.random()*0.015, 0),
           new THREE.MeshStandardMaterial({ color: gemColors[i % gemColors.length], emissive: gemColors[i % gemColors.length], emissiveIntensity: 0.3, metalness: 0.3 }));
-        gem.position.set(tx, tY + 0.01, tz); ctx.scene.add(gem);
+        gem.position.set(tx, tY + 0.01, tz); mctx.scene.add(gem);
       } else {
         // Goblet cylinders lying on floor
         const goblet = new THREE.Group();
@@ -23789,7 +23791,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         const gobletBase = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.015, 12), goldMat);
         gobletBase.position.y = -0.03; goblet.add(gobletBase);
         goblet.position.set(tx, tY + 0.02, tz);
-        goblet.rotation.z = Math.PI / 2 + (Math.random()-0.5)*0.3; ctx.scene.add(goblet);
+        goblet.rotation.z = Math.PI / 2 + (Math.random()-0.5)*0.3; mctx.scene.add(goblet);
       }
     }
     // ── Sea urchin props ──
@@ -23807,7 +23809,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         urchin.add(spine);
       }
       const ux = (Math.random()-0.5)*w*0.7, uz = (Math.random()-0.5)*d*0.7;
-      urchin.position.set(ux, getTerrainHeight(ux, uz, 0.8) + 0.06, uz); ctx.scene.add(urchin);
+      urchin.position.set(ux, getTerrainHeight(ux, uz, 0.8) + 0.06, uz); mctx.scene.add(urchin);
     }
     // ── Jellyfish props ──
     for (let i = 0; i < 8; i++) {
@@ -23823,9 +23825,9 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         jf.add(tent);
       }
       const jfLight = new THREE.PointLight(jfColor, 0.15, 3);
-      jf.add(jfLight); ctx.torchLights.push(jfLight);
+      jf.add(jfLight); mctx.torchLights.push(jfLight);
       jf.position.set((Math.random()-0.5)*w*0.6, 1.5 + Math.random()*3.5, (Math.random()-0.5)*d*0.6);
-      ctx.scene.add(jf);
+      mctx.scene.add(jf);
     }
     // ── Barnacle clusters on structures ──
     for (let i = 0; i < 20; i++) {
@@ -23839,7 +23841,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       }
       const bx = (Math.random()-0.5)*w*0.75, bz = (Math.random()-0.5)*d*0.75;
       barnacleGroup.position.set(bx, getTerrainHeight(bx, bz, 0.8) + 0.5 + Math.random()*2, bz);
-      barnacleGroup.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(barnacleGroup);
+      barnacleGroup.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(barnacleGroup);
     }
     // ── Underwater ruins archways ──
     for (let i = 0; i < 3; i++) {
@@ -23865,7 +23867,7 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
       }
       const ax = (Math.random()-0.5)*w*0.5, az = (Math.random()-0.5)*d*0.5;
       archway.position.set(ax, getTerrainHeight(ax, az, 0.8), az);
-      archway.rotation.y = Math.random() * Math.PI; ctx.scene.add(archway);
+      archway.rotation.y = Math.random() * Math.PI; mctx.scene.add(archway);
     }
     // ── Air bubble columns ──
     for (let i = 0; i < 6; i++) {
@@ -23875,20 +23877,20 @@ export function buildCoralDepths(ctx: MapBuildContext, w: number, d: number): vo
         const bSize = 0.01 + b * 0.004 + Math.random() * 0.005;
         const bubble = new THREE.Mesh(new THREE.SphereGeometry(bSize, 12, 8), bubbleMat);
         bubble.position.set(colX + (Math.random()-0.5)*0.1, colBase + 0.2 + b * 0.4 + Math.random()*0.15, colZ + (Math.random()-0.5)*0.1);
-        ctx.scene.add(bubble);
+        mctx.scene.add(bubble);
       }
     }
 }
 
-export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x1a1511, 0.016);
-    ctx.applyTerrainColors(0x2a2218, 0x3a3228, 0.4);
-    ctx.dirLight.color.setHex(0xffddaa);
-    ctx.dirLight.intensity = 0.7;
-    ctx.ambientLight.color.setHex(0x332211);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x886644);
-    ctx.hemiLight.groundColor.setHex(0x221100);
+export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x1a1511, 0.016);
+    mctx.applyTerrainColors(0x2a2218, 0x3a3228, 0.4);
+    mctx.dirLight.color.setHex(0xffddaa);
+    mctx.dirLight.intensity = 0.7;
+    mctx.ambientLight.color.setHex(0x332211);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x886644);
+    mctx.hemiLight.groundColor.setHex(0x221100);
 
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.8 });
     const bookColors = [0x882222, 0x224488, 0x228844, 0x884422, 0x442288, 0x886622, 0x228888, 0x664422];
@@ -23927,7 +23929,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       crown.position.y = shelfH + 0.05; shelf.add(crown);
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
       shelf.position.set(sx, getTerrainHeight(sx, sz, 0.4), sz);
-      shelf.rotation.y = Math.random() * Math.PI; ctx.scene.add(shelf);
+      shelf.rotation.y = Math.random() * Math.PI; mctx.scene.add(shelf);
     }
     // Reading desks with candles and open books
     for (let i = 0; i < 10; i++) {
@@ -23944,7 +23946,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.15, 17), candleMat);
       candle.position.set(0.35, 0.87, 0.2); desk.add(candle);
       const flame = new THREE.PointLight(0xff8833, 0.5, 5);
-      flame.position.set(0.35, 0.98, 0.2); desk.add(flame); ctx.torchLights.push(flame);
+      flame.position.set(0.35, 0.98, 0.2); desk.add(flame); mctx.torchLights.push(flame);
       const flameVis = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 17),
         new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xff8800, emissiveIntensity: 2.0 }));
       flameVis.position.set(0.35, 0.96, 0.2); desk.add(flameVis);
@@ -23969,7 +23971,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       chair.position.set(0, 0, 0.5); desk.add(chair);
       const dx = (Math.random()-0.5)*w*0.6, dz = (Math.random()-0.5)*d*0.6;
       desk.position.set(dx, getTerrainHeight(dx, dz, 0.4), dz);
-      desk.rotation.y = Math.random()*Math.PI; ctx.scene.add(desk);
+      desk.rotation.y = Math.random()*Math.PI; mctx.scene.add(desk);
     }
     // Floating magical tomes
     for (let i = 0; i < 8; i++) {
@@ -23981,10 +23983,10 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const aura = new THREE.Mesh(new THREE.SphereGeometry(0.2, 23, 20), magicMat);
       aura.scale.y = 0.3; tome.add(aura);
       const sparkle = new THREE.PointLight([0x4466ff, 0xff6644, 0x44ff66][i%3], 0.3, 4);
-      sparkle.position.y = 0.1; tome.add(sparkle); ctx.torchLights.push(sparkle);
+      sparkle.position.y = 0.1; tome.add(sparkle); mctx.torchLights.push(sparkle);
       tome.position.set((Math.random()-0.5)*w*0.5, 2+Math.random()*3, (Math.random()-0.5)*d*0.5);
       tome.rotation.set((Math.random()-0.5)*0.2, Math.random()*Math.PI, (Math.random()-0.5)*0.1);
-      ctx.scene.add(tome);
+      mctx.scene.add(tome);
     }
     // Scattered scrolls and books on floor
     for (let i = 0; i < 30; i++) {
@@ -23994,13 +23996,13 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
         scroll.rotation.z = Math.PI / 2;
         const scx = (Math.random()-0.5)*w*0.7, scz = (Math.random()-0.5)*d*0.7;
         scroll.position.set(scx, getTerrainHeight(scx, scz, 0.4)+0.03, scz);
-        scroll.rotation.y = Math.random()*Math.PI; ctx.scene.add(scroll);
+        scroll.rotation.y = Math.random()*Math.PI; mctx.scene.add(scroll);
       } else {
         const book = new THREE.Mesh(new THREE.BoxGeometry(0.12+Math.random()*0.08, 0.03, 0.15+Math.random()*0.05),
           new THREE.MeshStandardMaterial({ color: bookColors[Math.floor(Math.random()*bookColors.length)] }));
         const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
         book.position.set(bx, getTerrainHeight(bx, bz, 0.4)+0.02, bz);
-        book.rotation.y = Math.random()*Math.PI; ctx.scene.add(book);
+        book.rotation.y = Math.random()*Math.PI; mctx.scene.add(book);
       }
     }
     // Ink spills on floor
@@ -24008,7 +24010,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const spill = new THREE.Mesh(new THREE.CircleGeometry(0.1+Math.random()*0.15, 23), inkMat);
       spill.rotation.x = -Math.PI/2;
       const ix = (Math.random()-0.5)*w*0.6, iz = (Math.random()-0.5)*d*0.6;
-      spill.position.set(ix, getTerrainHeight(ix, iz, 0.4)+0.01, iz); ctx.scene.add(spill);
+      spill.position.set(ix, getTerrainHeight(ix, iz, 0.4)+0.01, iz); mctx.scene.add(spill);
     }
     // Ladders leaning against shelves
     for (let i = 0; i < 6; i++) {
@@ -24025,7 +24027,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const lx = (Math.random()-0.5)*w*0.7, lz = (Math.random()-0.5)*d*0.7;
       ladder.position.set(lx, getTerrainHeight(lx, lz, 0.4)+ladH/2, lz);
       ladder.rotation.z = 0.15+Math.random()*0.1;
-      ladder.rotation.y = Math.random()*Math.PI; ctx.scene.add(ladder);
+      ladder.rotation.y = Math.random()*Math.PI; mctx.scene.add(ladder);
     }
     // Globe on a stand
     for (let i = 0; i < 3; i++) {
@@ -24040,7 +24042,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.008, 17, 44), ironMat);
       ring.position.y = 0.95; ring.rotation.x = 0.3; globeGroup.add(ring);
       const gx = (Math.random()-0.5)*w*0.4, gz = (Math.random()-0.5)*d*0.4;
-      globeGroup.position.set(gx, getTerrainHeight(gx, gz, 0.4), gz); ctx.scene.add(globeGroup);
+      globeGroup.position.set(gx, getTerrainHeight(gx, gz, 0.4), gz); mctx.scene.add(globeGroup);
     }
     // Astrolabe
     for (let i = 0; i < 2; i++) {
@@ -24050,18 +24052,18 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
         ring.rotation.x = r*0.5; ring.rotation.y = r*0.7; astro.add(ring);
       }
       const ax = (Math.random()-0.5)*w*0.3, az = (Math.random()-0.5)*d*0.3;
-      astro.position.set(ax, getTerrainHeight(ax, az, 0.4)+0.8, az); ctx.scene.add(astro);
+      astro.position.set(ax, getTerrainHeight(ax, az, 0.4)+0.8, az); mctx.scene.add(astro);
     }
     // Magic circles on floor
     for (let i = 0; i < 4; i++) {
       const circle = new THREE.Mesh(new THREE.TorusGeometry(1.2+Math.random()*0.8, 0.02, 17, 46), magicMat);
       circle.rotation.x = -Math.PI/2;
       const cx = (Math.random()-0.5)*w*0.4, cz = (Math.random()-0.5)*d*0.4;
-      circle.position.set(cx, getTerrainHeight(cx, cz, 0.4)+0.02, cz); ctx.scene.add(circle);
+      circle.position.set(cx, getTerrainHeight(cx, cz, 0.4)+0.02, cz); mctx.scene.add(circle);
       // Inner symbols
       const inner = new THREE.Mesh(new THREE.TorusGeometry(0.5+Math.random()*0.3, 0.015, 17, 36), magicMat);
       inner.rotation.x = -Math.PI/2;
-      inner.position.set(cx, getTerrainHeight(cx, cz, 0.4)+0.025, cz); ctx.scene.add(inner);
+      inner.position.set(cx, getTerrainHeight(cx, cz, 0.4)+0.025, cz); mctx.scene.add(inner);
     }
     // Stone pillars with ornate capitals
     for (let i = 0; i < 14; i++) {
@@ -24073,14 +24075,14 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.2, 27), stonePillarMat);
       base.position.y = 0.1; pillar.add(base);
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
-      pillar.position.set(px, getTerrainHeight(px, pz, 0.4), pz); ctx.scene.add(pillar);
+      pillar.position.set(px, getTerrainHeight(px, pz, 0.4), pz); mctx.scene.add(pillar);
     }
     // Dust particles (tiny floating specks)
     for (let i = 0; i < 40; i++) {
       const dust = new THREE.Mesh(new THREE.SphereGeometry(0.008+Math.random()*0.008, 16, 8),
         new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x886644, emissiveIntensity: 0.3 }));
       dust.position.set((Math.random()-0.5)*w*0.6, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.6);
-      ctx.scene.add(dust);
+      mctx.scene.add(dust);
     }
     // ── Scroll racks (vertical slotted shelves) ──
     for (let i = 0; i < 6; i++) {
@@ -24094,7 +24096,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       }
       const rrx = (Math.random()-0.5)*w*0.6, rrz = (Math.random()-0.5)*d*0.6;
       rack.position.set(rrx, getTerrainHeight(rrx, rrz, 0.4), rrz);
-      rack.rotation.y = Math.random() * Math.PI; ctx.scene.add(rack);
+      rack.rotation.y = Math.random() * Math.PI; mctx.scene.add(rack);
     }
     // ── Reading lecterns ──
     for (let i = 0; i < 5; i++) {
@@ -24109,7 +24111,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       openBook.position.set(0, 1.26, 0.05); openBook.rotation.x = -0.3; lectern.add(openBook);
       const lex = (Math.random()-0.5)*w*0.5, lez = (Math.random()-0.5)*d*0.5;
       lectern.position.set(lex, getTerrainHeight(lex, lez, 0.4), lez);
-      lectern.rotation.y = Math.random() * Math.PI; ctx.scene.add(lectern);
+      lectern.rotation.y = Math.random() * Math.PI; mctx.scene.add(lectern);
     }
     // ── Ink well props ──
     for (let i = 0; i < 8; i++) {
@@ -24119,7 +24121,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const inkSurface = new THREE.Mesh(new THREE.CircleGeometry(0.022, 16), inkMat);
       inkSurface.rotation.x = -Math.PI / 2; inkSurface.position.y = 0.04; inkwell.add(inkSurface);
       const iwx = (Math.random()-0.5)*w*0.5, iwz = (Math.random()-0.5)*d*0.5;
-      inkwell.position.set(iwx, getTerrainHeight(iwx, iwz, 0.4) + 0.78, iwz); ctx.scene.add(inkwell);
+      inkwell.position.set(iwx, getTerrainHeight(iwx, iwz, 0.4) + 0.78, iwz); mctx.scene.add(inkwell);
     }
     // ── Candle holders along walls ──
     for (let i = 0; i < 12; i++) {
@@ -24134,7 +24136,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       flameVis.position.set(0, 0.1, 0.08); holder.add(flameVis);
       const chx = (Math.random()-0.5)*w*0.75, chz = (Math.random()-0.5)*d*0.75;
       holder.position.set(chx, getTerrainHeight(chx, chz, 0.4) + 2.0 + Math.random(), chz);
-      holder.rotation.y = Math.random() * Math.PI; ctx.scene.add(holder);
+      holder.rotation.y = Math.random() * Math.PI; mctx.scene.add(holder);
     }
     // ── Fallen book piles ──
     for (let i = 0; i < 10; i++) {
@@ -24145,7 +24147,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
         book.position.y = b * 0.028; book.rotation.y = (Math.random()-0.5)*0.3; pile.add(book);
       }
       const fpx = (Math.random()-0.5)*w*0.65, fpz = (Math.random()-0.5)*d*0.65;
-      pile.position.set(fpx, getTerrainHeight(fpx, fpz, 0.4) + 0.01, fpz); ctx.scene.add(pile);
+      pile.position.set(fpx, getTerrainHeight(fpx, fpz, 0.4) + 0.01, fpz); mctx.scene.add(pile);
     }
     // ── Tall bookshelf walls ──
     for (let i = 0; i < 8; i++) {
@@ -24176,7 +24178,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       }
       const bsx2 = (Math.random()-0.5)*w*0.75, bsz2 = (Math.random()-0.5)*d*0.75;
       bsWall.position.set(bsx2, getTerrainHeight(bsx2, bsz2, 0.4), bsz2);
-      bsWall.rotation.y = Math.random() * Math.PI; ctx.scene.add(bsWall);
+      bsWall.rotation.y = Math.random() * Math.PI; mctx.scene.add(bsWall);
     }
     // ── Reading alcoves ──
     for (let i = 0; i < 4; i++) {
@@ -24199,14 +24201,14 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
         new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xff8800, emissiveIntensity: 2.0 }));
       alcFlm.position.set(0.25, 0.86, -0.1); alcv.add(alcFlm);
       const alcPt = new THREE.PointLight(0xff8833, 0.4, 4);
-      alcPt.position.set(0.25, 0.88, -0.1); alcv.add(alcPt); ctx.torchLights.push(alcPt);
+      alcPt.position.set(0.25, 0.88, -0.1); alcv.add(alcPt); mctx.torchLights.push(alcPt);
       const alcLP = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.16), parchmentMat);
       alcLP.position.set(-0.07, 0.74, 0); alcLP.rotation.set(-Math.PI/2, 0, 0.1); alcv.add(alcLP);
       const alcRP = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.16), parchmentMat);
       alcRP.position.set(0.07, 0.74, 0); alcRP.rotation.set(-Math.PI/2, 0, -0.1); alcv.add(alcRP);
       const alcX = (Math.random()-0.5)*w*0.5, alcZ = (Math.random()-0.5)*d*0.5;
       alcv.position.set(alcX, getTerrainHeight(alcX, alcZ, 0.4), alcZ);
-      alcv.rotation.y = Math.random() * Math.PI; ctx.scene.add(alcv);
+      alcv.rotation.y = Math.random() * Math.PI; mctx.scene.add(alcv);
     }
     // ── Scroll storage racks ──
     for (let i = 0; i < 6; i++) {
@@ -24234,7 +24236,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       sTrl.position.set(0.1, 0.22, 0.15); sTrl.rotation.x = -0.3; sRk.add(sTrl);
       const srx2 = (Math.random()-0.5)*w*0.6, srz2 = (Math.random()-0.5)*d*0.6;
       sRk.position.set(srx2, getTerrainHeight(srx2, srz2, 0.4), srz2);
-      sRk.rotation.y = Math.random() * Math.PI; ctx.scene.add(sRk);
+      sRk.rotation.y = Math.random() * Math.PI; mctx.scene.add(sRk);
     }
     // ── Floating magical tomes (detailed) ──
     for (let i = 0; i < 8; i++) {
@@ -24254,7 +24256,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       }
       fTm.position.set((Math.random()-0.5)*w*0.5, 2 + Math.random()*3, (Math.random()-0.5)*d*0.5);
       fTm.rotation.set((Math.random()-0.5)*0.15, Math.random()*Math.PI, (Math.random()-0.5)*0.1);
-      ctx.scene.add(fTm);
+      mctx.scene.add(fTm);
     }
     // ── Astronomy globes ──
     for (let i = 0; i < 2; i++) {
@@ -24282,7 +24284,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       }
       const agx2 = (Math.random()-0.5)*w*0.4, agz2 = (Math.random()-0.5)*d*0.4;
       aGlb.position.set(agx2, getTerrainHeight(agx2, agz2, 0.4), agz2);
-      aGlb.rotation.y = Math.random() * Math.PI; ctx.scene.add(aGlb);
+      aGlb.rotation.y = Math.random() * Math.PI; mctx.scene.add(aGlb);
     }
     // ── Card catalog cabinets ──
     for (let i = 0; i < 4; i++) {
@@ -24300,7 +24302,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       }
       const catX2 = (Math.random()-0.5)*w*0.5, catZ2 = (Math.random()-0.5)*d*0.5;
       catl.position.set(catX2, getTerrainHeight(catX2, catZ2, 0.4), catZ2);
-      catl.rotation.y = Math.random() * Math.PI; ctx.scene.add(catl);
+      catl.rotation.y = Math.random() * Math.PI; mctx.scene.add(catl);
     }
     // ── Ladder on rails ──
     for (let i = 0; i < 3; i++) {
@@ -24321,7 +24323,7 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
       const rlx2 = (Math.random()-0.5)*w*0.65, rlz2 = (Math.random()-0.5)*d*0.65;
       rLdr.position.set(rlx2, getTerrainHeight(rlx2, rlz2, 0.4) + rlH2 / 2, rlz2);
       rLdr.rotation.z = 0.12 + Math.random()*0.08;
-      rLdr.rotation.y = Math.random() * Math.PI; ctx.scene.add(rLdr);
+      rLdr.rotation.y = Math.random() * Math.PI; mctx.scene.add(rLdr);
     }
     // ── Chandeliers with candles ──
     for (let i = 0; i < 4; i++) {
@@ -24345,36 +24347,36 @@ export function buildAncientLibrary(ctx: MapBuildContext, w: number, d: number):
         chFl.position.set(Math.cos(ccA) * chRR, 0.1, Math.sin(ccA) * chRR); chnd.add(chFl);
       }
       const chPL = new THREE.PointLight(0xff8833, 0.6, 8);
-      chnd.add(chPL); ctx.torchLights.push(chPL);
+      chnd.add(chPL); mctx.torchLights.push(chPL);
       chnd.position.set((Math.random()-0.5)*w*0.5, 4 + Math.random()*1.5, (Math.random()-0.5)*d*0.5);
-      ctx.scene.add(chnd);
+      mctx.scene.add(chnd);
     }
     // ── Ink stain details ──
     for (let i = 0; i < 10; i++) {
       const ikSt = new THREE.Mesh(new THREE.CircleGeometry(0.06 + Math.random()*0.1, 16), inkMat);
       ikSt.rotation.x = -Math.PI / 2;
       const isX2 = (Math.random()-0.5)*w*0.6, isZ2 = (Math.random()-0.5)*d*0.6;
-      ikSt.position.set(isX2, getTerrainHeight(isX2, isZ2, 0.4) + 0.01, isZ2); ctx.scene.add(ikSt);
+      ikSt.position.set(isX2, getTerrainHeight(isX2, isZ2, 0.4) + 0.01, isZ2); mctx.scene.add(ikSt);
       const iwPr = new THREE.Group();
       const iwPt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.035, 12), new THREE.MeshStandardMaterial({ color: 0x222222 }));
       iwPt.position.y = 0.018; iwPr.add(iwPt);
       const iwQl = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, 0.15, 8), new THREE.MeshStandardMaterial({ color: 0x443322 }));
       iwQl.position.set(0.03, 0.05, 0); iwQl.rotation.z = 0.4; iwPr.add(iwQl);
       iwPr.position.set(isX2 + 0.1, getTerrainHeight(isX2, isZ2, 0.4) + 0.78, isZ2 + 0.05);
-      ctx.scene.add(iwPr);
+      mctx.scene.add(iwPr);
     }
 
 }
 
-export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x1a3322, 0.012);
-    ctx.applyTerrainColors(0x2a4422, 0x3a5533, 1.0);
-    ctx.dirLight.color.setHex(0xddffcc);
-    ctx.dirLight.intensity = 1.2;
-    ctx.ambientLight.color.setHex(0x224422);
-    ctx.ambientLight.intensity = 0.6;
-    ctx.hemiLight.color.setHex(0x66aa44);
-    ctx.hemiLight.groundColor.setHex(0x223311);
+export function buildJadeTemple(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x1a3322, 0.012);
+    mctx.applyTerrainColors(0x2a4422, 0x3a5533, 1.0);
+    mctx.dirLight.color.setHex(0xddffcc);
+    mctx.dirLight.intensity = 1.2;
+    mctx.ambientLight.color.setHex(0x224422);
+    mctx.ambientLight.intensity = 0.6;
+    mctx.hemiLight.color.setHex(0x66aa44);
+    mctx.hemiLight.groundColor.setHex(0x223311);
 
     const jadeMat = new THREE.MeshStandardMaterial({ color: 0x44aa66, roughness: 0.3, metalness: 0.3 });
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.8 });
@@ -24401,7 +24403,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
         vine.rotation.z = 0.3; pillar.add(vine);
       }
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
-      pillar.position.set(px, getTerrainHeight(px, pz, 1.0), pz); ctx.scene.add(pillar);
+      pillar.position.set(px, getTerrainHeight(px, pz, 1.0), pz); mctx.scene.add(pillar);
     }
     // Ornate temple roof structures (pagoda tiers)
     for (let i = 0; i < 4; i++) {
@@ -24416,7 +24418,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       const finial = new THREE.Mesh(new THREE.SphereGeometry(0.1, 23, 20), goldMat);
       finial.position.y = 6; pagoda.add(finial);
       const pgx = (Math.random()-0.5)*w*0.5, pgz = (Math.random()-0.5)*d*0.5;
-      pagoda.position.set(pgx, getTerrainHeight(pgx, pgz, 1.0), pgz); ctx.scene.add(pagoda);
+      pagoda.position.set(pgx, getTerrainHeight(pgx, pgz, 1.0), pgz); mctx.scene.add(pagoda);
     }
     // Jade statues with dragon carvings
     for (let i = 0; i < 8; i++) {
@@ -24433,7 +24435,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
         arm.position.set(ax, 1.0, 0.15); arm.rotation.z = ax > 0 ? -0.5 : 0.5; statue.add(arm);
       }
       const stx = (Math.random()-0.5)*w*0.6, stz = (Math.random()-0.5)*d*0.6;
-      statue.position.set(stx, getTerrainHeight(stx, stz, 1.0), stz); ctx.scene.add(statue);
+      statue.position.set(stx, getTerrainHeight(stx, stz, 1.0), stz); mctx.scene.add(statue);
     }
     // Dragon carvings (stylized serpentine forms)
     for (let i = 0; i < 5; i++) {
@@ -24447,7 +24449,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       dHead.position.set(Math.sin(6.4)*0.5, 2.0, Math.cos(6.4)*0.5);
       dHead.rotation.z = 0.5; dragon.add(dHead);
       const dx = (Math.random()-0.5)*w*0.5, dz = (Math.random()-0.5)*d*0.5;
-      dragon.position.set(dx, getTerrainHeight(dx, dz, 1.0), dz); ctx.scene.add(dragon);
+      dragon.position.set(dx, getTerrainHeight(dx, dz, 1.0), dz); mctx.scene.add(dragon);
     }
     // Incense burners with smoke
     for (let i = 0; i < 8; i++) {
@@ -24466,7 +24468,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       const incLight = new THREE.PointLight(0xff6633, 0.15, 3);
       incLight.position.y = 0.7; burner.add(incLight);
       const bx = (Math.random()-0.5)*w*0.6, bz = (Math.random()-0.5)*d*0.6;
-      burner.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz); ctx.scene.add(burner);
+      burner.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz); mctx.scene.add(burner);
     }
     // Prayer mats
     for (let i = 0; i < 10; i++) {
@@ -24475,7 +24477,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       mat.rotation.x = -Math.PI/2;
       const mx = (Math.random()-0.5)*w*0.5, mz = (Math.random()-0.5)*d*0.5;
       mat.position.set(mx, getTerrainHeight(mx, mz, 1.0)+0.02, mz);
-      mat.rotation.z = Math.random()*Math.PI; ctx.scene.add(mat);
+      mat.rotation.z = Math.random()*Math.PI; mctx.scene.add(mat);
     }
     // Gong
     for (let i = 0; i < 2; i++) {
@@ -24490,7 +24492,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       gDisc.position.y = 1.2; gongGroup.add(gDisc);
       const gx = (Math.random()-0.5)*w*0.3, gz = (Math.random()-0.5)*d*0.3;
       gongGroup.position.set(gx, getTerrainHeight(gx, gz, 1.0), gz);
-      gongGroup.rotation.y = Math.random()*Math.PI; ctx.scene.add(gongGroup);
+      gongGroup.rotation.y = Math.random()*Math.PI; mctx.scene.add(gongGroup);
     }
     // Koi pond
     for (let i = 0; i < 3; i++) {
@@ -24498,17 +24500,17 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       const pond = new THREE.Mesh(new THREE.CircleGeometry(pondR, 31), waterMat);
       pond.rotation.x = -Math.PI/2;
       const kx = (Math.random()-0.5)*w*0.4, kz = (Math.random()-0.5)*d*0.4;
-      pond.position.set(kx, getTerrainHeight(kx, kz, 1.0)-0.05, kz); ctx.scene.add(pond);
+      pond.position.set(kx, getTerrainHeight(kx, kz, 1.0)-0.05, kz); mctx.scene.add(pond);
       const border = new THREE.Mesh(new THREE.TorusGeometry(pondR, 0.08, 17, 46), stoneMat);
       border.rotation.x = -Math.PI/2;
-      border.position.set(kx, getTerrainHeight(kx, kz, 1.0)+0.02, kz); ctx.scene.add(border);
+      border.position.set(kx, getTerrainHeight(kx, kz, 1.0)+0.02, kz); mctx.scene.add(border);
       // Koi fish (simple colored ovals)
       for (let f = 0; f < 3; f++) {
         const fish = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 17),
           new THREE.MeshStandardMaterial({ color: [0xff6633, 0xffffff, 0xff4444][f%3] }));
         fish.scale.set(1, 0.4, 2);
         fish.position.set(kx+(Math.random()-0.5)*pondR*0.6, getTerrainHeight(kx, kz, 1.0)-0.03, kz+(Math.random()-0.5)*pondR*0.6);
-        ctx.scene.add(fish);
+        mctx.scene.add(fish);
       }
     }
     // Cherry blossom trees
@@ -24537,7 +24539,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
         petal.position.set((Math.random()-0.5)*1.5, 0.01, (Math.random()-0.5)*1.5); tree.add(petal);
       }
       const tx = (Math.random()-0.5)*w*0.8, tz = (Math.random()-0.5)*d*0.8;
-      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz); ctx.scene.add(tree);
+      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz); mctx.scene.add(tree);
     }
     // Additional vegetation
     for (let i = 0; i < 20; i++) {
@@ -24551,7 +24553,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
         leaf.rotation.set(0.3+Math.random()*0.5, l*1.3, 0); tree.add(leaf);
       }
       const tx = (Math.random()-0.5)*w*0.85, tz = (Math.random()-0.5)*d*0.85;
-      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz); ctx.scene.add(tree);
+      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz); mctx.scene.add(tree);
     }
     // Stone lanterns
     for (let i = 0; i < 12; i++) {
@@ -24565,15 +24567,15 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 17), stoneMat);
       top.position.y = 1.35; lantern.add(top);
       const light = new THREE.PointLight(0xffaa44, 0.4, 6);
-      light.position.y = 1.1; lantern.add(light); ctx.torchLights.push(light);
+      light.position.y = 1.1; lantern.add(light); mctx.torchLights.push(light);
       const lx = (Math.random()-0.5)*w*0.7, lz = (Math.random()-0.5)*d*0.7;
-      lantern.position.set(lx, getTerrainHeight(lx, lz, 1.0), lz); ctx.scene.add(lantern);
+      lantern.position.set(lx, getTerrainHeight(lx, lz, 1.0), lz); mctx.scene.add(lantern);
     }
     // Stepping stones (paths)
     for (let i = 0; i < 20; i++) {
       const step = new THREE.Mesh(new THREE.CylinderGeometry(0.2+Math.random()*0.1, 0.25+Math.random()*0.1, 0.08, 23), stoneMat);
       const sx = (Math.random()-0.5)*w*0.6, sz = (Math.random()-0.5)*d*0.6;
-      step.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.02, sz); ctx.scene.add(step);
+      step.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.02, sz); mctx.scene.add(step);
     }
     // ── Temple pillar carvings (inset box patterns) ──
     for (let i = 0; i < 12; i++) {
@@ -24588,7 +24590,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       }
       const cvx = (Math.random()-0.5)*w*0.7, cvz = (Math.random()-0.5)*d*0.7;
       carvGrp.position.set(cvx, getTerrainHeight(cvx, cvz, 1.0), cvz);
-      carvGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(carvGrp);
+      carvGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(carvGrp);
     }
     // ── Prayer bell props ──
     for (let i = 0; i < 6; i++) {
@@ -24600,7 +24602,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 16), goldMat);
       clapper.position.y = -0.3; bellGrp.add(clapper);
       bellGrp.position.set((Math.random()-0.5)*w*0.5, getTerrainHeight(0, 0, 1.0) + 3 + Math.random() * 2, (Math.random()-0.5)*d*0.5);
-      ctx.scene.add(bellGrp);
+      mctx.scene.add(bellGrp);
     }
     // ── Ceremonial weapon displays ──
     for (let i = 0; i < 4; i++) {
@@ -24615,7 +24617,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       naginata.position.set(0.15, 0, 0.04); naginata.rotation.z = -0.1; display.add(naginata);
       const dpx = (Math.random()-0.5)*w*0.5, dpz = (Math.random()-0.5)*d*0.5;
       display.position.set(dpx, getTerrainHeight(dpx, dpz, 1.0) + 1.5, dpz);
-      display.rotation.y = Math.random() * Math.PI; ctx.scene.add(display);
+      display.rotation.y = Math.random() * Math.PI; mctx.scene.add(display);
     }
     // ── Roof tile layers on pagodas ──
     for (let i = 0; i < 8; i++) {
@@ -24627,7 +24629,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       }
       const trx = (Math.random()-0.5)*w*0.5, trz = (Math.random()-0.5)*d*0.5;
       tileRow.position.set(trx, getTerrainHeight(trx, trz, 1.0) + 2 + Math.random() * 3, trz);
-      tileRow.rotation.y = Math.random() * Math.PI; ctx.scene.add(tileRow);
+      tileRow.rotation.y = Math.random() * Math.PI; mctx.scene.add(tileRow);
     }
     // ── Temple pillar carvings detail (spiral grooves + dragon wrap) ──
     for (let i = 0; i < 8; i++) {
@@ -24647,7 +24649,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
         dragonSeg.rotation.x = Math.sin(dAngle) * 0.3; carvPillar.add(dragonSeg);
       }
       const cpx = (Math.random() - 0.5) * w * 0.7, cpz = (Math.random() - 0.5) * d * 0.7;
-      carvPillar.position.set(cpx, getTerrainHeight(cpx, cpz, 1.0), cpz); ctx.scene.add(carvPillar);
+      carvPillar.position.set(cpx, getTerrainHeight(cpx, cpz, 1.0), cpz); mctx.scene.add(carvPillar);
     }
     // ── Incense burner stations (ornate with smoke column) ──
     for (let i = 0; i < 6; i++) {
@@ -24669,9 +24671,9 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
         incStn.add(smkOrb);
       }
       const incLt = new THREE.PointLight(0xff6633, 0.25, 4);
-      incLt.position.y = 0.65; incStn.add(incLt); ctx.torchLights.push(incLt);
+      incLt.position.y = 0.65; incStn.add(incLt); mctx.torchLights.push(incLt);
       const isx = (Math.random() - 0.5) * w * 0.55, isz = (Math.random() - 0.5) * d * 0.55;
-      incStn.position.set(isx, getTerrainHeight(isx, isz, 1.0), isz); ctx.scene.add(incStn);
+      incStn.position.set(isx, getTerrainHeight(isx, isz, 1.0), isz); mctx.scene.add(incStn);
     }
     // ── Jade statue pedestals (lion/dragon statues) ──
     for (let i = 0; i < 4; i++) {
@@ -24695,7 +24697,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       }
       const jsx = (Math.random() - 0.5) * w * 0.5, jsz = (Math.random() - 0.5) * d * 0.5;
       jsPed.position.set(jsx, getTerrainHeight(jsx, jsz, 1.0), jsz);
-      jsPed.rotation.y = Math.random() * Math.PI; ctx.scene.add(jsPed);
+      jsPed.rotation.y = Math.random() * Math.PI; mctx.scene.add(jsPed);
     }
     // ── Prayer bell props (large bells on wooden frames) ──
     for (let i = 0; i < 5; i++) {
@@ -24714,7 +24716,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       pbRope.position.set(0, 1.3, 0.2); pbFrm.add(pbRope);
       const pbx = (Math.random() - 0.5) * w * 0.5, pbz = (Math.random() - 0.5) * d * 0.5;
       pbFrm.position.set(pbx, getTerrainHeight(pbx, pbz, 1.0), pbz);
-      pbFrm.rotation.y = Math.random() * Math.PI; ctx.scene.add(pbFrm);
+      pbFrm.rotation.y = Math.random() * Math.PI; mctx.scene.add(pbFrm);
     }
     // ── Ceremonial weapon displays (wall mounts with crossed polearms) ──
     for (let i = 0; i < 4; i++) {
@@ -24737,7 +24739,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       cwBoss.position.set(0, -0.2, 0.1); cwD.add(cwBoss);
       const cwx = (Math.random() - 0.5) * w * 0.5, cwz = (Math.random() - 0.5) * d * 0.5;
       cwD.position.set(cwx, getTerrainHeight(cwx, cwz, 1.0) + 1.8, cwz);
-      cwD.rotation.y = Math.random() * Math.PI; ctx.scene.add(cwD);
+      cwD.rotation.y = Math.random() * Math.PI; mctx.scene.add(cwD);
     }
     // ── Roof tile layers (overlapping thin box rows) ──
     for (let i = 0; i < 4; i++) {
@@ -24752,7 +24754,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       }
       const rtgx = (Math.random() - 0.5) * w * 0.45, rtgz = (Math.random() - 0.5) * d * 0.45;
       rtGrp.position.set(rtgx, getTerrainHeight(rtgx, rtgz, 1.0) + 3 + Math.random() * 2, rtgz);
-      rtGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(rtGrp);
+      rtGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(rtGrp);
     }
     // ── Zen garden ──
     for (let i = 0; i < 2; i++) {
@@ -24778,7 +24780,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       zenArc.position.set(1.5, 0.12, 0); zenG.add(zenArc);
       const zgx = (Math.random() - 0.5) * w * 0.4, zgz = (Math.random() - 0.5) * d * 0.4;
       zenG.position.set(zgx, getTerrainHeight(zgx, zgz, 1.0) + 0.03, zgz);
-      zenG.rotation.y = Math.random() * Math.PI; ctx.scene.add(zenG);
+      zenG.rotation.y = Math.random() * Math.PI; mctx.scene.add(zenG);
     }
     // ── Koi pond (detailed) ──
     for (let i = 0; i < 2; i++) {
@@ -24806,7 +24808,7 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
         kTl.position.set(kfx, -0.04, kfz - 0.12); kTl.rotation.x = Math.PI / 2; kpG.add(kTl);
       }
       const kpgx = (Math.random() - 0.5) * w * 0.4, kpgz = (Math.random() - 0.5) * d * 0.4;
-      kpG.position.set(kpgx, getTerrainHeight(kpgx, kpgz, 1.0), kpgz); ctx.scene.add(kpG);
+      kpG.position.set(kpgx, getTerrainHeight(kpgx, kpgz, 1.0), kpgz); mctx.scene.add(kpG);
     }
     // ── Torii gate entrance ──
     for (let i = 0; i < 2; i++) {
@@ -24826,19 +24828,19 @@ export function buildJadeTemple(ctx: MapBuildContext, w: number, d: number): voi
       tgLw.position.y = 3.4; tGt.add(tgLw);
       const tgx = (Math.random() - 0.5) * w * 0.5, tgz = (Math.random() - 0.5) * d * 0.5;
       tGt.position.set(tgx, getTerrainHeight(tgx, tgz, 1.0), tgz);
-      tGt.rotation.y = Math.random() * Math.PI; ctx.scene.add(tGt);
+      tGt.rotation.y = Math.random() * Math.PI; mctx.scene.add(tGt);
     }
 }
 
-export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x332222, 0.014);
-    ctx.applyTerrainColors(0x3a2a22, 0x4a3a33, 1.0);
-    ctx.dirLight.color.setHex(0xcc8866);
-    ctx.dirLight.intensity = 0.9;
-    ctx.ambientLight.color.setHex(0x332211);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x886655);
-    ctx.hemiLight.groundColor.setHex(0x221111);
+export function buildAshenBattlefield(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x332222, 0.014);
+    mctx.applyTerrainColors(0x3a2a22, 0x4a3a33, 1.0);
+    mctx.dirLight.color.setHex(0xcc8866);
+    mctx.dirLight.intensity = 0.9;
+    mctx.ambientLight.color.setHex(0x332211);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x886655);
+    mctx.hemiLight.groundColor.setHex(0x221111);
 
     const ashMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.5, roughness: 0.5 });
@@ -24860,7 +24862,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const wx = (Math.random()-0.5)*w*0.85, wz = (Math.random()-0.5)*d*0.85;
       sword.position.set(wx, getTerrainHeight(wx, wz, 1.0), wz);
       sword.rotation.z = (Math.random()-0.5)*0.5; sword.rotation.x = (Math.random()-0.5)*0.3;
-      ctx.scene.add(sword);
+      mctx.scene.add(sword);
     }
     // Embedded shields
     for (let i = 0; i < 15; i++) {
@@ -24869,7 +24871,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
       shield.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.1+Math.random()*0.2, sz);
       shield.rotation.set(Math.random()*0.5-1.2, Math.random()*Math.PI, Math.random()*0.5);
-      ctx.scene.add(shield);
+      mctx.scene.add(shield);
     }
     // Destroyed catapults
     for (let i = 0; i < 3; i++) {
@@ -24888,7 +24890,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const cx = (Math.random()-0.5)*w*0.6, cz = (Math.random()-0.5)*d*0.6;
       catapult.position.set(cx, getTerrainHeight(cx, cz, 1.0), cz);
       catapult.rotation.y = Math.random()*Math.PI; catapult.rotation.z = (Math.random()-0.5)*0.15;
-      ctx.scene.add(catapult);
+      mctx.scene.add(catapult);
     }
     // Siege tower remains
     for (let i = 0; i < 2; i++) {
@@ -24909,7 +24911,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const twx = (Math.random()-0.5)*w*0.5, twz = (Math.random()-0.5)*d*0.5;
       tower.position.set(twx, getTerrainHeight(twx, twz, 1.0), twz);
       tower.rotation.y = Math.random()*Math.PI; tower.rotation.z = (Math.random()-0.5)*0.15;
-      ctx.scene.add(tower);
+      mctx.scene.add(tower);
     }
     // Craters with scorched rims
     for (let i = 0; i < 12; i++) {
@@ -24917,17 +24919,17 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const crater = new THREE.Mesh(new THREE.SphereGeometry(craterR, 27, 23), ashMat);
       crater.scale.y = 0.15;
       const crx = (Math.random()-0.5)*w*0.8, crz = (Math.random()-0.5)*d*0.8;
-      crater.position.set(crx, getTerrainHeight(crx, crz, 1.0)-0.1, crz); ctx.scene.add(crater);
+      crater.position.set(crx, getTerrainHeight(crx, crz, 1.0)-0.1, crz); mctx.scene.add(crater);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(craterR, 0.08, 17, 36), scorchMat);
       rim.rotation.x = -Math.PI/2;
-      rim.position.set(crx, getTerrainHeight(crx, crz, 1.0)+0.01, crz); ctx.scene.add(rim);
+      rim.position.set(crx, getTerrainHeight(crx, crz, 1.0)+0.01, crz); mctx.scene.add(rim);
     }
     // Scorched earth patches
     for (let i = 0; i < 20; i++) {
       const scorch = new THREE.Mesh(new THREE.CircleGeometry(0.5+Math.random()*1.5, 23), scorchMat);
       scorch.rotation.x = -Math.PI/2;
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
-      scorch.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.01, sz); ctx.scene.add(scorch);
+      scorch.position.set(sx, getTerrainHeight(sx, sz, 1.0)+0.01, sz); mctx.scene.add(scorch);
     }
     // Makeshift barricades
     for (let i = 0; i < 8; i++) {
@@ -24944,7 +24946,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       }
       const bx = (Math.random()-0.5)*w*0.7, bz = (Math.random()-0.5)*d*0.7;
       barricade.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz);
-      barricade.rotation.y = Math.random()*Math.PI; ctx.scene.add(barricade);
+      barricade.rotation.y = Math.random()*Math.PI; mctx.scene.add(barricade);
     }
     // Bone piles and fallen warriors
     for (let i = 0; i < 20; i++) {
@@ -24960,7 +24962,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
         skull.position.set((Math.random()-0.5)*0.2, 0.08, (Math.random()-0.5)*0.2); bones.add(skull);
       }
       const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
-      bones.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz); ctx.scene.add(bones);
+      bones.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz); mctx.scene.add(bones);
     }
     // Fallen warriors (simple geometry)
     for (let i = 0; i < 6; i++) {
@@ -24971,7 +24973,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       head.position.set(0.45, 0.1, 0); body.add(head);
       const fx = (Math.random()-0.5)*w*0.7, fz = (Math.random()-0.5)*d*0.7;
       body.position.set(fx, getTerrainHeight(fx, fz, 1.0), fz);
-      body.rotation.y = Math.random()*Math.PI; ctx.scene.add(body);
+      body.rotation.y = Math.random()*Math.PI; mctx.scene.add(body);
     }
     // Smoke columns
     for (let i = 0; i < 8; i++) {
@@ -24981,22 +24983,22 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
         puff.position.y = 0.5+s*0.8; smokeCol.add(puff);
       }
       const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
-      smokeCol.position.set(sx, getTerrainHeight(sx, sz, 1.0), sz); ctx.scene.add(smokeCol);
+      smokeCol.position.set(sx, getTerrainHeight(sx, sz, 1.0), sz); mctx.scene.add(smokeCol);
     }
     // Smoldering fires with ember beds
     for (let i = 0; i < 10; i++) {
       const fire = new THREE.PointLight(0xff4400, 0.6, 8);
       const fx = (Math.random()-0.5)*w*0.6, fz = (Math.random()-0.5)*d*0.6;
       fire.position.set(fx, getTerrainHeight(fx, fz, 1.0)+0.5, fz);
-      ctx.scene.add(fire); ctx.torchLights.push(fire);
+      mctx.scene.add(fire); mctx.torchLights.push(fire);
       const embers = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 17), emberMat);
-      embers.position.copy(fire.position); embers.position.y -= 0.3; ctx.scene.add(embers);
+      embers.position.copy(fire.position); embers.position.y -= 0.3; mctx.scene.add(embers);
       // Charred logs around fire
       for (let l = 0; l < 3; l++) {
         const cLog = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 17), scorchMat);
         cLog.rotation.z = Math.PI/2;
         cLog.position.set(fx+(Math.random()-0.5)*0.4, getTerrainHeight(fx, fz, 1.0)+0.05, fz+(Math.random()-0.5)*0.4);
-        cLog.rotation.y = Math.random()*Math.PI; ctx.scene.add(cLog);
+        cLog.rotation.y = Math.random()*Math.PI; mctx.scene.add(cLog);
       }
     }
     // Tattered banners
@@ -25014,14 +25016,14 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const bnx = (Math.random()-0.5)*w*0.7, bnz = (Math.random()-0.5)*d*0.7;
       banner.position.set(bnx, getTerrainHeight(bnx, bnz, 1.0), bnz);
       banner.rotation.y = Math.random()*Math.PI; banner.rotation.z = (Math.random()-0.5)*0.25;
-      ctx.scene.add(banner);
+      mctx.scene.add(banner);
     }
     // Weapon debris scattered
     for (let i = 0; i < 25; i++) {
       const debris = new THREE.Mesh(new THREE.BoxGeometry(0.05+Math.random()*0.15, 0.02, 0.05+Math.random()*0.1), metalMat);
       const dx = (Math.random()-0.5)*w*0.85, dz = (Math.random()-0.5)*d*0.85;
       debris.position.set(dx, getTerrainHeight(dx, dz, 1.0)+0.02, dz);
-      debris.rotation.y = Math.random()*Math.PI; ctx.scene.add(debris);
+      debris.rotation.y = Math.random()*Math.PI; mctx.scene.add(debris);
     }
     // ── Broken weapon fragments (sword/shield pieces) ──
     for (let i = 0; i < 20; i++) {
@@ -25034,7 +25036,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       }
       const frx = (Math.random()-0.5)*w*0.8, frz = (Math.random()-0.5)*d*0.8;
       frag.position.set(frx, getTerrainHeight(frx, frz, 1.0) + 0.02, frz);
-      frag.rotation.y = Math.random() * Math.PI; ctx.scene.add(frag);
+      frag.rotation.y = Math.random() * Math.PI; mctx.scene.add(frag);
     }
     // ── Siege equipment ruins (battering ram pieces) ──
     for (let i = 0; i < 2; i++) {
@@ -25049,7 +25051,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       }
       const rmx = (Math.random()-0.5)*w*0.5, rmz = (Math.random()-0.5)*d*0.5;
       ram.position.set(rmx, getTerrainHeight(rmx, rmz, 1.0), rmz);
-      ram.rotation.y = Math.random() * Math.PI; ram.rotation.z = (Math.random()-0.5)*0.15; ctx.scene.add(ram);
+      ram.rotation.y = Math.random() * Math.PI; ram.rotation.z = (Math.random()-0.5)*0.15; mctx.scene.add(ram);
     }
     // ── Crater detail (inner rubble, heat shimmer) ──
     for (let i = 0; i < 8; i++) {
@@ -25062,7 +25064,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const shimmer = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0xff8844, transparent: true, opacity: 0.04, emissive: 0xff4422, emissiveIntensity: 0.3 }));
       shimmer.position.y = 0.4; crDetail.add(shimmer);
       const cdx = (Math.random()-0.5)*w*0.7, cdz = (Math.random()-0.5)*d*0.7;
-      crDetail.position.set(cdx, getTerrainHeight(cdx, cdz, 1.0), cdz); ctx.scene.add(crDetail);
+      crDetail.position.set(cdx, getTerrainHeight(cdx, cdz, 1.0), cdz); mctx.scene.add(crDetail);
     }
 
     // ── Dense ground grass ──
@@ -25088,7 +25090,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const gx = (Math.random() - 0.5) * w * 0.9;
       const gz = (Math.random() - 0.5) * d * 0.9;
       grassClump.position.set(gx, getTerrainHeight(gx, gz, 1.0), gz);
-      ctx.scene.add(grassClump);
+      mctx.scene.add(grassClump);
     }
     // ── Siege engine wreckage ──
     for (let i = 0; i < 3; i++) {
@@ -25112,7 +25114,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       }
       const sgx = (Math.random()-0.5)*w*0.5, sgz = (Math.random()-0.5)*d*0.5;
       siege.position.set(sgx, getTerrainHeight(sgx, sgz, 1.0), sgz);
-      siege.rotation.y = Math.random() * Math.PI; ctx.scene.add(siege);
+      siege.rotation.y = Math.random() * Math.PI; mctx.scene.add(siege);
     }
     // ── Defensive trench lines ──
     for (let i = 0; i < 4; i++) {
@@ -25138,7 +25140,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       }
       const trx = (Math.random()-0.5)*w*0.7, trz = (Math.random()-0.5)*d*0.7;
       trench.position.set(trx, getTerrainHeight(trx, trz, 1.0), trz);
-      trench.rotation.y = Math.random() * Math.PI; ctx.scene.add(trench);
+      trench.rotation.y = Math.random() * Math.PI; mctx.scene.add(trench);
     }
     // ── War banner remnants ──
     for (let i = 0; i < 8; i++) {
@@ -25154,7 +25156,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const bx2 = (Math.random()-0.5)*w*0.75, bz2 = (Math.random()-0.5)*d*0.75;
       wBanner.position.set(bx2, getTerrainHeight(bx2, bz2, 1.0), bz2);
       wBanner.rotation.y = Math.random() * Math.PI;
-      wBanner.rotation.z = (Math.random()-0.5)*0.4; ctx.scene.add(wBanner);
+      wBanner.rotation.z = (Math.random()-0.5)*0.4; mctx.scene.add(wBanner);
     }
     // ── Shield wall debris ──
     for (let i = 0; i < 6; i++) {
@@ -25174,7 +25176,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
         shieldPile.add(sh);
       }
       const spx = (Math.random()-0.5)*w*0.7, spz = (Math.random()-0.5)*d*0.7;
-      shieldPile.position.set(spx, getTerrainHeight(spx, spz, 1.0), spz); ctx.scene.add(shieldPile);
+      shieldPile.position.set(spx, getTerrainHeight(spx, spz, 1.0), spz); mctx.scene.add(shieldPile);
     }
     // ── Scorched earth craters (detailed) ──
     for (let i = 0; i < 10; i++) {
@@ -25195,7 +25197,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
         smoke.position.y = 0.2; crGrp.add(smoke);
       }
       const crx2 = (Math.random()-0.5)*w*0.75, crz2 = (Math.random()-0.5)*d*0.75;
-      crGrp.position.set(crx2, getTerrainHeight(crx2, crz2, 1.0), crz2); ctx.scene.add(crGrp);
+      crGrp.position.set(crx2, getTerrainHeight(crx2, crz2, 1.0), crz2); mctx.scene.add(crGrp);
     }
     // ── Weapon graveyard ──
     for (let i = 0; i < 4; i++) {
@@ -25227,7 +25229,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
         axGrp.rotation.z = Math.PI/2 + (Math.random()-0.5)*0.3; wpnGrp.add(axGrp);
       }
       const wgx = (Math.random()-0.5)*w*0.6, wgz = (Math.random()-0.5)*d*0.6;
-      wpnGrp.position.set(wgx, getTerrainHeight(wgx, wgz, 1.0), wgz); ctx.scene.add(wpnGrp);
+      wpnGrp.position.set(wgx, getTerrainHeight(wgx, wgz, 1.0), wgz); mctx.scene.add(wpnGrp);
     }
     // ── Fallen war horse props ──
     for (let i = 0; i < 3; i++) {
@@ -25252,7 +25254,7 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       const hx = (Math.random()-0.5)*w*0.5, hz = (Math.random()-0.5)*d*0.5;
       horse.position.set(hx, getTerrainHeight(hx, hz, 1.0), hz);
       horse.rotation.y = Math.random() * Math.PI;
-      horse.rotation.z = 0.1; ctx.scene.add(horse);
+      horse.rotation.z = 0.1; mctx.scene.add(horse);
     }
     // ── Watchtower ruins ──
     for (let i = 0; i < 2; i++) {
@@ -25279,20 +25281,20 @@ export function buildAshenBattlefield(ctx: MapBuildContext, w: number, d: number
       }
       const tw2x = (Math.random()-0.5)*w*0.4, tw2z = (Math.random()-0.5)*d*0.4;
       tower2.position.set(tw2x, getTerrainHeight(tw2x, tw2z, 1.0), tw2z);
-      tower2.rotation.y = Math.random() * Math.PI; ctx.scene.add(tower2);
+      tower2.rotation.y = Math.random() * Math.PI; mctx.scene.add(tower2);
     }
 
 }
 
-export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x112211, 0.02);
-    ctx.applyTerrainColors(0x1a2a11, 0x2a3a22, 0.6);
-    ctx.dirLight.color.setHex(0x88aa44);
-    ctx.dirLight.intensity = 0.5;
-    ctx.ambientLight.color.setHex(0x223311);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x558833);
-    ctx.hemiLight.groundColor.setHex(0x111a00);
+export function buildFungalDepths(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x112211, 0.02);
+    mctx.applyTerrainColors(0x1a2a11, 0x2a3a22, 0.6);
+    mctx.dirLight.color.setHex(0x88aa44);
+    mctx.dirLight.intensity = 0.5;
+    mctx.ambientLight.color.setHex(0x223311);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x558833);
+    mctx.hemiLight.groundColor.setHex(0x111a00);
 
     const sporeMat = new THREE.MeshStandardMaterial({ color: 0xaaff44, emissive: 0x44aa00, emissiveIntensity: 0.5, transparent: true, opacity: 0.6 });
     const stemMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.7 });
@@ -25332,7 +25334,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         new THREE.MeshStandardMaterial({ color: 0xddccbb, roughness: 0.6 }));
       gills.position.y = h-0.08; mush.add(gills);
       const mx = (Math.random()-0.5)*w*0.85, mz = (Math.random()-0.5)*d*0.85;
-      mush.position.set(mx, getTerrainHeight(mx, mz, 0.6), mz); ctx.scene.add(mush);
+      mush.position.set(mx, getTerrainHeight(mx, mz, 0.6), mz); mctx.scene.add(mush);
     }
     // Small bioluminescent fungi clusters
     for (let i = 0; i < 40; i++) {
@@ -25349,7 +25351,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         cluster.add(tiny);
       }
       const cx = (Math.random()-0.5)*w*0.8, cz = (Math.random()-0.5)*d*0.8;
-      cluster.position.set(cx, getTerrainHeight(cx, cz, 0.6), cz); ctx.scene.add(cluster);
+      cluster.position.set(cx, getTerrainHeight(cx, cz, 0.6), cz); mctx.scene.add(cluster);
     }
     // Mushroom bridges (connecting large caps)
     for (let i = 0; i < 4; i++) {
@@ -25363,7 +25365,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
       bCap.rotation.z = Math.PI/2; bCap.position.y = 2.2; bridge.add(bCap);
       const bx = (Math.random()-0.5)*w*0.5, bz = (Math.random()-0.5)*d*0.5;
       bridge.position.set(bx, getTerrainHeight(bx, bz, 0.6), bz);
-      bridge.rotation.y = Math.random()*Math.PI; ctx.scene.add(bridge);
+      bridge.rotation.y = Math.random()*Math.PI; mctx.scene.add(bridge);
     }
     // Spore clouds (floating clusters)
     for (let i = 0; i < 20; i++) {
@@ -25374,7 +25376,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         cloud.add(spore);
       }
       cloud.position.set((Math.random()-0.5)*w*0.7, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.7);
-      ctx.scene.add(cloud);
+      mctx.scene.add(cloud);
     }
     // Fungal growths on walls (vertical shelf fungi)
     for (let i = 0; i < 25; i++) {
@@ -25383,7 +25385,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
       shelf.scale.set(1, 0.3, 1);
       const sx = (Math.random()-0.5)*w*0.8, sz = (Math.random()-0.5)*d*0.8;
       shelf.position.set(sx, getTerrainHeight(sx, sz, 0.6)+0.5+Math.random()*2, sz);
-      shelf.rotation.z = (Math.random()-0.5)*0.5; ctx.scene.add(shelf);
+      shelf.rotation.z = (Math.random()-0.5)*0.5; mctx.scene.add(shelf);
     }
     // Acid pools
     for (let i = 0; i < 5; i++) {
@@ -25391,12 +25393,12 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
       const acid = new THREE.Mesh(new THREE.CircleGeometry(acidR, 30), acidMat);
       acid.rotation.x = -Math.PI/2;
       const ax = (Math.random()-0.5)*w*0.5, az = (Math.random()-0.5)*d*0.5;
-      acid.position.set(ax, getTerrainHeight(ax, az, 0.6)+0.02, az); ctx.scene.add(acid);
+      acid.position.set(ax, getTerrainHeight(ax, az, 0.6)+0.02, az); mctx.scene.add(acid);
       // Bubbling
       for (let b = 0; b < 3; b++) {
         const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.03, 17, 16), acidMat);
         bubble.position.set(ax+(Math.random()-0.5)*acidR, getTerrainHeight(ax, az, 0.6)+0.06, az+(Math.random()-0.5)*acidR);
-        ctx.scene.add(bubble);
+        mctx.scene.add(bubble);
       }
     }
     // Bioluminescent pools
@@ -25405,23 +25407,23 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x22aa44, emissiveIntensity: 0.8, transparent: true, opacity: 0.5 }));
       pool.rotation.x = -Math.PI/2;
       const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
-      pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz); ctx.scene.add(pool);
+      pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz); mctx.scene.add(pool);
       const pLight = new THREE.PointLight(0x44ff88, 0.4, 6);
       pLight.position.set(px, getTerrainHeight(px, pz, 0.6)+0.3, pz);
-      ctx.scene.add(pLight); ctx.torchLights.push(pLight);
+      mctx.scene.add(pLight); mctx.torchLights.push(pLight);
     }
     // Mycelium network on ground
     for (let i = 0; i < 35; i++) {
       const web = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 1+Math.random()*2, 16), myceliumMat);
       const wx = (Math.random()-0.5)*w*0.8, wz = (Math.random()-0.5)*d*0.8;
       web.position.set(wx, getTerrainHeight(wx, wz, 0.6)+0.02, wz);
-      web.rotation.x = Math.PI/2; web.rotation.y = Math.random()*Math.PI; ctx.scene.add(web);
+      web.rotation.x = Math.PI/2; web.rotation.y = Math.random()*Math.PI; mctx.scene.add(web);
     }
     // Hanging mycelium strands (aerial)
     for (let i = 0; i < 20; i++) {
       const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 1.5+Math.random()*3, 16), myceliumMat);
       strand.position.set((Math.random()-0.5)*w*0.7, 2+Math.random()*3, (Math.random()-0.5)*d*0.7);
-      strand.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); ctx.scene.add(strand);
+      strand.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); mctx.scene.add(strand);
     }
     // Mushroom colonies (dense clusters)
     for (let i = 0; i < 6; i++) {
@@ -25436,7 +25438,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
           new THREE.MeshStandardMaterial({ color: mushCapColors[Math.floor(Math.random()*mushCapColors.length)], roughness: 0.4 }));
         cap.scale.y = 0.4; cap.position.y = h; mush.add(cap);
         const mmx = colX+(Math.random()-0.5)*1.5, mmz = colZ+(Math.random()-0.5)*1.5;
-        mush.position.set(mmx, getTerrainHeight(mmx, mmz, 0.6), mmz); ctx.scene.add(mush);
+        mush.position.set(mmx, getTerrainHeight(mmx, mmz, 0.6), mmz); mctx.scene.add(mush);
       }
     }
     // ── Giant mushroom cap gill detail (radial thin planes underneath) ──
@@ -25451,18 +25453,18 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
       }
       const gmx = (Math.random()-0.5)*w*0.7, gmz = (Math.random()-0.5)*d*0.7;
       gillGrp.position.set(gmx, getTerrainHeight(gmx, gmz, 0.6) + 2 + Math.random() * 3, gmz);
-      ctx.scene.add(gillGrp);
+      mctx.scene.add(gillGrp);
     }
     // ── Bioluminescent vein patterns on ground ──
     for (let i = 0; i < 20; i++) {
       const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 1.5 + Math.random() * 2.5, 16), glowFungMat);
       const vx = (Math.random()-0.5)*w*0.8, vz = (Math.random()-0.5)*d*0.8;
       vein.position.set(vx, getTerrainHeight(vx, vz, 0.6) + 0.02, vz);
-      vein.rotation.x = Math.PI / 2; vein.rotation.y = Math.random() * Math.PI; ctx.scene.add(vein);
+      vein.rotation.x = Math.PI / 2; vein.rotation.y = Math.random() * Math.PI; mctx.scene.add(vein);
       if (Math.random() > 0.5) {
         const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.01, 0.5 + Math.random() * 0.8, 16), glowFungMat);
         branch.position.set(vx + (Math.random()-0.5)*0.3, getTerrainHeight(vx, vz, 0.6) + 0.02, vz + (Math.random()-0.5)*0.3);
-        branch.rotation.x = Math.PI / 2; branch.rotation.y = Math.random() * Math.PI; ctx.scene.add(branch);
+        branch.rotation.x = Math.PI / 2; branch.rotation.y = Math.random() * Math.PI; mctx.scene.add(branch);
       }
     }
     // ── Fungal shelf brackets on walls ──
@@ -25474,7 +25476,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
       underRim.position.y = -0.02; underRim.rotation.x = Math.PI / 2; shelf.add(underRim);
       const sfx = (Math.random()-0.5)*w*0.8, sfz = (Math.random()-0.5)*d*0.8;
       shelf.position.set(sfx, getTerrainHeight(sfx, sfz, 0.6) + 0.8 + Math.random() * 2.5, sfz);
-      shelf.rotation.y = Math.random() * Math.PI; ctx.scene.add(shelf);
+      shelf.rotation.y = Math.random() * Math.PI; mctx.scene.add(shelf);
     }
     // ── Giant mushroom trees (tall thick stalks with large caps, gills, bioluminescent spots) ──
     for (let i = 0; i < 8; i++) {
@@ -25516,7 +25518,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         giantTree.add(bioSpot);
       }
       const gtx = (Math.random() - 0.5) * w * 0.75, gtz = (Math.random() - 0.5) * d * 0.75;
-      giantTree.position.set(gtx, getTerrainHeight(gtx, gtz, 0.6), gtz); ctx.scene.add(giantTree);
+      giantTree.position.set(gtx, getTerrainHeight(gtx, gtz, 0.6), gtz); mctx.scene.add(giantTree);
     }
     // ── Mycelium web networks on ground (branching cylinder networks with node spheres) ──
     for (let i = 0; i < 15; i++) {
@@ -25541,7 +25543,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         webNet.add(strand);
       }
       const wnx = (Math.random() - 0.5) * w * 0.8, wnz = (Math.random() - 0.5) * d * 0.8;
-      webNet.position.set(wnx, getTerrainHeight(wnx, wnz, 0.6) + 0.01, wnz); ctx.scene.add(webNet);
+      webNet.position.set(wnx, getTerrainHeight(wnx, wnz, 0.6) + 0.01, wnz); mctx.scene.add(webNet);
     }
     // ── Spore cloud clusters (floating translucent emissive spheres with glow) ──
     for (let i = 0; i < 12; i++) {
@@ -25556,9 +25558,9 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         sporeCluster.add(sp);
       }
       const spLight = new THREE.PointLight(0x88cc22, 0.2, 3);
-      sporeCluster.add(spLight); ctx.torchLights.push(spLight);
+      sporeCluster.add(spLight); mctx.torchLights.push(spLight);
       sporeCluster.position.set((Math.random() - 0.5) * w * 0.7, 1.0 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(sporeCluster);
+      mctx.scene.add(sporeCluster);
     }
     // ── Fungal shelf brackets on walls/trees (half-circle shelves, varied colors) ──
     for (let i = 0; i < 20; i++) {
@@ -25577,7 +25579,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
       underTorus.position.y = -bracketR * 0.12; underTorus.rotation.x = Math.PI / 2; shelfBracket.add(underTorus);
       const sbx = (Math.random() - 0.5) * w * 0.85, sbz = (Math.random() - 0.5) * d * 0.85;
       shelfBracket.position.set(sbx, getTerrainHeight(sbx, sbz, 0.6) + 0.6 + Math.random() * 3, sbz);
-      shelfBracket.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(shelfBracket);
+      shelfBracket.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(shelfBracket);
     }
     // ── Bioluminescent pools (flat glowing water with surrounding small mushrooms) ──
     for (let i = 0; i < 6; i++) {
@@ -25601,9 +25603,9 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         bioPool.add(smallMush);
       }
       const bpLight = new THREE.PointLight(0x22ffaa, 0.5, 5);
-      bpLight.position.y = 0.2; bioPool.add(bpLight); ctx.torchLights.push(bpLight);
+      bpLight.position.y = 0.2; bioPool.add(bpLight); mctx.torchLights.push(bpLight);
       const bpx = (Math.random() - 0.5) * w * 0.55, bpz = (Math.random() - 0.5) * d * 0.55;
-      bioPool.position.set(bpx, getTerrainHeight(bpx, bpz, 0.6) + 0.01, bpz); ctx.scene.add(bioPool);
+      bioPool.position.set(bpx, getTerrainHeight(bpx, bpz, 0.6) + 0.01, bpz); mctx.scene.add(bioPool);
     }
     // ── Rotting log bridges (horizontal cylinders with mushroom growths and moss) ──
     for (let i = 0; i < 4; i++) {
@@ -25633,7 +25635,7 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
       }
       const lbx = (Math.random() - 0.5) * w * 0.5, lbz = (Math.random() - 0.5) * d * 0.5;
       logBridge.position.set(lbx, getTerrainHeight(lbx, lbz, 0.6), lbz);
-      logBridge.rotation.y = Math.random() * Math.PI; ctx.scene.add(logBridge);
+      logBridge.rotation.y = Math.random() * Math.PI; mctx.scene.add(logBridge);
     }
     // ── Toxic gas vents (cylinder openings with translucent green clouds and green PointLight) ──
     for (let i = 0; i < 8; i++) {
@@ -25648,21 +25650,21 @@ export function buildFungalDepths(ctx: MapBuildContext, w: number, d: number): v
         vent.add(gasBall);
       }
       const ventLight = new THREE.PointLight(0x44aa11, 0.25, 3);
-      ventLight.position.y = 0.4; vent.add(ventLight); ctx.torchLights.push(ventLight);
+      ventLight.position.y = 0.4; vent.add(ventLight); mctx.torchLights.push(ventLight);
       const vx = (Math.random() - 0.5) * w * 0.7, vz = (Math.random() - 0.5) * d * 0.7;
-      vent.position.set(vx, getTerrainHeight(vx, vz, 0.6), vz); ctx.scene.add(vent);
+      vent.position.set(vx, getTerrainHeight(vx, vz, 0.6), vz); mctx.scene.add(vent);
     }
 }
 
-export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x0a0505, 0.018);
-    ctx.applyTerrainColors(0x111111, 0x222222, 0.5);
-    ctx.dirLight.color.setHex(0xff6633);
-    ctx.dirLight.intensity = 0.6;
-    ctx.ambientLight.color.setHex(0x110505);
-    ctx.ambientLight.intensity = 0.3;
-    ctx.hemiLight.color.setHex(0x442222);
-    ctx.hemiLight.groundColor.setHex(0x0a0000);
+export function buildObsidianFortress(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x0a0505, 0.018);
+    mctx.applyTerrainColors(0x111111, 0x222222, 0.5);
+    mctx.dirLight.color.setHex(0xff6633);
+    mctx.dirLight.intensity = 0.6;
+    mctx.ambientLight.color.setHex(0x110505);
+    mctx.ambientLight.intensity = 0.3;
+    mctx.hemiLight.color.setHex(0x442222);
+    mctx.hemiLight.groundColor.setHex(0x0a0000);
 
     const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.2, metalness: 0.5 });
     const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 1.5 });
@@ -25688,7 +25690,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       }
       const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
       wall.position.set(bx, getTerrainHeight(bx, bz, 0.5), bz);
-      wall.rotation.y = Math.random()*Math.PI; ctx.scene.add(wall);
+      wall.rotation.y = Math.random()*Math.PI; mctx.scene.add(wall);
     }
     // Dark crystal formations
     for (let i = 0; i < 18; i++) {
@@ -25701,7 +25703,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
         crystal.rotation.z = (Math.random()-0.5)*0.3; cluster.add(crystal);
       }
       const cx = (Math.random()-0.5)*w*0.7, cz = (Math.random()-0.5)*d*0.7;
-      cluster.position.set(cx, getTerrainHeight(cx, cz, 0.5), cz); ctx.scene.add(cluster);
+      cluster.position.set(cx, getTerrainHeight(cx, cz, 0.5), cz); mctx.scene.add(cluster);
     }
     // Shadow flame sconces
     for (let i = 0; i < 12; i++) {
@@ -25714,9 +25716,9 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       const flame = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 36), shadowFlameMat);
       flame.position.y = 1.95; sconce.add(flame);
       const fLight = new THREE.PointLight(0x6622cc, 0.6, 7);
-      fLight.position.y = 2.0; sconce.add(fLight); ctx.torchLights.push(fLight);
+      fLight.position.y = 2.0; sconce.add(fLight); mctx.torchLights.push(fLight);
       const sx = (Math.random()-0.5)*w*0.7, sz = (Math.random()-0.5)*d*0.7;
-      sconce.position.set(sx, getTerrainHeight(sx, sz, 0.5), sz); ctx.scene.add(sconce);
+      sconce.position.set(sx, getTerrainHeight(sx, sz, 0.5), sz); mctx.scene.add(sconce);
     }
     // Black iron gates
     for (let i = 0; i < 4; i++) {
@@ -25738,7 +25740,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       archBar.position.y = 3.5; gate.add(archBar);
       const gtx = (Math.random()-0.5)*w*0.5, gtz = (Math.random()-0.5)*d*0.5;
       gate.position.set(gtx, getTerrainHeight(gtx, gtz, 0.5), gtz);
-      gate.rotation.y = Math.random()*Math.PI; ctx.scene.add(gate);
+      gate.rotation.y = Math.random()*Math.PI; mctx.scene.add(gate);
     }
     // Obsidian spikes
     for (let i = 0; i < 25; i++) {
@@ -25746,7 +25748,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06+Math.random()*0.1, spikeH, 17), obsidianMat);
       const sx = (Math.random()-0.5)*w*0.85, sz = (Math.random()-0.5)*d*0.85;
       spike.position.set(sx, getTerrainHeight(sx, sz, 0.5)+spikeH/2, sz);
-      spike.rotation.z = (Math.random()-0.5)*0.2; spike.castShadow = true; ctx.scene.add(spike);
+      spike.rotation.z = (Math.random()-0.5)*0.2; spike.castShadow = true; mctx.scene.add(spike);
     }
     // Dark pools
     for (let i = 0; i < 5; i++) {
@@ -25754,7 +25756,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       const pool = new THREE.Mesh(new THREE.CircleGeometry(poolR, 36), darkPoolMat);
       pool.rotation.x = -Math.PI/2;
       const px = (Math.random()-0.5)*w*0.5, pz = (Math.random()-0.5)*d*0.5;
-      pool.position.set(px, getTerrainHeight(px, pz, 0.5)+0.02, pz); ctx.scene.add(pool);
+      pool.position.set(px, getTerrainHeight(px, pz, 0.5)+0.02, pz); mctx.scene.add(pool);
     }
     // Carved obsidian statues
     for (let i = 0; i < 6; i++) {
@@ -25772,7 +25774,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
         eye.position.set(ex, 2.53, 0.17); statue.add(eye);
       }
       const stx = (Math.random()-0.5)*w*0.55, stz = (Math.random()-0.5)*d*0.55;
-      statue.position.set(stx, getTerrainHeight(stx, stz, 0.5), stz); ctx.scene.add(statue);
+      statue.position.set(stx, getTerrainHeight(stx, stz, 0.5), stz); mctx.scene.add(statue);
     }
     // Volcanic glass shards scattered on ground
     for (let i = 0; i < 30; i++) {
@@ -25780,7 +25782,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
         new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.1, metalness: 0.6 }));
       const shx = (Math.random()-0.5)*w*0.8, shz = (Math.random()-0.5)*d*0.8;
       shard.position.set(shx, getTerrainHeight(shx, shz, 0.5)+0.03, shz);
-      shard.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(shard);
+      shard.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(shard);
     }
     // Lava channels with glow
     for (let i = 0; i < 5; i++) {
@@ -25788,17 +25790,17 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       channel.rotation.x = -Math.PI/2;
       const cx = (Math.random()-0.5)*w*0.5, cz = (Math.random()-0.5)*d*0.5;
       channel.position.set(cx, getTerrainHeight(cx, cz, 0.5)+0.03, cz);
-      channel.rotation.z = Math.random()*Math.PI; ctx.scene.add(channel);
+      channel.rotation.z = Math.random()*Math.PI; mctx.scene.add(channel);
       const lLight = new THREE.PointLight(0xff4400, 0.8, 10);
       lLight.position.set(cx, getTerrainHeight(cx, cz, 0.5)+0.5, cz);
-      ctx.scene.add(lLight); ctx.torchLights.push(lLight);
+      mctx.scene.add(lLight); mctx.torchLights.push(lLight);
     }
     // Dark pillars
     for (let i = 0; i < 12; i++) {
       const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5+Math.random()*3, 23), obsidianMat);
       const px = (Math.random()-0.5)*w*0.7, pz = (Math.random()-0.5)*d*0.7;
       pil.position.set(px, getTerrainHeight(px, pz, 0.5)+pil.geometry.parameters.height/2, pz);
-      pil.castShadow = true; ctx.scene.add(pil);
+      pil.castShadow = true; mctx.scene.add(pil);
     }
     // ── Obsidian blade wall spikes ──
     for (let i = 0; i < 20; i++) {
@@ -25809,7 +25811,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       tip.position.y = 0.5; bladeSpike.add(tip);
       const bsx = (Math.random()-0.5)*w*0.8, bsz = (Math.random()-0.5)*d*0.8;
       bladeSpike.position.set(bsx, getTerrainHeight(bsx, bsz, 0.5) + 1.5 + Math.random() * 2, bsz);
-      bladeSpike.rotation.set((Math.random()-0.5)*0.3, Math.random()*Math.PI, (Math.random()-0.5)*0.3); ctx.scene.add(bladeSpike);
+      bladeSpike.rotation.set((Math.random()-0.5)*0.3, Math.random()*Math.PI, (Math.random()-0.5)*0.3); mctx.scene.add(bladeSpike);
     }
     // ── Magma channel floor details ──
     for (let i = 0; i < 8; i++) {
@@ -25821,7 +25823,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
         bubble.position.set((Math.random()-0.5)*0.3, 0.03, (Math.random()-0.5)*0.3); magmaDetail.add(bubble);
       }
       const mdx = (Math.random()-0.5)*w*0.6, mdz = (Math.random()-0.5)*d*0.6;
-      magmaDetail.position.set(mdx, getTerrainHeight(mdx, mdz, 0.5) + 0.02, mdz); ctx.scene.add(magmaDetail);
+      magmaDetail.position.set(mdx, getTerrainHeight(mdx, mdz, 0.5) + 0.02, mdz); mctx.scene.add(magmaDetail);
     }
     // ── Skull trophy mounts ──
     for (let i = 0; i < 10; i++) {
@@ -25834,7 +25836,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       jaw.position.set(0, -0.06, 0.08); trophy.add(jaw);
       const tmx = (Math.random()-0.5)*w*0.7, tmz = (Math.random()-0.5)*d*0.7;
       trophy.position.set(tmx, getTerrainHeight(tmx, tmz, 0.5) + 2 + Math.random() * 2, tmz);
-      trophy.rotation.y = Math.random() * Math.PI; ctx.scene.add(trophy);
+      trophy.rotation.y = Math.random() * Math.PI; mctx.scene.add(trophy);
     }
     // ── Molten metal crucible props ──
     for (let i = 0; i < 4; i++) {
@@ -25848,7 +25850,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       const tripod2 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.4, 16), darkIronMat);
       tripod2.position.set(-0.06, 0.05, 0.1); tripod2.rotation.z = -0.2; crucible.add(tripod2);
       const crx = (Math.random()-0.5)*w*0.5, crz = (Math.random()-0.5)*d*0.5;
-      crucible.position.set(crx, getTerrainHeight(crx, crz, 0.5), crz); ctx.scene.add(crucible);
+      crucible.position.set(crx, getTerrainHeight(crx, crz, 0.5), crz); mctx.scene.add(crucible);
     }
     // ── Obsidian blade wall spikes (sharp glossy cones from walls) ──
     for (let i = 0; i < 20; i++) {
@@ -25864,7 +25866,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       const wsx = (Math.random() - 0.5) * w * 0.85, wsz = (Math.random() - 0.5) * d * 0.85;
       wallSpike.position.set(wsx, getTerrainHeight(wsx, wsz, 0.5) + 1.5 + Math.random() * 3, wsz);
       wallSpike.rotation.set((Math.random() - 0.5) * 1.2, Math.random() * Math.PI, (Math.random() - 0.5) * 0.8);
-      ctx.scene.add(wallSpike);
+      mctx.scene.add(wallSpike);
     }
     // ── Magma channel floor details (trenches with orange emissive interior) ──
     for (let i = 0; i < 6; i++) {
@@ -25882,10 +25884,10 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       rightEdge.position.set(chanW / 2 + 0.06, 0, 0); magmaChan.add(rightEdge);
       // Glow light along channel
       const chanLight = new THREE.PointLight(0xff4400, 0.6, 6);
-      chanLight.position.y = 0.2; magmaChan.add(chanLight); ctx.torchLights.push(chanLight);
+      chanLight.position.y = 0.2; magmaChan.add(chanLight); mctx.torchLights.push(chanLight);
       const mcx = (Math.random() - 0.5) * w * 0.6, mcz = (Math.random() - 0.5) * d * 0.6;
       magmaChan.position.set(mcx, getTerrainHeight(mcx, mcz, 0.5) + 0.05, mcz);
-      magmaChan.rotation.y = Math.random() * Math.PI; ctx.scene.add(magmaChan);
+      magmaChan.rotation.y = Math.random() * Math.PI; mctx.scene.add(magmaChan);
     }
     // ── Dark iron portcullis gates (grid of cylinders with frame and winch) ──
     for (let i = 0; i < 4; i++) {
@@ -25921,7 +25923,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       }
       const pcx = (Math.random() - 0.5) * w * 0.5, pcz = (Math.random() - 0.5) * d * 0.5;
       portcullis.position.set(pcx, getTerrainHeight(pcx, pcz, 0.5), pcz);
-      portcullis.rotation.y = Math.random() * Math.PI; ctx.scene.add(portcullis);
+      portcullis.rotation.y = Math.random() * Math.PI; mctx.scene.add(portcullis);
     }
     // ── Skull trophy mounts (sphere skulls on wall plaques with crossed bones) ──
     for (let i = 0; i < 12; i++) {
@@ -25946,7 +25948,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       bone2.rotation.z = -Math.PI / 4; bone2.position.z = 0.02; skullMount.add(bone2);
       const smx = (Math.random() - 0.5) * w * 0.75, smz = (Math.random() - 0.5) * d * 0.75;
       skullMount.position.set(smx, getTerrainHeight(smx, smz, 0.5) + 1.5 + Math.random() * 2.5, smz);
-      skullMount.rotation.y = Math.random() * Math.PI; ctx.scene.add(skullMount);
+      skullMount.rotation.y = Math.random() * Math.PI; mctx.scene.add(skullMount);
     }
     // ── Molten metal crucibles (bowl on tripod with emissive surface and steam) ──
     for (let i = 0; i < 6; i++) {
@@ -25975,7 +25977,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
         crucibleLg.add(steam);
       }
       const clx = (Math.random() - 0.5) * w * 0.5, clz = (Math.random() - 0.5) * d * 0.5;
-      crucibleLg.position.set(clx, getTerrainHeight(clx, clz, 0.5), clz); ctx.scene.add(crucibleLg);
+      crucibleLg.position.set(clx, getTerrainHeight(clx, clz, 0.5), clz); mctx.scene.add(crucibleLg);
     }
     // ── Obsidian pillars with rune carvings (tall box pillars with emissive rune insets) ──
     for (let i = 0; i < 8; i++) {
@@ -26002,7 +26004,7 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
         }
       }
       const rpx = (Math.random() - 0.5) * w * 0.65, rpz = (Math.random() - 0.5) * d * 0.65;
-      runePillar.position.set(rpx, getTerrainHeight(rpx, rpz, 0.5), rpz); ctx.scene.add(runePillar);
+      runePillar.position.set(rpx, getTerrainHeight(rpx, rpz, 0.5), rpz); mctx.scene.add(runePillar);
     }
     // ── Guard post stations (raised platforms with railings, weapon racks, torch) ──
     for (let i = 0; i < 4; i++) {
@@ -26034,10 +26036,10 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       const torchFlame = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 12), lavaMat);
       torchFlame.position.set(platW / 2 - 0.1, 1.72, 0); guardPost.add(torchFlame);
       const gpLight = new THREE.PointLight(0xff4400, 0.5, 5);
-      gpLight.position.set(platW / 2 - 0.1, 1.8, 0); guardPost.add(gpLight); ctx.torchLights.push(gpLight);
+      gpLight.position.set(platW / 2 - 0.1, 1.8, 0); guardPost.add(gpLight); mctx.torchLights.push(gpLight);
       const gpx = (Math.random() - 0.5) * w * 0.55, gpz = (Math.random() - 0.5) * d * 0.55;
       guardPost.position.set(gpx, getTerrainHeight(gpx, gpz, 0.5), gpz);
-      guardPost.rotation.y = Math.random() * Math.PI; ctx.scene.add(guardPost);
+      guardPost.rotation.y = Math.random() * Math.PI; mctx.scene.add(guardPost);
     }
     // ── Lava falls (vertical streams of stacked orange emissive spheres/cylinders into pools) ──
     for (let i = 0; i < 3; i++) {
@@ -26061,21 +26063,21 @@ export function buildObsidianFortress(ctx: MapBuildContext, w: number, d: number
       lavaPool.rotation.x = -Math.PI / 2; lavaPool.position.y = -0.02; lavaFall.add(lavaPool);
       // Glow
       const lfLight = new THREE.PointLight(0xff4400, 0.7, 8);
-      lfLight.position.y = fallH / 2; lavaFall.add(lfLight); ctx.torchLights.push(lfLight);
+      lfLight.position.y = fallH / 2; lavaFall.add(lfLight); mctx.torchLights.push(lfLight);
       const lfx = (Math.random() - 0.5) * w * 0.6, lfz = (Math.random() - 0.5) * d * 0.6;
-      lavaFall.position.set(lfx, getTerrainHeight(lfx, lfz, 0.5) + 0.5, lfz); ctx.scene.add(lavaFall);
+      lavaFall.position.set(lfx, getTerrainHeight(lfx, lfz, 0.5) + 0.5, lfz); mctx.scene.add(lavaFall);
     }
 }
 
-export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x0a0a22, 0.012);
-    ctx.applyTerrainColors(0x1a1a3a, 0x2a2a4a, 0.8);
-    ctx.dirLight.color.setHex(0xaabbff);
-    ctx.dirLight.intensity = 1.0;
-    ctx.ambientLight.color.setHex(0x222244);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x6666aa);
-    ctx.hemiLight.groundColor.setHex(0x111133);
+export function buildCelestialRuins(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x0a0a22, 0.012);
+    mctx.applyTerrainColors(0x1a1a3a, 0x2a2a4a, 0.8);
+    mctx.dirLight.color.setHex(0xaabbff);
+    mctx.dirLight.intensity = 1.0;
+    mctx.ambientLight.color.setHex(0x222244);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x6666aa);
+    mctx.hemiLight.groundColor.setHex(0x111133);
 
     const starMat = new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffdd88, emissiveIntensity: 1.0 });
     const ruinMat = new THREE.MeshStandardMaterial({ color: 0x8888aa, roughness: 0.6, metalness: 0.3 });
@@ -26108,14 +26110,14 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         const cx = (Math.random()-0.5)*w*0.8, cz = (Math.random()-0.5)*d*0.8;
         col.position.set(cx, getTerrainHeight(cx, cz, 0.8)+colH/2, cz);
       }
-      ctx.scene.add(col);
+      mctx.scene.add(col);
     }
     // Floating ruins/platforms
     for (let i = 0; i < 15; i++) {
       const ruin = new THREE.Mesh(new THREE.BoxGeometry(1+Math.random()*3, 0.4+Math.random()*0.6, 1+Math.random()*3), ruinMat);
       ruin.position.set((Math.random()-0.5)*w*0.7, 2+Math.random()*6, (Math.random()-0.5)*d*0.7);
       ruin.rotation.set((Math.random()-0.5)*0.2, Math.random(), (Math.random()-0.5)*0.2);
-      ruin.castShadow = true; ctx.scene.add(ruin);
+      ruin.castShadow = true; mctx.scene.add(ruin);
     }
     // Golden light beams from above
     for (let i = 0; i < 8; i++) {
@@ -26123,9 +26125,9 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       const beamR = 0.3+Math.random()*0.5;
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(beamR*0.2, beamR, beamH, 23), goldLightMat);
       const bx = (Math.random()-0.5)*w*0.5, bz = (Math.random()-0.5)*d*0.5;
-      beam.position.set(bx, beamH/2, bz); ctx.scene.add(beam);
+      beam.position.set(bx, beamH/2, bz); mctx.scene.add(beam);
       const gLight = new THREE.PointLight(0xffddaa, 0.4, 8);
-      gLight.position.set(bx, 1, bz); ctx.scene.add(gLight); ctx.torchLights.push(gLight);
+      gLight.position.set(bx, 1, bz); mctx.scene.add(gLight); mctx.torchLights.push(gLight);
     }
     // Celestial murals (large decorated panels)
     for (let i = 0; i < 6; i++) {
@@ -26142,7 +26144,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         mStar.position.set((Math.random()-0.5)*2.5, (Math.random()-0.5)*1.5, 0.02); mural.add(mStar);
       }
       mural.position.set((Math.random()-0.5)*w*0.6, 3+Math.random()*3, (Math.random()-0.5)*d*0.6);
-      mural.rotation.y = Math.random()*Math.PI; ctx.scene.add(mural);
+      mural.rotation.y = Math.random()*Math.PI; mctx.scene.add(mural);
     }
     // Star map patterns on floor
     for (let i = 0; i < 5; i++) {
@@ -26151,20 +26153,20 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         new THREE.MeshStandardMaterial({ color: 0x2a2a4a, roughness: 0.7 }));
       starMap.rotation.x = -Math.PI/2;
       const mx = (Math.random()-0.5)*w*0.4, mz = (Math.random()-0.5)*d*0.4;
-      starMap.position.set(mx, getTerrainHeight(mx, mz, 0.8)+0.02, mz); ctx.scene.add(starMap);
+      starMap.position.set(mx, getTerrainHeight(mx, mz, 0.8)+0.02, mz); mctx.scene.add(starMap);
       // Constellation dots
       for (let c = 0; c < 8; c++) {
         const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), starMat);
         const cA = Math.random()*Math.PI*2, cR = Math.random()*mapR*0.8;
         dot.position.set(mx+Math.cos(cA)*cR, getTerrainHeight(mx, mz, 0.8)+0.04, mz+Math.sin(cA)*cR);
-        ctx.scene.add(dot);
+        mctx.scene.add(dot);
       }
       // Connecting lines
       for (let l = 0; l < 4; l++) {
         const line = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 1+Math.random()*1.5, 16), arcaneMat);
         line.rotation.x = Math.PI/2;
         line.position.set(mx+(Math.random()-0.5)*mapR, getTerrainHeight(mx, mz, 0.8)+0.035, mz+(Math.random()-0.5)*mapR);
-        line.rotation.y = Math.random()*Math.PI; ctx.scene.add(line);
+        line.rotation.y = Math.random()*Math.PI; mctx.scene.add(line);
       }
     }
     // Broken halos
@@ -26172,14 +26174,14 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       const halo = new THREE.Mesh(new THREE.TorusGeometry(0.3+Math.random()*0.2, 0.02, 17, 36),
         new THREE.MeshStandardMaterial({ color: 0xffddaa, emissive: 0xffaa44, emissiveIntensity: 0.6, metalness: 0.4 }));
       halo.position.set((Math.random()-0.5)*w*0.7, 1+Math.random()*5, (Math.random()-0.5)*d*0.7);
-      halo.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); ctx.scene.add(halo);
+      halo.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); mctx.scene.add(halo);
     }
     // Feather decorations
     for (let i = 0; i < 20; i++) {
       const feather = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 0.2+Math.random()*0.15),
         new THREE.MeshStandardMaterial({ color: 0xeeeeff, side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
       feather.position.set((Math.random()-0.5)*w*0.7, 0.5+Math.random()*5, (Math.random()-0.5)*d*0.7);
-      feather.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(feather);
+      feather.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(feather);
     }
     // Divine symbol markers
     for (let i = 0; i < 6; i++) {
@@ -26191,7 +26193,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       const cross2 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.03, 0.03), divineMat);
       symbol.add(cross2);
       symbol.position.set((Math.random()-0.5)*w*0.5, 2+Math.random()*4, (Math.random()-0.5)*d*0.5);
-      symbol.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); ctx.scene.add(symbol);
+      symbol.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); mctx.scene.add(symbol);
     }
     // Holy water fonts
     for (let i = 0; i < 4; i++) {
@@ -26205,7 +26207,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       const fLight = new THREE.PointLight(0x88aaff, 0.3, 4);
       fLight.position.y = 1.0; font.add(fLight);
       const fx = (Math.random()-0.5)*w*0.4, fz = (Math.random()-0.5)*d*0.4;
-      font.position.set(fx, getTerrainHeight(fx, fz, 0.8), fz); ctx.scene.add(font);
+      font.position.set(fx, getTerrainHeight(fx, fz, 0.8), fz); mctx.scene.add(font);
     }
     // Angelic statues
     for (let i = 0; i < 5; i++) {
@@ -26223,32 +26225,32 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         wing.position.set(wx, 1.8, -0.1); wing.rotation.y = wx > 0 ? -0.4 : 0.4; angel.add(wing);
       }
       const ax = (Math.random()-0.5)*w*0.5, az = (Math.random()-0.5)*d*0.5;
-      angel.position.set(ax, getTerrainHeight(ax, az, 0.8), az); ctx.scene.add(angel);
+      angel.position.set(ax, getTerrainHeight(ax, az, 0.8), az); mctx.scene.add(angel);
     }
     // Star wisps
     for (let i = 0; i < 40; i++) {
       const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03+Math.random()*0.08, 20, 17), starMat);
       wisp.position.set((Math.random()-0.5)*w*0.8, Math.random()*8, (Math.random()-0.5)*d*0.8);
-      ctx.scene.add(wisp);
+      mctx.scene.add(wisp);
     }
     // Arcane circles on ground
     for (let i = 0; i < 6; i++) {
       const circle = new THREE.Mesh(new THREE.TorusGeometry(1.5+Math.random(), 0.03, 17, 44), arcaneMat);
       circle.rotation.x = -Math.PI/2;
       const ax = (Math.random()-0.5)*w*0.5, az = (Math.random()-0.5)*d*0.5;
-      circle.position.set(ax, getTerrainHeight(ax, az, 0.8)+0.05, az); ctx.scene.add(circle);
+      circle.position.set(ax, getTerrainHeight(ax, az, 0.8)+0.05, az); mctx.scene.add(circle);
     }
     // Constellation lights
     for (let i = 0; i < 10; i++) {
       const light = new THREE.PointLight([0xffffcc, 0x88aaff, 0xffaacc][i%3], 0.4, 8);
       light.position.set((Math.random()-0.5)*w*0.6, 3+Math.random()*5, (Math.random()-0.5)*d*0.6);
-      ctx.scene.add(light); ctx.torchLights.push(light);
+      mctx.scene.add(light); mctx.torchLights.push(light);
     }
     // ── Floating platform fragments ──
     for (let i = 0; i < 12; i++) {
       const fragment = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.5, 2), ruinMat);
       fragment.position.set((Math.random()-0.5)*w*0.7, 1 + Math.random() * 7, (Math.random()-0.5)*d*0.7);
-      fragment.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(fragment);
+      fragment.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(fragment);
     }
     // ── Star map floor engravings (circle + line patterns) ──
     for (let i = 0; i < 4; i++) {
@@ -26264,7 +26266,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         line.position.set(Math.cos(lineA)*0.75, 0, Math.sin(lineA)*0.75); engrave.add(line);
       }
       const enx = (Math.random()-0.5)*w*0.4, enz = (Math.random()-0.5)*d*0.4;
-      engrave.position.set(enx, getTerrainHeight(enx, enz, 0.8) + 0.03, enz); ctx.scene.add(engrave);
+      engrave.position.set(enx, getTerrainHeight(enx, enz, 0.8) + 0.03, enz); mctx.scene.add(engrave);
     }
     // ── Broken celestial sphere armillary ──
     for (let i = 0; i < 3; i++) {
@@ -26278,7 +26280,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 17), starMat);
       sphere.position.y = 0.7; armillary.add(sphere);
       const arx = (Math.random()-0.5)*w*0.4, arz = (Math.random()-0.5)*d*0.4;
-      armillary.position.set(arx, getTerrainHeight(arx, arz, 0.8), arz); ctx.scene.add(armillary);
+      armillary.position.set(arx, getTerrainHeight(arx, arz, 0.8), arz); mctx.scene.add(armillary);
     }
     // ── Divine statue fragments ──
     for (let i = 0; i < 8; i++) {
@@ -26294,7 +26296,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         head.position.y = 0.4; statFrag.add(head);
       }
       statFrag.position.set((Math.random()-0.5)*w*0.6, 0.5 + Math.random() * 4, (Math.random()-0.5)*d*0.6);
-      statFrag.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); ctx.scene.add(statFrag);
+      statFrag.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); mctx.scene.add(statFrag);
     }
     // ── Floating platform fragments (box platforms with broken edges, glow underneath, connected by beams) ──
     for (let i = 0; i < 12; i++) {
@@ -26317,18 +26319,18 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       }
       // Faint glow underneath
       const underLight = new THREE.PointLight(0xaabbff, 0.3, 4);
-      underLight.position.y = -platH; floatPlat.add(underLight); ctx.torchLights.push(underLight);
+      underLight.position.y = -platH; floatPlat.add(underLight); mctx.torchLights.push(underLight);
       const fpY = 1.5 + Math.random() * 6;
       floatPlat.position.set((Math.random() - 0.5) * w * 0.7, fpY, (Math.random() - 0.5) * d * 0.7);
       floatPlat.rotation.set((Math.random() - 0.5) * 0.15, Math.random(), (Math.random() - 0.5) * 0.15);
-      ctx.scene.add(floatPlat);
+      mctx.scene.add(floatPlat);
       // Connecting light beam cylinder to nearby area
       if (i > 0 && Math.random() > 0.4) {
         const beamCon = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2 + Math.random() * 3, 8),
           new THREE.MeshStandardMaterial({ color: 0xaabbff, emissive: 0x6688cc, emissiveIntensity: 0.6, transparent: true, opacity: 0.3 }));
         beamCon.position.copy(floatPlat.position);
         beamCon.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5);
-        ctx.scene.add(beamCon);
+        mctx.scene.add(beamCon);
       }
     }
     // ── Star map floor engravings (concentric rings, radial lines, star spheres) ──
@@ -26362,7 +26364,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         starMapEng.add(starDot);
       }
       const smex = (Math.random() - 0.5) * w * 0.4, smez = (Math.random() - 0.5) * d * 0.4;
-      starMapEng.position.set(smex, getTerrainHeight(smex, smez, 0.8) + 0.02, smez); ctx.scene.add(starMapEng);
+      starMapEng.position.set(smex, getTerrainHeight(smex, smez, 0.8) + 0.02, smez); mctx.scene.add(starMapEng);
     }
     // ── Broken celestial armillary sphere (torus rings at different angles, central sphere, pedestal) ──
     for (let i = 0; i < 3; i++) {
@@ -26385,9 +26387,9 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       centralSphere.position.y = 1.2; armillarySph.add(centralSphere);
       // Faint glow
       const armLight = new THREE.PointLight(0xffddaa, 0.3, 4);
-      armLight.position.y = 1.2; armillarySph.add(armLight); ctx.torchLights.push(armLight);
+      armLight.position.y = 1.2; armillarySph.add(armLight); mctx.torchLights.push(armLight);
       const arsx = (Math.random() - 0.5) * w * 0.45, arsz = (Math.random() - 0.5) * d * 0.45;
-      armillarySph.position.set(arsx, getTerrainHeight(arsx, arsz, 0.8), arsz); ctx.scene.add(armillarySph);
+      armillarySph.position.set(arsx, getTerrainHeight(arsx, arsz, 0.8), arsz); mctx.scene.add(armillarySph);
     }
     // ── Divine statue fragments (partial humanoid forms, white marble with gold trim) ──
     for (let i = 0; i < 8; i++) {
@@ -26423,7 +26425,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         divFrag.position.set(dsx, getTerrainHeight(dsx, dsz, 0.8) + 0.3 + Math.random() * 2, dsz);
         divFrag.rotation.set(Math.random() * 0.3, Math.random(), Math.random() * 0.3);
       }
-      ctx.scene.add(divFrag);
+      mctx.scene.add(divFrag);
     }
     // ── Light beam shafts (tall thin translucent columns with PointLight inside) ──
     for (let i = 0; i < 10; i++) {
@@ -26434,9 +26436,9 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xffcc88, emissiveIntensity: 0.6, transparent: true, opacity: 0.2 }));
       shaft.position.y = shaftH / 2; beamShaft.add(shaft);
       const shaftLight = new THREE.PointLight(0xffddaa, 0.35, 6);
-      shaftLight.position.y = shaftH / 3; beamShaft.add(shaftLight); ctx.torchLights.push(shaftLight);
+      shaftLight.position.y = shaftH / 3; beamShaft.add(shaftLight); mctx.torchLights.push(shaftLight);
       const lbx = (Math.random() - 0.5) * w * 0.7, lbz = (Math.random() - 0.5) * d * 0.7;
-      beamShaft.position.set(lbx, getTerrainHeight(lbx, lbz, 0.8), lbz); ctx.scene.add(beamShaft);
+      beamShaft.position.set(lbx, getTerrainHeight(lbx, lbz, 0.8), lbz); mctx.scene.add(beamShaft);
     }
     // ── Celestial fountain (tiered circular platforms with cascading water) ──
     for (let i = 0; i < 2; i++) {
@@ -26466,9 +26468,9 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       }
       // Glowing blue light
       const fountLight = new THREE.PointLight(0x88aaff, 0.5, 6);
-      fountLight.position.y = tiers * 0.6; fountain.add(fountLight); ctx.torchLights.push(fountLight);
+      fountLight.position.y = tiers * 0.6; fountain.add(fountLight); mctx.torchLights.push(fountLight);
       const ftx = (Math.random() - 0.5) * w * 0.35, ftz = (Math.random() - 0.5) * d * 0.35;
-      fountain.position.set(ftx, getTerrainHeight(ftx, ftz, 0.8), ftz); ctx.scene.add(fountain);
+      fountain.position.set(ftx, getTerrainHeight(ftx, ftz, 0.8), ftz); mctx.scene.add(fountain);
     }
     // ── Runic archways (two pillar boxes with torus arch, emissive rune symbols) ──
     for (let i = 0; i < 6; i++) {
@@ -26498,7 +26500,7 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
       }
       const awx = (Math.random() - 0.5) * w * 0.55, awz = (Math.random() - 0.5) * d * 0.55;
       archway.position.set(awx, getTerrainHeight(awx, awz, 0.8), awz);
-      archway.rotation.y = Math.random() * Math.PI; ctx.scene.add(archway);
+      archway.rotation.y = Math.random() * Math.PI; mctx.scene.add(archway);
     }
     // ── Starfield ground particles (tiny emissive spheres scattered like fallen stars) ──
     for (let i = 0; i < 40; i++) {
@@ -26507,19 +26509,19 @@ export function buildCelestialRuins(ctx: MapBuildContext, w: number, d: number):
         new THREE.MeshStandardMaterial({ color: starColors[i % starColors.length], emissive: starColors[i % starColors.length], emissiveIntensity: 0.8 + Math.random() * 0.5 }));
       const spx = (Math.random() - 0.5) * w * 0.85, spz = (Math.random() - 0.5) * d * 0.85;
       starParticle.position.set(spx, getTerrainHeight(spx, spz, 0.8) + 0.02 + Math.random() * 0.05, spz);
-      ctx.scene.add(starParticle);
+      mctx.scene.add(starParticle);
     }
 }
 
-export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x1a0505, 0.018);
-    ctx.applyTerrainColors(0x1a0a0a, 0x2a1111, 0.6);
-    ctx.dirLight.color.setHex(0xff4422);
-    ctx.dirLight.intensity = 0.8;
-    ctx.ambientLight.color.setHex(0x220505);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x662222);
-    ctx.hemiLight.groundColor.setHex(0x110000);
+export function buildInfernalThrone(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x1a0505, 0.018);
+    mctx.applyTerrainColors(0x1a0a0a, 0x2a1111, 0.6);
+    mctx.dirLight.color.setHex(0xff4422);
+    mctx.dirLight.intensity = 0.8;
+    mctx.ambientLight.color.setHex(0x220505);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x662222);
+    mctx.hemiLight.groundColor.setHex(0x110000);
 
     const demonMat = new THREE.MeshStandardMaterial({ color: 0x331111, roughness: 0.7 });
     const fireMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0 });
@@ -26556,8 +26558,8 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         s.position.set(0, -0.1-step*0.2, 1.5+step*0.5); throne.add(s);
       }
       const throneLight = new THREE.PointLight(0xff2200, 0.8, 12);
-      throneLight.position.y = 3; throne.add(throneLight); ctx.torchLights.push(throneLight);
-      throne.position.set(0, getTerrainHeight(0, 0, 0.6), 0); ctx.scene.add(throne);
+      throneLight.position.y = 3; throne.add(throneLight); mctx.torchLights.push(throneLight);
+      throne.position.set(0, getTerrainHeight(0, 0, 0.6), 0); mctx.scene.add(throne);
     }
     // Chains and hooks hanging from above
     for (let i = 0; i < 15; i++) {
@@ -26572,29 +26574,29 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       const hook = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 17), chainMat);
       hook.position.y = -chainLen+0.1; hook.rotation.z = Math.PI; chain.add(hook);
       chain.position.set((Math.random()-0.5)*w*0.7, 6+Math.random()*3, (Math.random()-0.5)*d*0.7);
-      ctx.scene.add(chain);
+      mctx.scene.add(chain);
     }
     // Lava moat (ring around center)
     const moatR = Math.min(w, d) * 0.2;
     const moat = new THREE.Mesh(new THREE.TorusGeometry(moatR, 1.5, 17, 44), fireMat);
     moat.rotation.x = -Math.PI/2;
-    moat.position.y = getTerrainHeight(0, 0, 0.6)+0.03; ctx.scene.add(moat);
+    moat.position.y = getTerrainHeight(0, 0, 0.6)+0.03; mctx.scene.add(moat);
     const moatLight = new THREE.PointLight(0xff4400, 1.0, moatR*2);
     moatLight.position.y = getTerrainHeight(0, 0, 0.6)+0.5;
-    ctx.scene.add(moatLight); ctx.torchLights.push(moatLight);
+    mctx.scene.add(moatLight); mctx.torchLights.push(moatLight);
     // Fire pillars
     for (let i = 0; i < 14; i++) {
       const pil = new THREE.Group();
       const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 5, 23), demonMat);
       col.position.y = 2.5; col.castShadow = true; pil.add(col);
       const fire = new THREE.PointLight(0xff2200, 0.6, 14);
-      fire.position.y = 5.2; pil.add(fire); ctx.torchLights.push(fire);
+      fire.position.y = 5.2; pil.add(fire); mctx.torchLights.push(fire);
       const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 20), fireMat);
       flame.position.y = 5.3; pil.add(flame);
       const flame2 = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 17), fireMat);
       flame2.position.set(0.05, 5.5, 0); pil.add(flame2);
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
-      pil.position.set(px, getTerrainHeight(px, pz, 0.6), pz); ctx.scene.add(pil);
+      pil.position.set(px, getTerrainHeight(px, pz, 0.6), pz); mctx.scene.add(pil);
     }
     // Soul cages
     for (let i = 0; i < 6; i++) {
@@ -26615,7 +26617,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x22cc44, emissiveIntensity: 1.0, transparent: true, opacity: 0.3 }));
       cage.add(soul);
       const cx = (Math.random()-0.5)*w*0.6, cz = (Math.random()-0.5)*d*0.6;
-      cage.position.set(cx, getTerrainHeight(cx, cz, 0.6)+2+Math.random()*3, cz); ctx.scene.add(cage);
+      cage.position.set(cx, getTerrainHeight(cx, cz, 0.6)+2+Math.random()*3, cz); mctx.scene.add(cage);
     }
     // Blood rivers (narrow channels)
     for (let i = 0; i < 4; i++) {
@@ -26623,7 +26625,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       river.rotation.x = -Math.PI/2;
       const rx = (Math.random()-0.5)*w*0.6, rz = (Math.random()-0.5)*d*0.6;
       river.position.set(rx, getTerrainHeight(rx, rz, 0.6)+0.02, rz);
-      river.rotation.z = Math.random()*Math.PI; ctx.scene.add(river);
+      river.rotation.z = Math.random()*Math.PI; mctx.scene.add(river);
     }
     // Hellfire braziers (larger, ornate)
     for (let i = 0; i < 8; i++) {
@@ -26639,9 +26641,9 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       const bFlame2 = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 17), fireMat);
       bFlame2.position.set(0.05, 1.65, 0.03); brazier.add(bFlame2);
       const bLight = new THREE.PointLight(0xff4400, 0.7, 8);
-      bLight.position.y = 1.6; brazier.add(bLight); ctx.torchLights.push(bLight);
+      bLight.position.y = 1.6; brazier.add(bLight); mctx.torchLights.push(bLight);
       const brx = (Math.random()-0.5)*w*0.65, brz = (Math.random()-0.5)*d*0.65;
-      brazier.position.set(brx, getTerrainHeight(brx, brz, 0.6), brz); ctx.scene.add(brazier);
+      brazier.position.set(brx, getTerrainHeight(brx, brz, 0.6), brz); mctx.scene.add(brazier);
     }
     // Skull piles
     for (let i = 0; i < 10; i++) {
@@ -26652,7 +26654,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         skull.position.set((Math.random()-0.5)*0.3, Math.random()*0.15, (Math.random()-0.5)*0.3); pile.add(skull);
       }
       const px = (Math.random()-0.5)*w*0.75, pz = (Math.random()-0.5)*d*0.75;
-      pile.position.set(px, getTerrainHeight(px, pz, 0.6), pz); ctx.scene.add(pile);
+      pile.position.set(px, getTerrainHeight(px, pz, 0.6), pz); mctx.scene.add(pile);
     }
     // Bone piles
     for (let i = 0; i < 15; i++) {
@@ -26663,7 +26665,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         bone.rotation.set(Math.random(), Math.random(), Math.random()); pile.add(bone);
       }
       const bx = (Math.random()-0.5)*w*0.8, bz = (Math.random()-0.5)*d*0.8;
-      pile.position.set(bx, getTerrainHeight(bx, bz, 0.6), bz); ctx.scene.add(pile);
+      pile.position.set(bx, getTerrainHeight(bx, bz, 0.6), bz); mctx.scene.add(pile);
     }
     // Demon statues with glowing eyes
     for (let i = 0; i < 6; i++) {
@@ -26691,14 +26693,14 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         wing.position.set(wx, 2.2, -0.2); wing.rotation.y = wx > 0 ? -0.5 : 0.5; statue.add(wing);
       }
       const sx = (Math.random()-0.5)*w*0.55, sz = (Math.random()-0.5)*d*0.55;
-      statue.position.set(sx, getTerrainHeight(sx, sz, 0.6), sz); ctx.scene.add(statue);
+      statue.position.set(sx, getTerrainHeight(sx, sz, 0.6), sz); mctx.scene.add(statue);
     }
     // Lava pools (additional)
     for (let i = 0; i < 6; i++) {
       const pool = new THREE.Mesh(new THREE.CircleGeometry(0.8+Math.random()*1.5, 30), fireMat);
       pool.rotation.x = -Math.PI/2;
       const px = (Math.random()-0.5)*w*0.6, pz = (Math.random()-0.5)*d*0.6;
-      pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz); ctx.scene.add(pool);
+      pool.position.set(px, getTerrainHeight(px, pz, 0.6)+0.02, pz); mctx.scene.add(pool);
     }
     // ── Lava fountain centerpieces ──
     for (let i = 0; i < 3; i++) {
@@ -26716,7 +26718,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         stream.rotation.z = 0.3 * Math.cos(sa); fountain.add(stream);
       }
       const lfx = (Math.random()-0.5)*w*0.4, lfz = (Math.random()-0.5)*d*0.4;
-      fountain.position.set(lfx, getTerrainHeight(lfx, lfz, 0.6), lfz); ctx.scene.add(fountain);
+      fountain.position.set(lfx, getTerrainHeight(lfx, lfz, 0.6), lfz); mctx.scene.add(fountain);
     }
     // ── Chain suspension bridge segments ──
     for (let i = 0; i < 3; i++) {
@@ -26733,7 +26735,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const bx = (Math.random()-0.5)*w*0.4, bz = (Math.random()-0.5)*d*0.4;
       bridgeGrp.position.set(bx, getTerrainHeight(bx, bz, 0.6) + 1 + Math.random() * 2, bz);
-      bridgeGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(bridgeGrp);
+      bridgeGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(bridgeGrp);
     }
     // ── Tortured soul relief carvings on walls ──
     for (let i = 0; i < 8; i++) {
@@ -26748,7 +26750,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const rlx = (Math.random()-0.5)*w*0.6, rlz = (Math.random()-0.5)*d*0.6;
       relief.position.set(rlx, getTerrainHeight(rlx, rlz, 0.6) + 2, rlz);
-      relief.rotation.y = Math.random() * Math.PI; ctx.scene.add(relief);
+      relief.rotation.y = Math.random() * Math.PI; mctx.scene.add(relief);
     }
     // ── Demon skull throne detail (elaborate secondary thrones) ──
     for (let i = 0; i < 2; i++) {
@@ -26787,7 +26789,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const dtx = (i === 0 ? -1 : 1) * w * 0.25;
       dThrone.position.set(dtx, getTerrainHeight(dtx, 0, 0.6), 0);
-      dThrone.rotation.y = i === 0 ? 0.3 : -0.3; ctx.scene.add(dThrone);
+      dThrone.rotation.y = i === 0 ? 0.3 : -0.3; mctx.scene.add(dThrone);
     }
     // ── Lava fountain centerpieces (enhanced) ──
     for (let i = 0; i < 4; i++) {
@@ -26807,9 +26809,9 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       const lfSplash = new THREE.Mesh(new THREE.CircleGeometry(1.2, 27), fireMat);
       lfSplash.rotation.x = -Math.PI / 2; lfSplash.position.y = 0.02; lavFount.add(lfSplash);
       const lfLight = new THREE.PointLight(0xff4400, 0.9, 12);
-      lfLight.position.y = 2.8; lavFount.add(lfLight); ctx.torchLights.push(lfLight);
+      lfLight.position.y = 2.8; lavFount.add(lfLight); mctx.torchLights.push(lfLight);
       const lfpx = (Math.random() - 0.5) * w * 0.5, lfpz = (Math.random() - 0.5) * d * 0.5;
-      lavFount.position.set(lfpx, getTerrainHeight(lfpx, lfpz, 0.6), lfpz); ctx.scene.add(lavFount);
+      lavFount.position.set(lfpx, getTerrainHeight(lfpx, lfpz, 0.6), lfpz); mctx.scene.add(lavFount);
     }
     // ── Chain suspension bridges (enhanced with sag) ──
     for (let i = 0; i < 3; i++) {
@@ -26834,7 +26836,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const csBx = (Math.random() - 0.5) * w * 0.4, csBz = (Math.random() - 0.5) * d * 0.4;
       csBridge.position.set(csBx, getTerrainHeight(csBx, csBz, 0.6) + 1.5 + Math.random() * 2, csBz);
-      csBridge.rotation.y = Math.random() * Math.PI; ctx.scene.add(csBridge);
+      csBridge.rotation.y = Math.random() * Math.PI; mctx.scene.add(csBridge);
     }
     // ── Tortured soul relief carvings (enhanced with hands) ──
     for (let i = 0; i < 10; i++) {
@@ -26855,7 +26857,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const tspx = (Math.random() - 0.5) * w * 0.7, tspz = (Math.random() - 0.5) * d * 0.7;
       tsRelief.position.set(tspx, getTerrainHeight(tspx, tspz, 0.6) + 2 + Math.random() * 1.5, tspz);
-      tsRelief.rotation.y = Math.random() * Math.PI; ctx.scene.add(tsRelief);
+      tsRelief.rotation.y = Math.random() * Math.PI; mctx.scene.add(tsRelief);
     }
     // ── Hellfire brazier stands (tripod style) ──
     for (let i = 0; i < 8; i++) {
@@ -26875,9 +26877,9 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         tripodBrazier.add(tripodFire);
       }
       const tripodLight = new THREE.PointLight(0xff4400, 0.6, 10);
-      tripodLight.position.y = 1.8; tripodBrazier.add(tripodLight); ctx.torchLights.push(tripodLight);
+      tripodLight.position.y = 1.8; tripodBrazier.add(tripodLight); mctx.torchLights.push(tripodLight);
       const tripodX = (Math.random() - 0.5) * w * 0.65, tripodZ = (Math.random() - 0.5) * d * 0.65;
-      tripodBrazier.position.set(tripodX, getTerrainHeight(tripodX, tripodZ, 0.6), tripodZ); ctx.scene.add(tripodBrazier);
+      tripodBrazier.position.set(tripodX, getTerrainHeight(tripodX, tripodZ, 0.6), tripodZ); mctx.scene.add(tripodBrazier);
     }
     // ── Bone cage gibbets ──
     for (let i = 0; i < 6; i++) {
@@ -26899,7 +26901,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
         gibLink.rotation.y = c % 2 === 0 ? 0 : Math.PI / 2; gibbet.add(gibLink);
       }
       const gibX = (Math.random() - 0.5) * w * 0.6, gibZ = (Math.random() - 0.5) * d * 0.6;
-      gibbet.position.set(gibX, getTerrainHeight(gibX, gibZ, 0.6) + 3 + Math.random() * 2, gibZ); ctx.scene.add(gibbet);
+      gibbet.position.set(gibX, getTerrainHeight(gibX, gibZ, 0.6) + 3 + Math.random() * 2, gibZ); mctx.scene.add(gibbet);
     }
     // ── Blood rivers (winding channels) ──
     for (let i = 0; i < 3; i++) {
@@ -26916,7 +26918,7 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const bldPx = (Math.random() - 0.5) * w * 0.5, bldPz = (Math.random() - 0.5) * d * 0.5;
       bldRiver.position.set(bldPx, getTerrainHeight(bldPx, bldPz, 0.6), bldPz);
-      bldRiver.rotation.y = Math.random() * Math.PI; ctx.scene.add(bldRiver);
+      bldRiver.rotation.y = Math.random() * Math.PI; mctx.scene.add(bldRiver);
     }
     // ── Demon statues (imposing figures) ──
     for (let i = 0; i < 4; i++) {
@@ -26945,19 +26947,19 @@ export function buildInfernalThrone(ctx: MapBuildContext, w: number, d: number):
       dsTip.position.set(0.5, 3.7, 1.5); dsTip.rotation.x = 0.7; demonStat.add(dsTip);
       const dsPx = (Math.random() - 0.5) * w * 0.55, dsPz = (Math.random() - 0.5) * d * 0.55;
       demonStat.position.set(dsPx, getTerrainHeight(dsPx, dsPz, 0.6), dsPz);
-      demonStat.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(demonStat);
+      demonStat.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(demonStat);
     }
 }
 
-export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x050511, 0.042);
-    ctx.applyTerrainColors(0x0a0a1a, 0x111122, 0.5);
-    ctx.dirLight.color.setHex(0x8866cc);
-    ctx.dirLight.intensity = 0.5;
-    ctx.ambientLight.color.setHex(0x110022);
-    ctx.ambientLight.intensity = 0.3;
-    ctx.hemiLight.color.setHex(0x443366);
-    ctx.hemiLight.groundColor.setHex(0x050011);
+export function buildAstralVoid(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x050511, 0.042);
+    mctx.applyTerrainColors(0x0a0a1a, 0x111122, 0.5);
+    mctx.dirLight.color.setHex(0x8866cc);
+    mctx.dirLight.intensity = 0.5;
+    mctx.ambientLight.color.setHex(0x110022);
+    mctx.ambientLight.intensity = 0.3;
+    mctx.hemiLight.color.setHex(0x443366);
+    mctx.hemiLight.groundColor.setHex(0x050011);
 
     const voidMat = new THREE.MeshStandardMaterial({ color: 0x220044, emissive: 0x110022, emissiveIntensity: 0.5 });
     const starMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 2.0 });
@@ -26988,13 +26990,13 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         vein.rotation.set(Math.random(), Math.random(), Math.random()); asteroid.add(vein);
       }
       asteroid.position.set((Math.random()-0.5)*w*0.8, -1+Math.random()*10, (Math.random()-0.5)*d*0.8);
-      asteroid.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(asteroid);
+      asteroid.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(asteroid);
     }
     // Floating platforms
     for (let i = 0; i < 20; i++) {
       const plat = new THREE.Mesh(new THREE.BoxGeometry(2+Math.random()*4, 0.3, 2+Math.random()*4), voidMat);
       plat.position.set((Math.random()-0.5)*w*0.7, -0.5+Math.random()*4, (Math.random()-0.5)*d*0.7);
-      plat.rotation.set((Math.random()-0.5)*0.2, Math.random(), (Math.random()-0.5)*0.2); ctx.scene.add(plat);
+      plat.rotation.set((Math.random()-0.5)*0.2, Math.random(), (Math.random()-0.5)*0.2); mctx.scene.add(plat);
     }
     // Star clusters (denser groups)
     for (let i = 0; i < 8; i++) {
@@ -27002,13 +27004,13 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
       for (let s = 0; s < 12; s++) {
         const star = new THREE.Mesh(new THREE.SphereGeometry(0.015+Math.random()*0.03, 17, 16), starMat);
         star.position.set(clusterX+(Math.random()-0.5)*2, clusterY+(Math.random()-0.5)*2, clusterZ+(Math.random()-0.5)*2);
-        ctx.scene.add(star);
+        mctx.scene.add(star);
       }
     }
     // Scattered individual stars
     for (let i = 0; i < 50; i++) {
       const star = new THREE.Mesh(new THREE.SphereGeometry(0.02+Math.random()*0.04, 17, 16), starMat);
-      star.position.set((Math.random()-0.5)*w, Math.random()*10, (Math.random()-0.5)*d); ctx.scene.add(star);
+      star.position.set((Math.random()-0.5)*w, Math.random()*10, (Math.random()-0.5)*d); mctx.scene.add(star);
     }
     // Nebula effects (large colored transparent planes at angles)
     for (let i = 0; i < 5; i++) {
@@ -27017,7 +27019,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
       const nebula = new THREE.Mesh(new THREE.PlaneGeometry(nebSize, nebSize*0.6), nebMats[i%3]);
       nebula.position.set((Math.random()-0.5)*w*0.4, 3+Math.random()*5, (Math.random()-0.5)*d*0.4);
       nebula.rotation.set(Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.3);
-      nebula.material.side = THREE.DoubleSide; ctx.scene.add(nebula);
+      nebula.material.side = THREE.DoubleSide; mctx.scene.add(nebula);
     }
     // Cosmic dust trails
     for (let i = 0; i < 12; i++) {
@@ -27029,7 +27031,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         trail.add(particle);
       }
       trail.position.set((Math.random()-0.5)*w*0.6, 2+Math.random()*6, (Math.random()-0.5)*d*0.6);
-      trail.rotation.set(Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.3); ctx.scene.add(trail);
+      trail.rotation.set(Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.3); mctx.scene.add(trail);
     }
     // Warp gates (double-ringed portals)
     for (let i = 0; i < 4; i++) {
@@ -27044,9 +27046,9 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         new THREE.MeshStandardMaterial({ color: 0x4422aa, emissive: 0x3311aa, emissiveIntensity: 0.8, transparent: true, opacity: 0.15, side: THREE.DoubleSide }));
       gate.add(fill);
       const gLight = new THREE.PointLight(0xcc44ff, 0.6, 10);
-      gate.add(gLight); ctx.torchLights.push(gLight);
+      gate.add(gLight); mctx.torchLights.push(gLight);
       gate.position.set((Math.random()-0.5)*w*0.5, 2+Math.random()*5, (Math.random()-0.5)*d*0.5);
-      gate.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); ctx.scene.add(gate);
+      gate.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); mctx.scene.add(gate);
     }
     // Crystalline space structures
     for (let i = 0; i < 10; i++) {
@@ -27061,7 +27063,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         branch.rotation.set(Math.random()*0.5, Math.random(), Math.random()*0.5); crystal.add(branch);
       }
       crystal.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*6, (Math.random()-0.5)*d*0.6);
-      crystal.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(crystal);
+      crystal.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(crystal);
     }
     // Void creatures (simple tentacled forms)
     for (let i = 0; i < 5; i++) {
@@ -27083,21 +27085,21 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         tent.rotation.x = 0.3; tent.rotation.z = Math.cos(tA)*0.3; creature.add(tent);
       }
       creature.position.set((Math.random()-0.5)*w*0.5, 2+Math.random()*5, (Math.random()-0.5)*d*0.5);
-      ctx.scene.add(creature);
+      mctx.scene.add(creature);
     }
     // Energy streams
     for (let i = 0; i < 10; i++) {
       const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 5+Math.random()*8, 17), cosmicDustMat);
       stream.position.set((Math.random()-0.5)*w*0.6, 8, (Math.random()-0.5)*d*0.6);
-      stream.rotation.set(Math.random()*0.5, 0, Math.random()*0.5); ctx.scene.add(stream);
+      stream.rotation.set(Math.random()*0.5, 0, Math.random()*0.5); mctx.scene.add(stream);
     }
     // Void rifts (additional)
     for (let i = 0; i < 4; i++) {
       const rift = new THREE.Mesh(new THREE.TorusGeometry(0.8+Math.random()*1, 0.04, 23, 31), riftMat);
       rift.position.set((Math.random()-0.5)*w*0.6, 1+Math.random()*6, (Math.random()-0.5)*d*0.6);
-      rift.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(rift);
+      rift.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(rift);
       const rLight = new THREE.PointLight(0xcc44ff, 0.4, 6);
-      rLight.position.copy(rift.position); ctx.scene.add(rLight); ctx.torchLights.push(rLight);
+      rLight.position.copy(rift.position); mctx.scene.add(rLight); mctx.torchLights.push(rLight);
     }
     // ── Nebula cloud patches (translucent colored spheres) ──
     for (let i = 0; i < 8; i++) {
@@ -27109,7 +27111,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         nebCloud.add(cloudSphere);
       }
       nebCloud.position.set((Math.random()-0.5)*w*0.6, 2 + Math.random() * 5, (Math.random()-0.5)*d*0.6);
-      ctx.scene.add(nebCloud);
+      mctx.scene.add(nebCloud);
     }
     // ── Dimensional rift tears (thin glowing planes) ──
     for (let i = 0; i < 6; i++) {
@@ -27122,7 +27124,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         jagged.rotation.z = (Math.random()-0.5)*0.5; tear.add(jagged);
       }
       tear.position.set((Math.random()-0.5)*w*0.5, 1 + Math.random() * 5, (Math.random()-0.5)*d*0.5);
-      tear.rotation.set(Math.random()*0.3, Math.random()*Math.PI, Math.random()*0.3); ctx.scene.add(tear);
+      tear.rotation.set(Math.random()*0.3, Math.random()*Math.PI, Math.random()*0.3); mctx.scene.add(tear);
     }
     // ── Star constellation markers ──
     for (let i = 0; i < 6; i++) {
@@ -27144,7 +27146,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         line.rotateX(Math.PI/2); constellation.add(line);
       }
       constellation.position.set((Math.random()-0.5)*w*0.5, 3 + Math.random() * 4, (Math.random()-0.5)*d*0.5);
-      ctx.scene.add(constellation);
+      mctx.scene.add(constellation);
     }
     // ── Asteroid field debris (clustered rock groups) ──
     for (let i = 0; i < 15; i++) {
@@ -27158,7 +27160,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         debris.add(rock);
       }
       debris.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 7, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(debris);
+      mctx.scene.add(debris);
     }
     // ── Dimensional rift tears (tall thin emissive planes with crackling energy) ──
     for (let i = 0; i < 8; i++) {
@@ -27174,9 +27176,9 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         spark.position.set(edgeX, edgeY, 0.02); riftTear.add(spark);
       }
       const riftLight = new THREE.PointLight(0xcc44ff, 0.5, 8);
-      riftTear.add(riftLight); ctx.torchLights.push(riftLight);
+      riftTear.add(riftLight); mctx.torchLights.push(riftLight);
       riftTear.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 5, (Math.random() - 0.5) * d * 0.6);
-      riftTear.rotation.y = Math.random() * Math.PI; ctx.scene.add(riftTear);
+      riftTear.rotation.y = Math.random() * Math.PI; mctx.scene.add(riftTear);
     }
     // ── Star constellation markers (additional) ──
     for (let i = 0; i < 10; i++) {
@@ -27199,7 +27201,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         cLine.rotateX(Math.PI / 2); constGrp.add(cLine);
       }
       constGrp.position.set((Math.random() - 0.5) * w * 0.6, 4 + Math.random() * 5, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(constGrp);
+      mctx.scene.add(constGrp);
     }
     // ── Cosmic dust clouds (nebulae sphere clusters) ──
     for (let i = 0; i < 12; i++) {
@@ -27213,7 +27215,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         dustCloud.add(cloudSph);
       }
       dustCloud.position.set((Math.random() - 0.5) * w * 0.7, 2 + Math.random() * 6, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(dustCloud);
+      mctx.scene.add(dustCloud);
     }
     // ── Void platforms (hexagonal with bridges and edge glow) ──
     for (let i = 0; i < 6; i++) {
@@ -27232,7 +27234,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         vpBridge.position.set((b === 0 ? -1 : 1) * vpSize * 0.8, -0.1, 0); voidPlat.add(vpBridge);
       }
       voidPlat.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 5, (Math.random() - 0.5) * d * 0.6);
-      voidPlat.rotation.y = Math.random() * Math.PI; ctx.scene.add(voidPlat);
+      voidPlat.rotation.y = Math.random() * Math.PI; mctx.scene.add(voidPlat);
     }
     // ── Ancient void obelisks ──
     for (let i = 0; i < 8; i++) {
@@ -27255,7 +27257,7 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         obelisk.add(rune);
       }
       obelisk.position.set((Math.random() - 0.5) * w * 0.6, -0.5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(obelisk);
+      mctx.scene.add(obelisk);
     }
     // ── Gravity wells ──
     for (let i = 0; i < 4; i++) {
@@ -27276,9 +27278,9 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         gravWell.add(orbitSph);
       }
       const gwLight = new THREE.PointLight(0x6622dd, 0.7, 10);
-      gravWell.add(gwLight); ctx.torchLights.push(gwLight);
+      gravWell.add(gwLight); mctx.torchLights.push(gwLight);
       gravWell.position.set((Math.random() - 0.5) * w * 0.5, 2 + Math.random() * 5, (Math.random() - 0.5) * d * 0.5);
-      ctx.scene.add(gravWell);
+      mctx.scene.add(gravWell);
     }
     // ── Energy conduit lines ──
     for (let i = 0; i < 10; i++) {
@@ -27286,19 +27288,19 @@ export function buildAstralVoid(ctx: MapBuildContext, w: number, d: number): voi
         new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0x8822cc, emissiveIntensity: 1.0 + Math.random() * 0.5, transparent: true, opacity: 0.6 }));
       conduit.position.set((Math.random() - 0.5) * w * 0.5, 2 + Math.random() * 5, (Math.random() - 0.5) * d * 0.5);
       conduit.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
-      ctx.scene.add(conduit);
+      mctx.scene.add(conduit);
     }
 }
 
-export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x554e44, 0.01);
-    ctx.applyTerrainColors(0x3a3832, 0x4a4842, 1.0);
-    ctx.dirLight.color.setHex(0xddccaa);
-    ctx.dirLight.intensity = 1.0;
-    ctx.ambientLight.color.setHex(0x2a2822);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x998877);
-    ctx.hemiLight.groundColor.setHex(0x332211);
+export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x554e44, 0.01);
+    mctx.applyTerrainColors(0x3a3832, 0x4a4842, 1.0);
+    mctx.dirLight.color.setHex(0xddccaa);
+    mctx.dirLight.intensity = 1.0;
+    mctx.ambientLight.color.setHex(0x2a2822);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x998877);
+    mctx.hemiLight.groundColor.setHex(0x332211);
 
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.8 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 });
@@ -27321,18 +27323,18 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, actualH, 27), stoneMat);
       const px = Math.sin(angle) * radius, pz = Math.cos(angle) * radius;
       pillar.position.set(px, getTerrainHeight(px, pz, 1.0) + actualH / 2, pz);
-      pillar.castShadow = true; ctx.scene.add(pillar);
+      pillar.castShadow = true; mctx.scene.add(pillar);
       const pBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 27), darkStoneMat);
-      pBase.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.15, pz); ctx.scene.add(pBase);
+      pBase.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.15, pz); mctx.scene.add(pBase);
       if (!broken) {
         const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 27), darkStoneMat);
-        cap.position.set(px, getTerrainHeight(px, pz, 1.0) + actualH - 0.15, pz); ctx.scene.add(cap);
+        cap.position.set(px, getTerrainHeight(px, pz, 1.0) + actualH - 0.15, pz); mctx.scene.add(cap);
       }
       if (broken) {
         for (let r = 0; r < 3 + Math.floor(Math.random() * 4); r++) {
           const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.35, 2), stoneMat);
           rubble.position.set(px + (Math.random() - 0.5) * 2, getTerrainHeight(px, pz, 1.0) + 0.1, pz + (Math.random() - 0.5) * 2);
-          rubble.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(rubble);
+          rubble.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(rubble);
         }
       }
       if (i % 3 === 0) {
@@ -27341,17 +27343,17 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
         const seg = new THREE.Mesh(new THREE.BoxGeometry(radius * Math.PI * 2 / 48, wallH, 0.3), darkStoneMat);
         const mx = Math.sin((angle + nextA) / 2) * radius, mz = Math.cos((angle + nextA) / 2) * radius;
         seg.position.set(mx, getTerrainHeight(mx, mz, 1.0) + wallH / 2, mz);
-        seg.rotation.y = -(angle + nextA) / 2 + Math.PI / 2; seg.castShadow = true; ctx.scene.add(seg);
+        seg.rotation.y = -(angle + nextA) / 2 + Math.PI / 2; seg.castShadow = true; mctx.scene.add(seg);
       }
     }
 
     // Arena floor with marking rings
     const arenaFloor = new THREE.Mesh(new THREE.CircleGeometry(w * 0.25, 62), sandMat);
-    arenaFloor.rotation.x = -Math.PI / 2; arenaFloor.position.y = 0.02; ctx.scene.add(arenaFloor);
+    arenaFloor.rotation.x = -Math.PI / 2; arenaFloor.position.y = 0.02; mctx.scene.add(arenaFloor);
     const innerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.2, 0.08, 17, 62), darkStoneMat);
-    innerRing.rotation.x = -Math.PI / 2; innerRing.position.y = 0.04; ctx.scene.add(innerRing);
+    innerRing.rotation.x = -Math.PI / 2; innerRing.position.y = 0.04; mctx.scene.add(innerRing);
     const outerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.25, 0.15, 17, 62), stoneMat);
-    outerRing.rotation.x = -Math.PI / 2; outerRing.position.y = 0.06; ctx.scene.add(outerRing);
+    outerRing.rotation.x = -Math.PI / 2; outerRing.position.y = 0.06; mctx.scene.add(outerRing);
 
     // Spectator stands - broken tier blocks with stone seats
     for (let tier = 0; tier < 4; tier++) {
@@ -27362,11 +27364,11 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
           const arcLen = 1.5 + Math.random() * 2;
           const blk = new THREE.Mesh(new THREE.BoxGeometry(arcLen, 0.6, 1.5), darkStoneMat);
           const bx = Math.sin(arcA) * tierR, bz = Math.cos(arcA) * tierR;
-          blk.position.set(bx, tierH, bz); blk.rotation.y = -arcA; blk.castShadow = true; ctx.scene.add(blk);
+          blk.position.set(bx, tierH, bz); blk.rotation.y = -arcA; blk.castShadow = true; mctx.scene.add(blk);
           for (let st = 0; st < 2 + Math.floor(Math.random() * 3); st++) {
             const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.35), stoneMat);
             seat.position.set(bx + (Math.random() - 0.5) * arcLen * 0.8, tierH + 0.42, bz + (Math.random() - 0.5) * 0.6);
-            seat.rotation.y = -arcA + (Math.random() - 0.5) * 0.2; ctx.scene.add(seat);
+            seat.rotation.y = -arcA + (Math.random() - 0.5) * 0.2; mctx.scene.add(seat);
           }
         }
       }
@@ -27383,7 +27385,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const sx = (Math.random() - 0.5) * w * 0.4, sz = (Math.random() - 0.5) * d * 0.4;
       shield.position.set(sx, getTerrainHeight(sx, sz, 1.0) + 0.05, sz);
       shield.rotation.set((Math.random() - 0.5) * 1.5, Math.random() * Math.PI, (Math.random() - 0.5) * 0.5);
-      ctx.scene.add(shield);
+      mctx.scene.add(shield);
     }
 
     // Scattered swords with guard and grip
@@ -27398,7 +27400,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const wx = (Math.random() - 0.5) * w * 0.4, wz = (Math.random() - 0.5) * d * 0.4;
       sword.position.set(wx, getTerrainHeight(wx, wz, 1.0) + 0.1, wz);
       sword.rotation.z = (Math.random() - 0.5) * 2.5; sword.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(sword);
+      mctx.scene.add(sword);
     }
 
     // Gladiator helmets with crests
@@ -27413,7 +27415,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const hx = (Math.random() - 0.5) * w * 0.35, hz = (Math.random() - 0.5) * d * 0.35;
       helmet.position.set(hx, getTerrainHeight(hx, hz, 1.0) + 0.1, hz);
       helmet.rotation.set((Math.random() - 0.5) * 0.8, Math.random() * Math.PI, (Math.random() - 0.5) * 0.5);
-      ctx.scene.add(helmet);
+      mctx.scene.add(helmet);
     }
 
     // Fallen pillars on ground with drum fragments
@@ -27423,11 +27425,11 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const fx = (Math.random() - 0.5) * w * 0.35, fz = (Math.random() - 0.5) * d * 0.35;
       fallen.position.set(fx, getTerrainHeight(fx, fz, 1.0) + 0.35, fz);
       fallen.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
-      fallen.rotation.y = Math.random() * Math.PI; fallen.castShadow = true; ctx.scene.add(fallen);
+      fallen.rotation.y = Math.random() * Math.PI; fallen.castShadow = true; mctx.scene.add(fallen);
       for (let f = 0; f < 2; f++) {
         const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.5, 27), stoneMat);
         drum.position.set(fx + (Math.random() - 0.5) * 2, getTerrainHeight(fx, fz, 1.0) + 0.25, fz + (Math.random() - 0.5) * 2);
-        ctx.scene.add(drum);
+        mctx.scene.add(drum);
       }
     }
 
@@ -27449,7 +27451,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       }
       const gx = Math.sin(gAngle) * gateR, gz = Math.cos(gAngle) * gateR;
       gate.position.set(gx, getTerrainHeight(gx, gz, 1.0), gz);
-      gate.rotation.y = -gAngle; ctx.scene.add(gate);
+      gate.rotation.y = -gAngle; mctx.scene.add(gate);
     }
 
     // Chariot remains with wheels and spokes
@@ -27470,7 +27472,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const cx = (Math.random() - 0.5) * w * 0.3, cz = (Math.random() - 0.5) * d * 0.3;
       chariot.position.set(cx, getTerrainHeight(cx, cz, 1.0), cz);
       chariot.rotation.y = Math.random() * Math.PI; chariot.rotation.z = (Math.random() - 0.5) * 0.2;
-      ctx.scene.add(chariot);
+      mctx.scene.add(chariot);
     }
 
     // Victory podium with laurel wreath
@@ -27484,7 +27486,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
     const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 30, 36), new THREE.MeshStandardMaterial({ color: 0x668844 }));
     wreath.rotation.x = -Math.PI / 2; wreath.position.y = 1.32; podium.add(wreath);
     podium.position.set(w * 0.05, getTerrainHeight(w * 0.05, d * 0.05, 1.0), d * 0.05);
-    ctx.scene.add(podium);
+    mctx.scene.add(podium);
 
     // Chain links scattered
     for (let i = 0; i < 12; i++) {
@@ -27495,7 +27497,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       }
       const cx = (Math.random() - 0.5) * w * 0.5, cz = (Math.random() - 0.5) * d * 0.5;
       chain.position.set(cx, getTerrainHeight(cx, cz, 1.0) + 0.05, cz);
-      chain.rotation.z = (Math.random() - 0.5) * 1.0; ctx.scene.add(chain);
+      chain.rotation.z = (Math.random() - 0.5) * 1.0; mctx.scene.add(chain);
     }
 
     // Torch brackets with flames
@@ -27509,7 +27511,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       flame.position.set(0, 0.08, 0.25); bracket.add(flame);
       const bx = Math.sin(tAngle) * tRadius, bz = Math.cos(tAngle) * tRadius;
       bracket.position.set(bx, getTerrainHeight(bx, bz, 1.0) + 2.5, bz);
-      bracket.rotation.y = -tAngle; ctx.scene.add(bracket);
+      bracket.rotation.y = -tAngle; mctx.scene.add(bracket);
     }
 
     // Warm torch lights
@@ -27517,7 +27519,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const tAngle = (i / 12) * Math.PI * 2, tRadius = Math.min(w, d) * 0.42;
       const light = new THREE.PointLight(0xff8844, 0.6, 10);
       light.position.set(Math.sin(tAngle) * tRadius, 3.0, Math.cos(tAngle) * tRadius);
-      ctx.scene.add(light); ctx.torchLights.push(light);
+      mctx.scene.add(light); mctx.torchLights.push(light);
     }
 
     // Bloodstains with splatter trails
@@ -27525,13 +27527,13 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const stain = new THREE.Mesh(new THREE.CircleGeometry(0.2 + Math.random() * 0.6, 27), bloodMat);
       stain.rotation.x = -Math.PI / 2;
       const sx = (Math.random() - 0.5) * w * 0.35, sz = (Math.random() - 0.5) * d * 0.35;
-      stain.position.set(sx, getTerrainHeight(sx, sz, 1.0) + 0.01, sz); ctx.scene.add(stain);
+      stain.position.set(sx, getTerrainHeight(sx, sz, 1.0) + 0.01, sz); mctx.scene.add(stain);
       if (Math.random() > 0.5) {
         for (let sp = 0; sp < 3; sp++) {
           const splat = new THREE.Mesh(new THREE.CircleGeometry(0.05 + Math.random() * 0.1, 20), bloodMat);
           splat.rotation.x = -Math.PI / 2;
           splat.position.set(sx + (Math.random() - 0.5), getTerrainHeight(sx, sz, 1.0) + 0.01, sz + (Math.random() - 0.5));
-          ctx.scene.add(splat);
+          mctx.scene.add(splat);
         }
       }
     }
@@ -27555,7 +27557,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       plaque.position.set(0, 0.35, 0.51); statue.add(plaque);
       const sAngle = (i / 8) * Math.PI * 2, sr = w * 0.32;
       statue.position.set(Math.sin(sAngle) * sr, getTerrainHeight(Math.sin(sAngle) * sr, Math.cos(sAngle) * sr, 1.0), Math.cos(sAngle) * sr);
-      statue.rotation.y = -sAngle; ctx.scene.add(statue);
+      statue.rotation.y = -sAngle; mctx.scene.add(statue);
     }
 
     // Sand mounds and drag marks
@@ -27563,13 +27565,13 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const mound = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random() * 0.5, 23, 17), sandMat);
       mound.scale.y = 0.3;
       const mx = (Math.random() - 0.5) * w * 0.3, mz = (Math.random() - 0.5) * d * 0.3;
-      mound.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.05, mz); ctx.scene.add(mound);
+      mound.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.05, mz); mctx.scene.add(mound);
     }
     for (let i = 0; i < 8; i++) {
       const drag = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.01, 2 + Math.random() * 2), new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 1.0 }));
       const dx = (Math.random() - 0.5) * w * 0.3, dz = (Math.random() - 0.5) * d * 0.3;
       drag.position.set(dx, getTerrainHeight(dx, dz, 1.0) + 0.015, dz); drag.rotation.y = Math.random() * Math.PI;
-      ctx.scene.add(drag);
+      mctx.scene.add(drag);
     }
 
     // Spectator skeletons
@@ -27582,7 +27584,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const skAngle = Math.random() * Math.PI * 2, skR = w * 0.32 + Math.random() * 3;
       skel.position.set(Math.sin(skAngle) * skR, getTerrainHeight(Math.sin(skAngle) * skR, Math.cos(skAngle) * skR, 1.0) + 0.5, Math.cos(skAngle) * skR);
       skel.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, (Math.random() - 0.5) * 0.3);
-      ctx.scene.add(skel);
+      mctx.scene.add(skel);
     }
 
     // Broken crates and rope coils
@@ -27591,13 +27593,13 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const crx = (Math.random() - 0.5) * w * 0.35, crz = (Math.random() - 0.5) * d * 0.35;
       crate.position.set(crx, getTerrainHeight(crx, crz, 1.0) + 0.25, crz);
       crate.rotation.set((Math.random() - 0.5) * 0.3, Math.random() * Math.PI, (Math.random() - 0.5) * 0.3);
-      ctx.scene.add(crate);
+      mctx.scene.add(crate);
     }
     for (let i = 0; i < 6; i++) {
       const rope = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 17, 30), leatherMat);
       rope.rotation.x = -Math.PI / 2;
       const rx = (Math.random() - 0.5) * w * 0.35, rz = (Math.random() - 0.5) * d * 0.35;
-      rope.position.set(rx, getTerrainHeight(rx, rz, 1.0) + 0.04, rz); ctx.scene.add(rope);
+      rope.position.set(rx, getTerrainHeight(rx, rz, 1.0) + 0.04, rz); mctx.scene.add(rope);
     }
     // ── Tiered seating rows (stepped boxes) ──
     for (let tier = 0; tier < 3; tier++) {
@@ -27608,7 +27610,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
           const seatBlock = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.6), stoneMat);
           const stx = Math.sin(seatAngle) * tierR2, stz2 = Math.cos(seatAngle) * tierR2;
           seatBlock.position.set(stx, 0.6 + tier * 0.6, stz2);
-          seatBlock.rotation.y = -seatAngle; ctx.scene.add(seatBlock);
+          seatBlock.rotation.y = -seatAngle; mctx.scene.add(seatBlock);
         }
       }
     }
@@ -27617,7 +27619,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const sandPit = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.5, 20), new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 1.0 }));
       sandPit.rotation.x = -Math.PI / 2;
       const spx = (Math.random()-0.5)*w*0.25, spz = (Math.random()-0.5)*d*0.25;
-      sandPit.position.set(spx, 0.025, spz); ctx.scene.add(sandPit);
+      sandPit.position.set(spx, 0.025, spz); mctx.scene.add(sandPit);
     }
     // ── Gladiator equipment racks ──
     for (let i = 0; i < 4; i++) {
@@ -27631,7 +27633,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       }
       const rx2 = (Math.random()-0.5)*w*0.35, rz2 = (Math.random()-0.5)*d*0.35;
       rack.position.set(rx2, getTerrainHeight(rx2, rz2, 1.0) + 0.8, rz2);
-      rack.rotation.y = Math.random() * Math.PI; ctx.scene.add(rack);
+      rack.rotation.y = Math.random() * Math.PI; mctx.scene.add(rack);
     }
     // ── Lion cage bars ──
     for (let i = 0; i < 2; i++) {
@@ -27646,7 +27648,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       cage.add(botBar);
       const cgx = (Math.random()-0.5)*w*0.38, cgz = (Math.random()-0.5)*d*0.38;
       cage.position.set(cgx, getTerrainHeight(cgx, cgz, 1.0), cgz);
-      cage.rotation.y = Math.random() * Math.PI; ctx.scene.add(cage);
+      cage.rotation.y = Math.random() * Math.PI; mctx.scene.add(cage);
     }
     // ── Victory arch fragments ──
     for (let i = 0; i < 2; i++) {
@@ -27662,7 +27664,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const aAngle = Math.random() * Math.PI * 2;
       const ar = w * 0.38;
       arch.position.set(Math.sin(aAngle) * ar, getTerrainHeight(Math.sin(aAngle) * ar, Math.cos(aAngle) * ar, 1.0), Math.cos(aAngle) * ar);
-      arch.rotation.y = -aAngle; ctx.scene.add(arch);
+      arch.rotation.y = -aAngle; mctx.scene.add(arch);
     }
 
     // ── Gladiator training dummies ──
@@ -27682,7 +27684,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       shieldTarget.position.set(0.5, 1.3, 0.02); dummy.add(shieldTarget);
       const dummyX = (Math.random() - 0.5) * w * 0.3, dummyZ = (Math.random() - 0.5) * d * 0.3;
       dummy.position.set(dummyX, getTerrainHeight(dummyX, dummyZ, 1.0), dummyZ);
-      dummy.rotation.y = Math.random() * Math.PI; ctx.scene.add(dummy);
+      dummy.rotation.y = Math.random() * Math.PI; mctx.scene.add(dummy);
     }
 
     // ── Spectator skeleton remains (seated on tiers) ──
@@ -27706,7 +27708,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const skAngle2 = (i / 10) * Math.PI * 2 + Math.random() * 0.3;
       const skR2 = w * 0.30 + Math.floor(i / 4) * 1.8;
       skelGroup.position.set(Math.sin(skAngle2) * skR2, 0.5 + Math.floor(i / 4) * 0.6, Math.cos(skAngle2) * skR2);
-      skelGroup.rotation.y = -skAngle2 + Math.PI; ctx.scene.add(skelGroup);
+      skelGroup.rotation.y = -skAngle2 + Math.PI; mctx.scene.add(skelGroup);
     }
 
     // ── Victor's podium ──
@@ -27726,7 +27728,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       laurel.rotation.x = -Math.PI / 2; laurel.position.y = 0.95; podium.add(laurel);
       const podX = w * 0.15, podZ = -d * 0.18;
       podium.position.set(podX, getTerrainHeight(podX, podZ, 1.0), podZ);
-      ctx.scene.add(podium);
+      mctx.scene.add(podium);
     }
 
     // ── Underground tunnel entrances ──
@@ -27745,7 +27747,7 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       }
       const tx2 = Math.sin(tunnelAngle) * tunnelR, tz2 = Math.cos(tunnelAngle) * tunnelR;
       tunnel.position.set(tx2, getTerrainHeight(tx2, tz2, 1.0) + 1.0, tz2);
-      tunnel.rotation.y = -tunnelAngle; ctx.scene.add(tunnel);
+      tunnel.rotation.y = -tunnelAngle; mctx.scene.add(tunnel);
     }
 
     // ── Fallen column sections ──
@@ -27766,21 +27768,21 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       }
       const fcx = (Math.random() - 0.5) * w * 0.4, fcz = (Math.random() - 0.5) * d * 0.4;
       colGroup.position.set(fcx, getTerrainHeight(fcx, fcz, 1.0), fcz);
-      colGroup.rotation.y = Math.random() * Math.PI; ctx.scene.add(colGroup);
+      colGroup.rotation.y = Math.random() * Math.PI; mctx.scene.add(colGroup);
     }
 
     // ── Sand pit texture (central area) ──
     {
       const sandPitCenter = new THREE.Mesh(new THREE.CircleGeometry(w * 0.22, 48), sandMat);
-      sandPitCenter.rotation.x = -Math.PI / 2; sandPitCenter.position.y = 0.015; ctx.scene.add(sandPitCenter);
+      sandPitCenter.rotation.x = -Math.PI / 2; sandPitCenter.position.y = 0.015; mctx.scene.add(sandPitCenter);
       const sandRim = new THREE.Mesh(new THREE.TorusGeometry(w * 0.22, 0.1, 10, 48), sandMat);
-      sandRim.rotation.x = -Math.PI / 2; sandRim.position.y = 0.04; ctx.scene.add(sandRim);
+      sandRim.rotation.x = -Math.PI / 2; sandRim.position.y = 0.04; mctx.scene.add(sandRim);
       for (let i = 0; i < 30; i++) {
         const sandBit = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.02, 0.08 + Math.random() * 0.1),
           new THREE.MeshStandardMaterial({ color: 0xbbaa77, roughness: 1.0 }));
         const sAngle2 = Math.random() * Math.PI * 2, sDist = Math.random() * w * 0.2;
         sandBit.position.set(Math.cos(sAngle2) * sDist, 0.02, Math.sin(sAngle2) * sDist);
-        sandBit.rotation.y = Math.random() * Math.PI; ctx.scene.add(sandBit);
+        sandBit.rotation.y = Math.random() * Math.PI; mctx.scene.add(sandBit);
       }
     }
 
@@ -27802,19 +27804,19 @@ export function buildShatteredColosseum(ctx: MapBuildContext, w: number, d: numb
       const chAngle = (i / 6) * Math.PI * 2;
       const chR = Math.min(w, d) * 0.41;
       chainGroup.position.set(Math.sin(chAngle) * chR, getTerrainHeight(Math.sin(chAngle) * chR, Math.cos(chAngle) * chR, 1.0) + 1.8, Math.cos(chAngle) * chR);
-      chainGroup.rotation.y = -chAngle; ctx.scene.add(chainGroup);
+      chainGroup.rotation.y = -chAngle; mctx.scene.add(chainGroup);
     }
 }
 
-export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x555550, 0.016);
-    ctx.applyTerrainColors(0x3a3a38, 0x4a4a48, 1.0);
-    ctx.dirLight.color.setHex(0xccccbb);
-    ctx.dirLight.intensity = 1.0;
-    ctx.ambientLight.color.setHex(0x2a2a2a);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x888888);
-    ctx.hemiLight.groundColor.setHex(0x333333);
+export function buildPetrifiedGarden(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x555550, 0.016);
+    mctx.applyTerrainColors(0x3a3a38, 0x4a4a48, 1.0);
+    mctx.dirLight.color.setHex(0xccccbb);
+    mctx.dirLight.intensity = 1.0;
+    mctx.ambientLight.color.setHex(0x2a2a2a);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x888888);
+    mctx.hemiLight.groundColor.setHex(0x333333);
 
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.7 });
     const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8 });
@@ -27853,7 +27855,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
         canopy.scale.y = 0.4; canopy.position.y = h + 0.2; tree.add(canopy);
       }
       const tx = (Math.random() - 0.5) * w * 0.85, tz = (Math.random() - 0.5) * d * 0.85;
-      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz); ctx.scene.add(tree);
+      tree.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz); mctx.scene.add(tree);
     }
 
     // Petrified people with legs, arms in varied poses
@@ -27879,7 +27881,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       }
       const sx = (Math.random() - 0.5) * w * 0.75, sz = (Math.random() - 0.5) * d * 0.75;
       statue.position.set(sx, getTerrainHeight(sx, sz, 1.0), sz);
-      statue.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(statue);
+      statue.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(statue);
     }
 
     // Petrified animals (deer, birds)
@@ -27910,7 +27912,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       }
       const ax = (Math.random() - 0.5) * w * 0.7, az = (Math.random() - 0.5) * d * 0.7;
       animal.position.set(ax, getTerrainHeight(ax, az, 1.0), az);
-      animal.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(animal);
+      animal.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(animal);
     }
 
     // Calcified rose bushes with thorns
@@ -27924,7 +27926,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
         thorn.rotation.set(Math.random() - 0.5, 0, Math.random() - 0.5); bush.add(thorn);
       }
       const bx = (Math.random() - 0.5) * w * 0.8, bz = (Math.random() - 0.5) * d * 0.8;
-      bush.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz); ctx.scene.add(bush);
+      bush.position.set(bx, getTerrainHeight(bx, bz, 1.0), bz); mctx.scene.add(bush);
     }
 
     // Fossilized fountains with frozen spouts and decorative lips
@@ -27941,7 +27943,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       const lip = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.06, 17, 44), stoneMat);
       lip.rotation.x = -Math.PI / 2; lip.position.y = 0.32; fountain.add(lip);
       const fx = (Math.random() - 0.5) * w * 0.5, fz = (Math.random() - 0.5) * d * 0.5;
-      fountain.position.set(fx, getTerrainHeight(fx, fz, 1.0), fz); ctx.scene.add(fountain);
+      fountain.position.set(fx, getTerrainHeight(fx, fz, 1.0), fz); mctx.scene.add(fountain);
     }
 
     // Crystal formations growing from stone
@@ -27954,14 +27956,14 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
         crystal.rotation.set((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.3); cluster.add(crystal);
       }
       const cx = (Math.random() - 0.5) * w * 0.7, cz = (Math.random() - 0.5) * d * 0.7;
-      cluster.position.set(cx, getTerrainHeight(cx, cz, 1.0), cz); ctx.scene.add(cluster);
+      cluster.position.set(cx, getTerrainHeight(cx, cz, 1.0), cz); mctx.scene.add(cluster);
     }
 
     // Crystal glow lights
     for (let i = 0; i < 8; i++) {
       const glow = new THREE.PointLight(0x66ccaa, 0.4, 8);
       glow.position.set((Math.random() - 0.5) * w * 0.6, 0.5 + Math.random(), (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(glow); ctx.torchLights.push(glow);
+      mctx.scene.add(glow); mctx.torchLights.push(glow);
     }
 
     // Moss patches
@@ -27969,7 +27971,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       const moss = new THREE.Mesh(new THREE.CircleGeometry(0.4 + Math.random() * 1.2, 27), mossMat);
       moss.rotation.x = -Math.PI / 2;
       const mx = (Math.random() - 0.5) * w * 0.8, mz = (Math.random() - 0.5) * d * 0.8;
-      moss.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.02, mz); ctx.scene.add(moss);
+      moss.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.02, mz); mctx.scene.add(moss);
     }
 
     // Lichen on surfaces
@@ -27978,7 +27980,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       lichen.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.5;
       const lx = (Math.random() - 0.5) * w * 0.8, lz = (Math.random() - 0.5) * d * 0.8;
       lichen.position.set(lx, getTerrainHeight(lx, lz, 1.0) + 0.3 + Math.random() * 1.5, lz);
-      lichen.rotation.y = Math.random() * Math.PI; ctx.scene.add(lichen);
+      lichen.rotation.y = Math.random() * Math.PI; mctx.scene.add(lichen);
     }
 
     // Cracked stone paths with crack details
@@ -27986,11 +27988,11 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       const pathStone = new THREE.Mesh(new THREE.BoxGeometry(0.5 + Math.random() * 0.3, 0.05, 0.5 + Math.random() * 0.3), crackedMat);
       const px = (Math.random() - 0.5) * w * 0.6, pz = (Math.random() - 0.5) * d * 0.6;
       pathStone.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.03, pz);
-      pathStone.rotation.y = Math.random() * Math.PI; ctx.scene.add(pathStone);
+      pathStone.rotation.y = Math.random() * Math.PI; mctx.scene.add(pathStone);
       if (Math.random() > 0.5) {
         const crack = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.06, 0.3 + Math.random() * 0.2), darkStoneMat);
         crack.position.set(px + (Math.random() - 0.5) * 0.2, getTerrainHeight(px, pz, 1.0) + 0.06, pz + (Math.random() - 0.5) * 0.2);
-        crack.rotation.y = Math.random() * Math.PI; ctx.scene.add(crack);
+        crack.rotation.y = Math.random() * Math.PI; mctx.scene.add(crack);
       }
     }
 
@@ -28005,7 +28007,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       legR.position.set(0.45, 0.2, 0); bench.add(legR);
       const bnx = (Math.random() - 0.5) * w * 0.6, bnz = (Math.random() - 0.5) * d * 0.6;
       bench.position.set(bnx, getTerrainHeight(bnx, bnz, 1.0), bnz);
-      bench.rotation.y = Math.random() * Math.PI; ctx.scene.add(bench);
+      bench.rotation.y = Math.random() * Math.PI; mctx.scene.add(bench);
     }
 
     // Stone garden border edging
@@ -28013,7 +28015,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       const edging = new THREE.Mesh(new THREE.BoxGeometry(1.5 + Math.random(), 0.2, 0.12), darkStoneMat);
       const ex = (Math.random() - 0.5) * w * 0.7, ez = (Math.random() - 0.5) * d * 0.7;
       edging.position.set(ex, getTerrainHeight(ex, ez, 1.0) + 0.1, ez);
-      edging.rotation.y = Math.random() * Math.PI; ctx.scene.add(edging);
+      edging.rotation.y = Math.random() * Math.PI; mctx.scene.add(edging);
     }
     // ── Petrified tree stone bark texture detail ──
     for (let i = 0; i < 20; i++) {
@@ -28025,7 +28027,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       }
       const bdx = (Math.random()-0.5)*w*0.8, bdz = (Math.random()-0.5)*d*0.8;
       barkDetail.position.set(bdx, getTerrainHeight(bdx, bdz, 1.0) + 0.5 + Math.random() * 2, bdz);
-      barkDetail.rotation.y = Math.random() * Math.PI; ctx.scene.add(barkDetail);
+      barkDetail.rotation.y = Math.random() * Math.PI; mctx.scene.add(barkDetail);
     }
     // ── Frozen-in-time bird/animal statues ──
     for (let i = 0; i < 8; i++) {
@@ -28049,7 +28051,7 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       }
       const frx = (Math.random()-0.5)*w*0.7, frz = (Math.random()-0.5)*d*0.7;
       frozen.position.set(frx, getTerrainHeight(frx, frz, 1.0) + 0.5 + Math.random() * 2, frz);
-      frozen.rotation.y = Math.random() * Math.PI; ctx.scene.add(frozen);
+      frozen.rotation.y = Math.random() * Math.PI; mctx.scene.add(frozen);
     }
     // ── Stone flower beds ──
     for (let i = 0; i < 10; i++) {
@@ -28061,14 +28063,14 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
         flower.position.set((Math.random()-0.5)*0.4, 0.05, (Math.random()-0.5)*0.4); bed.add(flower);
       }
       const fbx = (Math.random()-0.5)*w*0.6, fbz = (Math.random()-0.5)*d*0.6;
-      bed.position.set(fbx, getTerrainHeight(fbx, fbz, 1.0) + 0.02, fbz); ctx.scene.add(bed);
+      bed.position.set(fbx, getTerrainHeight(fbx, fbz, 1.0) + 0.02, fbz); mctx.scene.add(bed);
     }
     // ── Vine fossils on walls ──
     for (let i = 0; i < 15; i++) {
       const fossil = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.8 + Math.random() * 1.2, 16), new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.7 }));
       const vfx = (Math.random()-0.5)*w*0.75, vfz = (Math.random()-0.5)*d*0.75;
       fossil.position.set(vfx, getTerrainHeight(vfx, vfz, 1.0) + 0.5 + Math.random() * 2, vfz);
-      fossil.rotation.set(Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.5); ctx.scene.add(fossil);
+      fossil.rotation.set(Math.random()*0.5, Math.random()*Math.PI, Math.random()*0.5); mctx.scene.add(fossil);
     }
 
     // ── Dense ground grass ──
@@ -28094,19 +28096,19 @@ export function buildPetrifiedGarden(ctx: MapBuildContext, w: number, d: number)
       const gx = (Math.random() - 0.5) * w * 0.9;
       const gz = (Math.random() - 0.5) * d * 0.9;
       grassClump.position.set(gx, getTerrainHeight(gx, gz, 1.0), gz);
-      ctx.scene.add(grassClump);
+      mctx.scene.add(grassClump);
     }
 }
 
-export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x1a3344, 0.024);
-    ctx.applyTerrainColors(0x153344, 0x1a4455, 0.6);
-    ctx.dirLight.color.setHex(0x44aacc);
-    ctx.dirLight.intensity = 0.5;
-    ctx.ambientLight.color.setHex(0x0a2233);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x336677);
-    ctx.hemiLight.groundColor.setHex(0x0a1a22);
+export function buildSunkenCitadel(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x1a3344, 0.024);
+    mctx.applyTerrainColors(0x153344, 0x1a4455, 0.6);
+    mctx.dirLight.color.setHex(0x44aacc);
+    mctx.dirLight.intensity = 0.5;
+    mctx.ambientLight.color.setHex(0x0a2233);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x336677);
+    mctx.hemiLight.groundColor.setHex(0x0a1a22);
 
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x556666, roughness: 0.8 });
     const barnacleMat = new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.9 });
@@ -28123,17 +28125,17 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       const wall = new THREE.Mesh(new THREE.BoxGeometry(1 + Math.random() * 3, 2 + Math.random() * 3, 0.5 + Math.random()), stoneMat);
       const wx = (Math.random() - 0.5) * w * 0.8, wz = (Math.random() - 0.5) * d * 0.8;
       wall.position.set(wx, getTerrainHeight(wx, wz, 0.6) + wall.geometry.parameters.height / 2, wz);
-      wall.rotation.y = Math.random() * Math.PI; wall.castShadow = true; ctx.scene.add(wall);
+      wall.rotation.y = Math.random() * Math.PI; wall.castShadow = true; mctx.scene.add(wall);
       for (let b = 0; b < 5 + Math.floor(Math.random() * 4); b++) {
         const barnacle = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.08, 17, 16), barnacleMat);
         barnacle.position.set(wx + (Math.random() - 0.5) * 0.8, getTerrainHeight(wx, wz, 0.6) + Math.random() * 2, wz + (Math.random() - 0.5) * 0.8);
-        ctx.scene.add(barnacle);
+        mctx.scene.add(barnacle);
       }
     }
 
     // Water surface
     const waterSurface = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.9, d * 0.9), waterMat);
-    waterSurface.rotation.x = -Math.PI / 2; waterSurface.position.y = 0.15; ctx.scene.add(waterSurface);
+    waterSurface.rotation.x = -Math.PI / 2; waterSurface.position.y = 0.15; mctx.scene.add(waterSurface);
 
     // Coral growths (branching formations)
     for (let i = 0; i < 18; i++) {
@@ -28152,7 +28154,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         }
       }
       const cx = (Math.random() - 0.5) * w * 0.7, cz = (Math.random() - 0.5) * d * 0.7;
-      coral.position.set(cx, getTerrainHeight(cx, cz, 0.6), cz); ctx.scene.add(coral);
+      coral.position.set(cx, getTerrainHeight(cx, cz, 0.6), cz); mctx.scene.add(coral);
     }
 
     // Kelp curtains (taller, more segments)
@@ -28171,7 +28173,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         frond.rotation.z = (Math.random() - 0.5) * 0.8; kelp.add(frond);
       }
       const kx = (Math.random() - 0.5) * w * 0.8, kz = (Math.random() - 0.5) * d * 0.8;
-      kelp.position.set(kx, getTerrainHeight(kx, kz, 0.6), kz); ctx.scene.add(kelp);
+      kelp.position.set(kx, getTerrainHeight(kx, kz, 0.6), kz); mctx.scene.add(kelp);
     }
 
     // Fish schools (small tetrahedrons in clusters)
@@ -28184,7 +28186,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         school.add(fish);
       }
       school.position.set((Math.random() - 0.5) * w * 0.5, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.5);
-      ctx.scene.add(school);
+      mctx.scene.add(school);
     }
 
     // Bubbles rising (clustered groups with varied transparency)
@@ -28201,20 +28203,20 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       }
       const bubbleClX = (Math.random() - 0.5) * w * 0.6, bubbleClZ = (Math.random() - 0.5) * d * 0.6;
       bubbleClusterGrp.position.set(bubbleClX, Math.random() * 4, bubbleClZ);
-      ctx.scene.add(bubbleClusterGrp);
+      mctx.scene.add(bubbleClusterGrp);
       // Foam/froth patch at water surface where bubbles rise
       const foamPatch = new THREE.Mesh(new THREE.CircleGeometry(0.08 + Math.random() * 0.1, 16),
         new THREE.MeshStandardMaterial({ color: 0xeeffff, transparent: true, opacity: 0.2, emissive: 0x88bbcc, emissiveIntensity: 0.1 }));
       foamPatch.rotation.x = -Math.PI / 2;
       foamPatch.position.set(bubbleClX, 0.16, bubbleClZ);
-      ctx.scene.add(foamPatch);
+      mctx.scene.add(foamPatch);
     }
     // Additional scattered single bubbles
     for (let i = 0; i < 12; i++) {
       const scatteredBubble = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 23, 17),
         new THREE.MeshStandardMaterial({ color: 0xaaddff, transparent: true, opacity: 0.2 + Math.random() * 0.2 }));
       scatteredBubble.position.set((Math.random() - 0.5) * w * 0.6, Math.random() * 4, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(scatteredBubble);
+      mctx.scene.add(scatteredBubble);
     }
 
     // Sunken treasure chests
@@ -28234,7 +28236,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       }
       const chx = (Math.random() - 0.5) * w * 0.5, chz = (Math.random() - 0.5) * d * 0.5;
       chest.position.set(chx, getTerrainHeight(chx, chz, 0.6), chz);
-      chest.rotation.y = Math.random() * Math.PI; ctx.scene.add(chest);
+      chest.rotation.y = Math.random() * Math.PI; mctx.scene.add(chest);
     }
 
     // Broken stained glass fragments
@@ -28243,7 +28245,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         new THREE.MeshStandardMaterial({ color: [0x4488cc, 0xcc4444, 0x44cc44, 0xcccc44][i % 4], transparent: true, opacity: 0.5, emissive: [0x224466, 0x662222, 0x226622, 0x666622][i % 4], emissiveIntensity: 0.3 }));
       const gx = (Math.random() - 0.5) * w * 0.6, gz = (Math.random() - 0.5) * d * 0.6;
       glass.position.set(gx, getTerrainHeight(gx, gz, 0.6) + Math.random() * 1.5, gz);
-      glass.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(glass);
+      glass.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(glass);
     }
 
     // Underwater light rays (tall translucent columns from above)
@@ -28251,7 +28253,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.8, 8, 17),
         new THREE.MeshStandardMaterial({ color: 0x88ccee, transparent: true, opacity: 0.08, emissive: 0x44aacc, emissiveIntensity: 0.3 }));
       ray.position.set((Math.random() - 0.5) * w * 0.5, 4, (Math.random() - 0.5) * d * 0.5);
-      ctx.scene.add(ray);
+      mctx.scene.add(ray);
     }
 
     // Bioluminescent algae patches
@@ -28259,14 +28261,14 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       const algae = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random(), 27), bioMat);
       algae.rotation.x = -Math.PI / 2;
       const ax = (Math.random() - 0.5) * w * 0.7, az = (Math.random() - 0.5) * d * 0.7;
-      algae.position.set(ax, 0.16, az); ctx.scene.add(algae);
+      algae.position.set(ax, 0.16, az); mctx.scene.add(algae);
     }
 
     // Bioluminescent & underwater lights
     for (let i = 0; i < 12; i++) {
       const light = new THREE.PointLight([0x44ffaa, 0x44aacc, 0x2288aa][i % 3], 0.4, 8);
       light.position.set((Math.random() - 0.5) * w * 0.6, 0.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(light); ctx.torchLights.push(light);
+      mctx.scene.add(light); mctx.torchLights.push(light);
     }
 
     // Sunken columns (tilted, covered)
@@ -28274,7 +28276,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 3, 23), stoneMat);
       const cx = (Math.random() - 0.5) * w * 0.7, cz = (Math.random() - 0.5) * d * 0.7;
       col.position.set(cx, getTerrainHeight(cx, cz, 0.6) + 1.5, cz);
-      col.rotation.z = (Math.random() - 0.5) * 0.4; col.castShadow = true; ctx.scene.add(col);
+      col.rotation.z = (Math.random() - 0.5) * 0.4; col.castShadow = true; mctx.scene.add(col);
       // Branching coral on columns
       if (Math.random() > 0.3) {
         const colCoralGrp = new THREE.Group();
@@ -28305,7 +28307,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
           colCoralGrp.add(colCoralFish);
         }
         colCoralGrp.position.set(cx + 0.2, getTerrainHeight(cx, cz, 0.6) + 1 + Math.random(), cz);
-        ctx.scene.add(colCoralGrp);
+        mctx.scene.add(colCoralGrp);
       }
     }
 
@@ -28314,7 +28316,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       const shell = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 23, 17, 0, Math.PI), shellMat);
       const shx = (Math.random() - 0.5) * w * 0.7, shz = (Math.random() - 0.5) * d * 0.7;
       shell.position.set(shx, getTerrainHeight(shx, shz, 0.6) + 0.03, shz);
-      shell.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(shell);
+      shell.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(shell);
     }
     // ── Underwater coral growths on walls ──
     for (let i = 0; i < 15; i++) {
@@ -28325,7 +28327,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         branch.rotation.set((Math.random()-0.5)*0.5, 0, (Math.random()-0.5)*0.5); wallCoral.add(branch);
       }
       const wcx = (Math.random()-0.5)*w*0.7, wcz = (Math.random()-0.5)*d*0.7;
-      wallCoral.position.set(wcx, getTerrainHeight(wcx, wcz, 0.6) + 0.5 + Math.random() * 2, wcz); ctx.scene.add(wallCoral);
+      wallCoral.position.set(wcx, getTerrainHeight(wcx, wcz, 0.6) + 0.5 + Math.random() * 2, wcz); mctx.scene.add(wallCoral);
     }
     // ── Barnacle clusters (varied sizes with seaweed and encrustation) ──
     for (let i = 0; i < 20; i++) {
@@ -28351,7 +28353,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         new THREE.MeshStandardMaterial({ color: barnClColors[i % barnClColors.length], roughness: 0.95 }));
       barnClEncrust.rotation.x = -Math.PI / 2; barnClEncrust.position.y = -0.01; barnClGrp.add(barnClEncrust);
       const barnClX = (Math.random()-0.5)*w*0.75, barnClZ = (Math.random()-0.5)*d*0.75;
-      barnClGrp.position.set(barnClX, getTerrainHeight(barnClX, barnClZ, 0.6) + Math.random() * 2, barnClZ); ctx.scene.add(barnClGrp);
+      barnClGrp.position.set(barnClX, getTerrainHeight(barnClX, barnClZ, 0.6) + Math.random() * 2, barnClZ); mctx.scene.add(barnClGrp);
     }
     // ── Water-logged furniture ──
     for (let i = 0; i < 6; i++) {
@@ -28366,14 +28368,14 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       furnCoral.position.set(0.2, 0.35, 0.1); furn.add(furnCoral);
       const fnx = (Math.random()-0.5)*w*0.5, fnz = (Math.random()-0.5)*d*0.5;
       furn.position.set(fnx, getTerrainHeight(fnx, fnz, 0.6), fnz);
-      furn.rotation.y = Math.random() * Math.PI; furn.rotation.z = (Math.random()-0.5)*0.2; ctx.scene.add(furn);
+      furn.rotation.y = Math.random() * Math.PI; furn.rotation.z = (Math.random()-0.5)*0.2; mctx.scene.add(furn);
     }
     // ── Algae streamers (thin green cylinders) ──
     for (let i = 0; i < 25; i++) {
       const algaeStr = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.8 + Math.random() * 1.5, 16), kelpMat);
       const asx = (Math.random()-0.5)*w*0.7, asz = (Math.random()-0.5)*d*0.7;
       algaeStr.position.set(asx, getTerrainHeight(asx, asz, 0.6) + 0.5 + Math.random() * 2, asz);
-      algaeStr.rotation.set(Math.random()*0.3, 0, Math.random()*0.3); ctx.scene.add(algaeStr);
+      algaeStr.rotation.set(Math.random()*0.3, 0, Math.random()*0.3); mctx.scene.add(algaeStr);
     }
 
     // ── Coral-encrusted pillars ──
@@ -28392,7 +28394,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         pillarGrp.add(coralGrowth);
       }
       const cpx2 = (Math.random() - 0.5) * w * 0.7, cpz2 = (Math.random() - 0.5) * d * 0.7;
-      pillarGrp.position.set(cpx2, getTerrainHeight(cpx2, cpz2, 0.6), cpz2); ctx.scene.add(pillarGrp);
+      pillarGrp.position.set(cpx2, getTerrainHeight(cpx2, cpz2, 0.6), cpz2); mctx.scene.add(pillarGrp);
     }
 
     // ── Treasure chests with coin spills ──
@@ -28417,7 +28419,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       }
       const tcx2 = (Math.random() - 0.5) * w * 0.5, tcz2 = (Math.random() - 0.5) * d * 0.5;
       tChest.position.set(tcx2, getTerrainHeight(tcx2, tcz2, 0.6), tcz2);
-      tChest.rotation.y = Math.random() * Math.PI; ctx.scene.add(tChest);
+      tChest.rotation.y = Math.random() * Math.PI; mctx.scene.add(tChest);
     }
 
     // ── Dense kelp forest ──
@@ -28440,7 +28442,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
         }
       }
       const ks2x = (Math.random() - 0.5) * w * 0.8, ks2z = (Math.random() - 0.5) * d * 0.8;
-      kelpStalk.position.set(ks2x, getTerrainHeight(ks2x, ks2z, 0.6), ks2z); ctx.scene.add(kelpStalk);
+      kelpStalk.position.set(ks2x, getTerrainHeight(ks2x, ks2z, 0.6), ks2z); mctx.scene.add(kelpStalk);
     }
 
     // ── Giant clam shells ──
@@ -28462,7 +28464,7 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       innerLip.rotation.x = -Math.PI / 2; innerLip.position.y = -0.02; clam.add(innerLip);
       const cl2x = (Math.random() - 0.5) * w * 0.6, cl2z = (Math.random() - 0.5) * d * 0.6;
       clam.position.set(cl2x, getTerrainHeight(cl2x, cl2z, 0.6) + 0.02, cl2z);
-      clam.rotation.y = Math.random() * Math.PI; ctx.scene.add(clam);
+      clam.rotation.y = Math.random() * Math.PI; mctx.scene.add(clam);
     }
 
     // ── Broken ship hull ──
@@ -28516,19 +28518,19 @@ export function buildSunkenCitadel(ctx: MapBuildContext, w: number, d: number): 
       const sh2x = (Math.random() - 0.5) * w * 0.5, sh2z = (Math.random() - 0.5) * d * 0.5;
       shipHull.position.set(sh2x, getTerrainHeight(sh2x, sh2z, 0.6), sh2z);
       shipHull.rotation.y = Math.random() * Math.PI;
-      shipHull.rotation.z = (Math.random() - 0.5) * 0.15; ctx.scene.add(shipHull);
+      shipHull.rotation.z = (Math.random() - 0.5) * 0.15; mctx.scene.add(shipHull);
     }
 }
 
-export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x554433, 0.014);
-    ctx.applyTerrainColors(0x443322, 0x554433, 1.4);
-    ctx.dirLight.color.setHex(0xffaa66);
-    ctx.dirLight.intensity = 1.2;
-    ctx.ambientLight.color.setHex(0x332211);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0xaa8855);
-    ctx.hemiLight.groundColor.setHex(0x221100);
+export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x554433, 0.014);
+    mctx.applyTerrainColors(0x443322, 0x554433, 1.4);
+    mctx.dirLight.color.setHex(0xffaa66);
+    mctx.dirLight.intensity = 1.2;
+    mctx.ambientLight.color.setHex(0x332211);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0xaa8855);
+    mctx.hemiLight.groundColor.setHex(0x221100);
 
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.9 });
     const scorchedMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
@@ -28551,14 +28553,14 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       const wall = new THREE.Mesh(new THREE.BoxGeometry(cwWallW, wallH, cwWallD), rockMat);
       const wx = (Math.random() - 0.5) * w * 0.85, wz = (Math.random() - 0.5) * d * 0.85;
       wall.position.set(wx, getTerrainHeight(wx, wz, 1.4) + wallH / 2, wz);
-      wall.castShadow = true; ctx.scene.add(wall);
+      wall.castShadow = true; mctx.scene.add(wall);
 
       // Rock face ledges (horizontal protruding boxes)
       const cwLedgeCount = 1 + Math.floor(Math.random() * 3);
       for (let lg = 0; lg < cwLedgeCount; lg++) {
         const cwLedge = new THREE.Mesh(new THREE.BoxGeometry(cwWallW * 0.6 + Math.random() * cwWallW * 0.3, 0.15, 0.4 + Math.random() * 0.3), cwLedgeMat);
         cwLedge.position.set(wx + (Math.random() - 0.5) * 0.5, getTerrainHeight(wx, wz, 1.4) + wallH * 0.2 + lg * wallH * 0.25, wz + cwWallD * 0.5 + 0.15);
-        ctx.scene.add(cwLedge);
+        mctx.scene.add(cwLedge);
       }
 
       // Overhang at top of some walls
@@ -28566,7 +28568,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
         const cwOverhang = new THREE.Mesh(new THREE.BoxGeometry(cwWallW * 0.8, 0.3, 0.8), cwOverhangMat);
         cwOverhang.position.set(wx, getTerrainHeight(wx, wz, 1.4) + wallH - 0.15, wz + cwWallD * 0.5 + 0.3);
         cwOverhang.rotation.x = 0.1;
-        ctx.scene.add(cwOverhang);
+        mctx.scene.add(cwOverhang);
       }
 
       // Mineral vein (colored PlaneGeometry strip on wall face)
@@ -28576,7 +28578,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
         const cwVein = new THREE.Mesh(new THREE.PlaneGeometry(0.06, wallH * 0.4 + Math.random() * wallH * 0.3), cwVeinMat);
         cwVein.position.set(wx + (Math.random() - 0.5) * cwWallW * 0.4, getTerrainHeight(wx, wz, 1.4) + wallH * 0.4, wz + cwWallD * 0.51);
         cwVein.rotation.z = (Math.random() - 0.5) * 0.4;
-        ctx.scene.add(cwVein);
+        mctx.scene.add(cwVein);
       }
 
       // Carved ancient symbol on some walls
@@ -28594,7 +28596,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
         cwSymLineV.position.z = 0.01;
         cwSymbolGrp.add(cwSymLineV);
         cwSymbolGrp.position.set(wx, getTerrainHeight(wx, wz, 1.4) + wallH * 0.5, wz + cwWallD * 0.51);
-        ctx.scene.add(cwSymbolGrp);
+        mctx.scene.add(cwSymbolGrp);
       }
 
       // Claw marks on some walls (thin dark slashes)
@@ -28602,7 +28604,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
         for (let c = 0; c < 3; c++) {
           const claw = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.5 + Math.random(), 0.02), scorchedMat);
           claw.position.set(wx + (c - 1) * 0.2, getTerrainHeight(wx, wz, 1.4) + wallH * 0.4 + Math.random(), wz + 0.3);
-          claw.rotation.z = (Math.random() - 0.5) * 0.2; ctx.scene.add(claw);
+          claw.rotation.z = (Math.random() - 0.5) * 0.2; mctx.scene.add(claw);
         }
       }
 
@@ -28611,7 +28613,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
         const cwAlcove = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), darkRockMat);
         cwAlcove.rotation.x = Math.PI;
         cwAlcove.position.set(wx + (Math.random() - 0.5) * cwWallW * 0.3, getTerrainHeight(wx, wz, 1.4) + wallH * 0.6, wz + cwWallD * 0.5);
-        ctx.scene.add(cwAlcove);
+        mctx.scene.add(cwAlcove);
       }
     }
 
@@ -28639,7 +28641,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
       const fx = (Math.random() - 0.5) * w * 0.6, fz = (Math.random() - 0.5) * d * 0.6;
       fossil.position.set(fx, getTerrainHeight(fx, fz, 1.4) + 0.5 + Math.random(), fz);
-      fossil.rotation.y = Math.random() * Math.PI; ctx.scene.add(fossil);
+      fossil.rotation.y = Math.random() * Math.PI; mctx.scene.add(fossil);
     }
 
     // Scorched ground patches
@@ -28647,7 +28649,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       const scorch = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 27), scorchedMat);
       scorch.rotation.x = -Math.PI / 2;
       const sx = (Math.random() - 0.5) * w * 0.7, sz = (Math.random() - 0.5) * d * 0.7;
-      scorch.position.set(sx, getTerrainHeight(sx, sz, 1.4) + 0.02, sz); ctx.scene.add(scorch);
+      scorch.position.set(sx, getTerrainHeight(sx, sz, 1.4) + 0.02, sz); mctx.scene.add(scorch);
     }
 
     // Dragon nests with more eggs, feathers, and bones
@@ -28671,7 +28673,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
         scale.rotation.x = -Math.PI / 2; nest.add(scale);
       }
       const nx = (Math.random() - 0.5) * w * 0.5, nz = (Math.random() - 0.5) * d * 0.5;
-      nest.position.set(nx, getTerrainHeight(nx, nz, 1.4), nz); ctx.scene.add(nest);
+      nest.position.set(nx, getTerrainHeight(nx, nz, 1.4), nz); mctx.scene.add(nest);
     }
 
     // Lava fissures with branching cracks
@@ -28680,17 +28682,17 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       crack.rotation.x = -Math.PI / 2;
       const cx = (Math.random() - 0.5) * w * 0.6, cz = (Math.random() - 0.5) * d * 0.6;
       crack.position.set(cx, getTerrainHeight(cx, cz, 1.4) + 0.03, cz);
-      crack.rotation.z = Math.random() * Math.PI; ctx.scene.add(crack);
+      crack.rotation.z = Math.random() * Math.PI; mctx.scene.add(crack);
       // Branch cracks
       for (let b = 0; b < 2; b++) {
         const branch = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 1 + Math.random() * 1.5), lavaMat);
         branch.rotation.x = -Math.PI / 2;
         branch.position.set(cx + (Math.random() - 0.5) * 1.5, getTerrainHeight(cx, cz, 1.4) + 0.03, cz + (Math.random() - 0.5) * 1.5);
-        branch.rotation.z = Math.random() * Math.PI; ctx.scene.add(branch);
+        branch.rotation.z = Math.random() * Math.PI; mctx.scene.add(branch);
       }
       const cLight = new THREE.PointLight(0xff4400, 0.6, 8);
       cLight.position.set(cx, getTerrainHeight(cx, cz, 1.4) + 0.3, cz);
-      ctx.scene.add(cLight); ctx.torchLights.push(cLight);
+      mctx.scene.add(cLight); mctx.torchLights.push(cLight);
     }
 
     // Rocky bridges spanning gaps (with support columns, cracks, rubble)
@@ -28728,7 +28730,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
 
       const bx = (Math.random() - 0.5) * w * 0.4, bz = (Math.random() - 0.5) * d * 0.4;
       rockBridgeGrp.position.set(bx, getTerrainHeight(bx, bz, 1.4) + 2 + Math.random() * 2, bz);
-      rockBridgeGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(rockBridgeGrp);
+      rockBridgeGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(rockBridgeGrp);
     }
 
     // Wind-carved rock formations (hoodoos) with erosion detail and layer bands
@@ -28778,7 +28780,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
 
       const hx = (Math.random() - 0.5) * w * 0.7, hz = (Math.random() - 0.5) * d * 0.7;
-      hoodoo.position.set(hx, getTerrainHeight(hx, hz, 1.4), hz); ctx.scene.add(hoodoo);
+      hoodoo.position.set(hx, getTerrainHeight(hx, hz, 1.4), hz); mctx.scene.add(hoodoo);
     }
 
     // Cave openings (dark recesses with rock framing, stalactites, rubble)
@@ -28834,7 +28836,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
 
       const cvx = (Math.random() - 0.5) * w * 0.7, cvz = (Math.random() - 0.5) * d * 0.7;
       cave.position.set(cvx, getTerrainHeight(cvx, cvz, 1.4), cvz);
-      cave.rotation.y = Math.random() * Math.PI; ctx.scene.add(cave);
+      cave.rotation.y = Math.random() * Math.PI; mctx.scene.add(cave);
     }
 
     // Stalactite formations (with drip formations and stalagmite pairs)
@@ -28871,7 +28873,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
 
       const stx = (Math.random() - 0.5) * w * 0.6, stz = (Math.random() - 0.5) * d * 0.6;
       stalGrp.position.set(stx, getTerrainHeight(stx, stz, 1.4) + 6 + Math.random() * 2, stz);
-      ctx.scene.add(stalGrp);
+      mctx.scene.add(stalGrp);
     }
 
     // Bone piles (dragon prey) - detailed with pebbles, fragments, dust
@@ -28913,7 +28915,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       bpDust.position.y = 0.01;
       bones.add(bpDust);
       const bx = (Math.random() - 0.5) * w * 0.7, bz = (Math.random() - 0.5) * d * 0.7;
-      bones.position.set(bx, getTerrainHeight(bx, bz, 1.4), bz); ctx.scene.add(bones);
+      bones.position.set(bx, getTerrainHeight(bx, bz, 1.4), bz); mctx.scene.add(bones);
     }
 
     // Obsidian shards
@@ -28922,7 +28924,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       const shx = (Math.random() - 0.5) * w * 0.6, shz = (Math.random() - 0.5) * d * 0.6;
       shard.position.set(shx, getTerrainHeight(shx, shz, 1.4) + 0.2, shz);
       shard.rotation.set((Math.random() - 0.5) * 0.3, Math.random(), (Math.random() - 0.5) * 0.3);
-      ctx.scene.add(shard);
+      mctx.scene.add(shard);
     }
     // ── Canyon wall layer striations (thin colored horizontal boxes) ──
     for (let i = 0; i < 20; i++) {
@@ -28934,7 +28936,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
       const stx = (Math.random()-0.5)*w*0.8, stz = (Math.random()-0.5)*d*0.8;
       striation.position.set(stx, getTerrainHeight(stx, stz, 1.4) + 1 + Math.random() * 4, stz);
-      striation.rotation.y = Math.random() * Math.PI; ctx.scene.add(striation);
+      striation.rotation.y = Math.random() * Math.PI; mctx.scene.add(striation);
     }
     // ── Fossil exposures ──
     for (let i = 0; i < 8; i++) {
@@ -28947,7 +28949,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
       const fox = (Math.random()-0.5)*w*0.7, foz = (Math.random()-0.5)*d*0.7;
       fossilGrp.position.set(fox, getTerrainHeight(fox, foz, 1.4) + 1 + Math.random() * 3, foz);
-      fossilGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(fossilGrp);
+      fossilGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(fossilGrp);
     }
     // ── Rope bridge detail (with frayed rope, missing planks, knot details) ──
     const rbFrayedMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.9 });
@@ -29004,7 +29006,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
 
       const rbx = (Math.random() - 0.5) * w * 0.4, rbz = (Math.random() - 0.5) * d * 0.4;
       ropeBridge.position.set(rbx, getTerrainHeight(rbx, rbz, 1.4) + 2 + Math.random() * 2, rbz);
-      ropeBridge.rotation.y = Math.random() * Math.PI; ctx.scene.add(ropeBridge);
+      ropeBridge.rotation.y = Math.random() * Math.PI; mctx.scene.add(ropeBridge);
     }
     // ── Mineral deposit clusters ──
     for (let i = 0; i < 12; i++) {
@@ -29016,7 +29018,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
         crystal.rotation.set((Math.random()-0.5)*0.3, 0, (Math.random()-0.5)*0.3); mineral.add(crystal);
       }
       const mnx = (Math.random()-0.5)*w*0.7, mnz = (Math.random()-0.5)*d*0.7;
-      mineral.position.set(mnx, getTerrainHeight(mnx, mnz, 1.4) + 0.5 + Math.random() * 3, mnz); ctx.scene.add(mineral);
+      mineral.position.set(mnx, getTerrainHeight(mnx, mnz, 1.4) + 0.5 + Math.random() * 3, mnz); mctx.scene.add(mineral);
     }
 
     // ── Rope bridges across gaps (with missing planks, frayed rope, swaying supports, knots) ──
@@ -29066,7 +29068,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
       const rb2x = (Math.random() - 0.5) * w * 0.5, rb2z = (Math.random() - 0.5) * d * 0.5;
       ropeBridge2.position.set(rb2x, getTerrainHeight(rb2x, rb2z, 1.4) + 2 + Math.random() * 3, rb2z);
-      ropeBridge2.rotation.y = Math.random() * Math.PI; ctx.scene.add(ropeBridge2);
+      ropeBridge2.rotation.y = Math.random() * Math.PI; mctx.scene.add(ropeBridge2);
     }
 
     // ── Fossil bones embedded in canyon walls ──
@@ -29090,7 +29092,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
       const wfx = (Math.random() - 0.5) * w * 0.7, wfz = (Math.random() - 0.5) * d * 0.7;
       wallFossil.position.set(wfx, getTerrainHeight(wfx, wfz, 1.4) + 1 + Math.random() * 4, wfz);
-      wallFossil.rotation.y = Math.random() * Math.PI; ctx.scene.add(wallFossil);
+      wallFossil.rotation.y = Math.random() * Math.PI; mctx.scene.add(wallFossil);
     }
 
     // ── Mining cart props ──
@@ -29226,7 +29228,7 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
       const mcx = (Math.random() - 0.5) * w * 0.5, mcz = (Math.random() - 0.5) * d * 0.5;
       mineCart.position.set(mcx, getTerrainHeight(mcx, mcz, 1.4), mcz);
-      mineCart.rotation.y = Math.random() * Math.PI; ctx.scene.add(mineCart);
+      mineCart.rotation.y = Math.random() * Math.PI; mctx.scene.add(mineCart);
     }
 
     // ── Cave entrance archways (with stalactites, rubble, rock framing) ──
@@ -29284,10 +29286,10 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
 
       // Dim light inside
       const caveLight = new THREE.PointLight(0xff6622, 0.3, 5);
-      caveLight.position.set(0, 1.0, -0.5); caveArch.add(caveLight); ctx.torchLights.push(caveLight);
+      caveLight.position.set(0, 1.0, -0.5); caveArch.add(caveLight); mctx.torchLights.push(caveLight);
       const ca2x = (Math.random() - 0.5) * w * 0.7, ca2z = (Math.random() - 0.5) * d * 0.7;
       caveArch.position.set(ca2x, getTerrainHeight(ca2x, ca2z, 1.4), ca2z);
-      caveArch.rotation.y = Math.random() * Math.PI; ctx.scene.add(caveArch);
+      caveArch.rotation.y = Math.random() * Math.PI; mctx.scene.add(caveArch);
     }
 
     // ── Glowing mineral veins on walls ──
@@ -29313,19 +29315,19 @@ export function buildWyrmscarCanyon(ctx: MapBuildContext, w: number, d: number):
       }
       const vx2 = (Math.random() - 0.5) * w * 0.75, vz2 = (Math.random() - 0.5) * d * 0.75;
       veinGrp.position.set(vx2, getTerrainHeight(vx2, vz2, 1.4) + 1 + Math.random() * 4, vz2);
-      veinGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(veinGrp);
+      veinGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(veinGrp);
     }
 }
 
-export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x334422, 0.03);
-    ctx.applyTerrainColors(0x2a3a22, 0x3a4a33, 0.4);
-    ctx.dirLight.color.setHex(0x88aa44);
-    ctx.dirLight.intensity = 0.4;
-    ctx.ambientLight.color.setHex(0x1a2a11);
-    ctx.ambientLight.intensity = 0.3;
-    ctx.hemiLight.color.setHex(0x556633);
-    ctx.hemiLight.groundColor.setHex(0x111a00);
+export function buildPlaguerotSewers(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x334422, 0.03);
+    mctx.applyTerrainColors(0x2a3a22, 0x3a4a33, 0.4);
+    mctx.dirLight.color.setHex(0x88aa44);
+    mctx.dirLight.intensity = 0.4;
+    mctx.ambientLight.color.setHex(0x1a2a11);
+    mctx.ambientLight.intensity = 0.3;
+    mctx.hemiLight.color.setHex(0x556633);
+    mctx.hemiLight.groundColor.setHex(0x111a00);
 
     const brickMat = new THREE.MeshStandardMaterial({ color: 0x554444, roughness: 0.9 });
     const slimeMat = new THREE.MeshStandardMaterial({ color: 0x66aa22, emissive: 0x448800, emissiveIntensity: 0.5, roughness: 0.2 });
@@ -29344,7 +29346,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const wall = new THREE.Mesh(new THREE.BoxGeometry(1 + Math.random() * 2, 2 + Math.random() * 2, 0.5), brickMat);
       const wx = (Math.random() - 0.5) * w * 0.85, wz = (Math.random() - 0.5) * d * 0.85;
       wall.position.set(wx, getTerrainHeight(wx, wz, 0.4) + wall.geometry.parameters.height / 2, wz);
-      wall.rotation.y = Math.random() * Math.PI; wall.castShadow = true; ctx.scene.add(wall);
+      wall.rotation.y = Math.random() * Math.PI; wall.castShadow = true; mctx.scene.add(wall);
     }
 
     // Arched ceiling sections
@@ -29352,7 +29354,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const arch = new THREE.Mesh(new THREE.TorusGeometry(2 + Math.random(), 0.3, 17, 27, Math.PI), brickMat);
       const ax = (Math.random() - 0.5) * w * 0.6, az = (Math.random() - 0.5) * d * 0.6;
       arch.position.set(ax, getTerrainHeight(ax, az, 0.4) + 3, az);
-      arch.rotation.y = Math.random() * Math.PI; ctx.scene.add(arch);
+      arch.rotation.y = Math.random() * Math.PI; mctx.scene.add(arch);
     }
 
     // Sewage channels (flowing toxic waste)
@@ -29361,12 +29363,12 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       channel.rotation.x = -Math.PI / 2;
       const cx = (Math.random() - 0.5) * w * 0.5, cz = (Math.random() - 0.5) * d * 0.5;
       channel.position.set(cx, getTerrainHeight(cx, cz, 0.4) + 0.02, cz);
-      channel.rotation.z = Math.random() * Math.PI; ctx.scene.add(channel);
+      channel.rotation.z = Math.random() * Math.PI; mctx.scene.add(channel);
       // Channel walls (raised edges)
       for (const side of [-1, 1]) {
         const edge = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, channel.geometry.parameters.height), brickMat);
         edge.position.set(cx + side * 0.75, getTerrainHeight(cx, cz, 0.4) + 0.1, cz);
-        edge.rotation.y = channel.rotation.z; ctx.scene.add(edge);
+        edge.rotation.y = channel.rotation.z; mctx.scene.add(edge);
       }
     }
 
@@ -29383,7 +29385,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       }
       const gx = (Math.random() - 0.5) * w * 0.6, gz = (Math.random() - 0.5) * d * 0.6;
       grate.position.set(gx, getTerrainHeight(gx, gz, 0.4) + 0.02, gz);
-      grate.rotation.y = Math.random() * Math.PI; ctx.scene.add(grate);
+      grate.rotation.y = Math.random() * Math.PI; mctx.scene.add(grate);
     }
 
     // Rat nests (clumps of debris)
@@ -29397,7 +29399,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
         debris.rotation.y = Math.random() * Math.PI; ratNest.add(debris);
       }
       const rnx = (Math.random() - 0.5) * w * 0.7, rnz = (Math.random() - 0.5) * d * 0.7;
-      ratNest.position.set(rnx, getTerrainHeight(rnx, rnz, 0.4), rnz); ctx.scene.add(ratNest);
+      ratNest.position.set(rnx, getTerrainHeight(rnx, rnz, 0.4), rnz); mctx.scene.add(ratNest);
     }
 
     // Dripping pipes (detailed with joints, valves, rust streaks, drip formations)
@@ -29450,7 +29452,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const pipeX = (Math.random() - 0.5) * w * 0.7, pipeZ = (Math.random() - 0.5) * d * 0.7;
       pipeGrp.position.set(pipeX, getTerrainHeight(pipeX, pipeZ, 0.4) + 1, pipeZ);
       pipeGrp.rotation.set((Math.random() - 0.5) * 0.5, Math.random(), (Math.random() - 0.5) * 0.5);
-      ctx.scene.add(pipeGrp);
+      mctx.scene.add(pipeGrp);
     }
 
     // Mushroom growths (glowing)
@@ -29468,7 +29470,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
         sc.position.set(sm.position.x, sm.position.y + 0.06, sm.position.z); mush.add(sc);
       }
       const mx = (Math.random() - 0.5) * w * 0.8, mz = (Math.random() - 0.5) * d * 0.8;
-      mush.position.set(mx, getTerrainHeight(mx, mz, 0.4), mz); ctx.scene.add(mush);
+      mush.position.set(mx, getTerrainHeight(mx, mz, 0.4), mz); mctx.scene.add(mush);
     }
 
     // Rusted ladders
@@ -29485,7 +29487,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       }
       const lx = (Math.random() - 0.5) * w * 0.6, lz = (Math.random() - 0.5) * d * 0.6;
       ladder.position.set(lx, getTerrainHeight(lx, lz, 0.4), lz);
-      ladder.rotation.z = (Math.random() - 0.5) * 0.3; ctx.scene.add(ladder);
+      ladder.rotation.z = (Math.random() - 0.5) * 0.3; mctx.scene.add(ladder);
     }
 
     // Broken barrels
@@ -29500,7 +29502,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const barx = (Math.random() - 0.5) * w * 0.6, barz = (Math.random() - 0.5) * d * 0.6;
       barrel.position.set(barx, getTerrainHeight(barx, barz, 0.4), barz);
       barrel.rotation.z = Math.random() > 0.5 ? 0 : Math.PI / 2 + (Math.random() - 0.5) * 0.3;
-      ctx.scene.add(barrel);
+      mctx.scene.add(barrel);
     }
 
     // Plague doctor masks on ground
@@ -29516,7 +29518,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       }
       const mkx = (Math.random() - 0.5) * w * 0.5, mkz = (Math.random() - 0.5) * d * 0.5;
       mask.position.set(mkx, getTerrainHeight(mkx, mkz, 0.4) + 0.05, mkz);
-      mask.rotation.set(Math.random() * 0.5 - 1, Math.random() * Math.PI, 0); ctx.scene.add(mask);
+      mask.rotation.set(Math.random() * 0.5 - 1, Math.random() * Math.PI, 0); mctx.scene.add(mask);
     }
 
     // Toxic gas vents
@@ -29527,7 +29529,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const gasCloud = new THREE.Mesh(new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 31, 17), gasMat);
       gasCloud.scale.y = 0.5; gasCloud.position.y = 0.5; vent.add(gasCloud);
       const vx = (Math.random() - 0.5) * w * 0.6, vz = (Math.random() - 0.5) * d * 0.6;
-      vent.position.set(vx, getTerrainHeight(vx, vz, 0.4), vz); ctx.scene.add(vent);
+      vent.position.set(vx, getTerrainHeight(vx, vz, 0.4), vz); mctx.scene.add(vent);
     }
 
     // Slime patches
@@ -29535,14 +29537,14 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const slime = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random(), 27), slimeMat);
       slime.rotation.x = -Math.PI / 2;
       const sx = (Math.random() - 0.5) * w * 0.8, sz = (Math.random() - 0.5) * d * 0.8;
-      slime.position.set(sx, getTerrainHeight(sx, sz, 0.4) + 0.02, sz); ctx.scene.add(slime);
+      slime.position.set(sx, getTerrainHeight(sx, sz, 0.4) + 0.02, sz); mctx.scene.add(slime);
     }
 
     // Toxic dripping lights
     for (let i = 0; i < 10; i++) {
       const light = new THREE.PointLight(0x88aa22, 0.4, 6);
       light.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(light); ctx.torchLights.push(light);
+      mctx.scene.add(light); mctx.torchLights.push(light);
     }
     // ── Pipe network detail (various diameter cylinders) ──
     for (let i = 0; i < 10; i++) {
@@ -29557,7 +29559,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       valve.position.set(0, 0, 0.15); pipeNet.add(valve);
       const pnx = (Math.random()-0.5)*w*0.6, pnz = (Math.random()-0.5)*d*0.6;
       pipeNet.position.set(pnx, getTerrainHeight(pnx, pnz, 0.4) + 1 + Math.random() * 2, pnz);
-      pipeNet.rotation.y = Math.random() * Math.PI; ctx.scene.add(pipeNet);
+      pipeNet.rotation.y = Math.random() * Math.PI; mctx.scene.add(pipeNet);
     }
     // ── Toxic waste barrels ──
     for (let i = 0; i < 6; i++) {
@@ -29571,7 +29573,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const tbx = (Math.random()-0.5)*w*0.6, tbz = (Math.random()-0.5)*d*0.6;
       barrel.position.set(tbx, getTerrainHeight(tbx, tbz, 0.4), tbz);
       barrel.rotation.y = Math.random() * Math.PI; barrel.rotation.z = Math.random() > 0.7 ? (Math.random()-0.5)*0.5 : 0;
-      ctx.scene.add(barrel);
+      mctx.scene.add(barrel);
     }
     // ── Brick archway detail ──
     for (let i = 0; i < 5; i++) {
@@ -29584,7 +29586,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       arch.position.y = 2.5; archway.add(arch);
       const awx = (Math.random()-0.5)*w*0.6, awz = (Math.random()-0.5)*d*0.6;
       archway.position.set(awx, getTerrainHeight(awx, awz, 0.4), awz);
-      archway.rotation.y = Math.random() * Math.PI; ctx.scene.add(archway);
+      archway.rotation.y = Math.random() * Math.PI; mctx.scene.add(archway);
     }
     // ── Dripping stalactites ──
     for (let i = 0; i < 15; i++) {
@@ -29595,7 +29597,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       const drip = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 8), new THREE.MeshStandardMaterial({ color: 0x668844, transparent: true, opacity: 0.5 }));
       drip.position.y = -stH / 2 - 0.02; stalactite.add(drip);
       stalactite.position.set((Math.random()-0.5)*w*0.6, getTerrainHeight(0, 0, 0.4) + 3.5 + Math.random(), (Math.random()-0.5)*d*0.6);
-      ctx.scene.add(stalactite);
+      mctx.scene.add(stalactite);
     }
 
     // ── Pipe outflows ──
@@ -29618,7 +29620,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       stain.rotation.x = -Math.PI / 2; stain.position.set(0.45, -0.3 - Math.random() * 0.3, 0); outflow.add(stain);
       const ofx = (Math.random() - 0.5) * w * 0.7, ofz = (Math.random() - 0.5) * d * 0.7;
       outflow.position.set(ofx, getTerrainHeight(ofx, ofz, 0.4) + 1 + Math.random() * 2, ofz);
-      outflow.rotation.y = Math.random() * Math.PI; ctx.scene.add(outflow);
+      outflow.rotation.y = Math.random() * Math.PI; mctx.scene.add(outflow);
     }
 
     // ── Rat nest props ──
@@ -29639,7 +29641,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
         ratNest2.add(tail);
       }
       const rn2x = (Math.random() - 0.5) * w * 0.7, rn2z = (Math.random() - 0.5) * d * 0.7;
-      ratNest2.position.set(rn2x, getTerrainHeight(rn2x, rn2z, 0.4), rn2z); ctx.scene.add(ratNest2);
+      ratNest2.position.set(rn2x, getTerrainHeight(rn2x, rn2z, 0.4), rn2z); mctx.scene.add(ratNest2);
     }
 
     // ── Broken grate covers ──
@@ -29663,7 +29665,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
         }
       }
       const bg2x = (Math.random() - 0.5) * w * 0.6, bg2z = (Math.random() - 0.5) * d * 0.6;
-      brokenGrate.position.set(bg2x, getTerrainHeight(bg2x, bg2z, 0.4) + 0.02, bg2z); ctx.scene.add(brokenGrate);
+      brokenGrate.position.set(bg2x, getTerrainHeight(bg2x, bg2z, 0.4) + 0.02, bg2z); mctx.scene.add(brokenGrate);
     }
 
     // ── Sewer channel with flowing water, floating debris, scum, drain grates ──
@@ -29717,7 +29719,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       }
       const sc2x = (Math.random() - 0.5) * w * 0.5, sc2z = (Math.random() - 0.5) * d * 0.5;
       sewerChannel.position.set(sc2x, getTerrainHeight(sc2x, sc2z, 0.4) + 0.03, sc2z);
-      sewerChannel.rotation.y = Math.random() * Math.PI; ctx.scene.add(sewerChannel);
+      sewerChannel.rotation.y = Math.random() * Math.PI; mctx.scene.add(sewerChannel);
     }
 
     // ── Brick archway tunnels ──
@@ -29740,7 +29742,7 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       }
       const ba2x = (Math.random() - 0.5) * w * 0.6, ba2z = (Math.random() - 0.5) * d * 0.6;
       brickArch.position.set(ba2x, getTerrainHeight(ba2x, ba2z, 0.4), ba2z);
-      brickArch.rotation.y = Math.random() * Math.PI; ctx.scene.add(brickArch);
+      brickArch.rotation.y = Math.random() * Math.PI; mctx.scene.add(brickArch);
     }
 
     // ── Torch sconces on walls ──
@@ -29761,22 +29763,22 @@ export function buildPlaguerotSewers(ctx: MapBuildContext, w: number, d: number)
       flame.position.set(0, 0.33, 0.08); flame.scale.y = 1.4; sconce.add(flame);
       // PointLight
       const torchLight = new THREE.PointLight(0xff8833, 0.5, 6);
-      torchLight.position.set(0, 0.35, 0.08); sconce.add(torchLight); ctx.torchLights.push(torchLight);
+      torchLight.position.set(0, 0.35, 0.08); sconce.add(torchLight); mctx.torchLights.push(torchLight);
       const ts2x = (Math.random() - 0.5) * w * 0.7, ts2z = (Math.random() - 0.5) * d * 0.7;
       sconce.position.set(ts2x, getTerrainHeight(ts2x, ts2z, 0.4) + 1.5 + Math.random() * 1.5, ts2z);
-      sconce.rotation.y = Math.random() * Math.PI; ctx.scene.add(sconce);
+      sconce.rotation.y = Math.random() * Math.PI; mctx.scene.add(sconce);
     }
 }
 
-export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x333355, 0.02);
-    ctx.applyTerrainColors(0x2a2a44, 0x3a3a55, 0.6);
-    ctx.dirLight.color.setHex(0xaabbff);
-    ctx.dirLight.intensity = 0.7;
-    ctx.ambientLight.color.setHex(0x1a1a33);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x6666aa);
-    ctx.hemiLight.groundColor.setHex(0x111133);
+export function buildEtherealSanctum(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x333355, 0.02);
+    mctx.applyTerrainColors(0x2a2a44, 0x3a3a55, 0.6);
+    mctx.dirLight.color.setHex(0xaabbff);
+    mctx.dirLight.intensity = 0.7;
+    mctx.ambientLight.color.setHex(0x1a1a33);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x6666aa);
+    mctx.hemiLight.groundColor.setHex(0x111133);
 
     const etherealMat = new THREE.MeshStandardMaterial({ color: 0x8888cc, emissive: 0x4444aa, emissiveIntensity: 0.3, transparent: true, opacity: 0.7 });
     const stoneMat = new THREE.MeshStandardMaterial({ color: 0x7777aa, roughness: 0.6 });
@@ -29799,7 +29801,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       runeCircle.rotation.x = -Math.PI / 2; runeCircle.position.y = 0.21; platform.add(runeCircle);
       const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
       platform.position.set(px, getTerrainHeight(px, pz, 0.6) + 0.5 + Math.random() * 3, pz);
-      ctx.scene.add(platform);
+      mctx.scene.add(platform);
     }
 
     // Light bridges connecting platforms
@@ -29807,11 +29809,11 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 4 + Math.random() * 6), lightBridgeMat);
       const bx = (Math.random() - 0.5) * w * 0.5, bz = (Math.random() - 0.5) * d * 0.5;
       bridge.position.set(bx, getTerrainHeight(bx, bz, 0.6) + 1 + Math.random() * 2, bz);
-      bridge.rotation.y = Math.random() * Math.PI; ctx.scene.add(bridge);
+      bridge.rotation.y = Math.random() * Math.PI; mctx.scene.add(bridge);
       // Bridge glow light
       const bLight = new THREE.PointLight(0x6688ff, 0.3, 6);
       bLight.position.copy(bridge.position); bLight.position.y += 0.3;
-      ctx.scene.add(bLight); ctx.torchLights.push(bLight);
+      mctx.scene.add(bLight); mctx.torchLights.push(bLight);
     }
 
     // Ethereal waterfalls (translucent vertical planes)
@@ -29820,7 +29822,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         new THREE.MeshStandardMaterial({ color: 0x88bbff, emissive: 0x4466cc, emissiveIntensity: 0.5, transparent: true, opacity: 0.25 }));
       const wfx = (Math.random() - 0.5) * w * 0.6, wfz = (Math.random() - 0.5) * d * 0.6;
       waterfall.position.set(wfx, getTerrainHeight(wfx, wfz, 0.6) + 3, wfz);
-      waterfall.rotation.y = Math.random() * Math.PI; ctx.scene.add(waterfall);
+      waterfall.rotation.y = Math.random() * Math.PI; mctx.scene.add(waterfall);
       // Splash pool at base (higher poly, with splash ring, mist, ripples, wet rocks)
       const splashPoolGrp = new THREE.Group();
       const splashPoolCircle = new THREE.Mesh(new THREE.CircleGeometry(0.6, 36), lightBridgeMat);
@@ -29847,7 +29849,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         splashWetRock.position.set(Math.cos(wrAngle) * (0.65 + Math.random() * 0.15), 0, Math.sin(wrAngle) * (0.65 + Math.random() * 0.15));
         splashWetRock.scale.y = 0.5; splashPoolGrp.add(splashWetRock);
       }
-      splashPoolGrp.position.set(wfx, getTerrainHeight(wfx, wfz, 0.6) + 0.03, wfz); ctx.scene.add(splashPoolGrp);
+      splashPoolGrp.position.set(wfx, getTerrainHeight(wfx, wfz, 0.6) + 0.03, wfz); mctx.scene.add(splashPoolGrp);
     }
 
     // Crystalline altars
@@ -29863,14 +29865,14 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const centerCryst = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 2), runeMat);
       centerCryst.position.y = 0.8; cAltar.add(centerCryst);
       const cax = (Math.random() - 0.5) * w * 0.5, caz = (Math.random() - 0.5) * d * 0.5;
-      cAltar.position.set(cax, getTerrainHeight(cax, caz, 0.6), caz); ctx.scene.add(cAltar);
+      cAltar.position.set(cax, getTerrainHeight(cax, caz, 0.6), caz); mctx.scene.add(cAltar);
     }
 
     // Spirit orbs (floating glowing spheres)
     for (let i = 0; i < 20; i++) {
       const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.1, 27, 23), spiritMat);
       orb.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(orb);
+      mctx.scene.add(orb);
     }
 
     // Translucent walls (ghostly barriers)
@@ -29878,7 +29880,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const tWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2 + Math.random() * 2, 2 + Math.random() * 3), etherealMat);
       const twx = (Math.random() - 0.5) * w * 0.6, twz = (Math.random() - 0.5) * d * 0.6;
       tWall.position.set(twx, getTerrainHeight(twx, twz, 0.6) + tWall.geometry.parameters.height / 2, twz);
-      tWall.rotation.y = Math.random() * Math.PI; ctx.scene.add(tWall);
+      tWall.rotation.y = Math.random() * Math.PI; mctx.scene.add(tWall);
     }
 
     // Phasing pillars
@@ -29886,14 +29888,14 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3 + Math.random() * 3, 23), etherealMat);
       const ppx = (Math.random() - 0.5) * w * 0.8, ppz = (Math.random() - 0.5) * d * 0.8;
       pillar.position.set(ppx, getTerrainHeight(ppx, ppz, 0.6) + pillar.geometry.parameters.height / 2, ppz);
-      pillar.castShadow = true; ctx.scene.add(pillar);
+      pillar.castShadow = true; mctx.scene.add(pillar);
     }
 
     // Prismatic light effects (rainbow-ish cones)
     for (let i = 0; i < 6; i++) {
       const prism = new THREE.Mesh(new THREE.ConeGeometry(0.8, 4, 17), prismaticMat);
       prism.position.set((Math.random() - 0.5) * w * 0.4, 4, (Math.random() - 0.5) * d * 0.4);
-      ctx.scene.add(prism);
+      mctx.scene.add(prism);
     }
 
     // Meditation circles (concentric rings on ground)
@@ -29904,7 +29906,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         ring.rotation.x = -Math.PI / 2; medCircle.add(ring);
       }
       const mcx = (Math.random() - 0.5) * w * 0.5, mcz = (Math.random() - 0.5) * d * 0.5;
-      medCircle.position.set(mcx, getTerrainHeight(mcx, mcz, 0.6) + 0.05, mcz); ctx.scene.add(medCircle);
+      medCircle.position.set(mcx, getTerrainHeight(mcx, mcz, 0.6) + 0.05, mcz); mctx.scene.add(medCircle);
     }
 
     // Wind chimes (hanging metallic elements)
@@ -29918,7 +29920,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         chime.add(tube);
       }
       chime.position.set((Math.random() - 0.5) * w * 0.6, 3 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(chime);
+      mctx.scene.add(chime);
     }
 
     // Celestial symbols (3D star shapes with tapered tips, inner ring, center gem)
@@ -29951,21 +29953,21 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466ff, emissiveIntensity: 0.4, transparent: true, opacity: 0.15 }));
       celStarGlow.rotation.x = -Math.PI / 2; celStarGlow.position.y = 0.005; celStarGrp.add(celStarGlow);
       const celStarX = (Math.random() - 0.5) * w * 0.5, celStarZ = (Math.random() - 0.5) * d * 0.5;
-      celStarGrp.position.set(celStarX, getTerrainHeight(celStarX, celStarZ, 0.6) + 0.03, celStarZ); ctx.scene.add(celStarGrp);
+      celStarGrp.position.set(celStarX, getTerrainHeight(celStarX, celStarZ, 0.6) + 0.03, celStarZ); mctx.scene.add(celStarGrp);
     }
 
     // Floating runes
     for (let i = 0; i < 15; i++) {
       const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.15 + Math.random() * 0.1, 2), runeMat);
       rune.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(rune);
+      mctx.scene.add(rune);
     }
 
     // Phase lights
     for (let i = 0; i < 12; i++) {
       const light = new THREE.PointLight([0x8888ff, 0xaa88ff, 0x88aaff][i % 3], 0.5, 8);
       light.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(light); ctx.torchLights.push(light);
+      mctx.scene.add(light); mctx.torchLights.push(light);
     }
 
     // Ethereal mist patches
@@ -29973,7 +29975,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const mist = new THREE.Mesh(new THREE.SphereGeometry(1 + Math.random() * 2, 23, 20), new THREE.MeshStandardMaterial({ color: 0x6666aa, transparent: true, opacity: 0.15 }));
       mist.scale.y = 0.3;
       mist.position.set((Math.random() - 0.5) * w * 0.7, 0.5, (Math.random() - 0.5) * d * 0.7);
-      ctx.scene.add(mist);
+      mctx.scene.add(mist);
     }
 
     // Central temple altar
@@ -29985,9 +29987,9 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
     const altarOrb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 27, 23), new THREE.MeshStandardMaterial({ color: 0xaaccff, emissive: 0x6688ff, emissiveIntensity: 2.0 }));
     altarOrb.position.y = 0.8; altar.add(altarOrb);
     const altarLight = new THREE.PointLight(0x8888ff, 1.0, 12);
-    altarLight.position.y = 1.0; altar.add(altarLight); ctx.torchLights.push(altarLight);
+    altarLight.position.y = 1.0; altar.add(altarLight); mctx.torchLights.push(altarLight);
     altar.position.set(0, getTerrainHeight(0, 0, 0.6), 0);
-    ctx.scene.add(altar);
+    mctx.scene.add(altar);
     // ── Ethereal flame pedestals ──
     for (let i = 0; i < 6; i++) {
       const pedestal = new THREE.Group();
@@ -29998,9 +30000,9 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const flame = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 20), new THREE.MeshStandardMaterial({ color: 0xaaccff, emissive: 0x6688ff, emissiveIntensity: 2.0, transparent: true, opacity: 0.5 }));
       flame.position.y = 1.05; pedestal.add(flame);
       const pLight = new THREE.PointLight(0x8888ff, 0.4, 6);
-      pLight.position.y = 1.1; pedestal.add(pLight); ctx.torchLights.push(pLight);
+      pLight.position.y = 1.1; pedestal.add(pLight); mctx.torchLights.push(pLight);
       const epx = (Math.random()-0.5)*w*0.5, epz = (Math.random()-0.5)*d*0.5;
-      pedestal.position.set(epx, getTerrainHeight(epx, epz, 0.6), epz); ctx.scene.add(pedestal);
+      pedestal.position.set(epx, getTerrainHeight(epx, epz, 0.6), epz); mctx.scene.add(pedestal);
     }
     // ── Translucent crystal formations (faceted with inner glow and base clusters) ──
     for (let i = 0; i < 10; i++) {
@@ -30033,7 +30035,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         crystFormBaseCone.rotation.set((Math.random()-0.5)*0.6, 0, (Math.random()-0.5)*0.6); crystFormGrp.add(crystFormBaseCone);
       }
       const crystFormX = (Math.random()-0.5)*w*0.6, crystFormZ = (Math.random()-0.5)*d*0.6;
-      crystFormGrp.position.set(crystFormX, getTerrainHeight(crystFormX, crystFormZ, 0.6), crystFormZ); ctx.scene.add(crystFormGrp);
+      crystFormGrp.position.set(crystFormX, getTerrainHeight(crystFormX, crystFormZ, 0.6), crystFormZ); mctx.scene.add(crystFormGrp);
     }
     // ── Spirit wisp trails (with inner core, outer halo, and tail trail) ──
     for (let i = 0; i < 8; i++) {
@@ -30060,7 +30062,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         }
       }
       wispTrailGrp.position.set((Math.random()-0.5)*w*0.6, 1 + Math.random() * 3, (Math.random()-0.5)*d*0.6);
-      wispTrailGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(wispTrailGrp);
+      wispTrailGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(wispTrailGrp);
     }
     // ── Sacred geometry floor patterns ──
     for (let i = 0; i < 5; i++) {
@@ -30076,7 +30078,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const innerHex = new THREE.Mesh(new THREE.TorusGeometry(hexR * 0.5, 0.01, 16, 6), runeMat);
       innerHex.rotation.x = -Math.PI / 2; geomPattern.add(innerHex);
       const gpx = (Math.random()-0.5)*w*0.4, gpz = (Math.random()-0.5)*d*0.4;
-      geomPattern.position.set(gpx, getTerrainHeight(gpx, gpz, 0.6) + 0.03, gpz); ctx.scene.add(geomPattern);
+      geomPattern.position.set(gpx, getTerrainHeight(gpx, gpz, 0.6) + 0.03, gpz); mctx.scene.add(geomPattern);
     }
     // ── Floating prayer beads ──
     for (let i = 0; i < 8; i++) {
@@ -30089,7 +30091,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         bead.position.set(Math.cos(bAngle) * beadR, 0, Math.sin(bAngle) * beadR); beads.add(bead);
       }
       beads.position.set((Math.random()-0.5)*w*0.5, 1.5 + Math.random() * 3, (Math.random()-0.5)*d*0.5);
-      beads.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); ctx.scene.add(beads);
+      beads.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); mctx.scene.add(beads);
     }
     // ── Spirit wisp trails (detailed with lead lights) ──
     for (let i = 0; i < 15; i++) {
@@ -30104,7 +30106,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       const swLd = new THREE.PointLight(0xaabbff, 0.2, 4);
       swLd.position.copy(swTrail.children[0].position); swTrail.add(swLd);
       swTrail.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
-      swTrail.rotation.y = Math.random() * Math.PI; ctx.scene.add(swTrail);
+      swTrail.rotation.y = Math.random() * Math.PI; mctx.scene.add(swTrail);
     }
     // ── Sacred geometry floor patterns (large-scale) ──
     for (let i = 0; i < 4; i++) {
@@ -30132,7 +30134,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         sgTri.rotation.y = tA + Math.PI / 6; sgPat.add(sgTri);
       }
       const sgpx = (Math.random() - 0.5) * w * 0.4, sgpz = (Math.random() - 0.5) * d * 0.4;
-      sgPat.position.set(sgpx, getTerrainHeight(sgpx, sgpz, 0.6) + 0.03, sgpz); ctx.scene.add(sgPat);
+      sgPat.position.set(sgpx, getTerrainHeight(sgpx, sgpz, 0.6) + 0.03, sgpz); mctx.scene.add(sgPat);
     }
     // ── Ethereal flame pedestals (stone with ghostly fire) ──
     for (let i = 0; i < 8; i++) {
@@ -30149,9 +30151,9 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         efPed.add(flOrb);
       }
       const efLt = new THREE.PointLight(0x8888ff, 0.5, 6);
-      efLt.position.y = 1.3; efPed.add(efLt); ctx.torchLights.push(efLt);
+      efLt.position.y = 1.3; efPed.add(efLt); mctx.torchLights.push(efLt);
       const efx = (Math.random() - 0.5) * w * 0.5, efz = (Math.random() - 0.5) * d * 0.5;
-      efPed.position.set(efx, getTerrainHeight(efx, efz, 0.6), efz); ctx.scene.add(efPed);
+      efPed.position.set(efx, getTerrainHeight(efx, efz, 0.6), efz); mctx.scene.add(efPed);
     }
     // ── Crystal wind chimes (hanging cone crystals) ──
     for (let i = 0; i < 6; i++) {
@@ -30170,7 +30172,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         wcCryst.rotation.x = Math.PI; wcGrp.add(wcCryst);
       }
       wcGrp.position.set((Math.random() - 0.5) * w * 0.5, 3 + Math.random() * 2, (Math.random() - 0.5) * d * 0.5);
-      ctx.scene.add(wcGrp);
+      mctx.scene.add(wcGrp);
     }
     // ── Meditation circles (seats around incense burner) ──
     for (let i = 0; i < 4; i++) {
@@ -30197,7 +30199,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         mdCirc.add(mdSmk);
       }
       const mdx = (Math.random() - 0.5) * w * 0.4, mdz = (Math.random() - 0.5) * d * 0.4;
-      mdCirc.position.set(mdx, getTerrainHeight(mdx, mdz, 0.6) + 0.04, mdz); ctx.scene.add(mdCirc);
+      mdCirc.position.set(mdx, getTerrainHeight(mdx, mdz, 0.6) + 0.04, mdz); mctx.scene.add(mdCirc);
     }
     // ── Floating prayer scrolls ──
     for (let i = 0; i < 10; i++) {
@@ -30205,7 +30207,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x554422, emissiveIntensity: 0.3, side: THREE.DoubleSide }));
       fpScroll.position.set((Math.random() - 0.5) * w * 0.5, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5);
       fpScroll.rotation.set(Math.random() * 0.2, Math.random() * Math.PI, Math.random() * 0.1);
-      ctx.scene.add(fpScroll);
+      mctx.scene.add(fpScroll);
     }
     // ── Sanctum archways (ornate with hanging veils) ──
     for (let i = 0; i < 6; i++) {
@@ -30229,7 +30231,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       saVeil.position.y = 1.5; saArch.add(saVeil);
       const sax = (Math.random() - 0.5) * w * 0.5, saz = (Math.random() - 0.5) * d * 0.5;
       saArch.position.set(sax, getTerrainHeight(sax, saz, 0.6), saz);
-      saArch.rotation.y = Math.random() * Math.PI; ctx.scene.add(saArch);
+      saArch.rotation.y = Math.random() * Math.PI; mctx.scene.add(saArch);
     }
     // ── Healing spring pools ──
     for (let i = 0; i < 3; i++) {
@@ -30244,7 +30246,7 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
       hsRing.rotation.x = -Math.PI / 2; hsRing.position.y = 0.02; hsPool.add(hsRing);
       // PointLight below for glow
       const hsLt = new THREE.PointLight(0x88aaff, 0.4, 6);
-      hsLt.position.y = -0.3; hsPool.add(hsLt); ctx.torchLights.push(hsLt);
+      hsLt.position.y = -0.3; hsPool.add(hsLt); mctx.torchLights.push(hsLt);
       // Water lily pads (small flat circles)
       for (let lp = 0; lp < 4; lp++) {
         const hsLily = new THREE.Mesh(new THREE.CircleGeometry(0.08 + Math.random() * 0.04, 12),
@@ -30254,19 +30256,19 @@ export function buildEtherealSanctum(ctx: MapBuildContext, w: number, d: number)
         hsPool.add(hsLily);
       }
       const hsx = (Math.random() - 0.5) * w * 0.4, hsz = (Math.random() - 0.5) * d * 0.4;
-      hsPool.position.set(hsx, getTerrainHeight(hsx, hsz, 0.6), hsz); ctx.scene.add(hsPool);
+      hsPool.position.set(hsx, getTerrainHeight(hsx, hsz, 0.6), hsz); mctx.scene.add(hsPool);
     }
 }
 
-export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x554444, 0.018);
-    ctx.applyTerrainColors(0x3a3333, 0x4a4444, 1.0);
-    ctx.dirLight.color.setHex(0xccaa88);
-    ctx.dirLight.intensity = 0.8;
-    ctx.ambientLight.color.setHex(0x2a2222);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x886655);
-    ctx.hemiLight.groundColor.setHex(0x221111);
+export function buildIronWastes(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x554444, 0.018);
+    mctx.applyTerrainColors(0x3a3333, 0x4a4444, 1.0);
+    mctx.dirLight.color.setHex(0xccaa88);
+    mctx.dirLight.intensity = 0.8;
+    mctx.ambientLight.color.setHex(0x2a2222);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x886655);
+    mctx.hemiLight.groundColor.setHex(0x221111);
 
     const rustMat = new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.8, metalness: 0.3 });
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.6, roughness: 0.4 });
@@ -30296,7 +30298,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       viewport.position.set(0, bH * 0.7, bD / 2 + 0.01); hulk.add(viewport);
       const hx = (Math.random() - 0.5) * w * 0.8, hz = (Math.random() - 0.5) * d * 0.8;
       hulk.position.set(hx, getTerrainHeight(hx, hz, 1.0), hz);
-      hulk.rotation.y = Math.random() * Math.PI; ctx.scene.add(hulk);
+      hulk.rotation.y = Math.random() * Math.PI; mctx.scene.add(hulk);
     }
 
     // Broken robots/golems
@@ -30326,7 +30328,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       const rx = (Math.random() - 0.5) * w * 0.6, rz = (Math.random() - 0.5) * d * 0.6;
       robot.position.set(rx, getTerrainHeight(rx, rz, 1.0), rz);
       robot.rotation.y = Math.random() * Math.PI;
-      robot.rotation.z = (Math.random() - 0.5) * 0.3; ctx.scene.add(robot);
+      robot.rotation.z = (Math.random() - 0.5) * 0.3; mctx.scene.add(robot);
     }
 
     // Scrap piles (larger, more pieces)
@@ -30338,7 +30340,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
         scrap.rotation.set(Math.random(), Math.random(), Math.random()); pile.add(scrap);
       }
       const px = (Math.random() - 0.5) * w * 0.85, pz = (Math.random() - 0.5) * d * 0.85;
-      pile.position.set(px, getTerrainHeight(px, pz, 1.0), pz); ctx.scene.add(pile);
+      pile.position.set(px, getTerrainHeight(px, pz, 1.0), pz); mctx.scene.add(pile);
     }
 
     // Oxidized pipes running along ground
@@ -30347,10 +30349,10 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, pipeLen, 23), corrodedMat);
       const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
       pipe.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.12, pz);
-      pipe.rotation.z = Math.PI / 2; pipe.rotation.y = Math.random() * Math.PI; ctx.scene.add(pipe);
+      pipe.rotation.z = Math.PI / 2; pipe.rotation.y = Math.random() * Math.PI; mctx.scene.add(pipe);
       // Pipe joints
       const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 23), metalMat);
-      joint.position.copy(pipe.position); ctx.scene.add(joint);
+      joint.position.copy(pipe.position); mctx.scene.add(joint);
     }
 
     // Corroded tanks
@@ -30372,7 +30374,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       }
       const tx = (Math.random() - 0.5) * w * 0.6, tz = (Math.random() - 0.5) * d * 0.6;
       tank.position.set(tx, getTerrainHeight(tx, tz, 1.0), tz);
-      tank.rotation.y = Math.random() * Math.PI; ctx.scene.add(tank);
+      tank.rotation.y = Math.random() * Math.PI; mctx.scene.add(tank);
     }
 
     // Smokestacks (broken)
@@ -30380,7 +30382,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4 + Math.random() * 4, 23), rustMat);
       const sx = (Math.random() - 0.5) * w * 0.7, sz = (Math.random() - 0.5) * d * 0.7;
       stack.position.set(sx, getTerrainHeight(sx, sz, 1.0) + stack.geometry.parameters.height / 2, sz);
-      stack.rotation.z = (Math.random() - 0.5) * 0.2; stack.castShadow = true; ctx.scene.add(stack);
+      stack.rotation.z = (Math.random() - 0.5) * 0.2; stack.castShadow = true; mctx.scene.add(stack);
     }
 
     // Metal beams (I-beams scattered)
@@ -30395,7 +30397,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       const bmx = (Math.random() - 0.5) * w * 0.7, bmz = (Math.random() - 0.5) * d * 0.7;
       beam.position.set(bmx, getTerrainHeight(bmx, bmz, 1.0) + 0.1 + Math.random() * 0.5, bmz);
       beam.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
-      ctx.scene.add(beam);
+      mctx.scene.add(beam);
     }
 
     // Cable remnants (dangling wires)
@@ -30407,7 +30409,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
         seg.position.y = -s * 0.45; seg.rotation.z = Math.sin(s * 1.2) * 0.3; cable.add(seg);
       }
       cable.position.set((Math.random() - 0.5) * w * 0.6, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(cable);
+      mctx.scene.add(cable);
     }
 
     // Abandoned mine cart tracks
@@ -30424,7 +30426,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       }
       const trx = (Math.random() - 0.5) * w * 0.5, trz = (Math.random() - 0.5) * d * 0.5;
       track.position.set(trx, getTerrainHeight(trx, trz, 1.0) + 0.02, trz);
-      track.rotation.y = Math.random() * Math.PI; ctx.scene.add(track);
+      track.rotation.y = Math.random() * Math.PI; mctx.scene.add(track);
     }
 
     // Oil puddles
@@ -30432,14 +30434,14 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       const oil = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.5, 27), oilMat);
       oil.rotation.x = -Math.PI / 2;
       const ox = (Math.random() - 0.5) * w * 0.7, oz = (Math.random() - 0.5) * d * 0.7;
-      oil.position.set(ox, getTerrainHeight(ox, oz, 1.0) + 0.02, oz); ctx.scene.add(oil);
+      oil.position.set(ox, getTerrainHeight(ox, oz, 1.0) + 0.02, oz); mctx.scene.add(oil);
     }
 
     // Sparking lights
     for (let i = 0; i < 8; i++) {
       const spark = new THREE.PointLight(0xffaa44, 0.5, 8);
       spark.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
-      ctx.scene.add(spark); ctx.torchLights.push(spark);
+      mctx.scene.add(spark); mctx.torchLights.push(spark);
     }
     // ── Rusted machinery hulks (gears, pistons) ──
     for (let i = 0; i < 6; i++) {
@@ -30452,7 +30454,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       piston.position.set(-0.3, 0, 0.35); piston.rotation.x = Math.PI / 2; machine.add(piston);
       const mx = (Math.random()-0.5)*w*0.7, mz = (Math.random()-0.5)*d*0.7;
       machine.position.set(mx, getTerrainHeight(mx, mz, 1.0) + 0.4, mz);
-      machine.rotation.y = Math.random() * Math.PI; ctx.scene.add(machine);
+      machine.rotation.y = Math.random() * Math.PI; mctx.scene.add(machine);
     }
     // ── Barbed wire fencing (twisted thin cylinders) ──
     for (let i = 0; i < 6; i++) {
@@ -30473,7 +30475,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       }
       const fex = (Math.random()-0.5)*w*0.7, fez = (Math.random()-0.5)*d*0.7;
       fence.position.set(fex, getTerrainHeight(fex, fez, 1.0), fez);
-      fence.rotation.y = Math.random() * Math.PI; ctx.scene.add(fence);
+      fence.rotation.y = Math.random() * Math.PI; mctx.scene.add(fence);
     }
     // ── Abandoned vehicle frames ──
     for (let i = 0; i < 3; i++) {
@@ -30491,14 +30493,14 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       }
       const vhx = (Math.random()-0.5)*w*0.6, vhz = (Math.random()-0.5)*d*0.6;
       vehicle.position.set(vhx, getTerrainHeight(vhx, vhz, 1.0), vhz);
-      vehicle.rotation.y = Math.random() * Math.PI; vehicle.rotation.z = (Math.random()-0.5)*0.15; ctx.scene.add(vehicle);
+      vehicle.rotation.y = Math.random() * Math.PI; vehicle.rotation.z = (Math.random()-0.5)*0.15; mctx.scene.add(vehicle);
     }
     // ── Toxic puddles ──
     for (let i = 0; i < 10; i++) {
       const toxic = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.8, 20), new THREE.MeshStandardMaterial({ color: 0x446622, emissive: 0x334411, emissiveIntensity: 0.3, transparent: true, opacity: 0.6, roughness: 0.1 }));
       toxic.rotation.x = -Math.PI / 2;
       const tpx = (Math.random()-0.5)*w*0.7, tpz = (Math.random()-0.5)*d*0.7;
-      toxic.position.set(tpx, getTerrainHeight(tpx, tpz, 1.0) + 0.02, tpz); ctx.scene.add(toxic);
+      toxic.position.set(tpx, getTerrainHeight(tpx, tpz, 1.0) + 0.02, tpz); mctx.scene.add(toxic);
     }
 
     // ── Rusted tank/vehicle hulks ──
@@ -30532,7 +30534,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       const th2x = (Math.random() - 0.5) * w * 0.6, th2z = (Math.random() - 0.5) * d * 0.6;
       tankHulk.position.set(th2x, getTerrainHeight(th2x, th2z, 1.0), th2z);
       tankHulk.rotation.y = Math.random() * Math.PI;
-      tankHulk.rotation.z = (Math.random() - 0.5) * 0.1; ctx.scene.add(tankHulk);
+      tankHulk.rotation.z = (Math.random() - 0.5) * 0.1; mctx.scene.add(tankHulk);
     }
 
     // ── Barbed wire coils ──
@@ -30562,7 +30564,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       }
       const bw2x = (Math.random() - 0.5) * w * 0.7, bw2z = (Math.random() - 0.5) * d * 0.7;
       barbedWire.position.set(bw2x, getTerrainHeight(bw2x, bw2z, 1.0), bw2z);
-      barbedWire.rotation.y = Math.random() * Math.PI; ctx.scene.add(barbedWire);
+      barbedWire.rotation.y = Math.random() * Math.PI; mctx.scene.add(barbedWire);
     }
 
     // ── Shell craters ──
@@ -30586,7 +30588,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
         debris.rotation.set(Math.random(), Math.random(), Math.random()); crater.add(debris);
       }
       const cr2x = (Math.random() - 0.5) * w * 0.7, cr2z = (Math.random() - 0.5) * d * 0.7;
-      crater.position.set(cr2x, getTerrainHeight(cr2x, cr2z, 1.0) + 0.05, cr2z); ctx.scene.add(crater);
+      crater.position.set(cr2x, getTerrainHeight(cr2x, cr2z, 1.0) + 0.05, cr2z); mctx.scene.add(crater);
     }
 
     // ── Rusted pipe sections ──
@@ -30606,7 +30608,7 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       }
       const bp2x = (Math.random() - 0.5) * w * 0.7, bp2z = (Math.random() - 0.5) * d * 0.7;
       bigPipe.position.set(bp2x, getTerrainHeight(bp2x, bp2z, 1.0) + pipeR, bp2z);
-      bigPipe.rotation.y = Math.random() * Math.PI; ctx.scene.add(bigPipe);
+      bigPipe.rotation.y = Math.random() * Math.PI; mctx.scene.add(bigPipe);
     }
 
     // ── Warning signs ──
@@ -30628,19 +30630,19 @@ export function buildIronWastes(ctx: MapBuildContext, w: number, d: number): voi
       }
       const sg2x = (Math.random() - 0.5) * w * 0.6, sg2z = (Math.random() - 0.5) * d * 0.6;
       signGrp.position.set(sg2x, getTerrainHeight(sg2x, sg2z, 1.0), sg2z);
-      signGrp.rotation.y = Math.random() * Math.PI; ctx.scene.add(signGrp);
+      signGrp.rotation.y = Math.random() * Math.PI; mctx.scene.add(signGrp);
     }
 }
 
-export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x332233, 0.028);
-    ctx.applyTerrainColors(0x2a1a2a, 0x3a2a3a, 0.5);
-    ctx.dirLight.color.setHex(0xaa88cc);
-    ctx.dirLight.intensity = 0.5;
-    ctx.ambientLight.color.setHex(0x1a0a1a);
-    ctx.ambientLight.intensity = 0.3;
-    ctx.hemiLight.color.setHex(0x664466);
-    ctx.hemiLight.groundColor.setHex(0x110011);
+export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x332233, 0.028);
+    mctx.applyTerrainColors(0x2a1a2a, 0x3a2a3a, 0.5);
+    mctx.dirLight.color.setHex(0xaa88cc);
+    mctx.dirLight.intensity = 0.5;
+    mctx.ambientLight.color.setHex(0x1a0a1a);
+    mctx.ambientLight.intensity = 0.3;
+    mctx.hemiLight.color.setHex(0x664466);
+    mctx.hemiLight.groundColor.setHex(0x110011);
 
     const corruptMat = new THREE.MeshStandardMaterial({ color: 0x442244, roughness: 0.7 });
     const rotMat = new THREE.MeshStandardMaterial({ color: 0x334411, roughness: 0.8 });
@@ -30684,7 +30686,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       vine.rotation.set((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.5); throne.add(vine);
     }
     throne.position.set(0, getTerrainHeight(0, 0, 0.5), 0);
-    ctx.scene.add(throne);
+    mctx.scene.add(throne);
 
     // Rotting wooden beams (ceiling supports)
     for (let i = 0; i < 12; i++) {
@@ -30692,7 +30694,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       const bmx = (Math.random() - 0.5) * w * 0.7, bmz = (Math.random() - 0.5) * d * 0.7;
       beam.position.set(bmx, getTerrainHeight(bmx, bmz, 0.5) + 3 + Math.random() * 2, bmz);
       beam.rotation.y = Math.random() * Math.PI;
-      beam.rotation.z = (Math.random() - 0.5) * 0.2; ctx.scene.add(beam);
+      beam.rotation.z = (Math.random() - 0.5) * 0.2; mctx.scene.add(beam);
     }
 
     // Diseased vegetation growing through cracks
@@ -30708,7 +30710,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         plant.add(leaf);
       }
       const plx = (Math.random() - 0.5) * w * 0.8, plz = (Math.random() - 0.5) * d * 0.8;
-      plant.position.set(plx, getTerrainHeight(plx, plz, 0.5), plz); ctx.scene.add(plant);
+      plant.position.set(plx, getTerrainHeight(plx, plz, 0.5), plz); mctx.scene.add(plant);
     }
 
     // Dark vines on walls and floor (with branching detail, pulsing nodes, thorns)
@@ -30747,7 +30749,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       const corruptVineX = (Math.random() - 0.5) * w * 0.8, corruptVineZ = (Math.random() - 0.5) * d * 0.8;
       corruptVineGrp.position.set(corruptVineX, getTerrainHeight(corruptVineX, corruptVineZ, 0.5) + 0.5 + Math.random(), corruptVineZ);
       corruptVineGrp.rotation.set((Math.random() - 0.5) * 0.5, 0, (Math.random() - 0.5) * 0.5);
-      ctx.scene.add(corruptVineGrp);
+      mctx.scene.add(corruptVineGrp);
     }
 
     // Toxic pools (more varied sizes, with bubbles)
@@ -30755,13 +30757,13 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.5, 27), toxicMat);
       puddle.rotation.x = -Math.PI / 2;
       const rx = (Math.random() - 0.5) * w * 0.6, rz = (Math.random() - 0.5) * d * 0.6;
-      puddle.position.set(rx, getTerrainHeight(rx, rz, 0.5) + 0.02, rz); ctx.scene.add(puddle);
+      puddle.position.set(rx, getTerrainHeight(rx, rz, 0.5) + 0.02, rz); mctx.scene.add(puddle);
       // Bubbles on surface
       for (let b = 0; b < 3; b++) {
         const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 17, 16),
           new THREE.MeshStandardMaterial({ color: 0x668822, transparent: true, opacity: 0.4 }));
         bubble.position.set(rx + (Math.random() - 0.5) * 0.5, getTerrainHeight(rx, rz, 0.5) + 0.04, rz + (Math.random() - 0.5) * 0.5);
-        ctx.scene.add(bubble);
+        mctx.scene.add(bubble);
       }
     }
 
@@ -30775,7 +30777,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         cryst.rotation.set((Math.random() - 0.5) * 0.2, 0, (Math.random() - 0.5) * 0.2); crystCluster.add(cryst);
       }
       const ccx = (Math.random() - 0.5) * w * 0.6, ccz = (Math.random() - 0.5) * d * 0.6;
-      crystCluster.position.set(ccx, getTerrainHeight(ccx, ccz, 0.5), ccz); ctx.scene.add(crystCluster);
+      crystCluster.position.set(ccx, getTerrainHeight(ccx, ccz, 0.5), ccz); mctx.scene.add(crystCluster);
     }
 
     // Decomposing tapestries (hanging cloth-like planes)
@@ -30783,7 +30785,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       const tapestry = new THREE.Mesh(new THREE.PlaneGeometry(1 + Math.random(), 2 + Math.random() * 2), tapestryMat);
       const tpx = (Math.random() - 0.5) * w * 0.6, tpz = (Math.random() - 0.5) * d * 0.6;
       tapestry.position.set(tpx, getTerrainHeight(tpx, tpz, 0.5) + 2 + Math.random(), tpz);
-      tapestry.rotation.y = Math.random() * Math.PI; ctx.scene.add(tapestry);
+      tapestry.rotation.y = Math.random() * Math.PI; mctx.scene.add(tapestry);
     }
 
     // Corrupted pillars (withered, leaning)
@@ -30791,12 +30793,12 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4, 23), corruptMat);
       const ppx = (Math.random() - 0.5) * w * 0.7, ppz = (Math.random() - 0.5) * d * 0.7;
       pillar.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 2, ppz);
-      pillar.rotation.z = (Math.random() - 0.5) * 0.15; pillar.castShadow = true; ctx.scene.add(pillar);
+      pillar.rotation.z = (Math.random() - 0.5) * 0.15; pillar.castShadow = true; mctx.scene.add(pillar);
       // Vine wrapping on some
       if (Math.random() > 0.5) {
         const wrapVine = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 16, 27, Math.PI * 1.5), vineMat);
         wrapVine.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 1 + Math.random() * 2, ppz);
-        ctx.scene.add(wrapVine);
+        mctx.scene.add(wrapVine);
       }
     }
 
@@ -30812,7 +30814,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       chairMoss.scale.y = 0.3; chairMoss.position.set(0, 0.52, 0); chair.add(chairMoss);
       const cx = (Math.random() - 0.5) * w * 0.5, cz = (Math.random() - 0.5) * d * 0.5;
       chair.position.set(cx, getTerrainHeight(cx, cz, 0.5), cz);
-      chair.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(chair);
+      chair.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(chair);
     }
 
     // Plague rats (small shapes)
@@ -30824,14 +30826,14 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       tail.position.set(-0.06, 0, 0); tail.rotation.z = Math.PI / 4; rat.add(tail);
       const ratx = (Math.random() - 0.5) * w * 0.6, ratz = (Math.random() - 0.5) * d * 0.6;
       rat.position.set(ratx, getTerrainHeight(ratx, ratz, 0.5) + 0.04, ratz);
-      rat.rotation.y = Math.random() * Math.PI * 2; ctx.scene.add(rat);
+      rat.rotation.y = Math.random() * Math.PI * 2; mctx.scene.add(rat);
     }
 
     // Sickly lights
     for (let i = 0; i < 10; i++) {
       const light = new THREE.PointLight([0xaa44aa, 0x884488, 0x664466][i % 3], 0.4, 8);
       light.position.set((Math.random() - 0.5) * w * 0.5, 1 + Math.random() * 2, (Math.random() - 0.5) * d * 0.5);
-      ctx.scene.add(light); ctx.torchLights.push(light);
+      mctx.scene.add(light); mctx.torchLights.push(light);
     }
 
     // Skull piles near throne
@@ -30842,7 +30844,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         sk.position.set((Math.random() - 0.5) * 0.4, Math.random() * 0.15, (Math.random() - 0.5) * 0.4); skulls.add(sk);
       }
       const skx = (Math.random() - 0.5) * w * 0.2, skz = (Math.random() - 0.5) * d * 0.2;
-      skulls.position.set(skx, getTerrainHeight(skx, skz, 0.5), skz); ctx.scene.add(skulls);
+      skulls.position.set(skx, getTerrainHeight(skx, skz, 0.5), skz); mctx.scene.add(skulls);
     }
     // ── Disease-warped pillars ──
     for (let i = 0; i < 8; i++) {
@@ -30856,7 +30858,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         bulge.position.set(Math.cos(ba) * 0.22, pilH * 0.2 + b * pilH * 0.2, Math.sin(ba) * 0.22); warpedPillar.add(bulge);
       }
       const wpx = (Math.random()-0.5)*w*0.6, wpz = (Math.random()-0.5)*d*0.6;
-      warpedPillar.position.set(wpx, getTerrainHeight(wpx, wpz, 0.5), wpz); ctx.scene.add(warpedPillar);
+      warpedPillar.position.set(wpx, getTerrainHeight(wpx, wpz, 0.5), wpz); mctx.scene.add(warpedPillar);
     }
     // ── Pustule clusters on walls ──
     for (let i = 0; i < 15; i++) {
@@ -30868,7 +30870,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const pux = (Math.random()-0.5)*w*0.7, puz = (Math.random()-0.5)*d*0.7;
       pustules.position.set(pux, getTerrainHeight(pux, puz, 0.5) + 1 + Math.random() * 2, puz);
-      pustules.rotation.y = Math.random() * Math.PI; ctx.scene.add(pustules);
+      pustules.rotation.y = Math.random() * Math.PI; mctx.scene.add(pustules);
     }
     // ── Rotting carpet ──
     for (let i = 0; i < 3; i++) {
@@ -30876,12 +30878,12 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       carpet.rotation.x = -Math.PI / 2;
       const cpx = (Math.random()-0.5)*w*0.3, cpz = (Math.random()-0.5)*d*0.3;
       carpet.position.set(cpx, getTerrainHeight(cpx, cpz, 0.5) + 0.02, cpz);
-      carpet.rotation.z = Math.random() * Math.PI; ctx.scene.add(carpet);
+      carpet.rotation.z = Math.random() * Math.PI; mctx.scene.add(carpet);
       for (let h = 0; h < 3; h++) {
         const hole = new THREE.Mesh(new THREE.CircleGeometry(0.1 + Math.random() * 0.15, 16), new THREE.MeshStandardMaterial({ color: 0x1a111a }));
         hole.rotation.x = -Math.PI / 2;
         hole.position.set(cpx + (Math.random()-0.5)*1, getTerrainHeight(cpx, cpz, 0.5) + 0.025, cpz + (Math.random()-0.5)*2);
-        ctx.scene.add(hole);
+        mctx.scene.add(hole);
       }
     }
     // ── Broken crown prop near throne ──
@@ -30895,7 +30897,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         spike.position.set(Math.cos(sa) * 0.15, Math.sin(sa) * 0.15 + 0.05, 0); brokenCrown.add(spike);
       }
       brokenCrown.position.set((Math.random()-0.5)*2, getTerrainHeight(0, 0, 0.5) + 0.05, (Math.random()-0.5)*2);
-      brokenCrown.rotation.set(0.5, Math.random() * Math.PI, 0.3); ctx.scene.add(brokenCrown);
+      brokenCrown.rotation.set(0.5, Math.random() * Math.PI, 0.3); mctx.scene.add(brokenCrown);
     }
     // ── Disease-warped pillars (irregularly bulging) ──
     for (let i = 0; i < 10; i++) {
@@ -30920,7 +30922,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         warpPillar.add(wpPustule);
       }
       const wppx = (Math.random() - 0.5) * w * 0.65, wppz = (Math.random() - 0.5) * d * 0.65;
-      warpPillar.position.set(wppx, getTerrainHeight(wppx, wppz, 0.5), wppz); ctx.scene.add(warpPillar);
+      warpPillar.position.set(wppx, getTerrainHeight(wppx, wppz, 0.5), wppz); mctx.scene.add(warpPillar);
     }
     // ── Organic growth masses ──
     for (let i = 0; i < 8; i++) {
@@ -30939,7 +30941,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         orgVein.rotation.set(Math.random(), Math.random(), Math.random()); orgGrowth.add(orgVein);
       }
       const ogx = (Math.random() - 0.5) * w * 0.6, ogz = (Math.random() - 0.5) * d * 0.6;
-      orgGrowth.position.set(ogx, getTerrainHeight(ogx, ogz, 0.5) + 0.5 + Math.random() * 2, ogz); ctx.scene.add(orgGrowth);
+      orgGrowth.position.set(ogx, getTerrainHeight(ogx, ogz, 0.5) + 0.5 + Math.random() * 2, ogz); mctx.scene.add(orgGrowth);
     }
     // ── Corrupted fountain ──
     for (let i = 0; i < 2; i++) {
@@ -30964,7 +30966,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       }
       const cfx = (i === 0 ? -1 : 1) * w * 0.15 + (Math.random() - 0.5) * 2;
       const cfz = (Math.random() - 0.5) * d * 0.3;
-      cFountain.position.set(cfx, getTerrainHeight(cfx, cfz, 0.5), cfz); ctx.scene.add(cFountain);
+      cFountain.position.set(cfx, getTerrainHeight(cfx, cfz, 0.5), cfz); mctx.scene.add(cFountain);
     }
     // ── Throne of corruption (ornate with skulls, banners, crystal inlays, steps) ──
     {
@@ -31042,9 +31044,9 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         new THREE.MeshStandardMaterial({ color: 0x220022, emissive: 0x110011, emissiveIntensity: 0.2, transparent: true, opacity: 0.06 }));
       ctAura.position.y = 2.45; corThrone.add(ctAura);
       const ctLight = new THREE.PointLight(0x66aa22, 0.6, 10);
-      ctLight.position.y = 3.45; corThrone.add(ctLight); ctx.torchLights.push(ctLight);
+      ctLight.position.y = 3.45; corThrone.add(ctLight); mctx.torchLights.push(ctLight);
       const ctx = (Math.random() - 0.5) * w * 0.15, ctz = (Math.random() - 0.5) * d * 0.15;
-      corThrone.position.set(ctx, getTerrainHeight(ctx, ctz, 0.5), ctz); ctx.scene.add(corThrone);
+      corThrone.position.set(ctx, getTerrainHeight(ctx, ctz, 0.5), ctz); mctx.scene.add(corThrone);
     }
     // ── Decayed banners ──
     for (let i = 0; i < 8; i++) {
@@ -31053,7 +31055,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       const bnx = (Math.random() - 0.5) * w * 0.6, bnz = (Math.random() - 0.5) * d * 0.6;
       banner.position.set(bnx, getTerrainHeight(bnx, bnz, 0.5) + 2.5 + Math.random() * 2, bnz);
       banner.rotation.set((Math.random() - 0.5) * 0.3, Math.random() * Math.PI, (Math.random() - 0.5) * 0.15);
-      ctx.scene.add(banner);
+      mctx.scene.add(banner);
     }
     // ── Spore sacs ──
     for (let i = 0; i < 15; i++) {
@@ -31068,7 +31070,7 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
       spore.add(sporeInner);
       const spx = (Math.random() - 0.5) * w * 0.7, spz = (Math.random() - 0.5) * d * 0.7;
       spore.position.set(spx, getTerrainHeight(spx, spz, 0.5) + 2 + Math.random() * 4, spz);
-      ctx.scene.add(spore);
+      mctx.scene.add(spore);
     }
     // ── Plague pools ──
     for (let i = 0; i < 6; i++) {
@@ -31092,9 +31094,9 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         plaguePool.add(ppGas);
       }
       const ppLight = new THREE.PointLight(0x44aa22, 0.3, 6);
-      ppLight.position.y = 0.3; plaguePool.add(ppLight); ctx.torchLights.push(ppLight);
+      ppLight.position.y = 0.3; plaguePool.add(ppLight); mctx.torchLights.push(ppLight);
       const ppx = (Math.random() - 0.5) * w * 0.6, ppz = (Math.random() - 0.5) * d * 0.6;
-      plaguePool.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 0.01, ppz); ctx.scene.add(plaguePool);
+      plaguePool.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 0.01, ppz); mctx.scene.add(plaguePool);
     }
     // ── Infected corpse piles ──
     for (let i = 0; i < 4; i++) {
@@ -31116,19 +31118,19 @@ export function buildBlightedThrone(ctx: MapBuildContext, w: number, d: number):
         cpTendril.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5); corpsePile.add(cpTendril);
       }
       const cpx = (Math.random() - 0.5) * w * 0.5, cpz = (Math.random() - 0.5) * d * 0.5;
-      corpsePile.position.set(cpx, getTerrainHeight(cpx, cpz, 0.5), cpz); ctx.scene.add(corpsePile);
+      corpsePile.position.set(cpx, getTerrainHeight(cpx, cpz, 0.5), cpz); mctx.scene.add(corpsePile);
     }
 }
 
-export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x223355, 0.022);
-    ctx.applyTerrainColors(0x1a2a44, 0x2a3a55, 0.5);
-    ctx.dirLight.color.setHex(0x88aaff);
-    ctx.dirLight.intensity = 0.7;
-    ctx.ambientLight.color.setHex(0x112244);
-    ctx.ambientLight.intensity = 0.4;
-    ctx.hemiLight.color.setHex(0x556699);
-    ctx.hemiLight.groundColor.setHex(0x111133);
+export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x223355, 0.022);
+    mctx.applyTerrainColors(0x1a2a44, 0x2a3a55, 0.5);
+    mctx.dirLight.color.setHex(0x88aaff);
+    mctx.dirLight.intensity = 0.7;
+    mctx.ambientLight.color.setHex(0x112244);
+    mctx.ambientLight.intensity = 0.4;
+    mctx.hemiLight.color.setHex(0x556699);
+    mctx.hemiLight.groundColor.setHex(0x111133);
 
     const clockMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.6, roughness: 0.3 });
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x4455aa, roughness: 0.6 });
@@ -31145,12 +31147,12 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const wall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2 + Math.random() * 2, 3 + Math.random() * 5), isGhost ? ghostWallMat : wallMat);
       const wx = (Math.random() - 0.5) * w * 0.8, wz = (Math.random() - 0.5) * d * 0.8;
       wall.position.set(wx, getTerrainHeight(wx, wz, 0.5) + wall.geometry.parameters.height / 2, wz);
-      wall.rotation.y = Math.random() * Math.PI; wall.castShadow = !isGhost; ctx.scene.add(wall);
+      wall.rotation.y = Math.random() * Math.PI; wall.castShadow = !isGhost; mctx.scene.add(wall);
       // Clock gear embedded in some walls
       if (Math.random() > 0.6) {
         const embeddedGear = new THREE.Mesh(new THREE.TorusGeometry(0.4 + Math.random() * 0.3, 0.05, 4, [6, 8, 10][Math.floor(Math.random() * 3)]), clockMat);
         embeddedGear.position.set(wx, getTerrainHeight(wx, wz, 0.5) + 1 + Math.random() * 2, wz + 0.21);
-        embeddedGear.rotation.y = wall.rotation.y; ctx.scene.add(embeddedGear);
+        embeddedGear.rotation.y = wall.rotation.y; mctx.scene.add(embeddedGear);
       }
     }
 
@@ -31176,7 +31178,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const pin = new THREE.Mesh(new THREE.SphereGeometry(0.03, 17, 16), clockMat);
       pin.position.z = 0.02; clock.add(pin);
       clock.position.set((Math.random() - 0.5) * w * 0.6, 1.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.6);
-      clock.rotation.y = Math.random() * Math.PI; ctx.scene.add(clock);
+      clock.rotation.y = Math.random() * Math.PI; mctx.scene.add(clock);
     }
 
     // Temporal rifts (glowing portal rings with inner glow)
@@ -31189,16 +31191,16 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
         new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2266dd, emissiveIntensity: 1.5, transparent: true, opacity: 0.2 }));
       rift.add(inner);
       rift.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
-      rift.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5); ctx.scene.add(rift);
+      rift.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5); mctx.scene.add(rift);
       const tLight = new THREE.PointLight(0x4488ff, 0.5, 8);
-      tLight.position.copy(rift.position); ctx.scene.add(tLight); ctx.torchLights.push(tLight);
+      tLight.position.copy(rift.position); mctx.scene.add(tLight); mctx.torchLights.push(tLight);
     }
 
     // Floating gears (more varied sizes)
     for (let i = 0; i < 20; i++) {
       const gear = new THREE.Mesh(new THREE.TorusGeometry(0.2 + Math.random() * 0.6, 0.04 + Math.random() * 0.04, 4, [6, 8, 10, 12][i % 4]), clockMat);
       gear.position.set((Math.random() - 0.5) * w * 0.7, 0.5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
-      gear.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(gear);
+      gear.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(gear);
     }
 
     // Hourglasses (more detailed with sand)
@@ -31226,7 +31228,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 17), clockMat);
       neck.position.y = 0.2; hg.add(neck);
       const hx = (Math.random() - 0.5) * w * 0.5, hz = (Math.random() - 0.5) * d * 0.5;
-      hg.position.set(hx, getTerrainHeight(hx, hz, 0.5) + 1.5, hz); ctx.scene.add(hg);
+      hg.position.set(hx, getTerrainHeight(hx, hz, 0.5) + 1.5, hz); mctx.scene.add(hg);
     }
 
     // Frozen-in-time objects (semi-transparent items suspended)
@@ -31244,7 +31246,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const inner = new THREE.Mesh(shapes[i % 3], new THREE.MeshStandardMaterial({ color: 0x887766 }));
       frozen.add(inner);
       frozen.position.set((Math.random() - 0.5) * w * 0.5, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5);
-      ctx.scene.add(frozen);
+      mctx.scene.add(frozen);
     }
 
     // Paradox mirrors (reflective vertical surfaces)
@@ -31259,7 +31261,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       ornate.position.y = 1.1; mirror.add(ornate);
       const mrx = (Math.random() - 0.5) * w * 0.5, mrz = (Math.random() - 0.5) * d * 0.5;
       mirror.position.set(mrx, getTerrainHeight(mrx, mrz, 0.5) + 1.2, mrz);
-      mirror.rotation.y = Math.random() * Math.PI; ctx.scene.add(mirror);
+      mirror.rotation.y = Math.random() * Math.PI; mctx.scene.add(mirror);
     }
 
     // Time-stream effects (flowing light ribbons)
@@ -31267,7 +31269,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const stream = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 5 + Math.random() * 5), timeMat);
       stream.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.6);
       stream.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
-      ctx.scene.add(stream);
+      mctx.scene.add(stream);
     }
 
     // Pendulum elements (hanging from ceiling)
@@ -31278,7 +31280,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const bob = new THREE.Mesh(new THREE.SphereGeometry(0.12, 31, 20), clockMat);
       bob.position.y = -1.2; pend.add(bob);
       pend.position.set((Math.random() - 0.5) * w * 0.4, 4 + Math.random(), (Math.random() - 0.5) * d * 0.4);
-      pend.rotation.z = (Math.random() - 0.5) * 0.4; ctx.scene.add(pend);
+      pend.rotation.z = (Math.random() - 0.5) * 0.4; mctx.scene.add(pend);
     }
 
     // Floor clock tile pattern
@@ -31286,7 +31288,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const tile = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 0.5, 36), new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 }));
       tile.rotation.x = -Math.PI / 2;
       const tlx = (Math.random() - 0.5) * w * 0.5, tlz = (Math.random() - 0.5) * d * 0.5;
-      tile.position.set(tlx, getTerrainHeight(tlx, tlz, 0.5) + 0.02, tlz); ctx.scene.add(tile);
+      tile.position.set(tlx, getTerrainHeight(tlx, tlz, 0.5) + 0.02, tlz); mctx.scene.add(tile);
     }
     // ── Clock face wall decorations ──
     for (let i = 0; i < 8; i++) {
@@ -31304,7 +31306,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       }
       const wcx = (Math.random()-0.5)*w*0.6, wcz = (Math.random()-0.5)*d*0.6;
       wallClock.position.set(wcx, getTerrainHeight(wcx, wcz, 0.5) + 2 + Math.random(), wcz);
-      wallClock.rotation.y = Math.random() * Math.PI; ctx.scene.add(wallClock);
+      wallClock.rotation.y = Math.random() * Math.PI; mctx.scene.add(wallClock);
     }
     // ── Hourglass props (smaller, on surfaces) ──
     for (let i = 0; i < 6; i++) {
@@ -31318,7 +31320,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const sand = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.06, 16), sandMat);
       sand.position.y = -0.08; smallHg.add(sand);
       const shx = (Math.random()-0.5)*w*0.5, shz = (Math.random()-0.5)*d*0.5;
-      smallHg.position.set(shx, getTerrainHeight(shx, shz, 0.5) + 0.8 + Math.random(), shz); ctx.scene.add(smallHg);
+      smallHg.position.set(shx, getTerrainHeight(shx, shz, 0.5) + 0.8 + Math.random(), shz); mctx.scene.add(smallHg);
     }
     // ── Time-frozen debris (mid-air floating pieces) ──
     for (let i = 0; i < 10; i++) {
@@ -31328,7 +31330,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const piece = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.06, 1), new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.7 }));
       debris.add(piece);
       debris.position.set((Math.random()-0.5)*w*0.5, 1 + Math.random() * 4, (Math.random()-0.5)*d*0.5);
-      ctx.scene.add(debris);
+      mctx.scene.add(debris);
     }
     // ── Pendulum mechanisms (wall-mounted) ──
     for (let i = 0; i < 4; i++) {
@@ -31346,7 +31348,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       pendBob.position.y = -0.65; mech.add(pendBob);
       const mex = (Math.random()-0.5)*w*0.5, mez = (Math.random()-0.5)*d*0.5;
       mech.position.set(mex, getTerrainHeight(mex, mez, 0.5) + 2 + Math.random(), mez);
-      mech.rotation.y = Math.random() * Math.PI; ctx.scene.add(mech);
+      mech.rotation.y = Math.random() * Math.PI; mctx.scene.add(mech);
     }
     // ── Temporal rift portals ──
     for (let i = 0; i < 4; i++) {
@@ -31358,7 +31360,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       const clockOverlay = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.01, 16, 12), clockMat);
       tPortal.add(clockOverlay);
       tPortal.position.set((Math.random()-0.5)*w*0.5, 1.5 + Math.random() * 2, (Math.random()-0.5)*d*0.5);
-      tPortal.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); ctx.scene.add(tPortal);
+      tPortal.rotation.set(Math.random()*0.3, Math.random(), Math.random()*0.3); mctx.scene.add(tPortal);
     }
     // ── Giant clock mechanisms (large gear rings with teeth) ──
     for (let i = 0; i < 4; i++) {
@@ -31384,7 +31386,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       gcFrame2.position.x = gcR + 0.3; gcMech.add(gcFrame2);
       const gcx = (Math.random() - 0.5) * w * 0.5, gcz = (Math.random() - 0.5) * d * 0.5;
       gcMech.position.set(gcx, getTerrainHeight(gcx, gcz, 0.5) + 2 + Math.random() * 2, gcz);
-      gcMech.rotation.y = Math.random() * Math.PI; ctx.scene.add(gcMech);
+      gcMech.rotation.y = Math.random() * Math.PI; mctx.scene.add(gcMech);
     }
     // ── Hourglass monuments (two cones connected by thin neck) ──
     for (let i = 0; i < 6; i++) {
@@ -31409,7 +31411,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
         hgMon.add(hgSand);
       }
       const hmx = (Math.random() - 0.5) * w * 0.5, hmz = (Math.random() - 0.5) * d * 0.5;
-      hgMon.position.set(hmx, getTerrainHeight(hmx, hmz, 0.5), hmz); ctx.scene.add(hgMon);
+      hgMon.position.set(hmx, getTerrainHeight(hmx, hmz, 0.5), hmz); mctx.scene.add(hgMon);
     }
     // ── Time-frozen debris zones (objects suspended mid-air) ──
     for (let i = 0; i < 8; i++) {
@@ -31439,7 +31441,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
         tfCyl.rotation.set(Math.random(), Math.random(), Math.random()); tfZone.add(tfCyl);
       }
       tfZone.position.set((Math.random() - 0.5) * w * 0.5, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5);
-      ctx.scene.add(tfZone);
+      mctx.scene.add(tfZone);
     }
     // ── Pendulum mechanisms (tall frames with hanging weight) ──
     for (let i = 0; i < 5; i++) {
@@ -31460,7 +31462,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       pmBob.position.y = 0.9; pmFrm.add(pmBob);
       const pmx = (Math.random() - 0.5) * w * 0.4, pmz = (Math.random() - 0.5) * d * 0.4;
       pmFrm.position.set(pmx, getTerrainHeight(pmx, pmz, 0.5), pmz);
-      pmFrm.rotation.y = Math.random() * Math.PI; ctx.scene.add(pmFrm);
+      pmFrm.rotation.y = Math.random() * Math.PI; mctx.scene.add(pmFrm);
     }
     // ── Temporal rift portals (large upright rings with swirling fill) ──
     for (let i = 0; i < 6; i++) {
@@ -31479,9 +31481,9 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
         trSpark.position.set(Math.cos(spA) * 1.05, Math.sin(spA) * 1.05, 0.02); trPtl.add(trSpark);
       }
       const trLt = new THREE.PointLight(0x4488ff, 0.6, 8);
-      trPtl.add(trLt); ctx.torchLights.push(trLt);
+      trPtl.add(trLt); mctx.torchLights.push(trLt);
       trPtl.position.set((Math.random() - 0.5) * w * 0.5, 1.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.5);
-      trPtl.rotation.set(Math.random() * 0.3, Math.random(), 0); ctx.scene.add(trPtl);
+      trPtl.rotation.set(Math.random() * 0.3, Math.random(), 0); mctx.scene.add(trPtl);
     }
     // ── Clock tower structures ──
     for (let i = 0; i < 3; i++) {
@@ -31512,7 +31514,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       ctRoof.position.y = ctH + 0.75; ctRoof.rotation.y = Math.PI / 4; ctTwr.add(ctRoof);
       const ctx = (Math.random() - 0.5) * w * 0.4, ctz = (Math.random() - 0.5) * d * 0.4;
       ctTwr.position.set(ctx, getTerrainHeight(ctx, ctz, 0.5), ctz);
-      ctTwr.rotation.y = Math.random() * Math.PI; ctx.scene.add(ctTwr);
+      ctTwr.rotation.y = Math.random() * Math.PI; mctx.scene.add(ctTwr);
     }
     // ── Chronometer pillars (cylindrical with rotating torus bands) ──
     for (let i = 0; i < 8; i++) {
@@ -31535,7 +31537,7 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
         cmGlyph.rotation.y = -gA; cmPil.add(cmGlyph);
       }
       const cmx = (Math.random() - 0.5) * w * 0.6, cmz = (Math.random() - 0.5) * d * 0.6;
-      cmPil.position.set(cmx, getTerrainHeight(cmx, cmz, 0.5), cmz); ctx.scene.add(cmPil);
+      cmPil.position.set(cmx, getTerrainHeight(cmx, cmz, 0.5), cmz); mctx.scene.add(cmPil);
     }
     // ── Shattered timeline fragments (broken mirror-like planes) ──
     for (let i = 0; i < 10; i++) {
@@ -31555,19 +31557,19 @@ export function buildChronoLabyrinth(ctx: MapBuildContext, w: number, d: number)
       stGhost2.rotation.y = -0.15; stFrag.add(stGhost2);
       stFrag.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 4, (Math.random() - 0.5) * d * 0.6);
       stFrag.rotation.set((Math.random() - 0.5) * 0.8, Math.random() * Math.PI, (Math.random() - 0.5) * 0.5);
-      ctx.scene.add(stFrag);
+      mctx.scene.add(stFrag);
     }
 }
 
-export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x150f15, 0.045);
-    ctx.applyTerrainColors(0x110a11, 0x1a111a, 0.5);
-    ctx.dirLight.color.setHex(0x884488);
-    ctx.dirLight.intensity = 0.4;
-    ctx.ambientLight.color.setHex(0x0a050a);
-    ctx.ambientLight.intensity = 0.2;
-    ctx.hemiLight.color.setHex(0x442244);
-    ctx.hemiLight.groundColor.setHex(0x050005);
+export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x150f15, 0.045);
+    mctx.applyTerrainColors(0x110a11, 0x1a111a, 0.5);
+    mctx.dirLight.color.setHex(0x884488);
+    mctx.dirLight.intensity = 0.4;
+    mctx.ambientLight.color.setHex(0x0a050a);
+    mctx.ambientLight.intensity = 0.2;
+    mctx.hemiLight.color.setHex(0x442244);
+    mctx.hemiLight.groundColor.setHex(0x050005);
 
     const eldritchMat = new THREE.MeshStandardMaterial({ color: 0x440044, emissive: 0x220022, emissiveIntensity: 0.5 });
     const tentacleMat = new THREE.MeshStandardMaterial({ color: 0x553355, roughness: 0.5 });
@@ -31600,7 +31602,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       const tx = (Math.random() - 0.5) * w * 0.8, tz = (Math.random() - 0.5) * d * 0.8;
       tentacle.position.set(tx, getTerrainHeight(tx, tz, 0.5), tz);
       tentacle.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI, (Math.random() - 0.5) * 0.4);
-      ctx.scene.add(tentacle);
+      mctx.scene.add(tentacle);
     }
 
     // Eldritch eyes (more, with varied sizes and eyelids)
@@ -31625,10 +31627,10 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
         vein.rotation.z = vAngle; eye.add(vein);
       }
       const eLight = new THREE.PointLight(0xff00ff, 0.5, 8);
-      eLight.position.z = eyeSize * 0.3; eye.add(eLight); ctx.torchLights.push(eLight);
+      eLight.position.z = eyeSize * 0.3; eye.add(eLight); mctx.torchLights.push(eLight);
       eye.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 5, (Math.random() - 0.5) * d * 0.6);
       eye.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, 0);
-      ctx.scene.add(eye);
+      mctx.scene.add(eye);
     }
 
     // Eye-covered surfaces (walls with multiple small eyes)
@@ -31648,7 +31650,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       }
       const ewx = (Math.random() - 0.5) * w * 0.6, ewz = (Math.random() - 0.5) * d * 0.6;
       eyeWall.position.set(ewx, getTerrainHeight(ewx, ewz, 0.5) + 1.5, ewz);
-      eyeWall.rotation.y = Math.random() * Math.PI; ctx.scene.add(eyeWall);
+      eyeWall.rotation.y = Math.random() * Math.PI; mctx.scene.add(eyeWall);
     }
 
     // Alien architecture (non-euclidean columns, twisted shapes)
@@ -31665,7 +31667,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       }
       const acx = (Math.random() - 0.5) * w * 0.7, acz = (Math.random() - 0.5) * d * 0.7;
       alienCol.position.set(acx, getTerrainHeight(acx, acz, 0.5), acz);
-      alienCol.rotation.z = (Math.random() - 0.5) * 0.15; ctx.scene.add(alienCol);
+      alienCol.rotation.z = (Math.random() - 0.5) * 0.15; mctx.scene.add(alienCol);
     }
 
     // Impossible geometry (intersecting shapes)
@@ -31678,7 +31680,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       box2.rotation.set(Math.PI / 4, Math.PI / 4, 0); geom.add(box2);
       geom.position.set((Math.random() - 0.5) * w * 0.7, Math.random() * 6, (Math.random() - 0.5) * d * 0.7);
       geom.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      ctx.scene.add(geom);
+      mctx.scene.add(geom);
     }
 
     // Reality-warping portals (larger, with distortion rings)
@@ -31693,7 +31695,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
         new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x220044, emissiveIntensity: 0.5 }));
       portal.add(voidCenter);
       portal.position.set((Math.random() - 0.5) * w * 0.4, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.4);
-      portal.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5); ctx.scene.add(portal);
+      portal.rotation.set(Math.random() * 0.5, Math.random(), Math.random() * 0.5); mctx.scene.add(portal);
     }
 
     // Cosmic horror statues
@@ -31720,7 +31722,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       baseRune.rotation.x = -Math.PI / 2; baseRune.position.y = 0.31; statue.add(baseRune);
       const stx = (Math.random() - 0.5) * w * 0.5, stz = (Math.random() - 0.5) * d * 0.5;
       statue.position.set(stx, getTerrainHeight(stx, stz, 0.5), stz);
-      statue.rotation.y = Math.random() * Math.PI; ctx.scene.add(statue);
+      statue.rotation.y = Math.random() * Math.PI; mctx.scene.add(statue);
     }
 
     // Void tendrils (thin dark wisps reaching from ground)
@@ -31732,7 +31734,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
         seg.rotation.x = Math.cos(s * 0.6) * 0.2; tendril.add(seg);
       }
       const vtx = (Math.random() - 0.5) * w * 0.7, vtz = (Math.random() - 0.5) * d * 0.7;
-      tendril.position.set(vtx, getTerrainHeight(vtx, vtz, 0.5), vtz); ctx.scene.add(tendril);
+      tendril.position.set(vtx, getTerrainHeight(vtx, vtz, 0.5), vtz); mctx.scene.add(tendril);
     }
 
     // Madness-inducing runes (glowing symbols on ground)
@@ -31746,7 +31748,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
         line.rotation.y = (p / 5) * Math.PI; runeGroup.add(line);
       }
       const rnx = (Math.random() - 0.5) * w * 0.6, rnz = (Math.random() - 0.5) * d * 0.6;
-      runeGroup.position.set(rnx, getTerrainHeight(rnx, rnz, 0.5) + 0.03, rnz); ctx.scene.add(runeGroup);
+      runeGroup.position.set(rnx, getTerrainHeight(rnx, rnz, 0.5) + 0.03, rnz); mctx.scene.add(runeGroup);
     }
 
     // Pulsing organic walls (breathing membrane look)
@@ -31755,7 +31757,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       orgWall.scale.z = 0.15;
       const owx = (Math.random() - 0.5) * w * 0.7, owz = (Math.random() - 0.5) * d * 0.7;
       orgWall.position.set(owx, getTerrainHeight(owx, owz, 0.5) + 1.5, owz);
-      orgWall.rotation.y = Math.random() * Math.PI; ctx.scene.add(orgWall);
+      orgWall.rotation.y = Math.random() * Math.PI; mctx.scene.add(orgWall);
     }
 
     // Madness pools
@@ -31763,14 +31765,14 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       const pool = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 30), madnessMat);
       pool.rotation.x = -Math.PI / 2;
       const px = (Math.random() - 0.5) * w * 0.5, pz = (Math.random() - 0.5) * d * 0.5;
-      pool.position.set(px, getTerrainHeight(px, pz, 0.5) + 0.02, pz); ctx.scene.add(pool);
+      pool.position.set(px, getTerrainHeight(px, pz, 0.5) + 0.02, pz); mctx.scene.add(pool);
     }
 
     // Psychic energy streams
     for (let i = 0; i < 12; i++) {
       const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4 + Math.random() * 6, 16), madnessMat);
       stream.position.set((Math.random() - 0.5) * w * 0.6, 8, (Math.random() - 0.5) * d * 0.6);
-      stream.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5); ctx.scene.add(stream);
+      stream.rotation.set(Math.random() * 0.5, 0, Math.random() * 0.5); mctx.scene.add(stream);
     }
     // ── Tentacle archways ──
     for (let i = 0; i < 4; i++) {
@@ -31785,7 +31787,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       }
       const ahx = (Math.random()-0.5)*w*0.5, ahz = (Math.random()-0.5)*d*0.5;
       archway.position.set(ahx, getTerrainHeight(ahx, ahz, 0.5), ahz);
-      archway.rotation.y = Math.random() * Math.PI; ctx.scene.add(archway);
+      archway.rotation.y = Math.random() * Math.PI; mctx.scene.add(archway);
     }
     // ── Non-euclidean geometry hints (impossible angles with thin boxes) ──
     for (let i = 0; i < 10; i++) {
@@ -31799,7 +31801,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       const connector = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.04), eldritchMat);
       connector.position.set(0.2, 0.5, 0.1); connector.rotation.set(0.2, 0.4, 0.3); impossible.add(connector);
       impossible.position.set((Math.random()-0.5)*w*0.6, 1 + Math.random() * 4, (Math.random()-0.5)*d*0.6);
-      impossible.rotation.set(Math.random(), Math.random(), Math.random()); ctx.scene.add(impossible);
+      impossible.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(impossible);
     }
     // ── Sigil floor patterns ──
     for (let i = 0; i < 8; i++) {
@@ -31822,7 +31824,7 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       }
       sigil.add(triangle);
       const sgx = (Math.random()-0.5)*w*0.5, sgz = (Math.random()-0.5)*d*0.5;
-      sigil.position.set(sgx, getTerrainHeight(sgx, sgz, 0.5) + 0.03, sgz); ctx.scene.add(sigil);
+      sigil.position.set(sgx, getTerrainHeight(sgx, sgz, 0.5) + 0.03, sgz); mctx.scene.add(sigil);
     }
     // ── Otherworldly flora (alien plant forms) ──
     for (let i = 0; i < 12; i++) {
@@ -31838,22 +31840,22 @@ export function buildEldritchNexus(ctx: MapBuildContext, w: number, d: number): 
       const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 8), eyeMat);
       eye.position.y = 0.6; flora.add(eye);
       const flx = (Math.random()-0.5)*w*0.7, flz = (Math.random()-0.5)*d*0.7;
-      flora.position.set(flx, getTerrainHeight(flx, flz, 0.5), flz); ctx.scene.add(flora);
+      flora.position.set(flx, getTerrainHeight(flx, flz, 0.5), flz); mctx.scene.add(flora);
     }
 }
 
-export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void {
+export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): void {
     // ── Lighting / Atmosphere ──
-    ctx.scene.fog = new THREE.FogExp2(0x6a6560, 0.014);
-    ctx.applyTerrainColors(0x4a4540, 0x6a6560, 0.5);
-    ctx.dirLight.color.setHex(0xccbbaa);
-    ctx.dirLight.intensity = 0.9;
-    ctx.dirLight.position.set(12, 20, 8);
-    ctx.ambientLight.color.setHex(0x444038);
-    ctx.ambientLight.intensity = 0.5;
-    ctx.hemiLight.color.setHex(0x887766);
-    ctx.hemiLight.groundColor.setHex(0x332a22);
-    ctx.hemiLight.intensity = 0.4;
+    mctx.scene.fog = new THREE.FogExp2(0x6a6560, 0.014);
+    mctx.applyTerrainColors(0x4a4540, 0x6a6560, 0.5);
+    mctx.dirLight.color.setHex(0xccbbaa);
+    mctx.dirLight.intensity = 0.9;
+    mctx.dirLight.position.set(12, 20, 8);
+    mctx.ambientLight.color.setHex(0x444038);
+    mctx.ambientLight.intensity = 0.5;
+    mctx.hemiLight.color.setHex(0x887766);
+    mctx.hemiLight.groundColor.setHex(0x332a22);
+    mctx.hemiLight.intensity = 0.4;
 
     const hw = w / 2;
     const hd = d / 2;
@@ -31867,7 +31869,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
     const boulevard = new THREE.Mesh(boulevardGeo, streetMat);
     boulevard.position.set(0, 0.03, 0);
     boulevard.receiveShadow = true;
-    ctx.envGroup.add(boulevard);
+    mctx.envGroup.add(boulevard);
 
     // Cross streets (east-west)
     for (const zOff of [-20, -5, 10, 25]) {
@@ -31875,7 +31877,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       const cross = new THREE.Mesh(crossGeo, new THREE.MeshStandardMaterial({ color: streetColors[Math.floor(Math.random() * streetColors.length)], roughness: 0.9 }));
       cross.position.set(0, 0.03, zOff);
       cross.receiveShadow = true;
-      ctx.envGroup.add(cross);
+      mctx.envGroup.add(cross);
     }
 
     // Individual cobblestone tiles on boulevard
@@ -31890,7 +31892,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
           tile.position.set(tx + (Math.random() - 0.5) * 0.1, 0.06, tz + (Math.random() - 0.5) * 0.1);
           tile.rotation.y = (Math.random() - 0.5) * 0.1;
           tile.receiveShadow = true;
-          ctx.envGroup.add(tile);
+          mctx.envGroup.add(tile);
         }
       }
     }
@@ -31905,14 +31907,14 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       const cx = (Math.random() - 0.5) * w * 0.7;
       const cz = (Math.random() - 0.5) * d * 0.7;
       cobble.position.set(cx, 0.065, cz);
-      ctx.envGroup.add(cobble);
+      mctx.envGroup.add(cobble);
       // Mortar lines
       if (Math.random() > 0.5) {
         const mortarMat = new THREE.MeshStandardMaterial({ color: 0x3a3530, roughness: 1.0 });
         const mortar = new THREE.Mesh(new THREE.BoxGeometry(cbR * 2, 0.004, 0.012), mortarMat);
         mortar.rotation.y = Math.random() * Math.PI;
         mortar.position.set(cx, 0.063, cz);
-        ctx.envGroup.add(mortar);
+        mctx.envGroup.add(mortar);
       }
     }
 
@@ -31937,7 +31939,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       hole.position.y = 0.04;
       grateGroup.add(hole);
       grateGroup.position.set(gx, 0, gz);
-      ctx.envGroup.add(grateGroup);
+      mctx.envGroup.add(grateGroup);
     }
 
     // ── Ruined Buildings — forming alleyways ──
@@ -32202,7 +32204,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       }
 
       buildGroup.position.set(rx, 0, rz);
-      ctx.envGroup.add(buildGroup);
+      mctx.envGroup.add(buildGroup);
     }
 
     // ── Rubble Piles — scattered everywhere ──
@@ -32226,7 +32228,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       dustDisc.position.y = 0.02;
       rbGroup.add(dustDisc);
       rbGroup.position.set(rbx, 0, rbz);
-      ctx.envGroup.add(rbGroup);
+      mctx.envGroup.add(rbGroup);
     }
 
     // ── Collapsed Arches / Alleyway Connectors ──
@@ -32276,7 +32278,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       }
       archGroup.rotation.y = aRot;
       archGroup.position.set(ax, 0, az);
-      ctx.envGroup.add(archGroup);
+      mctx.envGroup.add(archGroup);
     }
 
     // ── Broken Fountain (center) ──
@@ -32340,7 +32342,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       algae.position.set((Math.random() - 0.5) * 3, 0.56, (Math.random() - 0.5) * 3);
       fountainGroup.add(algae);
     }
-    ctx.envGroup.add(fountainGroup);
+    mctx.envGroup.add(fountainGroup);
 
     // ── Lampposts — broken, some still flickering ──
     const lampPositions: [number, number][] = [
@@ -32395,11 +32397,11 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         lampGroup.add(glow);
         const light = new THREE.PointLight(0xff9933, 0.7, 14);
         light.position.set(lx + 0.8, 3.3, lz);
-        ctx.scene.add(light);
-        ctx.torchLights.push(light);
+        mctx.scene.add(light);
+        mctx.torchLights.push(light);
       }
       lampGroup.position.set(lx, 0, lz);
-      ctx.envGroup.add(lampGroup);
+      mctx.envGroup.add(lampGroup);
     }
 
     // ── Cracked City Walls (perimeter) with buttresses ──
@@ -32414,13 +32416,13 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
           wall.position.set(wx, wallH / 2, zSide);
           wall.castShadow = true;
           wall.receiveShadow = true;
-          ctx.envGroup.add(wall);
+          mctx.envGroup.add(wall);
           // Jagged top stones
           for (let ji = 0; ji < 5; ji++) {
             const jag = new THREE.Mesh(new THREE.BoxGeometry(0.4 + Math.random() * 0.6, 0.2 + Math.random() * 0.5, 1.2), wallMat2);
             jag.position.set(wx + (Math.random() - 0.5) * wallW * 0.7, wallH + 0.2, zSide);
             jag.castShadow = true;
-            ctx.envGroup.add(jag);
+            mctx.envGroup.add(jag);
           }
           // Buttress
           if (Math.random() > 0.5) {
@@ -32428,19 +32430,19 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
             const butt = new THREE.Mesh(buttGeo, wallMat2);
             butt.position.set(wx + wallW * 0.3, wallH * 0.35, zSide + (zSide > 0 ? 0.8 : -0.8));
             butt.castShadow = true;
-            ctx.envGroup.add(butt);
+            mctx.envGroup.add(butt);
           }
           // Stone block lines
           for (let sl = 0; sl < Math.floor(wallH / 0.8); sl++) {
             const sLine = new THREE.Mesh(new THREE.BoxGeometry(wallW, 0.01, 0.01), new THREE.MeshStandardMaterial({ color: 0x4a4540, roughness: 1.0 }));
             sLine.position.set(wx, 0.4 + sl * 0.8, zSide + 0.61);
-            ctx.envGroup.add(sLine);
+            mctx.envGroup.add(sLine);
           }
           // Moss patches on wall
           if (Math.random() > 0.5) {
             const moss = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.6), new THREE.MeshStandardMaterial({ color: 0x3a5530, transparent: true, opacity: 0.5, roughness: 0.9 }));
             moss.position.set(wx, 0.4, zSide + (zSide > 0 ? 0.62 : -0.62));
-            ctx.envGroup.add(moss);
+            mctx.envGroup.add(moss);
           }
         }
       }
@@ -32454,12 +32456,12 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
           wall.position.set(xSide, wallH / 2, wz);
           wall.castShadow = true;
           wall.receiveShadow = true;
-          ctx.envGroup.add(wall);
+          mctx.envGroup.add(wall);
           for (let ji = 0; ji < 4; ji++) {
             const jag = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2 + Math.random() * 0.5, 0.5 + Math.random() * 0.6), wallMat2);
             jag.position.set(xSide, wallH + 0.2, wz + (Math.random() - 0.5) * wallD * 0.6);
             jag.castShadow = true;
-            ctx.envGroup.add(jag);
+            mctx.envGroup.add(jag);
           }
         }
       }
@@ -32511,7 +32513,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       towerGroup.add(rb);
     }
     towerGroup.position.set(-25, 0, -25);
-    ctx.envGroup.add(towerGroup);
+    mctx.envGroup.add(towerGroup);
 
     // ── Second Collapsed Tower (opposite corner) ──
     const tower2 = new THREE.Group();
@@ -32531,7 +32533,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       tower2.add(rb);
     }
     tower2.position.set(25, 0, 25);
-    ctx.envGroup.add(tower2);
+    mctx.envGroup.add(tower2);
 
     // ── Dead Trees with detailed bark and roots ──
     const deadTreeMat = new THREE.MeshStandardMaterial({ color: 0x3a3028, roughness: 0.9 });
@@ -32587,7 +32589,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         dtGroup.add(knot);
       }
       dtGroup.position.set(dtx, 0, dtz);
-      ctx.envGroup.add(dtGroup);
+      mctx.envGroup.add(dtGroup);
     }
 
     // ── Barrels and Crates — detailed with bands, nails, lids ──
@@ -32615,7 +32617,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         lid.position.y = 0.7;
         barrelGroup.add(lid);
         barrelGroup.position.set(px, 0, pz);
-        ctx.envGroup.add(barrelGroup);
+        mctx.envGroup.add(barrelGroup);
       } else if (r < 0.6) {
         const crateSize = 0.35 + Math.random() * 0.3;
         const crateGroup = new THREE.Group();
@@ -32639,7 +32641,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         }
         crateGroup.rotation.y = Math.random() * Math.PI;
         crateGroup.position.set(px, 0, pz);
-        ctx.envGroup.add(crateGroup);
+        mctx.envGroup.add(crateGroup);
       } else if (r < 0.75) {
         // Overturned cart
         const cartGroup = new THREE.Group();
@@ -32661,13 +32663,13 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         }
         cartGroup.position.set(px, 0, pz);
         cartGroup.rotation.y = Math.random() * Math.PI;
-        ctx.envGroup.add(cartGroup);
+        mctx.envGroup.add(cartGroup);
       } else {
         // Sack
         const sack = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 }));
         sack.scale.set(1.0, 0.6, 0.8);
         sack.position.set(px, 0.12, pz);
-        ctx.envGroup.add(sack);
+        mctx.envGroup.add(sack);
       }
     }
 
@@ -32703,7 +32705,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       } else {
         gGroup.position.set(gx, 2 + Math.random() * 3, gz);
       }
-      ctx.envGroup.add(gGroup);
+      mctx.envGroup.add(gGroup);
     }
 
     // ── Scattered Banners / Torn Flags ──
@@ -32733,7 +32735,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       tear.rotation.z = -0.3;
       bannerGroup.add(tear);
       bannerGroup.position.set(bx, 0, bz);
-      ctx.envGroup.add(bannerGroup);
+      mctx.envGroup.add(bannerGroup);
     }
 
     // ── Skull Piles ──
@@ -32758,7 +32760,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         skGroup.add(bone);
       }
       skGroup.position.set((Math.random() - 0.5) * w * 0.5, 0, (Math.random() - 0.5) * d * 0.5);
-      ctx.envGroup.add(skGroup);
+      mctx.envGroup.add(skGroup);
     }
 
     // ── Puddles ──
@@ -32767,7 +32769,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.4 + Math.random() * 0.8, 16), puddleMat);
       puddle.rotation.x = -Math.PI / 2;
       puddle.position.set((Math.random() - 0.5) * w * 0.6, 0.04, (Math.random() - 0.5) * d * 0.6);
-      ctx.envGroup.add(puddle);
+      mctx.envGroup.add(puddle);
     }
 
     // ── Ash / Soot patches ──
@@ -32776,26 +32778,26 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       const ash = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 2, 14), ashMat);
       ash.rotation.x = -Math.PI / 2;
       ash.position.set((Math.random() - 0.5) * w * 0.7, 0.035, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(ash);
+      mctx.envGroup.add(ash);
     }
 
     // ── Glowing Rune Circle (mysterious) ──
     const runeGlow = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.04, 12, 36), new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x44ff44, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 }));
     runeGlow.rotation.x = Math.PI / 2;
     runeGlow.position.set(15, 0.05, -15);
-    ctx.envGroup.add(runeGlow);
+    mctx.envGroup.add(runeGlow);
     // Rune symbols inside circle
     for (let rs2 = 0; rs2 < 4; rs2++) {
       const rune = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.8), new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x44ff44, emissiveIntensity: 0.6, side: THREE.DoubleSide }));
       rune.rotation.x = -Math.PI / 2;
       rune.rotation.z = rs2 * (Math.PI / 4);
       rune.position.set(15, 0.06, -15);
-      ctx.envGroup.add(rune);
+      mctx.envGroup.add(rune);
     }
     const runeLight = new THREE.PointLight(0x44ff44, 0.4, 8);
     runeLight.position.set(15, 0.5, -15);
-    ctx.scene.add(runeLight);
-    ctx.torchLights.push(runeLight);
+    mctx.scene.add(runeLight);
+    mctx.torchLights.push(runeLight);
 
     // ── Wall-mounted torch brackets ──
     for (let ti2 = 0; ti2 < 10; ti2++) {
@@ -32815,11 +32817,11 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         torchGroup.add(flame);
         const tLight = new THREE.PointLight(0xff6622, 0.5, 8);
         tLight.position.set(tx + 0.15, 3.05, tz);
-        ctx.scene.add(tLight);
-        ctx.torchLights.push(tLight);
+        mctx.scene.add(tLight);
+        mctx.torchLights.push(tLight);
       }
       torchGroup.position.set(tx, 0, tz);
-      ctx.envGroup.add(torchGroup);
+      mctx.envGroup.add(torchGroup);
     }
 
     // ── Detailed Gargoyles perched on ruins (full necropolis style) ──
@@ -32891,7 +32893,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       const gz2 = (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 15);
       gg.position.set(gx2, 3 + Math.random() * 4, gz2);
       gg.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(gg);
+      mctx.envGroup.add(gg);
     }
 
     // ── Crumbling Edge Detail on wall tops ──
@@ -32936,7 +32938,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         ceg.add(expBrick);
       }
       ceg.position.set((Math.random() - 0.5) * w * 0.7, 0, (Math.random() - 0.5) * d * 0.7);
-      ctx.envGroup.add(ceg);
+      mctx.envGroup.add(ceg);
     }
 
     // ── Bone Piles (fuller necropolis style) ──
@@ -32974,7 +32976,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         }
       }
       bp.position.set((Math.random() - 0.5) * w * 0.5, 0, (Math.random() - 0.5) * d * 0.5);
-      ctx.envGroup.add(bp);
+      mctx.envGroup.add(bp);
     }
 
     // ── Dripping Water Pools with droplets ──
@@ -32989,7 +32991,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       droplet.position.y = 0.5 + Math.random() * 1.5;
       poolGrp.add(droplet);
       poolGrp.position.set((Math.random() - 0.5) * w * 0.5, 0, (Math.random() - 0.5) * d * 0.5);
-      ctx.envGroup.add(poolGrp);
+      mctx.envGroup.add(poolGrp);
     }
 
     // ── Chain Mechanisms hanging from arches ──
@@ -33008,7 +33010,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       hook.position.y = -linkCount * 0.12 - 0.05;
       chainGrp.add(hook);
       chainGrp.position.set((Math.random() - 0.5) * w * 0.4, 3.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.4);
-      ctx.envGroup.add(chainGrp);
+      mctx.envGroup.add(chainGrp);
     }
 
     // ── Broken Clock Face on collapsed tower ──
@@ -33046,7 +33048,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
     clockGrp.add(clockCrack);
     clockGrp.position.set(-25, 6, -25);
     clockGrp.rotation.y = 0.5;
-    ctx.envGroup.add(clockGrp);
+    mctx.envGroup.add(clockGrp);
 
     // ── Iron Cages (hanging and standing) ──
     for (let ici = 0; ici < 4; ici++) {
@@ -33083,7 +33085,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         cage.add(link2);
       }
       cage.position.set((Math.random() - 0.5) * w * 0.4, Math.random() > 0.5 ? 2.5 + Math.random() * 2 : 0, (Math.random() - 0.5) * d * 0.4);
-      ctx.envGroup.add(cage);
+      mctx.envGroup.add(cage);
     }
 
     // ── Weapon Racks on walls ──
@@ -33113,7 +33115,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       }
       wrGroup.position.set((Math.random() - 0.5) * w * 0.4, 0, (Math.random() - 0.5) * d * 0.4);
       wrGroup.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(wrGroup);
+      mctx.envGroup.add(wrGroup);
     }
 
     // ── Chandeliers (fallen, on ground) ──
@@ -33139,7 +33141,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
         chandGrp.add(bLink);
       }
       chandGrp.position.set((Math.random() - 0.5) * w * 0.4, 0, (Math.random() - 0.5) * d * 0.4);
-      ctx.envGroup.add(chandGrp);
+      mctx.envGroup.add(chandGrp);
     }
 
     // ── Broken Stained Glass fragments on ground ──
@@ -33155,7 +33157,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       shard.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       shard.rotation.z = Math.random() * Math.PI;
       shard.position.set((Math.random() - 0.5) * w * 0.4, 0.04, (Math.random() - 0.5) * d * 0.4);
-      ctx.envGroup.add(shard);
+      mctx.envGroup.add(shard);
     }
 
     // ── Heraldic Shield Emblems on wall fragments ──
@@ -33175,7 +33177,7 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       shieldGrp.add(hH);
       shieldGrp.position.set((Math.random() - 0.5) * w * 0.5, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5);
       shieldGrp.rotation.y = Math.random() * Math.PI * 2;
-      ctx.envGroup.add(shieldGrp);
+      mctx.envGroup.add(shieldGrp);
     }
 
     // ── More cobweb clusters in corners ──
@@ -33190,21 +33192,21 @@ export function buildCityRuins(ctx: MapBuildContext, w: number, d: number): void
       }
       webCluster.position.set((Math.random() - 0.5) * w * 0.6, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
       webCluster.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(webCluster);
+      mctx.envGroup.add(webCluster);
     }
 }
 
-export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
-    ctx.scene.fog = new THREE.FogExp2(0x6e7280, 0.01);
-    ctx.applyTerrainColors(0x4a4e58, 0x5e626c, 0.4);
-    ctx.dirLight.color.setHex(0xddeeff);
-    ctx.dirLight.intensity = 1.1;
-    ctx.dirLight.position.set(14, 22, 10);
-    ctx.ambientLight.color.setHex(0x3a3e48);
-    ctx.ambientLight.intensity = 0.55;
-    ctx.hemiLight.color.setHex(0x8899aa);
-    ctx.hemiLight.groundColor.setHex(0x3a3530);
-    ctx.hemiLight.intensity = 0.5;
+export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x6e7280, 0.01);
+    mctx.applyTerrainColors(0x4a4e58, 0x5e626c, 0.4);
+    mctx.dirLight.color.setHex(0xddeeff);
+    mctx.dirLight.intensity = 1.1;
+    mctx.dirLight.position.set(14, 22, 10);
+    mctx.ambientLight.color.setHex(0x3a3e48);
+    mctx.ambientLight.intensity = 0.55;
+    mctx.hemiLight.color.setHex(0x8899aa);
+    mctx.hemiLight.groundColor.setHex(0x3a3530);
+    mctx.hemiLight.intensity = 0.5;
 
     const hw = w / 2;
     const hd = d / 2;
@@ -33214,13 +33216,13 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     const mainStreet = new THREE.Mesh(new THREE.BoxGeometry(7, 0.05, d * 0.85), new THREE.MeshStandardMaterial({ color: 0x7a7570, roughness: 0.88 }));
     mainStreet.position.set(0, 0.03, 0);
     mainStreet.receiveShadow = true;
-    ctx.envGroup.add(mainStreet);
+    mctx.envGroup.add(mainStreet);
 
     for (const zOff of [-22, -8, 8, 22]) {
       const cross = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 0.05, 5), new THREE.MeshStandardMaterial({ color: stoneColors[Math.floor(Math.random() * stoneColors.length)], roughness: 0.88 }));
       cross.position.set(0, 0.03, zOff);
       cross.receiveShadow = true;
-      ctx.envGroup.add(cross);
+      mctx.envGroup.add(cross);
     }
 
     // Individual tiles on main street
@@ -33232,7 +33234,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
         const tile = new THREE.Mesh(tileGeo, tileMat);
         tile.position.set(tx, 0.06, tz);
         tile.receiveShadow = true;
-        ctx.envGroup.add(tile);
+        mctx.envGroup.add(tile);
       }
     }
 
@@ -33244,12 +33246,12 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       const cx = (Math.random() - 0.5) * w * 0.7;
       const cz = (Math.random() - 0.5) * d * 0.7;
       cobble.position.set(cx, 0.065, cz);
-      ctx.envGroup.add(cobble);
+      mctx.envGroup.add(cobble);
       if (Math.random() > 0.6) {
         const mortar = new THREE.Mesh(new THREE.BoxGeometry(cbR * 2, 0.003, 0.01), new THREE.MeshStandardMaterial({ color: 0x4a4540, roughness: 1.0 }));
         mortar.rotation.y = Math.random() * Math.PI;
         mortar.position.set(cx, 0.063, cz);
-        ctx.envGroup.add(mortar);
+        mctx.envGroup.add(mortar);
       }
     }
 
@@ -33257,7 +33259,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     const market = new THREE.Mesh(new THREE.BoxGeometry(18, 0.06, 18), new THREE.MeshStandardMaterial({ color: 0x9a9590, roughness: 0.82 }));
     market.position.set(0, 0.02, 0);
     market.receiveShadow = true;
-    ctx.envGroup.add(market);
+    mctx.envGroup.add(market);
 
     // Market square border stones
     const borderMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.9 });
@@ -33265,12 +33267,12 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       for (const bz of [-9, 9]) {
         const b = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 0.3), borderMat);
         b.position.set(bi2, 0.06, bz);
-        ctx.envGroup.add(b);
+        mctx.envGroup.add(b);
       }
       for (const bx of [-9, 9]) {
         const b = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 1.3), borderMat);
         b.position.set(bx, 0.06, bi2);
-        ctx.envGroup.add(b);
+        mctx.envGroup.add(b);
       }
     }
 
@@ -33345,7 +33347,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
 
       stallGroup.rotation.y = sRot;
       stallGroup.position.set(sx, 0, sz);
-      ctx.envGroup.add(stallGroup);
+      mctx.envGroup.add(stallGroup);
     }
 
     // ── Central Fountain with ornate detail ──
@@ -33405,7 +33407,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     fWater.rotation.x = -Math.PI / 2;
     fWater.position.y = 0.62;
     fountainGroup.add(fWater);
-    ctx.envGroup.add(fountainGroup);
+    mctx.envGroup.add(fountainGroup);
 
     // ── Buildings — forming streets and alleyways ──
     const houseColors = [0x8a8070, 0x7a7568, 0x9a9080, 0x706860, 0x888078, 0x6a6558];
@@ -33718,7 +33720,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       }
 
       buildGroup.position.set(bx, 0, bz);
-      ctx.envGroup.add(buildGroup);
+      mctx.envGroup.add(buildGroup);
     }
 
     // ── City Walls with crenellations, arrow slits, buttresses, stone lines ──
@@ -33729,14 +33731,14 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     nWall.position.set(0, wallH / 2, -hd + 1);
     nWall.castShadow = true;
     nWall.receiveShadow = true;
-    ctx.envGroup.add(nWall);
+    mctx.envGroup.add(nWall);
     // South wall (gate gap)
     for (const sx of [-hw / 2 - 5, hw / 2 + 5]) {
       const sWall = new THREE.Mesh(new THREE.BoxGeometry(hw - 12, wallH, 1.5), wallMat2);
       sWall.position.set(sx, wallH / 2, hd - 1);
       sWall.castShadow = true;
       sWall.receiveShadow = true;
-      ctx.envGroup.add(sWall);
+      mctx.envGroup.add(sWall);
     }
     // E/W walls
     for (const xSide of [-hw + 1, hw - 1]) {
@@ -33744,7 +33746,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       eWall.position.set(xSide, wallH / 2, 0);
       eWall.castShadow = true;
       eWall.receiveShadow = true;
-      ctx.envGroup.add(eWall);
+      mctx.envGroup.add(eWall);
     }
 
     // Crenellations (merlons)
@@ -33754,7 +33756,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
         const cren = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 1.6), crenMat);
         cren.position.set(cx, wallH + 0.4, cz);
         cren.castShadow = true;
-        ctx.envGroup.add(cren);
+        mctx.envGroup.add(cren);
       }
     }
 
@@ -33762,7 +33764,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     for (let sl = 0; sl < Math.floor(wallH / 0.8); sl++) {
       const sLine = new THREE.Mesh(new THREE.BoxGeometry(w - 4, 0.01, 0.01), new THREE.MeshStandardMaterial({ color: 0x5a5550, roughness: 1.0 }));
       sLine.position.set(0, 0.4 + sl * 0.8, -hd + 1.76);
-      ctx.envGroup.add(sLine);
+      mctx.envGroup.add(sLine);
     }
 
     // Arrow slits on walls
@@ -33771,7 +33773,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       for (const asz of [-hd + 1, hd - 1]) {
         const slit = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.08), slitMat);
         slit.position.set(asx, wallH * 0.6, asz + (asz > 0 ? 0.72 : -0.72));
-        ctx.envGroup.add(slit);
+        mctx.envGroup.add(slit);
       }
     }
 
@@ -33781,7 +33783,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
         const butt = new THREE.Mesh(new THREE.BoxGeometry(1.0, wallH * 0.8, 0.8), wallMat2);
         butt.position.set(btx, wallH * 0.4, btz + (btz > 0 ? 1.0 : -1.0));
         butt.castShadow = true;
-        ctx.envGroup.add(butt);
+        mctx.envGroup.add(butt);
       }
     }
 
@@ -33789,7 +33791,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     for (let mi = 0; mi < 12; mi++) {
       const moss = new THREE.Mesh(new THREE.PlaneGeometry(0.8 + Math.random() * 1.0, 0.3 + Math.random() * 0.3), new THREE.MeshStandardMaterial({ color: 0x3a5530, transparent: true, opacity: 0.45, roughness: 0.9, side: THREE.DoubleSide }));
       moss.position.set((Math.random() - 0.5) * w * 0.7, 0.3, -hd + 1.76);
-      ctx.envGroup.add(moss);
+      mctx.envGroup.add(moss);
     }
 
     // Corner towers with crenellations and arrow slits
@@ -33798,36 +33800,36 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       const tower = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.2, wallH + 4, 20), towerMat);
       tower.position.set(tx, (wallH + 4) / 2, tz);
       tower.castShadow = true;
-      ctx.envGroup.add(tower);
+      mctx.envGroup.add(tower);
       // Cone roof
       const cone = new THREE.Mesh(new THREE.ConeGeometry(2.5, 2.5, 20), new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.7 }));
       cone.position.set(tx, wallH + 5.2, tz);
       cone.castShadow = true;
-      ctx.envGroup.add(cone);
+      mctx.envGroup.add(cone);
       // Finial
       const finial = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x888844, metalness: 0.5, roughness: 0.4 }));
       finial.position.set(tx, wallH + 6.6, tz);
-      ctx.envGroup.add(finial);
+      mctx.envGroup.add(finial);
       // Tower arrow slits
       for (let tas = 0; tas < 4; tas++) {
         const tAngle = tas * (Math.PI / 2) + Math.PI / 4;
         const tSlit = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.12), slitMat);
         tSlit.position.set(tx + Math.cos(tAngle) * 2.02, wallH, tz + Math.sin(tAngle) * 2.02);
         tSlit.rotation.y = tAngle + Math.PI / 2;
-        ctx.envGroup.add(tSlit);
+        mctx.envGroup.add(tSlit);
       }
       // Stone band at mid-height
       const tBand = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.06, 6, 20), towerMat);
       tBand.rotation.x = Math.PI / 2;
       tBand.position.set(tx, wallH, tz);
-      ctx.envGroup.add(tBand);
+      mctx.envGroup.add(tBand);
       // Tower crenellations
       for (let tc = 0; tc < 6; tc++) {
         const tcAngle = tc * (Math.PI / 3);
         const tCren = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.5), crenMat);
         tCren.position.set(tx + Math.cos(tcAngle) * 2, wallH + 4.3, tz + Math.sin(tcAngle) * 2);
         tCren.rotation.y = tcAngle;
-        ctx.envGroup.add(tCren);
+        mctx.envGroup.add(tCren);
       }
     }
 
@@ -33836,27 +33838,27 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       const gTower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, wallH + 3, 16), towerMat);
       gTower.position.set(gx, (wallH + 3) / 2, hd - 1);
       gTower.castShadow = true;
-      ctx.envGroup.add(gTower);
+      mctx.envGroup.add(gTower);
       const gCone = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 16), new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.7 }));
       gCone.position.set(gx, wallH + 4.5, hd - 1);
-      ctx.envGroup.add(gCone);
+      mctx.envGroup.add(gCone);
       // Banner on gate tower
       const gBanner = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), new THREE.MeshStandardMaterial({ color: 0xaa2222, roughness: 0.7, side: THREE.DoubleSide }));
       gBanner.position.set(gx, wallH + 2, hd - 1 + 1.72);
-      ctx.envGroup.add(gBanner);
+      mctx.envGroup.add(gBanner);
     }
     // Portcullis bars
     const portMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.5 });
     for (let pb = 0; pb < 7; pb++) {
       const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, wallH - 1, 10), portMat);
       bar.position.set(-3 + pb, (wallH - 1) / 2, hd - 1);
-      ctx.envGroup.add(bar);
+      mctx.envGroup.add(bar);
     }
     for (let hb = 0; hb < 4; hb++) {
       const hBar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 6, 10), portMat);
       hBar.rotation.z = Math.PI / 2;
       hBar.position.set(0, 0.5 + hb * 1.0, hd - 1);
-      ctx.envGroup.add(hBar);
+      mctx.envGroup.add(hBar);
     }
 
     // ── Street Lamps with ornate detail ──
@@ -33910,10 +33912,10 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       lampGroup.add(glow);
       const light = new THREE.PointLight(0xffcc66, 0.8, 16);
       light.position.set(lx + 0.7, 3.28, lz);
-      ctx.scene.add(light);
-      ctx.torchLights.push(light);
+      mctx.scene.add(light);
+      mctx.torchLights.push(light);
       lampGroup.position.set(lx, 0, lz);
-      ctx.envGroup.add(lampGroup);
+      mctx.envGroup.add(lampGroup);
     }
 
     // ── Props (barrels, crates, hay, sacks, carts) ──
@@ -33925,41 +33927,41 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
         const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.65, 18), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
         barrel.position.set(px, 0.325, pz);
         barrel.castShadow = true;
-        ctx.envGroup.add(barrel);
+        mctx.envGroup.add(barrel);
         for (const by of [0.1, 0.33, 0.55]) {
           const band = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.01, 6, 18), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.6 }));
           band.rotation.x = Math.PI / 2;
           band.position.set(px, by, pz);
-          ctx.envGroup.add(band);
+          mctx.envGroup.add(band);
         }
         const lid = new THREE.Mesh(new THREE.CircleGeometry(0.26, 14), new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9, side: THREE.DoubleSide }));
         lid.rotation.x = -Math.PI / 2;
         lid.position.set(px, 0.66, pz);
-        ctx.envGroup.add(lid);
+        mctx.envGroup.add(lid);
       } else if (r < 0.45) {
         const cs = 0.3 + Math.random() * 0.25;
         const crate = new THREE.Mesh(new THREE.BoxGeometry(cs, cs, cs), new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.85 }));
         crate.position.set(px, cs / 2, pz);
         crate.rotation.y = Math.random() * Math.PI;
         crate.castShadow = true;
-        ctx.envGroup.add(crate);
+        mctx.envGroup.add(crate);
       } else if (r < 0.6) {
         const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.45, 16), new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.95 }));
         hay.position.set(px, 0.225, pz);
         hay.castShadow = true;
-        ctx.envGroup.add(hay);
+        mctx.envGroup.add(hay);
         // Straw wisps
         for (let sw = 0; sw < 3; sw++) {
           const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.15, 4), new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.95 }));
           straw.position.set(px + (Math.random() - 0.5) * 0.3, 0.1, pz + (Math.random() - 0.5) * 0.3);
           straw.rotation.z = Math.random() * Math.PI;
-          ctx.envGroup.add(straw);
+          mctx.envGroup.add(straw);
         }
       } else if (r < 0.75) {
         const sack = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 }));
         sack.scale.set(1.0, 0.6, 0.8);
         sack.position.set(px, 0.12, pz);
-        ctx.envGroup.add(sack);
+        mctx.envGroup.add(sack);
       } else {
         // Cart
         const cartGroup = new THREE.Group();
@@ -33988,7 +33990,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
         cartGroup.add(handle2);
         cartGroup.rotation.y = Math.random() * Math.PI;
         cartGroup.position.set(px, 0, pz);
-        ctx.envGroup.add(cartGroup);
+        mctx.envGroup.add(cartGroup);
       }
     }
 
@@ -34017,7 +34019,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       hSymbol.position.set(0.05, 3.05, 0.005);
       bannerGroup.add(hSymbol);
       bannerGroup.position.set(bnx, 0, bnz);
-      ctx.envGroup.add(bannerGroup);
+      mctx.envGroup.add(bannerGroup);
     }
 
     // ── Trees with bark rings, branches, leaf clusters ──
@@ -34073,7 +34075,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       shadow.position.y = 0.02;
       treeGroup.add(shadow);
       treeGroup.position.set(ttx, 0, ttz);
-      ctx.envGroup.add(treeGroup);
+      mctx.envGroup.add(treeGroup);
     }
 
     // ── Well with full detail ──
@@ -34127,7 +34129,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     wellMoss.position.set(0.6, 0.2, 0.4);
     wellGroup.add(wellMoss);
     wellGroup.position.set(-14, 0, 0);
-    ctx.envGroup.add(wellGroup);
+    mctx.envGroup.add(wellGroup);
 
     // ── Notice Board ──
     const nbGroup = new THREE.Group();
@@ -34150,7 +34152,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       nbGroup.add(paper);
     }
     nbGroup.position.set(14, 0, 0);
-    ctx.envGroup.add(nbGroup);
+    mctx.envGroup.add(nbGroup);
 
     // ── Stocks (city punishment device) ──
     const stockGroup = new THREE.Group();
@@ -34170,7 +34172,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       stockGroup.add(hole);
     }
     stockGroup.position.set(5, 0, -28);
-    ctx.envGroup.add(stockGroup);
+    mctx.envGroup.add(stockGroup);
 
     // ── Clock Tower (major landmark) ──
     const clockTower = new THREE.Group();
@@ -34268,7 +34270,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     bellClapper.position.y = 11.1;
     clockTower.add(bellClapper);
     clockTower.position.set(20, 0, -20);
-    ctx.envGroup.add(clockTower);
+    mctx.envGroup.add(clockTower);
 
     // ── Blacksmith Area ──
     const bsGroup = new THREE.Group();
@@ -34305,8 +34307,8 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     bsGroup.add(ember);
     const forgeLight = new THREE.PointLight(0xff6622, 1.0, 10);
     forgeLight.position.set(-20 - 1, 0.7, 20);
-    ctx.scene.add(forgeLight);
-    ctx.torchLights.push(forgeLight);
+    mctx.scene.add(forgeLight);
+    mctx.torchLights.push(forgeLight);
     // Weapon rack
     const wrBack = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 0.08), bsWoodMat);
     wrBack.position.set(1.5, 1.2, -1.2);
@@ -34324,7 +34326,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     troughWater.position.set(1.2, 0.28, 0.8);
     bsGroup.add(troughWater);
     bsGroup.position.set(-20, 0, 20);
-    ctx.envGroup.add(bsGroup);
+    mctx.envGroup.add(bsGroup);
 
     // ── Statue in market square ──
     const statueGrp = new THREE.Group();
@@ -34369,7 +34371,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
     plaque.position.set(0, 0.9, 0.62);
     statueGrp.add(plaque);
     statueGrp.position.set(8, 0, 0);
-    ctx.envGroup.add(statueGrp);
+    mctx.envGroup.add(statueGrp);
 
     // ── Hanging Lanterns across alleyways ──
     for (let hli = 0; hli < 15; hli++) {
@@ -34399,11 +34401,11 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       const hlx = (Math.random() - 0.5) * w * 0.5;
       const hlz = (Math.random() - 0.5) * d * 0.5;
       hlGrp.position.set(hlx, 3.5 + Math.random() * 1.5, hlz);
-      ctx.envGroup.add(hlGrp);
+      mctx.envGroup.add(hlGrp);
       const hlLight = new THREE.PointLight(0xffcc66, 0.4, 8);
       hlLight.position.set(hlx, 3.3 + Math.random() * 1.5, hlz);
-      ctx.scene.add(hlLight);
-      ctx.torchLights.push(hlLight);
+      mctx.scene.add(hlLight);
+      mctx.torchLights.push(hlLight);
     }
 
     // ── Street Benches ──
@@ -34442,7 +34444,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       }
       bench.position.set((Math.random() - 0.5) * w * 0.5, 0, (Math.random() - 0.5) * d * 0.5);
       bench.rotation.y = Math.random() * Math.PI;
-      ctx.envGroup.add(bench);
+      mctx.envGroup.add(bench);
     }
 
     // ── Potted Plants ──
@@ -34475,7 +34477,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
         potGrp.add(pLeaf);
       }
       potGrp.position.set((Math.random() - 0.5) * w * 0.6, 0, (Math.random() - 0.5) * d * 0.6);
-      ctx.envGroup.add(potGrp);
+      mctx.envGroup.add(potGrp);
     }
 
     // ── Detailed Heraldic Banners on tower walls ──
@@ -34518,7 +34520,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       tBanner.add(embH2);
       tBanner.position.set(txx, wallH + 1, tzz);
       tBanner.rotation.y = Math.atan2(txx, tzz);
-      ctx.envGroup.add(tBanner);
+      mctx.envGroup.add(tBanner);
     }
 
     // ── Chains on portcullis mechanism ──
@@ -34531,7 +34533,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
         gChain.add(gLink);
       }
       gChain.position.set(gcx, wallH - 1, hd - 1);
-      ctx.envGroup.add(gChain);
+      mctx.envGroup.add(gChain);
     }
 
     // ── Drain Grates in streets ──
@@ -34553,7 +34555,7 @@ export function buildCity(ctx: MapBuildContext, w: number, d: number): void {
       dHole.position.y = 0.04;
       drainGrp.add(dHole);
       drainGrp.position.set(dgx, 0, dgz);
-      ctx.envGroup.add(drainGrp);
+      mctx.envGroup.add(drainGrp);
     }
 }
 
