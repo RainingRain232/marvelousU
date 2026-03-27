@@ -181,6 +181,9 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "arcane_dueling", x: 500, y: 50, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.MERLIN_DUEL, type: "tower" },
   { id: "runeblade_forge", x: 150, y: 700, w: 100, h: 80, label: "The Runeblade Forge", mode: GameMode.RUNEBLADE, type: "forge" },
   { id: "sword_arena", x: 1050, y: 150, w: 110, h: 90, label: "Sword of Avalon Arena", mode: GameMode.SWORD_OF_AVALON, type: "colosseum" },
+  { id: "ball_pitch", x: 1050, y: 650, w: 110, h: 90, label: "The Ball Pitch", mode: GameMode.KNIGHT_BALL, type: "training" },
+  { id: "epsilon_void", x: 100, y: 600, w: 100, h: 80, label: "The Epsilon Void", mode: GameMode.EPSILON, type: "tower" },
+  { id: "grand_track", x: 900, y: 700, w: 110, h: 80, label: "The Grand Track", mode: GameMode.GRAND, type: "stable" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -898,6 +901,9 @@ export class CamelotHubScreen {
       [GameMode.GRAIL_QUEST]: "Grail Quest",
       [GameMode.MERLIN_DUEL]: "Merlin's Duel",
       [GameMode.RUNEBLADE]: "Runeblade",
+      [GameMode.KNIGHT_BALL]: "Knight Ball",
+      [GameMode.EPSILON]: "Epsilon",
+      [GameMode.GRAND]: "Grand",
     };
     return labels[mode] || mode;
   }

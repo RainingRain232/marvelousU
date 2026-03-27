@@ -604,6 +604,9 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.CHARIOT, label: "CHARIOT", desc: "3D chariot racing — 5 tracks, power-ups, drifting & tournament", skipSetup: true, tag: "3D" },
   { mode: GameMode.BEARING, label: "BEARING", desc: "3D compass navigation — find sacred waypoints before sunset", skipSetup: true, tag: "3D" },
   { mode: GameMode.MATRIX, label: "MATRIX", desc: "3D bullet-time arena — dodge, deflect & chain combos in slow-motion", skipSetup: true, tag: "3D" },
+  { mode: GameMode.KNIGHT_BALL, label: "KNIGHT BALL", desc: "3D medieval arena sport — 2v2 armored knights battle to score goals with kicks, tackles & shield bashes in a torch-lit stadium", skipSetup: true, tag: "3D" },
+  { mode: GameMode.EPSILON, label: "EPSILON", desc: "3D arcane arena survival — cast elemental spells from a floating platform to destroy waves of ethereal geometric entities", skipSetup: true, tag: "3D" },
+  { mode: GameMode.GRAND, label: "GRAND", desc: "3D medieval chariot grand prix — race armored war chariots around a floating sky track, collect power-ups, and battle for the Grail Cup", skipSetup: true, tag: "3D" },
 ];
 
 // ---------------------------------------------------------------------------
