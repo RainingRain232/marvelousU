@@ -163,6 +163,16 @@ export const POTION_DATABASE: DiabloPotion[] = [
   { id: 'pot_spd', name: 'Elixir of Speed', icon: '\u{1F4A8}', type: PotionType.SPEED, value: 30, duration: 20, cooldown: 5, cost: 130 },
 ];
 
+// Potions that enemies can drop (health & mana only, minor/medium/high tiers)
+export const POTION_DROP_POOL: DiabloPotion[] = [
+  { id: 'drop_hp_minor', name: 'Minor HP Potion', icon: '\u{1F9EA}', type: PotionType.HEALTH, value: 50, cooldown: 5, cost: 0 },
+  { id: 'drop_hp_medium', name: 'Medium HP Potion', icon: '\u{1F9EA}', type: PotionType.HEALTH, value: 100, cooldown: 5, cost: 0 },
+  { id: 'drop_hp_high', name: 'High HP Potion', icon: '\u{1F9EA}', type: PotionType.HEALTH, value: 200, cooldown: 5, cost: 0 },
+  { id: 'drop_mp_minor', name: 'Minor Mana Potion', icon: '\u{1FAE7}', type: PotionType.MANA, value: 50, cooldown: 5, cost: 0 },
+  { id: 'drop_mp_medium', name: 'Medium Mana Potion', icon: '\u{1FAE7}', type: PotionType.MANA, value: 100, cooldown: 5, cost: 0 },
+  { id: 'drop_mp_high', name: 'High Mana Potion', icon: '\u{1FAE7}', type: PotionType.MANA, value: 200, cooldown: 5, cost: 0 },
+];
+
 // ---------------------------------------------------------------------------
 //  QUEST DATABASE
 // ---------------------------------------------------------------------------

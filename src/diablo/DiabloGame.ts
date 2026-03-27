@@ -45,7 +45,7 @@ import {
   DIFFICULTY_CONFIGS,
   BOSS_PHASE_CONFIGS,
   TALENT_TREES, TALENT_BRANCH_NAMES,
-  POTION_DATABASE, ENEMY_DAMAGE_TYPES,
+  POTION_DATABASE, POTION_DROP_POOL, ENEMY_DAMAGE_TYPES,
   QUEST_DATABASE,
   MAP_COMPLETION_REWARDS,
   CRAFTING_RECIPES,
@@ -3119,9 +3119,9 @@ export class DiabloGame {
       }
     }
 
-    // 5% chance to drop a potion
-    if (Math.random() < 0.05) {
-      const pot = POTION_DATABASE[Math.floor(Math.random() * POTION_DATABASE.length)];
+    // 30% chance to drop a health or mana potion
+    if (Math.random() < 0.30) {
+      const pot = POTION_DROP_POOL[Math.floor(Math.random() * POTION_DROP_POOL.length)];
       const droppedPotion: DiabloPotion = { ...pot, id: this._genId() };
       p.potions.push(droppedPotion);
       this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `+${pot.name}`, "#44ff44");
