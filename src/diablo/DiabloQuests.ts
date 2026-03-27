@@ -292,7 +292,7 @@ export function updateQuestTracker(
   }
 
   // Reopen hint
-  html += `<div style="color:#555;font-size:9px;margin-top:8px;text-align:center;border-top:1px solid #3a2a1a;padding-top:4px;">Esc \u2192 Daily Challenges to reopen</div>`;
+  html += `<div style="color:#555;font-size:9px;margin-top:8px;text-align:center;border-top:1px solid #3a2a1a;padding-top:4px;">Press O to close/reopen</div>`;
 
   // Update the content container (not the tracker itself, to preserve close button)
   const contentEl = trackerEl.querySelector("#quest-tracker-content") as HTMLDivElement | null;

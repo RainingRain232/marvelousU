@@ -1850,20 +1850,28 @@ export class DiabloRenderer {
     bandR.position.set(0.505, 0.3, 0);
     group.add(bandR);
 
-    // Half-cylinder lid (arched top)
+    // Half-cylinder lid (arched top) with flat underside
+    const lidGroup = new THREE.Group();
+    lidGroup.name = 'chest-lid';
     const lidGeo = new THREE.CylinderGeometry(0.38, 0.38, 1.02, 44, 2, false, 0, Math.PI);
-    const lid = new THREE.Mesh(lidGeo, woodMat);
-    lid.name = 'chest-lid';
-    lid.rotation.z = Math.PI / 2;
-    lid.position.y = 0.5;
+    const lidMesh = new THREE.Mesh(lidGeo, woodMat);
+    lidMesh.rotation.z = Math.PI / 2;
+    lidMesh.castShadow = true;
+    lidGroup.add(lidMesh);
+    // Flat plane to close the open face of the half-cylinder
+    const lidFlatGeo = new THREE.PlaneGeometry(1.02, 0.38 * 2);
+    const lidFlat = new THREE.Mesh(lidFlatGeo, woodMat);
+    lidFlat.rotation.x = -Math.PI / 2;
+    lidFlat.position.y = 0;
+    lidGroup.add(lidFlat);
+    lidGroup.position.y = 0.5;
 
     if (opened) {
-      lid.rotation.x = -Math.PI * 0.6;
-      lid.position.z = -0.28;
-      lid.position.y = 0.7;
+      lidGroup.rotation.x = -Math.PI * 0.6;
+      lidGroup.position.z = -0.28;
+      lidGroup.position.y = 0.7;
     }
-    lid.castShadow = true;
-    group.add(lid);
+    group.add(lidGroup);
 
     // Lid metal band
     const lidBand = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.04, 0.015), metalMat);

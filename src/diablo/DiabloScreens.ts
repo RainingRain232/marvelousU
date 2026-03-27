@@ -522,11 +522,6 @@ export function showClassSelect(ctx: ScreenContext): void {
           background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
           font-family:'Georgia',serif;font-weight:bold;
         ">\u2600\uFE0F Clear</button>
-        <button class="weather-btn" data-weather="FOGGY" style="
-          cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
-          background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
-          font-family:'Georgia',serif;font-weight:bold;
-        ">\uD83C\uDF2B\uFE0F Foggy</button>
         <button class="weather-btn" data-weather="STORMY" style="
           cursor:pointer;padding:8px 14px;font-size:13px;border-radius:6px;transition:0.2s;
           background:rgba(30,20,10,0.7);border:2px solid #3a3a2a;color:#666;
@@ -619,7 +614,7 @@ export function showClassSelect(ctx: ScreenContext): void {
   // Wire up weather buttons
   const weatherBtns = ctx.menuEl.querySelectorAll(".weather-btn") as NodeListOf<HTMLButtonElement>;
   const weatherColors: Record<string, string> = {
-    RANDOM: "#c8a84e", NORMAL: "#9999aa", CLEAR: "#ffcc44", FOGGY: "#8899bb", STORMY: "#6688cc",
+    RANDOM: "#c8a84e", NORMAL: "#9999aa", CLEAR: "#ffcc44", STORMY: "#6688cc",
   };
   weatherBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -952,20 +947,34 @@ export function showMapSelect(ctx: ScreenContext): void {
     // Check if any difficulty variant of this map has been completed
     const isCompleted = Object.keys(ctx.state.completedMaps).some(k => k.startsWith(m.id) && ctx.state.completedMaps[k]);
     const completionBadge = isCompleted ? `<span style="color:#44ff44;margin-left:6px;font-size:16px;">\u2713</span>` : '';
+    const cardBorder = isCompleted ? '#44ff44' : '#5a4a2a';
+    const cardBorderTop = isCompleted ? '#66ff66' : '#8a7a4a';
+    const cardBorderBot = isCompleted ? '#228822' : '#2a1a0a';
     cardsHtml += `
       <div class="diablo-map-card" data-map="${m.id}" style="
-        width:220px;background:rgba(20,15,10,0.95);border:2px solid ${isCompleted ? '#44ff44' : '#5a4a2a'};
-        border-radius:12px;padding:30px;cursor:pointer;text-align:center;
+        width:220px;background:rgba(20,15,10,0.95);
+        border:3px solid ${cardBorder};border-top-color:${cardBorderTop};border-left-color:${isCompleted ? '#55dd55' : '#7a6a3a'};
+        border-right-color:${isCompleted ? '#339933' : '#3a2a1a'};border-bottom-color:${cardBorderBot};
+        border-radius:12px;padding:28px 24px;cursor:pointer;text-align:center;
         transition:all 0.3s ease;
         backdrop-filter:blur(4px);
         transform:translateY(0) scale(1);
         animation:cs-card-enter 0.4s ease-out backwards;
         animation-delay:${mapCardIndex * 0.1}s;
+        background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(200,168,78,0.015) 8px,rgba(200,168,78,0.015) 16px);
+        box-shadow:inset 0 0 30px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4);
+        position:relative;
       ">
-        <div style="font-size:64px;margin-bottom:12px;">${m.icon}</div>
-        <div style="font-size:22px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">${m.name}${completionBadge}</div>
-        <p style="color:#aaa;font-size:14px;line-height:1.5;margin-bottom:16px;">${m.desc}</p>
-        <div style="font-size:20px;color:${m.isSafe ? '#44ff44' : '#ff8'};">Difficulty: ${m.difficulty}</div>
+        <div style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#c8a84e,#5a4a2a);opacity:0.6;"></div>
+        <div style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#c8a84e,#5a4a2a);opacity:0.6;"></div>
+        <div style="position:absolute;bottom:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#c8a84e,#5a4a2a);opacity:0.6;"></div>
+        <div style="position:absolute;bottom:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#c8a84e,#5a4a2a);opacity:0.6;"></div>
+        <div style="position:absolute;inset:4px;border:1px solid rgba(200,168,78,0.12);border-radius:8px;pointer-events:none;"></div>
+        <div style="font-size:64px;margin-bottom:12px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">${m.icon}</div>
+        <div style="font-size:20px;color:#c8a84e;font-weight:bold;letter-spacing:2px;margin-bottom:8px;font-family:'Georgia',serif;text-shadow:0 1px 3px rgba(0,0,0,0.5);">${m.name}${completionBadge}</div>
+        <div style="width:60%;height:1px;background:linear-gradient(to right,transparent,#5a4a2a,transparent);margin:0 auto 10px;"></div>
+        <p style="color:#998877;font-size:13px;line-height:1.5;margin-bottom:14px;font-family:'Georgia',serif;">${m.desc}</p>
+        <div style="font-size:18px;color:${m.isSafe ? '#44ff44' : '#ff8'};font-family:'Georgia',serif;text-shadow:0 0 6px ${m.isSafe ? 'rgba(68,255,68,0.3)' : 'rgba(255,255,136,0.3)'};">${m.difficulty}</div>
       </div>`;
     mapCardIndex++;
   }
@@ -3636,48 +3645,101 @@ export function showStash(ctx: ScreenContext): void {
 
     ctx.menuEl.innerHTML = `
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.90);display:flex;flex-direction:column;
+        width:100%;height:100%;
+        background:rgba(0,0,0,0.90);
+        background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
+        display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        position:relative;
       ">
-        <h2 style="color:#ffd700;font-size:32px;letter-spacing:3px;margin-bottom:16px;font-family:'Georgia',serif;
-          text-shadow:0 0 15px rgba(255,215,0,0.4);">
-          SHARED STASH
-        </h2>
-        <div id="stash-sort-bar" style="display:flex;gap:8px;margin-bottom:10px;justify-content:center;">
-          <button class="stash-sort-btn" data-sort="rarity" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Rarity</button>
-          <button class="stash-sort-btn" data-sort="type" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Type</button>
-          <button class="stash-sort-btn" data-sort="level" style="padding:4px 12px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;">Sort: Level</button>
+        <!-- Ornate page border -->
+        <div style="position:absolute;inset:8px;border:2px solid rgba(200,168,78,0.25);border-radius:4px;pointer-events:none;
+          box-shadow:0 0 30px rgba(200,168,78,0.1), inset 0 0 50px rgba(0,0,0,0.3);"></div>
+        <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
+        <!-- Corner ornaments -->
+        <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+        <div style="position:absolute;top:14px;right:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+
+        <!-- Title -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+          <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <span style="color:#5a4a2a;font-size:14px;">&#9884;</span>
+          <h2 style="color:#c8a84e;font-size:32px;letter-spacing:5px;margin:0;font-family:'Georgia',serif;
+            text-shadow:0 0 16px rgba(200,168,78,0.35), 0 2px 4px rgba(0,0,0,0.6);">
+            SHARED STASH
+          </h2>
+          <span style="color:#5a4a2a;font-size:14px;">&#9884;</span>
+          <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
         </div>
+        <div style="color:#887766;font-size:12px;letter-spacing:3px;margin-bottom:14px;font-family:'Georgia',serif;">
+          Click items to transfer between panels
+        </div>
+
+        <!-- Sort buttons -->
+        <div id="stash-sort-bar" style="display:flex;gap:8px;margin-bottom:14px;justify-content:center;">
+          <button class="stash-sort-btn" data-sort="rarity" style="padding:6px 16px;background:rgba(30,25,15,0.9);color:#c8a84e;border:1px solid #5a4a2a;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;transition:all 0.2s;">Sort: Rarity</button>
+          <button class="stash-sort-btn" data-sort="type" style="padding:6px 16px;background:rgba(30,25,15,0.9);color:#c8a84e;border:1px solid #5a4a2a;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;transition:all 0.2s;">Sort: Type</button>
+          <button class="stash-sort-btn" data-sort="level" style="padding:6px 16px;background:rgba(30,25,15,0.9);color:#c8a84e;border:1px solid #5a4a2a;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:12px;transition:all 0.2s;">Sort: Level</button>
+        </div>
+
         <div style="display:flex;gap:30px;align-items:flex-start;">
           <!-- Inventory Panel -->
-          <div>
-            <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;text-align:center;font-weight:bold;">INVENTORY</div>
+          <div style="
+            background:linear-gradient(180deg,rgba(30,24,14,0.95) 0%,rgba(20,16,8,0.98) 100%);
+            border:2px solid #5a4a2a;border-radius:8px;padding:16px;
+            box-shadow:inset 0 0 40px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4);
+            position:relative;
+          ">
+            <div style="position:absolute;inset:4px;border:1px solid rgba(200,168,78,0.1);border-radius:6px;pointer-events:none;"></div>
+            <div style="color:#c8a84e;font-size:14px;margin-bottom:10px;text-align:center;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">INVENTORY</div>
             <div style="display:grid;grid-template-columns:repeat(8,55px);grid-template-rows:repeat(5,55px);gap:3px;">
               ${invHtml}
             </div>
           </div>
+          <!-- Arrow indicator -->
+          <div style="align-self:center;font-size:24px;color:#5a4a2a;">&#8596;</div>
           <!-- Stash Panel -->
-          <div>
-            <div style="color:#c8a84e;font-size:14px;margin-bottom:8px;text-align:center;font-weight:bold;">STASH</div>
+          <div style="
+            background:linear-gradient(180deg,rgba(30,24,14,0.95) 0%,rgba(20,16,8,0.98) 100%);
+            border:2px solid #5a4a2a;border-radius:8px;padding:16px;
+            box-shadow:inset 0 0 40px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4);
+            position:relative;
+          ">
+            <div style="position:absolute;inset:4px;border:1px solid rgba(200,168,78,0.1);border-radius:6px;pointer-events:none;"></div>
+            <div style="color:#c8a84e;font-size:14px;margin-bottom:10px;text-align:center;font-weight:bold;letter-spacing:2px;font-family:'Georgia',serif;">STASH</div>
             <div style="display:grid;grid-template-columns:repeat(10,55px);gap:3px;max-height:700px;overflow-y:auto;">
               ${stashHtml}
             </div>
           </div>
         </div>
+
+        <!-- Decorative divider -->
+        <div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px;">
+          <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+          <span style="color:#5a4a2a;font-size:10px;">&#9830;</span>
+          <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+        </div>
+
         <!-- Bottom bar -->
-        <div style="margin-top:16px;display:flex;gap:30px;align-items:center;">
-          <div style="font-size:16px;color:#ffd700;">\uD83E\uDE99 ${p.gold}</div>
+        <div style="display:flex;gap:30px;align-items:center;">
+          <div style="font-size:16px;color:#ffd700;font-family:'Georgia',serif;">\uD83E\uDE99 ${p.gold} Gold</div>
           <button id="stash-back-btn" style="
             padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
-            background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+            background:linear-gradient(180deg,rgba(40,30,15,0.9),rgba(25,18,8,0.95));
+            border:2px solid #5a4a2a;border-top-color:#8a7a4a;border-bottom-color:#2a1a0a;
+            border-radius:8px;color:#c8a84e;
             cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            box-shadow:0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(200,168,78,0.15);
           ">BACK</button>
         </div>
-        <div id="stash-status" style="margin-top:10px;color:#ff4444;font-size:14px;min-height:20px;"></div>
+        <div id="stash-status" style="margin-top:10px;color:#ff4444;font-size:14px;min-height:20px;font-family:'Georgia',serif;"></div>
         <!-- Tooltip container -->
         <div id="inv-tooltip" style="
           display:none;position:fixed;z-index:100;background:rgba(10,5,2,0.96);border:2px solid #5a4a2a;
           border-radius:8px;padding:14px;max-width:280px;pointer-events:none;color:#ccc;font-size:13px;
+          box-shadow:0 4px 12px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.3);
         "></div>
       </div>`;
 
@@ -4594,6 +4656,92 @@ export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapI
     const allRumors = [...mapRumors, ...PORTAL_NPC_GENERIC_RUMORS];
     let rumorIdx = 0;
 
+    // Tutorial / guide topics
+    const guideBtnStyle = `
+      background:rgba(30,25,15,0.9);border:1px solid #4a3a20;color:#c8a84e;
+      padding:5px 12px;border-radius:4px;cursor:pointer;font-size:11px;
+      font-family:inherit;transition:border-color 0.2s,background 0.2s;
+      white-space:nowrap;
+    `;
+    const guideTopics: { label: string; icon: string; text: string }[] = [
+      { label: "Introduction", icon: "\uD83D\uDCDC", text:
+        "Welcome, adventurer. Mordred has betrayed Camelot and shattered Excalibur into fragments scattered across the corrupted lands. " +
+        "You must explore dangerous maps, slay enemies, collect loot, and grow stronger. " +
+        "Visit Camelot to trade with merchants, manage your gear, and prepare for the journey ahead. " +
+        "Recover all eight fragments of Excalibur, reforge the blade, and end Mordred's reign." },
+      { label: "Controls", icon: "\u2328\uFE0F", text:
+        "<b>Movement:</b> W/A/S/D or Arrow Keys. Right-click to move to a location.<br>" +
+        "<b>Attack:</b> Left-click on enemies to target and attack.<br>" +
+        "<b>Skills:</b> Press 1-6 to use your equipped skills. Shift+1-6 cycles skill runes.<br>" +
+        "<b>Potions:</b> F1-F4 use your four quick potion slots.<br>" +
+        "<b>Dodge:</b> Space to dodge roll (invincible during the roll).<br>" +
+        "<b>Interact:</b> E to talk to NPCs or use the town portal.<br>" +
+        "<b>Map:</b> M to toggle the full map. Tab to cycle loot filters.<br>" +
+        "<b>Panels:</b> I (inventory), C (character), K (skill swap), B (crafting), O (quests).<br>" +
+        "<b>Other:</b> T (lantern), V (first-person toggle), Y (summon pet), H (help), Esc (pause)." },
+      { label: "Combat & Dodge", icon: "\u2694\uFE0F", text:
+        "Click enemies to target them. Your character auto-attacks when in range. Use skills 1-6 for powerful abilities \u2014 each has a cooldown.<br><br>" +
+        "<b>Dodge Roll (Space):</b> You are completely invulnerable for 0.3 seconds during the roll. " +
+        "It moves you quickly in your movement direction and has a 1.5 second cooldown. " +
+        "Use it to escape deadly boss attacks or reposition in a fight. Timing is everything!<br><br>" +
+        "<b>Tip:</b> Watch for boss wind-up animations and dodge just before the hit lands." },
+      { label: "Skills & Runes", icon: "\uD83D\uDD25", text:
+        "You have 6 skill slots (keys 1-6). Each class starts with 6 base skills and can unlock 6 more as you level up.<br><br>" +
+        "<b>Skill Runes:</b> Press Shift+1-6 to cycle through rune variants for each skill. " +
+        "Runes modify how a skill behaves \u2014 adding effects like extra damage, area of effect, or utility.<br><br>" +
+        "<b>Skill Swap:</b> Press K to open the skill swap menu and rearrange which skills are in which slot.<br><br>" +
+        "<b>Mana:</b> Skills cost mana. Your mana regenerates over time. Blue potions restore mana instantly." },
+      { label: "Pets & Familiars", icon: "\uD83D\uDC3E", text:
+        "You start with a Wolf Pup familiar. Press <b>Y</b> to cycle through and summon your pets. Only one can be active at a time.<br><br>" +
+        "<b>Pet Types:</b><br>" +
+        "\u2022 <b>Combat</b> \u2014 Wolf Pup, Fire Sprite, Storm Falcon, etc. They attack enemies alongside you.<br>" +
+        "\u2022 <b>Loot</b> \u2014 Treasure Imp, Gold Scarab, Magpie. They auto-collect loot and increase drops.<br>" +
+        "\u2022 <b>Utility</b> \u2014 Healing Wisp, Shield Golem, Mana Sprite. They provide buffs and healing.<br><br>" +
+        "New pets drop from specific maps (check Shift+P for the pet panel). Pets gain XP and level up alongside you." },
+      { label: "Equipment & Loot", icon: "\uD83D\uDEE1\uFE0F", text:
+        "Press <b>I</b> to open your inventory. You have 9 equipment slots: Helmet, Body, Gauntlets, Legs, Feet, Weapon, two Accessories, and a Lantern.<br><br>" +
+        "<b>Rarity:</b> Common (grey) \u2192 Uncommon (green) \u2192 Rare (blue) \u2192 Epic (purple) \u2192 Legendary (orange) \u2192 Mythic (red) \u2192 Divine (gold).<br><br>" +
+        "<b>Loot Filter:</b> Press Tab to cycle through filters so you only see the rarities you care about.<br><br>" +
+        "<b>Salvage:</b> Shift+C quick-salvages common/uncommon items for crafting materials. Sell unwanted gear to vendors for gold." },
+      { label: "Potions & Healing", icon: "\uD83E\uDDEA", text:
+        "You have 4 quick potion slots (F1-F4). Assign potions from your inventory to these slots.<br><br>" +
+        "<b>Health potions</b> restore HP. <b>Mana potions</b> restore mana. There are also <b>Rejuvenation</b> potions (both), " +
+        "and buff potions like <b>Elixir of Strength</b> (+20% damage) and <b>Elixir of Speed</b> (+30% movement).<br><br>" +
+        "Potions have a 5-second cooldown between uses. Enemies have a 30% chance to drop potions when slain. " +
+        "You can also buy potions from me or from the Alchemist in Camelot." },
+      { label: "Excalibur Quest", icon: "\u2694\uFE0F", text:
+        "The main quest: recover 8 fragments of Excalibur from bosses across the land.<br><br>" +
+        "\u2022 <b>The Pommel</b> \u2014 Sunscorch Desert (Sandsworn Revenant)<br>" +
+        "\u2022 <b>The Crossguard</b> \u2014 Emerald Grasslands (Warchief Garon)<br>" +
+        "\u2022 <b>The Lower Blade</b> \u2014 Darkwood Forest (Blighted Heartwood)<br>" +
+        "\u2022 <b>The Upper Blade</b> \u2014 Aelindor (Archon Sylvaris)<br>" +
+        "\u2022 <b>The Blade Core</b> \u2014 Necropolis (Death Knight Lancelot)<br>" +
+        "\u2022 <b>The Enchantment Rune</b> \u2014 Volcanic Wastes (Demon Balor)<br>" +
+        "\u2022 <b>The Scabbard</b> \u2014 Abyssal Rift (Morgan le Fay)<br>" +
+        "\u2022 <b>The Soul of the Blade</b> \u2014 Dragon's Sanctum (Aurelion)<br><br>" +
+        "Once all fragments are collected, return to Camelot to reforge Excalibur and face Mordred." },
+      { label: "Crafting", icon: "\uD83D\uDD28", text:
+        "Visit vendors in Camelot to craft gear. The <b>Blacksmith</b> upgrades rarity (combine 3 items \u2192 1 higher rarity) and forges weapons. " +
+        "The <b>Jeweler</b> rerolls item stats.<br><br>" +
+        "Press <b>B</b> anywhere to open advanced crafting if you have materials. " +
+        "Salvage unwanted items (Shift+C at vendors) to get crafting materials like Iron Ore, Steel Ingots, Mithril, and Dragon Scales.<br><br>" +
+        "Higher rarity items yield more materials when salvaged." },
+      { label: "Map Modifiers", icon: "\uD83C\uDF1F", text:
+        "When selecting a map, you can apply optional <b>modifiers</b> that increase difficulty but boost rewards.<br><br>" +
+        "\u2022 <b>Swift</b> \u2014 Enemies 40% faster (+15% drops/XP)<br>" +
+        "\u2022 <b>Thorns</b> \u2014 Enemies reflect 15% damage (+20% drops/XP)<br>" +
+        "\u2022 <b>Champions</b> \u2014 50% more elites (+25% drops/XP)<br>" +
+        "\u2022 <b>Fortified</b> \u2014 Enemies have 2x HP (+30% drops/XP)<br>" +
+        "\u2022 <b>Vampiric</b> \u2014 Enemies heal from damage dealt (+20% drops/XP)<br>" +
+        "...and more. Stack multiple modifiers for even bigger bonuses!" },
+      { label: "Greater Rifts", icon: "\uD83C\uDF00", text:
+        "Greater Rifts are timed endgame dungeons with escalating difficulty. You need a <b>Keystone</b> to enter (15% drop chance from map bosses).<br><br>" +
+        "Each rift level increases enemy HP (+15%) and damage (+10%), but also XP (+12%) and loot (+8%). " +
+        "You have a time limit to kill enough enemies and defeat the Rift Guardian boss.<br><br>" +
+        "Rift levels go up to 150. Your best completions appear on the leaderboard (press L)." },
+    ];
+    let activeGuide: number = -1;
+
     const renderShop = () => {
       // Wares grid
       let waresHtml = "";
@@ -4662,6 +4810,20 @@ export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapI
               </div>
               <div style="font-size:13px;color:#887766;margin-top:4px;font-style:italic;">
                 "Humble peddler and keeper of old tales"
+              </div>
+            </div>
+
+            <!-- Guide / Tutorial section -->
+            <div style="
+              background:rgba(20,15,8,0.9);border:1px solid #3a3020;border-radius:8px;
+              padding:16px;margin-bottom:16px;
+            ">
+              <div style="font-size:11px;color:#665533;letter-spacing:2px;margin-bottom:10px;">GUIDE \u2014 <span style="color:#887766;font-style:italic;text-transform:none;letter-spacing:0;">Ask me about...</span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                ${guideTopics.map((t, i) => `<button class="npc-guide-btn" data-guide-idx="${i}" style="${guideBtnStyle}${activeGuide === i ? 'border-color:#c8a84e;background:rgba(60,50,25,0.95);' : ''}">${t.icon} ${t.label}</button>`).join("")}
+              </div>
+              <div id="npc-guide-text" style="font-size:13px;color:#ccbb99;line-height:1.7;${activeGuide >= 0 ? '' : 'display:none;'}padding:10px;background:rgba(10,8,4,0.6);border-radius:6px;border:1px solid #2a2418;">
+                ${activeGuide >= 0 ? guideTopics[activeGuide].text : ''}
               </div>
             </div>
 
@@ -4790,6 +4952,28 @@ export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapI
           }
           showStatus(`Purchased ${pot.name}!`, "#44ff44");
           renderShop();
+        });
+      });
+
+      // Wire up guide topic buttons
+      const guideBtns = ctx.menuEl.querySelectorAll(".npc-guide-btn") as NodeListOf<HTMLButtonElement>;
+      guideBtns.forEach((btn) => {
+        const idx = parseInt(btn.getAttribute("data-guide-idx")!, 10);
+        btn.addEventListener("click", () => {
+          activeGuide = activeGuide === idx ? -1 : idx;
+          renderShop();
+        });
+        btn.addEventListener("mouseenter", () => {
+          if (activeGuide !== idx) {
+            btn.style.borderColor = "#8a7a4a";
+            btn.style.background = "rgba(50,42,22,0.95)";
+          }
+        });
+        btn.addEventListener("mouseleave", () => {
+          if (activeGuide !== idx) {
+            btn.style.borderColor = "#4a3a20";
+            btn.style.background = "rgba(30,25,15,0.9)";
+          }
         });
       });
 
@@ -5327,39 +5511,77 @@ export function showQuestBoard(ctx: ScreenContext): void {
 
     ctx.menuEl.innerHTML = `
       <div style="
-        width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;
+        width:100%;height:100%;
+        background:rgba(0,0,0,0.90);
+        background-image:radial-gradient(ellipse at center,rgba(40,30,15,0.15) 0%,transparent 70%);
+        display:flex;flex-direction:column;
         align-items:center;justify-content:center;color:#fff;pointer-events:auto;
+        position:relative;
       ">
+        <!-- Ornate page border -->
+        <div style="position:absolute;inset:8px;border:2px solid rgba(200,168,78,0.25);border-radius:4px;pointer-events:none;
+          box-shadow:0 0 30px rgba(200,168,78,0.1), inset 0 0 50px rgba(0,0,0,0.3);"></div>
+        <div style="position:absolute;inset:12px;border:1px solid #3a2a1a;border-radius:2px;pointer-events:none;"></div>
+        <!-- Corner ornaments -->
+        <div style="position:absolute;top:14px;left:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+        <div style="position:absolute;top:14px;right:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+        <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:18px;">&#9670;</div>
+
         <div style="
-          max-width:900px;width:92%;background:rgba(15,10,5,0.95);border:2px solid #5a4a2a;
-          border-radius:12px;padding:24px 30px;max-height:88vh;overflow-y:auto;
+          max-width:900px;width:92%;
+          background:linear-gradient(180deg,rgba(30,24,14,0.95) 0%,rgba(20,16,8,0.98) 100%);
+          border:2px solid #5a4a2a;border-top-color:#8a7a4a;border-bottom-color:#2a1a0a;
+          border-radius:12px;padding:28px 34px;max-height:88vh;overflow-y:auto;
+          box-shadow:inset 0 0 50px rgba(0,0,0,0.3), 0 0 20px rgba(0,0,0,0.5);
+          position:relative;
         ">
-          <h2 style="color:#c8a84e;font-size:32px;letter-spacing:3px;margin:0 0 16px;text-align:center;font-family:'Georgia',serif;
-            text-shadow:0 0 15px rgba(200,168,78,0.4);">QUEST BOARD</h2>
-          <div style="color:#888;font-size:12px;text-align:center;margin-bottom:16px;">${completed.length} quests completed | ${active.length}/5 active</div>
+          <div style="position:absolute;inset:4px;border:1px solid rgba(200,168,78,0.1);border-radius:10px;pointer-events:none;"></div>
+          <!-- Title with ornamental flourishes -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px;">
+            <div style="width:60px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:14px;">&#9884;</span>
+            <h2 style="color:#c8a84e;font-size:32px;letter-spacing:5px;margin:0;font-family:'Georgia',serif;
+              text-shadow:0 0 16px rgba(200,168,78,0.35), 0 2px 4px rgba(0,0,0,0.6);">QUEST BOARD</h2>
+            <span style="color:#5a4a2a;font-size:14px;">&#9884;</span>
+            <div style="width:60px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <div style="color:#887766;font-size:12px;text-align:center;margin-bottom:16px;letter-spacing:2px;font-family:'Georgia',serif;">${completed.length} quests completed &#9830; ${active.length}/5 active</div>
           <div style="display:flex;gap:20px;">
             <div style="flex:1;min-width:0;">
-              <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:8px;">AVAILABLE QUESTS</div>
+              <div style="color:#c8a84e;font-size:14px;font-weight:bold;margin-bottom:10px;letter-spacing:2px;font-family:'Georgia',serif;
+                border-bottom:1px solid rgba(200,168,78,0.2);padding-bottom:6px;">AVAILABLE QUESTS</div>
               <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;">
-                ${availHtml || '<div style="color:#666;font-size:13px;">No quests available.</div>'}
+                ${availHtml || '<div style="color:#666;font-size:13px;font-style:italic;">No quests available.</div>'}
               </div>
             </div>
+            <div style="width:1px;background:linear-gradient(180deg,transparent,#5a4a2a,transparent);"></div>
             <div style="flex:1;min-width:0;">
-              <div style="color:#ffd700;font-size:14px;font-weight:bold;margin-bottom:8px;">ACTIVE QUESTS</div>
+              <div style="color:#ffd700;font-size:14px;font-weight:bold;margin-bottom:10px;letter-spacing:2px;font-family:'Georgia',serif;
+                border-bottom:1px solid rgba(255,215,0,0.2);padding-bottom:6px;">ACTIVE QUESTS</div>
               <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;">
-                ${activeHtml || '<div style="color:#666;font-size:13px;">No active quests.</div>'}
+                ${activeHtml || '<div style="color:#666;font-size:13px;font-style:italic;">No active quests.</div>'}
               </div>
             </div>
           </div>
-          <div id="quest-status" style="margin-top:10px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;"></div>
-          <div style="text-align:center;margin-top:16px;">
+          <div id="quest-status" style="margin-top:12px;text-align:center;color:#ff4444;font-size:14px;min-height:20px;font-family:'Georgia',serif;"></div>
+          <!-- Decorative divider -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 0 10px;">
+            <div style="width:80px;height:1px;background:linear-gradient(to right,transparent,#5a4a2a);"></div>
+            <span style="color:#5a4a2a;font-size:10px;">&#9830;</span>
+            <div style="width:80px;height:1px;background:linear-gradient(to left,transparent,#5a4a2a);"></div>
+          </div>
+          <div style="text-align:center;">
             <button id="quest-close-btn" style="
               padding:12px 40px;font-size:18px;letter-spacing:3px;font-weight:bold;
-              background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;border-radius:8px;color:#c8a84e;
+              background:linear-gradient(180deg,rgba(40,30,15,0.9),rgba(25,18,8,0.95));
+              border:2px solid #5a4a2a;border-top-color:#8a7a4a;border-bottom-color:#2a1a0a;
+              border-radius:8px;color:#c8a84e;
               cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+              box-shadow:0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(200,168,78,0.15);
             ">CLOSE</button>
           </div>
-          <div style="text-align:center;margin-top:8px;color:#888;font-size:12px;">Press J or Escape to close</div>
+          <div style="text-align:center;margin-top:8px;color:#665533;font-size:11px;font-family:'Georgia',serif;">Press J or Escape to close</div>
         </div>
       </div>`;
 

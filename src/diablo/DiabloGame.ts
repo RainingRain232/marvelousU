@@ -675,6 +675,17 @@ export class DiabloGame {
         this._state.phase = DiabloPhase.INVENTORY;
         if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showAchievements();
+      } else if (e.code === "KeyO" && !e.shiftKey) {
+        // Toggle daily challenges / quest tracker
+        const qt = this._hudRefs.questTracker;
+        if (qt.style.display === "none" || qt.dataset.userHidden === "true") {
+          qt.style.display = "block";
+          qt.dataset.userHidden = "false";
+          this._updateQuestTracker();
+        } else {
+          qt.style.display = "none";
+          qt.dataset.userHidden = "true";
+        }
       } else if (e.code === "KeyO" && e.shiftKey) {
         this._phaseBeforeOverlay = DiabloPhase.PLAYING;
         this._state.phase = DiabloPhase.INVENTORY;
@@ -1018,7 +1029,7 @@ export class DiabloGame {
     this._hudState.fullmapVisible = false;
     if (this._hudRefs) this._hudRefs.fullmapCanvas.style.display = "none";
 
-    const weathers = [Weather.NORMAL, Weather.FOGGY, Weather.CLEAR, Weather.STORMY];
+    const weathers = [Weather.NORMAL, Weather.CLEAR, Weather.STORMY];
     this._state.weather = this._state.preferredWeather === 'RANDOM'
       ? weathers[Math.floor(Math.random() * weathers.length)]
       : this._state.preferredWeather as Weather;
@@ -1037,15 +1048,15 @@ export class DiabloGame {
       }
     }
     // Spawn player near the town portal (map center) with a small offset
-    const portalSpawnX = gridW / 2 + (Math.random() * 4 - 2);
-    const portalSpawnZ = gridD / 2 + (Math.random() * 4 - 2);
+    const portalSpawnX = (Math.random() * 4 - 2);
+    const portalSpawnZ = (Math.random() * 4 - 2);
 
     this._state.player.x = portalSpawnX;
     this._state.player.y = getTerrainHeight(portalSpawnX, portalSpawnZ);
     this._state.player.z = portalSpawnZ;
     // Mark portal area as enemy-free safe zone
-    this._safeZoneX = gridW / 2;
-    this._safeZoneZ = gridD / 2;
+    this._safeZoneX = 0;
+    this._safeZoneZ = 0;
     this._safeZoneRadius = 40;
     this._revealAroundPlayer(portalSpawnX, portalSpawnZ);
     this._state.player.hp = this._state.player.maxHp;
@@ -1098,9 +1109,9 @@ export class DiabloGame {
     } else {
       this._state.vendors = [];
       this._state.townfolk = [];
-      // Place town portal at map center
-      this._portalX = gridW / 2;
-      this._portalZ = gridD / 2;
+      // Place town portal at map center (0,0)
+      this._portalX = 0;
+      this._portalZ = 0;
       this._portalActive = true;
       this._renderer.showPortalRune(this._portalX, this._portalZ);
 

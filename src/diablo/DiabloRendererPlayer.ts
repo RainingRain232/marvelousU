@@ -41,55 +41,146 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
     const skinColor = 0xdeb887;
     const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.7 });
     const skinDarkMat = new THREE.MeshStandardMaterial({ color: 0xb8925a, roughness: 0.7 });
+    const skinLightMat = new THREE.MeshStandardMaterial({ color: 0xeecca0, roughness: 0.65 });
 
-    // Head
-    const headGeo = new THREE.SphereGeometry(0.18, 16, 12);
+    // Head (higher poly)
+    const headGeo = new THREE.SphereGeometry(0.18, 24, 20);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.position.y = 1.6;
     head.castShadow = true;
     ctx.playerGroup.add(head);
 
-    // Nose (small cone)
-    const noseGeo = new THREE.ConeGeometry(0.03, 0.06, 44);
-    const nose = new THREE.Mesh(noseGeo, skinMat);
-    nose.position.set(0, 1.58, 0.17);
-    nose.rotation.x = -Math.PI / 2;
-    ctx.playerGroup.add(nose);
+    // Jaw / lower face (gives more angular face shape)
+    const jawGeo = new THREE.SphereGeometry(0.14, 20, 16);
+    const jaw = new THREE.Mesh(jawGeo, skinMat);
+    jaw.position.set(0, 1.52, 0.04);
+    jaw.scale.set(1, 0.6, 0.9);
+    ctx.playerGroup.add(jaw);
 
-    // Chin (small box)
-    const chinGeo = new THREE.BoxGeometry(0.08, 0.04, 0.04);
+    // Cheekbones
+    for (let side = -1; side <= 1; side += 2) {
+      const cheekGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const cheek = new THREE.Mesh(cheekGeo, skinMat);
+      cheek.position.set(side * 0.1, 1.56, 0.12);
+      ctx.playerGroup.add(cheek);
+    }
+
+    // Nose (more detailed: bridge + tip)
+    const noseBridgeGeo = new THREE.BoxGeometry(0.03, 0.06, 0.04);
+    const noseBridge = new THREE.Mesh(noseBridgeGeo, skinMat);
+    noseBridge.position.set(0, 1.6, 0.16);
+    ctx.playerGroup.add(noseBridge);
+    const noseTipGeo = new THREE.SphereGeometry(0.025, 12, 10);
+    const noseTip = new THREE.Mesh(noseTipGeo, skinMat);
+    noseTip.position.set(0, 1.57, 0.18);
+    ctx.playerGroup.add(noseTip);
+
+    // Chin (rounded)
+    const chinGeo = new THREE.SphereGeometry(0.04, 12, 10);
     const chin = new THREE.Mesh(chinGeo, skinMat);
-    chin.position.set(0, 1.48, 0.14);
+    chin.position.set(0, 1.48, 0.13);
     ctx.playerGroup.add(chin);
 
-    // Eyebrows (thin boxes, skin-darkened)
+    // Ears
     for (let side = -1; side <= 1; side += 2) {
-      const browGeo = new THREE.BoxGeometry(0.06, 0.015, 0.02);
+      const earGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const ear = new THREE.Mesh(earGeo, skinMat);
+      ear.position.set(side * 0.17, 1.6, 0.0);
+      ear.scale.set(0.5, 1, 0.8);
+      ctx.playerGroup.add(ear);
+    }
+
+    // Eyebrows (thicker, more prominent)
+    for (let side = -1; side <= 1; side += 2) {
+      const browGeo = new THREE.BoxGeometry(0.07, 0.02, 0.025);
       const brow = new THREE.Mesh(browGeo, skinDarkMat);
-      brow.position.set(side * 0.06, 1.65, 0.15);
+      brow.position.set(side * 0.06, 1.655, 0.15);
+      brow.rotation.z = side * -0.1;
       ctx.playerGroup.add(brow);
     }
 
-    // Eyes (white spheres with dark pupil dots)
+    // Eyes (higher poly, with iris detail)
     const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
     const pupilMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+    const irisMat = new THREE.MeshStandardMaterial({ color: 0x446688, roughness: 0.4 });
     for (let side = -1; side <= 1; side += 2) {
-      const eyeGeo = new THREE.SphereGeometry(0.04, 8, 6);
+      const eyeGeo = new THREE.SphereGeometry(0.04, 16, 12);
       const eye = new THREE.Mesh(eyeGeo, eyeWhiteMat);
       eye.position.set(side * 0.06, 1.62, 0.15);
       ctx.playerGroup.add(eye);
 
-      const pupilGeo = new THREE.SphereGeometry(0.02, 8, 6);
+      // Iris
+      const irisGeo = new THREE.SphereGeometry(0.025, 12, 10);
+      const iris = new THREE.Mesh(irisGeo, irisMat);
+      iris.position.set(side * 0.06, 1.62, 0.18);
+      ctx.playerGroup.add(iris);
+
+      // Pupil
+      const pupilGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const pupil = new THREE.Mesh(pupilGeo, pupilMat);
-      pupil.position.set(side * 0.06, 1.62, 0.185);
+      pupil.position.set(side * 0.06, 1.62, 0.19);
       ctx.playerGroup.add(pupil);
+
+      // Eyelid (half-sphere cap above eye)
+      const lidGeo = new THREE.SphereGeometry(0.045, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.4);
+      const lid = new THREE.Mesh(lidGeo, skinMat);
+      lid.position.set(side * 0.06, 1.625, 0.15);
+      lid.rotation.x = -0.15;
+      ctx.playerGroup.add(lid);
     }
 
+    // Lips (subtle)
+    const lipGeo = new THREE.TorusGeometry(0.035, 0.01, 8, 16, Math.PI);
+    const lipMat = new THREE.MeshStandardMaterial({ color: 0xcc9977, roughness: 0.6 });
+    const lips = new THREE.Mesh(lipGeo, lipMat);
+    lips.position.set(0, 1.52, 0.155);
+    lips.rotation.x = Math.PI * 0.1;
+    ctx.playerGroup.add(lips);
+
     // Neck (cylinder connecting head to torso)
-    const neckGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.12, 44);
+    const neckGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.12, 16);
     const neck = new THREE.Mesh(neckGeo, skinMat);
     neck.position.y = 1.46;
     ctx.playerGroup.add(neck);
+
+    // Neck tendons (subtle side detail)
+    for (let side = -1; side <= 1; side += 2) {
+      const tendonGeo = new THREE.CylinderGeometry(0.012, 0.015, 0.1, 8);
+      const tendon = new THREE.Mesh(tendonGeo, skinDarkMat);
+      tendon.position.set(side * 0.05, 1.46, 0.02);
+      tendon.rotation.z = side * 0.1;
+      ctx.playerGroup.add(tendon);
+    }
+
+    // Hair (class-dependent style, but base layer for all)
+    const hairColors: Record<DiabloClass, number> = {
+      [DiabloClass.WARRIOR]: 0x443322,
+      [DiabloClass.MAGE]: 0xaaaaaa,
+      [DiabloClass.RANGER]: 0x553322,
+      [DiabloClass.PALADIN]: 0xccaa66,
+      [DiabloClass.NECROMANCER]: 0x111122,
+      [DiabloClass.ASSASSIN]: 0x1a1a1a,
+    };
+    const hairMat = new THREE.MeshStandardMaterial({ color: hairColors[cls] || 0x443322, roughness: 0.9 });
+    // Top hair volume
+    const hairTopGeo = new THREE.SphereGeometry(0.17, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const hairTop = new THREE.Mesh(hairTopGeo, hairMat);
+    hairTop.position.set(0, 1.66, -0.02);
+    ctx.playerGroup.add(hairTop);
+    // Back of hair
+    const hairBackGeo = new THREE.SphereGeometry(0.15, 18, 14);
+    const hairBack = new THREE.Mesh(hairBackGeo, hairMat);
+    hairBack.position.set(0, 1.58, -0.08);
+    hairBack.scale.set(1, 1, 0.7);
+    ctx.playerGroup.add(hairBack);
+    // Side hair tufts
+    for (let side = -1; side <= 1; side += 2) {
+      const sideHairGeo = new THREE.SphereGeometry(0.06, 12, 10);
+      const sideHair = new THREE.Mesh(sideHairGeo, hairMat);
+      sideHair.position.set(side * 0.14, 1.58, -0.03);
+      sideHair.scale.set(0.6, 1, 0.8);
+      ctx.playerGroup.add(sideHair);
+    }
 
     let torsoColor: number;
     let torsoMetalness: number;
@@ -139,71 +230,188 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
       roughness: torsoRoughness,
     });
 
-    // Torso - slightly tapered (wider at shoulders, narrower at waist)
-    const torsoUpperGeo = new THREE.BoxGeometry(0.52, 0.28, 0.3);
+    // Torso - tapered cylinder for more organic shape (wider at shoulders, narrower at waist)
+    const torsoUpperGeo = new THREE.CylinderGeometry(0.2, 0.24, 0.28, 16);
     const torsoUpper = new THREE.Mesh(torsoUpperGeo, torsoMat);
     torsoUpper.position.y = 1.32;
+    torsoUpper.scale.set(1.15, 1, 0.85);
     torsoUpper.castShadow = true;
     ctx.playerGroup.add(torsoUpper);
 
-    const torsoLowerGeo = new THREE.BoxGeometry(0.44, 0.28, 0.28);
+    const torsoLowerGeo = new THREE.CylinderGeometry(0.18, 0.2, 0.28, 16);
     const torsoLower = new THREE.Mesh(torsoLowerGeo, torsoMat);
     torsoLower.position.y = 1.06;
+    torsoLower.scale.set(1.05, 1, 0.8);
     torsoLower.castShadow = true;
     ctx.playerGroup.add(torsoLower);
 
-    // Belt (thin box around waist)
+    // Pectoral / chest definition
+    for (let side = -1; side <= 1; side += 2) {
+      const pecGeo = new THREE.SphereGeometry(0.09, 14, 12);
+      const pec = new THREE.Mesh(pecGeo, torsoMat);
+      pec.position.set(side * 0.08, 1.34, 0.12);
+      pec.scale.set(1, 0.7, 0.5);
+      ctx.playerGroup.add(pec);
+    }
+
+    // Collarbone ridge
+    const collarboneGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.36, 8);
+    const collarbone = new THREE.Mesh(collarboneGeo, skinDarkMat);
+    collarbone.position.set(0, 1.42, 0.1);
+    collarbone.rotation.z = Math.PI / 2;
+    ctx.playerGroup.add(collarbone);
+
+    // Back muscles / scapula (visible from behind)
+    for (let side = -1; side <= 1; side += 2) {
+      // Scapula (shoulder blade)
+      const scapulaGeo = new THREE.SphereGeometry(0.08, 14, 12);
+      const scapula = new THREE.Mesh(scapulaGeo, torsoMat);
+      scapula.position.set(side * 0.1, 1.3, -0.12);
+      scapula.scale.set(0.8, 1.2, 0.4);
+      ctx.playerGroup.add(scapula);
+
+      // Trapezius muscle ridge
+      const trapGeo = new THREE.CylinderGeometry(0.025, 0.015, 0.15, 10);
+      const trap = new THREE.Mesh(trapGeo, torsoMat);
+      trap.position.set(side * 0.06, 1.42, -0.06);
+      trap.rotation.z = side * 0.4;
+      trap.rotation.x = 0.2;
+      ctx.playerGroup.add(trap);
+
+      // Deltoid (shoulder muscle cap)
+      const deltoidGeo = new THREE.SphereGeometry(0.06, 12, 10);
+      const deltoid = new THREE.Mesh(deltoidGeo, torsoMat);
+      deltoid.position.set(side * 0.25, 1.38, 0);
+      deltoid.scale.set(0.7, 1, 0.8);
+      ctx.playerGroup.add(deltoid);
+    }
+
+    // Spine ridge
+    for (let sp = 0; sp < 4; sp++) {
+      const spineGeo = new THREE.SphereGeometry(0.012, 8, 6);
+      const spine = new THREE.Mesh(spineGeo, torsoMat);
+      spine.position.set(0, 1.35 - sp * 0.08, -0.14);
+      ctx.playerGroup.add(spine);
+    }
+
+    // Abdominal definition (subtle)
+    for (let row = 0; row < 3; row++) {
+      for (let side = -1; side <= 1; side += 2) {
+        const abGeo = new THREE.SphereGeometry(0.035, 10, 8);
+        const ab = new THREE.Mesh(abGeo, torsoMat);
+        ab.position.set(side * 0.04, 1.12 - row * 0.06, 0.13);
+        ab.scale.set(1, 0.7, 0.4);
+        ctx.playerGroup.add(ab);
+      }
+    }
+
+    // Belt (rounded)
     const beltMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.8 });
-    const beltGeo = new THREE.BoxGeometry(0.52, 0.06, 0.32);
+    const beltGeo = new THREE.TorusGeometry(0.2, 0.03, 10, 20);
     const belt = new THREE.Mesh(beltGeo, beltMat);
     belt.position.y = 0.92;
+    belt.rotation.x = Math.PI / 2;
+    belt.scale.set(1.1, 0.85, 1);
     ctx.playerGroup.add(belt);
 
-    // Belt buckle (tiny metallic box)
+    // Belt buckle (more detailed)
     const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.8, roughness: 0.2 });
-    const buckleGeo = new THREE.BoxGeometry(0.05, 0.05, 0.04);
+    const buckleGeo = new THREE.BoxGeometry(0.06, 0.06, 0.03);
     const buckle = new THREE.Mesh(buckleGeo, buckleMat);
-    buckle.position.set(0, 0.92, 0.17);
+    buckle.position.set(0, 0.92, 0.18);
     ctx.playerGroup.add(buckle);
+    // Buckle gem
+    const buckleGemGeo = new THREE.SphereGeometry(0.015, 10, 8);
+    const buckleGemMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, emissive: 0x441111, roughness: 0.2 });
+    const buckleGem = new THREE.Mesh(buckleGemGeo, buckleGemMat);
+    buckleGem.position.set(0, 0.92, 0.2);
+    ctx.playerGroup.add(buckleGem);
 
     // Legs — in groups for walk animation (pivot at hip)
     const legMat = torsoMat.clone();
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x3a2a18, roughness: 0.85 });
+    const bootSoleMat = new THREE.MeshStandardMaterial({ color: 0x222218, roughness: 0.95 });
     const legGroups: THREE.Group[] = [];
     for (let side = -1; side <= 1; side += 2) {
       const legGroup = new THREE.Group();
       legGroup.position.set(side * 0.12, 0.9, 0);  // pivot at hip
 
-      // Thigh
-      const thighGeo = new THREE.CylinderGeometry(0.08, 0.09, 0.4, 44);
+      // Hip joint
+      const hipGeo = new THREE.SphereGeometry(0.065, 14, 12);
+      const hip = new THREE.Mesh(hipGeo, legMat);
+      hip.position.y = -0.02;
+      legGroup.add(hip);
+
+      // Thigh (tapered)
+      const thighGeo = new THREE.CylinderGeometry(0.055, 0.075, 0.4, 14);
       const thigh = new THREE.Mesh(thighGeo, legMat);
       thigh.position.y = -0.17;
       thigh.castShadow = true;
       legGroup.add(thigh);
 
       // Knee joint
-      const kneeGeo = new THREE.SphereGeometry(0.055, 62, 36);
+      const kneeGeo = new THREE.SphereGeometry(0.058, 14, 12);
       const knee = new THREE.Mesh(kneeGeo, legMat);
       knee.position.y = -0.37;
       legGroup.add(knee);
 
-      // Shin
-      const shinGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.4, 44);
+      // Kneecap
+      const kneecapGeo = new THREE.SphereGeometry(0.035, 12, 10);
+      const kneecap = new THREE.Mesh(kneecapGeo, legMat);
+      kneecap.position.set(0, -0.37, 0.04);
+      legGroup.add(kneecap);
+
+      // Shin (tapered)
+      const shinGeo = new THREE.CylinderGeometry(0.045, 0.065, 0.4, 14);
       const shin = new THREE.Mesh(shinGeo, legMat);
       shin.position.y = -0.57;
       shin.castShadow = true;
       legGroup.add(shin);
 
+      // Calf muscle (bulge at back of shin)
+      const calfGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const calf = new THREE.Mesh(calfGeo, legMat);
+      calf.position.set(0, -0.48, -0.03);
+      calf.scale.set(0.8, 1.3, 0.9);
+      legGroup.add(calf);
+
+      // Shin guard (front armor plate)
+      const shinGuardGeo = new THREE.BoxGeometry(0.06, 0.18, 0.02);
+      const shinGuard = new THREE.Mesh(shinGuardGeo, bootMat);
+      shinGuard.position.set(0, -0.56, 0.05);
+      legGroup.add(shinGuard);
+
       // Ankle joint
-      const ankleGeo = new THREE.SphereGeometry(0.045, 62, 36);
-      const ankle = new THREE.Mesh(ankleGeo, legMat);
+      const ankleGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const ankle = new THREE.Mesh(ankleGeo, bootMat);
       ankle.position.y = -0.77;
       legGroup.add(ankle);
 
-      // Foot
-      const footGeo = new THREE.BoxGeometry(0.12, 0.06, 0.2);
-      const foot = new THREE.Mesh(footGeo, legMat);
-      foot.position.set(0, -0.85, 0.04);
-      legGroup.add(foot);
+      // Boot (more shaped than a box)
+      const bootGeo = new THREE.CylinderGeometry(0.055, 0.065, 0.12, 12);
+      const boot = new THREE.Mesh(bootGeo, bootMat);
+      boot.position.set(0, -0.83, 0.0);
+      legGroup.add(boot);
+
+      // Boot toe
+      const bootToeGeo = new THREE.SphereGeometry(0.055, 12, 10);
+      const bootToe = new THREE.Mesh(bootToeGeo, bootMat);
+      bootToe.position.set(0, -0.87, 0.05);
+      bootToe.scale.set(1, 0.5, 1.3);
+      legGroup.add(bootToe);
+
+      // Boot sole
+      const soleGeo = new THREE.BoxGeometry(0.13, 0.02, 0.2);
+      const sole = new THREE.Mesh(soleGeo, bootSoleMat);
+      sole.position.set(0, -0.9, 0.03);
+      legGroup.add(sole);
+
+      // Boot strap
+      const strapGeo = new THREE.TorusGeometry(0.06, 0.008, 8, 16);
+      const strap = new THREE.Mesh(strapGeo, buckleMat);
+      strap.position.set(0, -0.8, 0);
+      strap.rotation.x = Math.PI / 2;
+      legGroup.add(strap);
 
       ctx.playerGroup.add(legGroup);
       legGroups.push(legGroup);
@@ -223,28 +431,70 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
     result.leftArmGroup = leftArmGroup;
 
     for (const armGroup of [rightArmGroup, leftArmGroup]) {
-      const upperGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.3, 44);
+      // Shoulder ball joint
+      const shoulderGeo = new THREE.SphereGeometry(0.06, 14, 12);
+      const shoulder = new THREE.Mesh(shoulderGeo, skinMat);
+      shoulder.position.y = 0.0;
+      armGroup.add(shoulder);
+
+      // Upper arm (bicep)
+      const upperGeo = new THREE.CylinderGeometry(0.045, 0.06, 0.3, 14);
       const upper = new THREE.Mesh(upperGeo, skinMat);
       upper.position.y = -0.15;
       armGroup.add(upper);
 
-      const foreGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 44);
+      // Bicep muscle bulge
+      const bicepGeo = new THREE.SphereGeometry(0.035, 12, 10);
+      const bicep = new THREE.Mesh(bicepGeo, skinMat);
+      bicep.position.set(0, -0.12, 0.02);
+      bicep.scale.set(0.8, 1.2, 0.7);
+      armGroup.add(bicep);
+
+      // Elbow joint
+      const elbowGeo = new THREE.SphereGeometry(0.04, 12, 10);
+      const elbow = new THREE.Mesh(elbowGeo, skinMat);
+      elbow.position.y = -0.32;
+      armGroup.add(elbow);
+
+      // Forearm
+      const foreGeo = new THREE.CylinderGeometry(0.035, 0.048, 0.28, 14);
       const fore = new THREE.Mesh(foreGeo, skinMat);
       fore.position.y = -0.45;
       armGroup.add(fore);
 
-      // Fingers hint: flattened box for palm + tiny thin boxes for finger suggestion
-      const palmGeo = new THREE.BoxGeometry(0.08, 0.04, 0.06);
+      // Forearm muscle bulk
+      const foreMusGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const foreMus = new THREE.Mesh(foreMusGeo, skinMat);
+      foreMus.position.set(0, -0.38, 0.015);
+      foreMus.scale.set(0.8, 1.4, 0.7);
+      armGroup.add(foreMus);
+
+      // Wrist
+      const wristGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const wrist = new THREE.Mesh(wristGeo, skinMat);
+      wrist.position.y = -0.6;
+      armGroup.add(wrist);
+
+      // Palm (flattened sphere)
+      const palmGeo = new THREE.SphereGeometry(0.035, 12, 10);
       const palm = new THREE.Mesh(palmGeo, skinMat);
-      palm.position.y = -0.62;
+      palm.position.y = -0.64;
+      palm.scale.set(1.1, 0.6, 0.8);
       armGroup.add(palm);
 
+      // Fingers (4 fingers + thumb)
       for (let f = 0; f < 4; f++) {
-        const fingerGeo = new THREE.BoxGeometry(0.015, 0.04, 0.015);
+        const fingerGeo = new THREE.CylinderGeometry(0.007, 0.009, 0.045, 8);
         const finger = new THREE.Mesh(fingerGeo, skinMat);
-        finger.position.set(-0.025 + f * 0.017, -0.66, 0);
+        finger.position.set(-0.02 + f * 0.014, -0.68, 0);
         armGroup.add(finger);
       }
+      // Thumb (offset to side)
+      const thumbGeo = new THREE.CylinderGeometry(0.008, 0.01, 0.035, 8);
+      const thumb = new THREE.Mesh(thumbGeo, skinMat);
+      thumb.position.set(armGroup === rightArmGroup ? 0.025 : -0.025, -0.655, 0.015);
+      thumb.rotation.z = armGroup === rightArmGroup ? 0.5 : -0.5;
+      armGroup.add(thumb);
     }
 
     // Muscle definition for warrior (chest armor plates)

@@ -2536,6 +2536,49 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     archSupport.rotation.y = Math.PI / 2;
     archSupport.position.set(bridgeX, 0.2, bridgeZ);
     mctx.scene.add(archSupport);
+    // Brick lines on bridge deck (horizontal mortar lines)
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.95 });
+    for (let bRow = 0; bRow < 5; bRow++) {
+      const bLine = new THREE.Mesh(new THREE.BoxGeometry(5.02, 0.02, 0.02), mortarMat);
+      bLine.position.set(bridgeX, 1.42, bridgeZ - 1.2 + bRow * 0.6);
+      mctx.scene.add(bLine);
+    }
+    // Brick lines on deck (vertical mortar, offset per row)
+    for (let bRow = 0; bRow < 5; bRow++) {
+      const rowZ = bridgeZ - 1.2 + bRow * 0.6;
+      const offset = bRow % 2 === 0 ? 0 : 0.4;
+      for (let bCol = -2.4 + offset; bCol <= 2.4; bCol += 0.8) {
+        const vLine = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.6), mortarMat);
+        vLine.position.set(bridgeX + bCol, 1.42, rowZ + 0.3);
+        mctx.scene.add(vLine);
+      }
+    }
+    // Brick lines on rails (horizontal mortar)
+    for (const railZ of [bridgeZ - 1.4, bridgeZ + 1.4]) {
+      for (let rRow = 0; rRow < 3; rRow++) {
+        const rLine = new THREE.Mesh(new THREE.BoxGeometry(5.02, 0.02, 0.22), mortarMat);
+        rLine.position.set(bridgeX, 1.5 + rRow * 0.28, railZ);
+        mctx.scene.add(rLine);
+      }
+      // Vertical brick joints on rails (offset per row)
+      for (let rRow = 0; rRow < 3; rRow++) {
+        const rOffset = rRow % 2 === 0 ? 0 : 0.35;
+        for (let bCol = -2.4 + rOffset; bCol <= 2.4; bCol += 0.7) {
+          const vJoint = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.28, 0.22), mortarMat);
+          vJoint.position.set(bridgeX + bCol, 1.5 + rRow * 0.28 + 0.14, railZ);
+          mctx.scene.add(vJoint);
+        }
+      }
+    }
+    // Capstones on top of rails
+    const capstoneMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.75 });
+    for (const railZ of [bridgeZ - 1.4, bridgeZ + 1.4]) {
+      for (let cx2 = -2.2; cx2 <= 2.2; cx2 += 0.55) {
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.3), capstoneMat);
+        cap.position.set(bridgeX + cx2, 2.24, railZ);
+        mctx.scene.add(cap);
+      }
+    }
 
     // ── Hay bales (round & rectangular with detail) ──
     const hayDarkMat = new THREE.MeshStandardMaterial({ color: 0xb89930, roughness: 0.92 });
