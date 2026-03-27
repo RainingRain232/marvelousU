@@ -197,6 +197,9 @@ import { PendulumGame } from "./pendulum/PendulumGame";
 import { LeviathanGame } from "./leviathan/LeviathanGame";
 import { SwordOfAvalonGame } from "./avalon-sword/SwordOfAvalonGame";
 import { DepthsGame } from "./depths/DepthsGame";
+import { KnightBallGame } from "./knightball/KnightBallGame";
+import { EpsilonGame } from "./epsilon/EpsilonGame";
+import { GrandGame } from "./grand/GrandGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -434,6 +437,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.GUINEVERE]: 61,
     [GameMode.SWORD_OF_AVALON]: 62,
     [GameMode.DEPTHS]: 63,
+    [GameMode.KNIGHT_BALL]: 64,
+    [GameMode.EPSILON]: 65,
+    [GameMode.GRAND]: 66,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -843,6 +849,21 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.DEPTHS) {
       menuScreen.hide();
       _bootDepthsGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.KNIGHT_BALL) {
+      menuScreen.hide();
+      _bootKnightBallGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.EPSILON) {
+      menuScreen.hide();
+      _bootEpsilonGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.GRAND) {
+      menuScreen.hide();
+      _bootGrandGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -3671,6 +3692,60 @@ async function _bootDepthsGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("depthsExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Knight Ball boot
+// ---------------------------------------------------------------------------
+
+let _knightBallGame: KnightBallGame | null = null;
+
+async function _bootKnightBallGame(): Promise<void> {
+  if (_knightBallGame) { _knightBallGame.destroy(); _knightBallGame = null; }
+  _knightBallGame = new KnightBallGame();
+  await _knightBallGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("knightBallExit", _onExit);
+    if (_knightBallGame) { _knightBallGame.destroy(); _knightBallGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("knightBallExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Epsilon boot
+// ---------------------------------------------------------------------------
+
+let _epsilonGame: EpsilonGame | null = null;
+
+async function _bootEpsilonGame(): Promise<void> {
+  if (_epsilonGame) { _epsilonGame.destroy(); _epsilonGame = null; }
+  _epsilonGame = new EpsilonGame();
+  await _epsilonGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("epsilonExit", _onExit);
+    if (_epsilonGame) { _epsilonGame.destroy(); _epsilonGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("epsilonExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Grand boot
+// ---------------------------------------------------------------------------
+
+let _grandGame: GrandGame | null = null;
+
+async function _bootGrandGame(): Promise<void> {
+  if (_grandGame) { _grandGame.destroy(); _grandGame = null; }
+  _grandGame = new GrandGame();
+  await _grandGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("grandExit", _onExit);
+    if (_grandGame) { _grandGame.destroy(); _grandGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("grandExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

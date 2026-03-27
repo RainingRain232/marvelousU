@@ -737,6 +737,9 @@ export enum GameMode {
   CHARIOT = "chariot",
   BEARING = "bearing",
   MATRIX = "matrix",
+  KNIGHT_BALL = "knight_ball",
+  EPSILON = "epsilon",
+  GRAND = "grand",
 }
 
 // ---------------------------------------------------------------------------
