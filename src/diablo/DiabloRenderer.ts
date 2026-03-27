@@ -1807,6 +1807,7 @@ export class DiabloRenderer {
     // Half-cylinder lid (arched top)
     const lidGeo = new THREE.CylinderGeometry(0.38, 0.38, 1.02, 44, 2, false, 0, Math.PI);
     const lid = new THREE.Mesh(lidGeo, woodMat);
+    lid.name = 'chest-lid';
     lid.rotation.z = Math.PI / 2;
     lid.position.y = 0.5;
 
@@ -1820,6 +1821,7 @@ export class DiabloRenderer {
 
     // Lid metal band
     const lidBand = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.04, 0.015), metalMat);
+    lidBand.name = 'chest-lid-band';
     if (opened) {
       lidBand.position.set(0, 0.75, -0.35);
       lidBand.rotation.x = -Math.PI * 0.6;
@@ -4122,13 +4124,18 @@ export class DiabloRenderer {
 
       mesh.position.set(chest.x, chest.y, chest.z);
 
-      // If opened state changed, rebuild
+      // If opened state changed, animate lid open
       if (chest.opened) {
-        const lid = mesh.children[1];
+        const lid = mesh.getObjectByName('chest-lid');
+        const lidBand = mesh.getObjectByName('chest-lid-band');
         if (lid && lid.rotation.x > -1.0) {
           lid.rotation.x = -Math.PI * 0.6;
-          lid.position.z = -0.25;
+          lid.position.z = -0.28;
           lid.position.y = 0.7;
+        }
+        if (lidBand && lidBand.rotation.x > -1.0) {
+          lidBand.rotation.x = -Math.PI * 0.6;
+          lidBand.position.set(0, 0.75, -0.35);
         }
       }
     }
