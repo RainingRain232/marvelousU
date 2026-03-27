@@ -115,92 +115,8 @@ import { placeBattlefieldObstacles } from "@sim/state/BattlefieldState";
 /** First 2 armory items unlocked at world game start. More drop from camps. */
 const WORLD_STARTING_ITEMS: ArmoryItemId[] = ARMORY_ITEMS.slice(0, 2).map((i) => i.id);
 
-// RPG mode imports
-import { RPGGame } from "@rpg/RPGBoot";
 
-// Survivor mode imports
-import { SurvivorGame } from "@/survivor/SurvivorGame";
-import { ColosseumGame } from "@rpg/colosseum/ColosseumGame";
-import { DuelGame } from "./duel/DuelGame";
-import { MedievalGTA } from "./medievalgta/MedievalGTA";
-import { WarbandGame } from "./warband/WarbandGame";
-import { WarbandCampaign } from "./warband/WarbandCampaign";
-import { TekkenGame } from "./tekken/TekkenGame";
-import { DragoonGame } from "./dragoon/DragoonGame";
-import { ThreeDragonGame } from "./threedragon/ThreeDragonGame";
-import { MedievalGTA3DGame } from "./medievalgta3d/MedievalGTA3DGame";
-import { DiabloGame } from "./diablo/DiabloGame";
-import { MageWarsGame } from "./magewars/MageWarsGame";
-import { GameGame } from "./game/GameGame";
-import { RiftWizardGame } from "./riftwizard/RiftWizardGame";
-import { GrailBallGame } from "./grailball/GrailBallGame";
-import { GrailManagerGame } from "./grailmanager/GrailManagerGame";
-import { ArthurianRPGGame } from "./arthurianrpg/ArthurianRPGGame";
-import { SettlersGame } from "./settlers/SettlersGame";
-import { CaesarGame } from "./caesar/CaesarGame";
 import type { SettlersMapMode } from "./settlers/state/SettlersState";
-import { CamelotCraftGame } from "./camelotcraft/CamelotCraftGame";
-import { TerrariaGame } from "./terraria/TerrariaGame";
-import { EagleFlightGame } from "./eagleflight/EagleFlightGame";
-import { CivGame } from "./civilization/CivGame";
-import { MorganGame } from "./morgan/MorganGame";
-import { JoustingGame } from "./jousting/JoustingGame";
-import { ExodusGame } from "./exodus/ExodusGame";
-import { CovenGame } from "./coven/CovenGame";
-import { CaravanGame } from "./caravan/CaravanGame";
-import { ChariotGame } from "./chariot/ChariotGame";
-import { BearingGame } from "./bearing/BearingGame";
-import { MatrixGame } from "./matrix/MatrixGame";
-import { ShadowhandGame } from "./shadowhand/ShadowhandGame";
-import { AlchemistGame } from "./alchemist/AlchemistGame";
-import { SiegeGame } from "./siege/SiegeGame";
-import { TavernGame } from "./tavern/TavernGame";
-import { HuntGame } from "./hunt/HuntGame";
-import { RaceGame } from "./race/RaceGame";
-import { NecroGame } from "./necromancer/NecroGame";
-import { RoundTableGame } from "./roundtable/RoundTableGame";
-import { AscentGame } from "./ascent/AscentGame";
-import { GrailBlocksGame } from "./grailblocks/GrailBlocksGame";
-import { DerbyGame } from "./derby/DerbyGame";
-import { BreakerGame } from "./breaker/BreakerGame";
-import { BardGame } from "./bard/BardGame";
-import { LabyrinthGame } from "./labyrinth/LabyrinthGame";
-import { PlagueGame } from "./plague/PlagueGame";
-import { PlagueRTGame } from "./plaguert/PlagueRTGame";
-import { WyrmGame } from "./wyrm/WyrmGame";
-import { CamelotGame } from "./camelot/CamelotGame";
-import { PhantomGame } from "./phantom/PhantomGame";
-import { ConjurerGame } from "./conjurer/ConjurerGame";
-import { FluxGame } from "./flux/FluxGame";
-import { EchoGame } from "./echo/EchoGame";
-import { VoidKnightGame } from "./voidknight/VoidKnightGame";
-import { LastFlameGame } from "./lastflame/LastFlameGame";
-import { GravitonGame } from "./graviton/GravitonGame";
-import { GrailQuestGame } from "./grailquest/GrailQuestGame";
-import { MerlinDuelGame } from "./merlinduel/MerlinDuelGame";
-import { KothGame } from "./koth/KothGame";
-import { RunebladeGame } from "./runeblade/RunebladeGame";
-import { ChronomancerGame } from "./chronomancer/ChronomancerGame";
-import { ShapeshifterGame } from "./shapeshifter/ShapeshifterGame";
-import { VoidwalkerGame } from "./voidwalker/VoidwalkerGame";
-import { AoWGame } from "./aow/AoWGame";
-import { LancelotGame } from "./lancelot/LancelotGame";
-import { SewerSplashGame } from "./sewersplash/SewerSplashGame";
-import { LakeOfAvalonGame } from "./avalon/LakeOfAvalonGame";
-import { TrebuchetGame } from "./trebuchet/TrebuchetGame";
-import { GrailKeeperGame } from "./grailkeeper/GrailKeeperGame";
-import { GargoyleGame } from "./gargoyle/GargoyleGame";
-import { LotGame } from "./lot/LotGame";
-import { GuinevereGame } from "./guinevere/GuinevereGame";
-import { ForestGame } from "./forest/ForestGame";
-import { PendulumGame } from "./pendulum/PendulumGame";
-import { LeviathanGame } from "./leviathan/LeviathanGame";
-import { SwordOfAvalonGame } from "./avalon-sword/SwordOfAvalonGame";
-import { DepthsGame } from "./depths/DepthsGame";
-import { KnightBallGame } from "./knightball/KnightBallGame";
-import { EpsilonGame } from "./epsilon/EpsilonGame";
-import { GrandGame } from "./grand/GrandGame";
-import { RampartGame } from "./rampart/RampartGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -2927,7 +2843,7 @@ function _applyCampaignRestrictions(state: GameState, scenarioNum: number): void
 // RPG mode boot
 // ---------------------------------------------------------------------------
 
-let _rpgGame: RPGGame | null = null;
+let _rpgGame: any = null;
 
 async function _bootRPGGame(): Promise<void> {
   // Destroy any existing RPG game
@@ -2935,6 +2851,9 @@ async function _bootRPGGame(): Promise<void> {
     _rpgGame.destroy();
     _rpgGame = null;
   }
+
+  const { RPGGame } = await import("@rpg/RPGBoot");
+
 
   _rpgGame = new RPGGame();
   await _rpgGame.boot();
@@ -2944,13 +2863,16 @@ async function _bootRPGGame(): Promise<void> {
 // Caravan mode boot
 // ---------------------------------------------------------------------------
 
-let _caravanGame: CaravanGame | null = null;
+let _caravanGame: any = null;
 
 async function _bootCaravanGame(): Promise<void> {
   if (_caravanGame) {
     _caravanGame.destroy();
     _caravanGame = null;
   }
+
+  const { CaravanGame } = await import("./caravan/CaravanGame");
+
 
   _caravanGame = new CaravanGame();
   await _caravanGame.boot();
@@ -2960,10 +2882,12 @@ async function _bootCaravanGame(): Promise<void> {
 // Chariot racing mode boot
 // ---------------------------------------------------------------------------
 
-let _chariotGame: ChariotGame | null = null;
+let _chariotGame: any = null;
 
 async function _bootChariotGame(): Promise<void> {
   if (_chariotGame) { _chariotGame.destroy(); _chariotGame = null; }
+  const { ChariotGame } = await import("./chariot/ChariotGame");
+
   _chariotGame = new ChariotGame();
   await _chariotGame.boot();
   const _onExit = () => {
@@ -2978,10 +2902,12 @@ async function _bootChariotGame(): Promise<void> {
 // Bearing navigation mode boot
 // ---------------------------------------------------------------------------
 
-let _bearingGame: BearingGame | null = null;
+let _bearingGame: any = null;
 
 async function _bootBearingGame(): Promise<void> {
   if (_bearingGame) { _bearingGame.destroy(); _bearingGame = null; }
+  const { BearingGame } = await import("./bearing/BearingGame");
+
   _bearingGame = new BearingGame();
   await _bearingGame.boot();
   const _onExit = () => {
@@ -2996,10 +2922,12 @@ async function _bootBearingGame(): Promise<void> {
 // Matrix bullet-time mode boot
 // ---------------------------------------------------------------------------
 
-let _matrixGame: MatrixGame | null = null;
+let _matrixGame: any = null;
 
 async function _bootMatrixGame(): Promise<void> {
   if (_matrixGame) { _matrixGame.destroy(); _matrixGame = null; }
+  const { MatrixGame } = await import("./matrix/MatrixGame");
+
   _matrixGame = new MatrixGame();
   await _matrixGame.boot();
   const _onExit = () => {
@@ -3014,13 +2942,16 @@ async function _bootMatrixGame(): Promise<void> {
 // Round Table (Deckbuilder) mode boot
 // ---------------------------------------------------------------------------
 
-let _roundTableGame: RoundTableGame | null = null;
+let _roundTableGame: any = null;
 
 async function _bootRoundTableGame(): Promise<void> {
   if (_roundTableGame) {
     _roundTableGame.destroy();
     _roundTableGame = null;
   }
+
+  const { RoundTableGame } = await import("./roundtable/RoundTableGame");
+
 
   _roundTableGame = new RoundTableGame();
   await _roundTableGame.boot();
@@ -3030,13 +2961,16 @@ async function _bootRoundTableGame(): Promise<void> {
 // Camelot Ascent (platformer) mode boot
 // ---------------------------------------------------------------------------
 
-let _ascentGame: AscentGame | null = null;
+let _ascentGame: any = null;
 
 async function _bootAscentGame(): Promise<void> {
   if (_ascentGame) {
     _ascentGame.destroy();
     _ascentGame = null;
   }
+
+  const { AscentGame } = await import("./ascent/AscentGame");
+
 
   _ascentGame = new AscentGame();
   await _ascentGame.boot();
@@ -3046,13 +2980,15 @@ async function _bootAscentGame(): Promise<void> {
 // Grail Blocks (puzzle) mode boot
 // ---------------------------------------------------------------------------
 
-let _grailBlocksGame: GrailBlocksGame | null = null;
+let _grailBlocksGame: any = null;
 
 async function _bootGrailBlocksGame(): Promise<void> {
   if (_grailBlocksGame) {
     _grailBlocksGame.destroy();
     _grailBlocksGame = null;
   }
+  const { GrailBlocksGame } = await import("./grailblocks/GrailBlocksGame");
+
   _grailBlocksGame = new GrailBlocksGame();
   await _grailBlocksGame.boot();
 }
@@ -3061,13 +2997,15 @@ async function _bootGrailBlocksGame(): Promise<void> {
 // Grail Derby (racing) mode boot
 // ---------------------------------------------------------------------------
 
-let _derbyGame: DerbyGame | null = null;
+let _derbyGame: any = null;
 
 async function _bootDerbyGame(): Promise<void> {
   if (_derbyGame) {
     _derbyGame.destroy();
     _derbyGame = null;
   }
+  const { DerbyGame } = await import("./derby/DerbyGame");
+
   _derbyGame = new DerbyGame();
   await _derbyGame.boot();
 }
@@ -3076,13 +3014,15 @@ async function _bootDerbyGame(): Promise<void> {
 // Grail Breaker (brick-breaker) mode boot
 // ---------------------------------------------------------------------------
 
-let _breakerGame: BreakerGame | null = null;
+let _breakerGame: any = null;
 
 async function _bootBreakerGame(): Promise<void> {
   if (_breakerGame) {
     _breakerGame.destroy();
     _breakerGame = null;
   }
+  const { BreakerGame } = await import("./breaker/BreakerGame");
+
   _breakerGame = new BreakerGame(viewManager.app);
   _breakerGame.boot();
   const _onExit = () => {
@@ -3097,10 +3037,12 @@ async function _bootBreakerGame(): Promise<void> {
 // Bard mode boot
 // ---------------------------------------------------------------------------
 
-let _bardGame: BardGame | null = null;
+let _bardGame: any = null;
 
 async function _bootBardGame(): Promise<void> {
   if (_bardGame) { _bardGame.destroy(); _bardGame = null; }
+  const { BardGame } = await import("./bard/BardGame");
+
   _bardGame = new BardGame();
   await _bardGame.boot();
   const _onExit = () => {
@@ -3115,10 +3057,12 @@ async function _bootBardGame(): Promise<void> {
 // Labyrinth mode boot
 // ---------------------------------------------------------------------------
 
-let _labyrinthGame: LabyrinthGame | null = null;
+let _labyrinthGame: any = null;
 
 async function _bootLabyrinthGame(): Promise<void> {
   if (_labyrinthGame) { _labyrinthGame.destroy(); _labyrinthGame = null; }
+  const { LabyrinthGame } = await import("./labyrinth/LabyrinthGame");
+
   _labyrinthGame = new LabyrinthGame();
   await _labyrinthGame.boot();
   const _onExit = () => {
@@ -3129,10 +3073,12 @@ async function _bootLabyrinthGame(): Promise<void> {
   window.addEventListener("labyrinthExit", _onExit);
 }
 
-let _plagueGame: PlagueGame | null = null;
+let _plagueGame: any = null;
 
 async function _bootPlagueGame(): Promise<void> {
   if (_plagueGame) { _plagueGame.destroy(); _plagueGame = null; }
+  const { PlagueGame } = await import("./plague/PlagueGame");
+
   _plagueGame = new PlagueGame();
   await _plagueGame.boot();
   const _onExit = () => {
@@ -3147,10 +3093,12 @@ async function _bootPlagueGame(): Promise<void> {
 // Plague Doctor RT (real-time) mode boot
 // ---------------------------------------------------------------------------
 
-let _plagueRTGame: PlagueRTGame | null = null;
+let _plagueRTGame: any = null;
 
 async function _bootPlagueRTGame(): Promise<void> {
   if (_plagueRTGame) { _plagueRTGame.destroy(); _plagueRTGame = null; }
+  const { PlagueRTGame } = await import("./plaguert/PlagueRTGame");
+
   _plagueRTGame = new PlagueRTGame();
   await _plagueRTGame.boot();
   const _onExit = () => {
@@ -3165,10 +3113,12 @@ async function _bootPlagueRTGame(): Promise<void> {
 // Wyrm mode boot
 // ---------------------------------------------------------------------------
 
-let _wyrmGame: WyrmGame | null = null;
+let _wyrmGame: any = null;
 
 async function _bootWyrmGame(): Promise<void> {
   if (_wyrmGame) { _wyrmGame.destroy(); _wyrmGame = null; }
+  const { WyrmGame } = await import("./wyrm/WyrmGame");
+
   _wyrmGame = new WyrmGame();
   await _wyrmGame.boot();
   const _onExit = () => {
@@ -3183,10 +3133,12 @@ async function _bootWyrmGame(): Promise<void> {
 // Phantom mode boot
 // ---------------------------------------------------------------------------
 
-let _phantomGame: PhantomGame | null = null;
+let _phantomGame: any = null;
 
 async function _bootPhantomGame(): Promise<void> {
   if (_phantomGame) { _phantomGame.destroy(); _phantomGame = null; }
+  const { PhantomGame } = await import("./phantom/PhantomGame");
+
   _phantomGame = new PhantomGame();
   await _phantomGame.boot();
   const _onExit = () => {
@@ -3201,10 +3153,12 @@ async function _bootPhantomGame(): Promise<void> {
 // Conjurer mode boot
 // ---------------------------------------------------------------------------
 
-let _conjurerGame: ConjurerGame | null = null;
+let _conjurerGame: any = null;
 
 async function _bootConjurerGame(): Promise<void> {
   if (_conjurerGame) { _conjurerGame.destroy(); _conjurerGame = null; }
+  const { ConjurerGame } = await import("./conjurer/ConjurerGame");
+
   _conjurerGame = new ConjurerGame();
   await _conjurerGame.boot();
   const _onExit = () => {
@@ -3219,10 +3173,12 @@ async function _bootConjurerGame(): Promise<void> {
 // Flux mode boot
 // ---------------------------------------------------------------------------
 
-let _fluxGame: FluxGame | null = null;
+let _fluxGame: any = null;
 
 async function _bootFluxGame(): Promise<void> {
   if (_fluxGame) { _fluxGame.destroy(); _fluxGame = null; }
+  const { FluxGame } = await import("./flux/FluxGame");
+
   _fluxGame = new FluxGame();
   await _fluxGame.boot();
   const _onExit = () => {
@@ -3237,10 +3193,12 @@ async function _bootFluxGame(): Promise<void> {
 // Echo mode boot
 // ---------------------------------------------------------------------------
 
-let _echoGame: EchoGame | null = null;
+let _echoGame: any = null;
 
 async function _bootEchoGame(): Promise<void> {
   if (_echoGame) { _echoGame.destroy(); _echoGame = null; }
+  const { EchoGame } = await import("./echo/EchoGame");
+
   _echoGame = new EchoGame();
   await _echoGame.boot();
   const _onExit = () => {
@@ -3255,10 +3213,12 @@ async function _bootEchoGame(): Promise<void> {
 // Prince of Camelot mode boot
 // ---------------------------------------------------------------------------
 
-let _camelotGame: CamelotGame | null = null;
+let _camelotGame: any = null;
 
 async function _bootCamelotGame(): Promise<void> {
   if (_camelotGame) { _camelotGame.destroy(); _camelotGame = null; }
+  const { CamelotGame } = await import("./camelot/CamelotGame");
+
   _camelotGame = new CamelotGame();
   await _camelotGame.boot();
   const _onExit = () => {
@@ -3273,10 +3233,12 @@ async function _bootCamelotGame(): Promise<void> {
 // Void Knight mode boot
 // ---------------------------------------------------------------------------
 
-let _voidKnightGame: VoidKnightGame | null = null;
+let _voidKnightGame: any = null;
 
 async function _bootVoidKnightGame(): Promise<void> {
   if (_voidKnightGame) { _voidKnightGame.destroy(); _voidKnightGame = null; }
+  const { VoidKnightGame } = await import("./voidknight/VoidKnightGame");
+
   _voidKnightGame = new VoidKnightGame();
   await _voidKnightGame.boot();
   const _onExit = () => {
@@ -3291,10 +3253,12 @@ async function _bootVoidKnightGame(): Promise<void> {
 // Last Flame mode boot
 // ---------------------------------------------------------------------------
 
-let _lastFlameGame: LastFlameGame | null = null;
+let _lastFlameGame: any = null;
 
 async function _bootLastFlameGame(): Promise<void> {
   if (_lastFlameGame) { _lastFlameGame.destroy(); _lastFlameGame = null; }
+  const { LastFlameGame } = await import("./lastflame/LastFlameGame");
+
   _lastFlameGame = new LastFlameGame();
   await _lastFlameGame.boot();
   const _onExit = () => {
@@ -3309,10 +3273,12 @@ async function _bootLastFlameGame(): Promise<void> {
 // Graviton mode boot
 // ---------------------------------------------------------------------------
 
-let _gravitonGame: GravitonGame | null = null;
+let _gravitonGame: any = null;
 
 async function _bootGravitonGame(): Promise<void> {
   if (_gravitonGame) { _gravitonGame.destroy(); _gravitonGame = null; }
+  const { GravitonGame } = await import("./graviton/GravitonGame");
+
   _gravitonGame = new GravitonGame();
   await _gravitonGame.boot();
   const _onExit = () => {
@@ -3327,10 +3293,12 @@ async function _bootGravitonGame(): Promise<void> {
 // Grail Quest mode boot
 // ---------------------------------------------------------------------------
 
-let _grailQuestGame: GrailQuestGame | null = null;
+let _grailQuestGame: any = null;
 
 async function _bootGrailQuestGame(): Promise<void> {
   if (_grailQuestGame) { _grailQuestGame.destroy(); _grailQuestGame = null; }
+  const { GrailQuestGame } = await import("./grailquest/GrailQuestGame");
+
   _grailQuestGame = new GrailQuestGame();
   await _grailQuestGame.boot();
   const _onExit = () => {
@@ -3345,10 +3313,12 @@ async function _bootGrailQuestGame(): Promise<void> {
 // Merlin's Duel mode boot
 // ---------------------------------------------------------------------------
 
-let _merlinDuelGame: MerlinDuelGame | null = null;
+let _merlinDuelGame: any = null;
 
 async function _bootMerlinDuelGame(): Promise<void> {
   if (_merlinDuelGame) { _merlinDuelGame.destroy(); _merlinDuelGame = null; }
+  const { MerlinDuelGame } = await import("./merlinduel/MerlinDuelGame");
+
   _merlinDuelGame = new MerlinDuelGame();
   await _merlinDuelGame.boot();
   const _onExit = () => {
@@ -3363,10 +3333,12 @@ async function _bootMerlinDuelGame(): Promise<void> {
 // King of the Hill mode boot
 // ---------------------------------------------------------------------------
 
-let _kothGame: KothGame | null = null;
+let _kothGame: any = null;
 
 async function _bootKothGame(): Promise<void> {
   if (_kothGame) { _kothGame.destroy(); _kothGame = null; }
+  const { KothGame } = await import("./koth/KothGame");
+
   _kothGame = new KothGame();
   await _kothGame.boot();
   const _onExit = () => {
@@ -3381,10 +3353,12 @@ async function _bootKothGame(): Promise<void> {
 // Runeblade mode boot
 // ---------------------------------------------------------------------------
 
-let _runebladeGame: RunebladeGame | null = null;
+let _runebladeGame: any = null;
 
 async function _bootRunebladeGame(): Promise<void> {
   if (_runebladeGame) { _runebladeGame.destroy(); _runebladeGame = null; }
+  const { RunebladeGame } = await import("./runeblade/RunebladeGame");
+
   _runebladeGame = new RunebladeGame();
   await _runebladeGame.boot();
   const _onExit = () => {
@@ -3399,10 +3373,12 @@ async function _bootRunebladeGame(): Promise<void> {
 // Chronomancer mode boot
 // ---------------------------------------------------------------------------
 
-let _chronomancerGame: ChronomancerGame | null = null;
+let _chronomancerGame: any = null;
 
 async function _bootChronomancerGame(): Promise<void> {
   if (_chronomancerGame) { _chronomancerGame.destroy(); _chronomancerGame = null; }
+  const { ChronomancerGame } = await import("./chronomancer/ChronomancerGame");
+
   _chronomancerGame = new ChronomancerGame();
   await _chronomancerGame.boot();
   const _onExit = () => {
@@ -3417,10 +3393,12 @@ async function _bootChronomancerGame(): Promise<void> {
 // Shapeshifter mode boot
 // ---------------------------------------------------------------------------
 
-let _shapeshifterGame: ShapeshifterGame | null = null;
+let _shapeshifterGame: any = null;
 
 async function _bootShapeshifterGame(): Promise<void> {
   if (_shapeshifterGame) { _shapeshifterGame.destroy(); _shapeshifterGame = null; }
+  const { ShapeshifterGame } = await import("./shapeshifter/ShapeshifterGame");
+
   _shapeshifterGame = new ShapeshifterGame();
   await _shapeshifterGame.boot();
   const _onExit = () => {
@@ -3435,10 +3413,12 @@ async function _bootShapeshifterGame(): Promise<void> {
 // Voidwalker mode boot
 // ---------------------------------------------------------------------------
 
-let _voidwalkerGame: VoidwalkerGame | null = null;
+let _voidwalkerGame: any = null;
 
 async function _bootVoidwalkerGame(): Promise<void> {
   if (_voidwalkerGame) { _voidwalkerGame.destroy(); _voidwalkerGame = null; }
+  const { VoidwalkerGame } = await import("./voidwalker/VoidwalkerGame");
+
   _voidwalkerGame = new VoidwalkerGame();
   await _voidwalkerGame.boot();
   const _onExit = () => {
@@ -3453,10 +3433,12 @@ async function _bootVoidwalkerGame(): Promise<void> {
 // Age of Wonders mode boot
 // ---------------------------------------------------------------------------
 
-let _aowGame: AoWGame | null = null;
+let _aowGame: any = null;
 
 async function _bootAoWGame(): Promise<void> {
   if (_aowGame) { _aowGame.destroy(); _aowGame = null; }
+  const { AoWGame } = await import("./aow/AoWGame");
+
   _aowGame = new AoWGame();
   await _aowGame.boot();
   const _onExit = () => {
@@ -3471,10 +3453,12 @@ async function _bootAoWGame(): Promise<void> {
 // Lancelot combat arena boot
 // ---------------------------------------------------------------------------
 
-let _lancelotGame: LancelotGame | null = null;
+let _lancelotGame: any = null;
 
 async function _bootLancelotGame(): Promise<void> {
   if (_lancelotGame) { _lancelotGame.destroy(); _lancelotGame = null; }
+  const { LancelotGame } = await import("./lancelot/LancelotGame");
+
   _lancelotGame = new LancelotGame();
   await _lancelotGame.boot();
   const _onExit = () => {
@@ -3489,10 +3473,12 @@ async function _bootLancelotGame(): Promise<void> {
 // Sewer Splash mode boot
 // ---------------------------------------------------------------------------
 
-let _sewerSplashGame: SewerSplashGame | null = null;
+let _sewerSplashGame: any = null;
 
 async function _bootSewerSplashGame(): Promise<void> {
   if (_sewerSplashGame) { _sewerSplashGame.destroy(); _sewerSplashGame = null; }
+  const { SewerSplashGame } = await import("./sewersplash/SewerSplashGame");
+
   _sewerSplashGame = new SewerSplashGame();
   await _sewerSplashGame.boot();
   const _onExit = () => {
@@ -3507,10 +3493,12 @@ async function _bootSewerSplashGame(): Promise<void> {
 // Lake of Avalon mode boot
 // ---------------------------------------------------------------------------
 
-let _lakeOfAvalonGame: LakeOfAvalonGame | null = null;
+let _lakeOfAvalonGame: any = null;
 
 async function _bootLakeOfAvalonGame(): Promise<void> {
   if (_lakeOfAvalonGame) { _lakeOfAvalonGame.destroy(); _lakeOfAvalonGame = null; }
+  const { LakeOfAvalonGame } = await import("./avalon/LakeOfAvalonGame");
+
   _lakeOfAvalonGame = new LakeOfAvalonGame();
   await _lakeOfAvalonGame.boot();
   const _onExit = () => {
@@ -3525,10 +3513,12 @@ async function _bootLakeOfAvalonGame(): Promise<void> {
 // Trebuchet siege defense boot
 // ---------------------------------------------------------------------------
 
-let _trebuchetGame: TrebuchetGame | null = null;
+let _trebuchetGame: any = null;
 
 async function _bootTrebuchetGame(): Promise<void> {
   if (_trebuchetGame) { _trebuchetGame.destroy(); _trebuchetGame = null; }
+  const { TrebuchetGame } = await import("./trebuchet/TrebuchetGame");
+
   _trebuchetGame = new TrebuchetGame();
   await _trebuchetGame.boot();
   const _onExit = () => {
@@ -3543,10 +3533,12 @@ async function _bootTrebuchetGame(): Promise<void> {
 // Grail Keeper mode boot
 // ---------------------------------------------------------------------------
 
-let _grailKeeperGame: GrailKeeperGame | null = null;
+let _grailKeeperGame: any = null;
 
 async function _bootGrailKeeperGame(): Promise<void> {
   if (_grailKeeperGame) { _grailKeeperGame.destroy(); _grailKeeperGame = null; }
+  const { GrailKeeperGame } = await import("./grailkeeper/GrailKeeperGame");
+
   _grailKeeperGame = new GrailKeeperGame();
   await _grailKeeperGame.boot();
   const _onExit = () => {
@@ -3561,10 +3553,12 @@ async function _bootGrailKeeperGame(): Promise<void> {
 // Gargoyle: Cathedral Guardian boot
 // ---------------------------------------------------------------------------
 
-let _gargoyleGame: GargoyleGame | null = null;
+let _gargoyleGame: any = null;
 
 async function _bootGargoyleGame(): Promise<void> {
   if (_gargoyleGame) { _gargoyleGame.destroy(); _gargoyleGame = null; }
+  const { GargoyleGame } = await import("./gargoyle/GargoyleGame");
+
   _gargoyleGame = new GargoyleGame();
   await _gargoyleGame.boot();
   const _onExit = () => {
@@ -3579,10 +3573,12 @@ async function _bootGargoyleGame(): Promise<void> {
 // LOT: Fate's Gambit boot
 // ---------------------------------------------------------------------------
 
-let _lotGame: LotGame | null = null;
+let _lotGame: any = null;
 
 async function _bootLotGame(): Promise<void> {
   if (_lotGame) { _lotGame.destroy(); _lotGame = null; }
+  const { LotGame } = await import("./lot/LotGame");
+
   _lotGame = new LotGame();
   await _lotGame.boot();
   const _onExit = () => {
@@ -3597,10 +3593,12 @@ async function _bootLotGame(): Promise<void> {
 // Guinevere: The Astral Garden boot
 // ---------------------------------------------------------------------------
 
-let _guinevereGame: GuinevereGame | null = null;
+let _guinevereGame: any = null;
 
 async function _bootGuinevereGame(): Promise<void> {
   if (_guinevereGame) { _guinevereGame.destroy(); _guinevereGame = null; }
+  const { GuinevereGame } = await import("./guinevere/GuinevereGame");
+
   _guinevereGame = new GuinevereGame();
   await _guinevereGame.boot();
   const _onExit = () => {
@@ -3615,10 +3613,12 @@ async function _bootGuinevereGame(): Promise<void> {
 // Forest of Camelot boot
 // ---------------------------------------------------------------------------
 
-let _forestGame: ForestGame | null = null;
+let _forestGame: any = null;
 
 async function _bootForestGame(): Promise<void> {
   if (_forestGame) { _forestGame.destroy(); _forestGame = null; }
+  const { ForestGame } = await import("./forest/ForestGame");
+
   _forestGame = new ForestGame();
   await _forestGame.boot();
   const _onExit = () => {
@@ -3633,10 +3633,12 @@ async function _bootForestGame(): Promise<void> {
 // Pendulum boot
 // ---------------------------------------------------------------------------
 
-let _pendulumGame: PendulumGame | null = null;
+let _pendulumGame: any = null;
 
 async function _bootPendulumGame(): Promise<void> {
   if (_pendulumGame) { _pendulumGame.destroy(); _pendulumGame = null; }
+  const { PendulumGame } = await import("./pendulum/PendulumGame");
+
   _pendulumGame = new PendulumGame();
   await _pendulumGame.boot();
   const _onExit = () => {
@@ -3651,10 +3653,12 @@ async function _bootPendulumGame(): Promise<void> {
 // Leviathan boot
 // ---------------------------------------------------------------------------
 
-let _leviathanGame: LeviathanGame | null = null;
+let _leviathanGame: any = null;
 
 async function _bootLeviathanGame(): Promise<void> {
   if (_leviathanGame) { _leviathanGame.destroy(); _leviathanGame = null; }
+  const { LeviathanGame } = await import("./leviathan/LeviathanGame");
+
   _leviathanGame = new LeviathanGame();
   await _leviathanGame.boot();
   const _onExit = () => {
@@ -3669,10 +3673,12 @@ async function _bootLeviathanGame(): Promise<void> {
 // Sword of Avalon boot
 // ---------------------------------------------------------------------------
 
-let _swordOfAvalonGame: SwordOfAvalonGame | null = null;
+let _swordOfAvalonGame: any = null;
 
 async function _bootSwordOfAvalonGame(): Promise<void> {
   if (_swordOfAvalonGame) { _swordOfAvalonGame.destroy(); _swordOfAvalonGame = null; }
+  const { SwordOfAvalonGame } = await import("./avalon-sword/SwordOfAvalonGame");
+
   _swordOfAvalonGame = new SwordOfAvalonGame();
   await _swordOfAvalonGame.boot();
   const _onExit = () => {
@@ -3687,10 +3693,12 @@ async function _bootSwordOfAvalonGame(): Promise<void> {
 // Depths of Avalon boot
 // ---------------------------------------------------------------------------
 
-let _depthsGame: DepthsGame | null = null;
+let _depthsGame: any = null;
 
 async function _bootDepthsGame(): Promise<void> {
   if (_depthsGame) { _depthsGame.destroy(); _depthsGame = null; }
+  const { DepthsGame } = await import("./depths/DepthsGame");
+
   _depthsGame = new DepthsGame();
   await _depthsGame.boot();
   const _onExit = () => {
@@ -3705,10 +3713,12 @@ async function _bootDepthsGame(): Promise<void> {
 // Knight Ball boot
 // ---------------------------------------------------------------------------
 
-let _knightBallGame: KnightBallGame | null = null;
+let _knightBallGame: any = null;
 
 async function _bootKnightBallGame(): Promise<void> {
   if (_knightBallGame) { _knightBallGame.destroy(); _knightBallGame = null; }
+  const { KnightBallGame } = await import("./knightball/KnightBallGame");
+
   _knightBallGame = new KnightBallGame();
   await _knightBallGame.boot();
   const _onExit = () => {
@@ -3723,10 +3733,12 @@ async function _bootKnightBallGame(): Promise<void> {
 // Epsilon boot
 // ---------------------------------------------------------------------------
 
-let _epsilonGame: EpsilonGame | null = null;
+let _epsilonGame: any = null;
 
 async function _bootEpsilonGame(): Promise<void> {
   if (_epsilonGame) { _epsilonGame.destroy(); _epsilonGame = null; }
+  const { EpsilonGame } = await import("./epsilon/EpsilonGame");
+
   _epsilonGame = new EpsilonGame();
   await _epsilonGame.boot();
   const _onExit = () => {
@@ -3741,10 +3753,12 @@ async function _bootEpsilonGame(): Promise<void> {
 // Grand boot
 // ---------------------------------------------------------------------------
 
-let _grandGame: GrandGame | null = null;
+let _grandGame: any = null;
 
 async function _bootGrandGame(): Promise<void> {
   if (_grandGame) { _grandGame.destroy(); _grandGame = null; }
+  const { GrandGame } = await import("./grand/GrandGame");
+
   _grandGame = new GrandGame();
   await _grandGame.boot();
   const _onExit = () => {
@@ -3759,10 +3773,12 @@ async function _bootGrandGame(): Promise<void> {
 // Rampart boot
 // ---------------------------------------------------------------------------
 
-let _rampartGame: RampartGame | null = null;
+let _rampartGame: any = null;
 
 async function _bootRampartGame(): Promise<void> {
   if (_rampartGame) { _rampartGame.destroy(); _rampartGame = null; }
+  const { RampartGame } = await import("./rampart/RampartGame");
+
   _rampartGame = new RampartGame();
   await _rampartGame.boot();
   const _onExit = () => {
@@ -3777,13 +3793,16 @@ async function _bootRampartGame(): Promise<void> {
 // Survivor mode boot
 // ---------------------------------------------------------------------------
 
-let _survivorGame: SurvivorGame | null = null;
+let _survivorGame: any = null;
 
 async function _bootSurvivorGame(): Promise<void> {
   if (_survivorGame) {
     _survivorGame.destroy();
     _survivorGame = null;
   }
+
+  const { SurvivorGame } = await import("@/survivor/SurvivorGame");
+
 
   _survivorGame = new SurvivorGame();
   await _survivorGame.boot();
@@ -3793,13 +3812,16 @@ async function _bootSurvivorGame(): Promise<void> {
 // Colosseum mode boot
 // ---------------------------------------------------------------------------
 
-let _colosseumGame: ColosseumGame | null = null;
+let _colosseumGame: any = null;
 
 async function _bootColosseumGame(): Promise<void> {
   if (_colosseumGame) {
     _colosseumGame.destroy();
     _colosseumGame = null;
   }
+
+  const { ColosseumGame } = await import("@rpg/colosseum/ColosseumGame");
+
 
   _colosseumGame = new ColosseumGame();
   await _colosseumGame.boot();
@@ -3820,13 +3842,16 @@ async function _bootColosseumGame(): Promise<void> {
 // Duel mode boot
 // ---------------------------------------------------------------------------
 
-let _duelGame: DuelGame | null = null;
+let _duelGame: any = null;
 
 async function _bootDuelGame(): Promise<void> {
   if (_duelGame) {
     _duelGame.destroy();
     _duelGame = null;
   }
+
+  const { DuelGame } = await import("./duel/DuelGame");
+
 
   _duelGame = new DuelGame();
   await _duelGame.boot();
@@ -3846,13 +3871,16 @@ async function _bootDuelGame(): Promise<void> {
 // Medieval GTA mode boot
 // ---------------------------------------------------------------------------
 
-let _medievalGTA: MedievalGTA | null = null;
+let _medievalGTA: any = null;
 
 async function _bootMedievalGTA(): Promise<void> {
   if (_medievalGTA) {
     _medievalGTA.destroy();
     _medievalGTA = null;
   }
+
+  const { MedievalGTA } = await import("./medievalgta/MedievalGTA");
+
 
   _medievalGTA = new MedievalGTA();
   await _medievalGTA.boot();
@@ -3872,13 +3900,16 @@ async function _bootMedievalGTA(): Promise<void> {
 // Medieval GTA 3D mode boot
 // ---------------------------------------------------------------------------
 
-let _medievalGTA3D: MedievalGTA3DGame | null = null;
+let _medievalGTA3D: any = null;
 
 async function _bootMedievalGTA3D(): Promise<void> {
   if (_medievalGTA3D) {
     _medievalGTA3D.destroy();
     _medievalGTA3D = null;
   }
+
+  const { MedievalGTA3DGame } = await import("./medievalgta3d/MedievalGTA3DGame");
+
 
   _medievalGTA3D = new MedievalGTA3DGame();
   await _medievalGTA3D.boot();
@@ -3898,13 +3929,16 @@ async function _bootMedievalGTA3D(): Promise<void> {
 // Diablo ARPG mode boot
 // ---------------------------------------------------------------------------
 
-let _diabloGame: DiabloGame | null = null;
+let _diabloGame: any = null;
 
 async function _bootDiabloGame(): Promise<void> {
   if (_diabloGame) {
     _diabloGame.destroy();
     _diabloGame = null;
   }
+
+  const { DiabloGame } = await import("./diablo/DiabloGame");
+
 
   _diabloGame = new DiabloGame();
   await _diabloGame.boot();
@@ -3924,13 +3958,16 @@ async function _bootDiabloGame(): Promise<void> {
 // Mage Wars FPS mode boot
 // ---------------------------------------------------------------------------
 
-let _mageWarsGame: MageWarsGame | null = null;
+let _mageWarsGame: any = null;
 
 async function _bootMageWarsGame(): Promise<void> {
   if (_mageWarsGame) {
     _mageWarsGame.destroy();
     _mageWarsGame = null;
   }
+
+  const { MageWarsGame } = await import("./magewars/MageWarsGame");
+
 
   _mageWarsGame = new MageWarsGame();
   await _mageWarsGame.boot();
@@ -3950,13 +3987,16 @@ async function _bootMageWarsGame(): Promise<void> {
 // Quest for the Grail (GAME) mode boot
 // ---------------------------------------------------------------------------
 
-let _gameGame: GameGame | null = null;
+let _gameGame: any = null;
 
 async function _bootGameGame(): Promise<void> {
   if (_gameGame) {
     _gameGame.destroy();
     _gameGame = null;
   }
+
+  const { GameGame } = await import("./game/GameGame");
+
 
   _gameGame = new GameGame();
   await _gameGame.boot();
@@ -3976,13 +4016,16 @@ async function _bootGameGame(): Promise<void> {
 // Rift Wizard mode boot
 // ---------------------------------------------------------------------------
 
-let _riftWizardGame: RiftWizardGame | null = null;
+let _riftWizardGame: any = null;
 
 async function _bootRiftWizardGame(): Promise<void> {
   if (_riftWizardGame) {
     _riftWizardGame.destroy();
     _riftWizardGame = null;
   }
+
+  const { RiftWizardGame } = await import("./riftwizard/RiftWizardGame");
+
 
   _riftWizardGame = new RiftWizardGame();
   await _riftWizardGame.boot();
@@ -4002,13 +4045,15 @@ async function _bootRiftWizardGame(): Promise<void> {
 // Grail Ball mode boot
 // ---------------------------------------------------------------------------
 
-let _grailBallGame: GrailBallGame | null = null;
+let _grailBallGame: any = null;
 
 async function _bootGrailBallGame(): Promise<void> {
   if (_grailBallGame) {
     _grailBallGame.destroy();
     _grailBallGame = null;
   }
+  const { GrailBallGame } = await import("./grailball/GrailBallGame");
+
   _grailBallGame = new GrailBallGame();
   await _grailBallGame.boot();
   const _onExit = () => {
@@ -4026,13 +4071,15 @@ async function _bootGrailBallGame(): Promise<void> {
 // Grail Ball Manager mode boot
 // ---------------------------------------------------------------------------
 
-let _grailManagerGame: GrailManagerGame | null = null;
+let _grailManagerGame: any = null;
 
 async function _bootGrailManagerGame(): Promise<void> {
   if (_grailManagerGame) {
     _grailManagerGame.destroy();
     _grailManagerGame = null;
   }
+  const { GrailManagerGame } = await import("./grailmanager/GrailManagerGame");
+
   _grailManagerGame = new GrailManagerGame();
   await _grailManagerGame.boot();
   const _onExit = () => {
@@ -4050,13 +4097,15 @@ async function _bootGrailManagerGame(): Promise<void> {
 // Arthurian RPG mode boot
 // ---------------------------------------------------------------------------
 
-let _arthurianRPGGame: ArthurianRPGGame | null = null;
+let _arthurianRPGGame: any = null;
 
 async function _bootArthurianRPGGame(): Promise<void> {
   if (_arthurianRPGGame) {
     _arthurianRPGGame.destroy();
     _arthurianRPGGame = null;
   }
+  const { ArthurianRPGGame } = await import("./arthurianrpg/ArthurianRPGGame");
+
   _arthurianRPGGame = new ArthurianRPGGame();
   await _arthurianRPGGame.boot();
   const _onExit = () => {
@@ -4074,13 +4123,16 @@ async function _bootArthurianRPGGame(): Promise<void> {
 // Warband mode boot
 // ---------------------------------------------------------------------------
 
-let _warbandGame: WarbandGame | null = null;
+let _warbandGame: any = null;
 
 async function _bootWarbandGame(): Promise<void> {
   if (_warbandGame) {
     _warbandGame.destroy();
     _warbandGame = null;
   }
+
+  const { WarbandGame } = await import("./warband/WarbandGame");
+
 
   _warbandGame = new WarbandGame();
   await _warbandGame.boot();
@@ -4111,7 +4163,7 @@ async function _bootWarbandGame(): Promise<void> {
 // Warband Campaign mode boot
 // ---------------------------------------------------------------------------
 
-let _warbandCampaign: WarbandCampaign | null = null;
+let _warbandCampaign: any = null;
 
 async function _bootWarbandCampaign(): Promise<void> {
   if (_warbandCampaign) {
@@ -4170,6 +4222,9 @@ async function _bootWarbandCampaign(): Promise<void> {
       const factionId = (btn as HTMLElement).dataset.faction!;
       factionSelectContainer.parentNode?.removeChild(factionSelectContainer);
 
+      const { WarbandCampaign } = await import("./warband/WarbandCampaign");
+
+
       _warbandCampaign = new WarbandCampaign();
       await _warbandCampaign.boot(factionId);
 
@@ -4195,13 +4250,15 @@ async function _bootWarbandCampaign(): Promise<void> {
 // Tekken fighter mode boot
 // ---------------------------------------------------------------------------
 
-let _tekkenGame: TekkenGame | null = null;
+let _tekkenGame: any = null;
 
 async function _bootTekkenGame(): Promise<void> {
   if (_tekkenGame) {
     _tekkenGame.destroy();
     _tekkenGame = null;
   }
+  const { TekkenGame } = await import("./tekken/TekkenGame");
+
   _tekkenGame = new TekkenGame();
   await _tekkenGame.boot();
   const _onExit = () => {
@@ -4219,13 +4276,15 @@ async function _bootTekkenGame(): Promise<void> {
 // Panzer Dragoon mode boot
 // ---------------------------------------------------------------------------
 
-let _dragoonGame: DragoonGame | null = null;
+let _dragoonGame: any = null;
 
 async function _bootDragoonGame(): Promise<void> {
   if (_dragoonGame) {
     _dragoonGame.destroy();
     _dragoonGame = null;
   }
+  const { DragoonGame } = await import("./dragoon/DragoonGame");
+
   _dragoonGame = new DragoonGame();
   await _dragoonGame.boot();
   const _onExit = () => {
@@ -4243,7 +4302,7 @@ async function _bootDragoonGame(): Promise<void> {
 // 3Dragon mode boot
 // ---------------------------------------------------------------------------
 
-let _threeDragonGame: ThreeDragonGame | null = null;
+let _threeDragonGame: any = null;
 
 async function _bootThreeDragonGame(): Promise<void> {
   if (_threeDragonGame) {
@@ -4251,6 +4310,8 @@ async function _bootThreeDragonGame(): Promise<void> {
     _threeDragonGame = null;
   }
   viewManager.clearWorld();
+  const { ThreeDragonGame } = await import("./threedragon/ThreeDragonGame");
+
   _threeDragonGame = new ThreeDragonGame();
   await _threeDragonGame.boot();
   const _onExit = () => {
@@ -4268,7 +4329,7 @@ async function _bootThreeDragonGame(): Promise<void> {
 // Settlers mode boot
 // ---------------------------------------------------------------------------
 
-let _settlersGame: SettlersGame | null = null;
+let _settlersGame: any = null;
 
 function _showSettlersMapModeSelect(): void {
   const overlay = document.createElement("div");
@@ -4330,6 +4391,8 @@ async function _bootSettlersGame(mapMode: SettlersMapMode = "CONTINENTAL"): Prom
     _settlersGame = null;
   }
   viewManager.clearWorld();
+  const { SettlersGame } = await import("./settlers/SettlersGame");
+
   _settlersGame = new SettlersGame();
   _settlersGame.setMapMode(mapMode);
   await _settlersGame.boot();
@@ -4348,7 +4411,7 @@ async function _bootSettlersGame(mapMode: SettlersMapMode = "CONTINENTAL"): Prom
 // Medieval Caesar (city builder mode) boot
 // ---------------------------------------------------------------------------
 
-let _caesarGame: CaesarGame | null = null;
+let _caesarGame: any = null;
 
 async function _bootCaesarGame(): Promise<void> {
   if (_caesarGame) {
@@ -4356,6 +4419,8 @@ async function _bootCaesarGame(): Promise<void> {
     _caesarGame = null;
   }
   viewManager.clearWorld();
+  const { CaesarGame } = await import("./caesar/CaesarGame");
+
   _caesarGame = new CaesarGame();
   await _caesarGame.boot();
   const _onExit = () => {
@@ -4373,7 +4438,7 @@ async function _bootCaesarGame(): Promise<void> {
 // Camelot Craft (Minecraft-style voxel mode) boot
 // ---------------------------------------------------------------------------
 
-let _camelotCraftGame: CamelotCraftGame | null = null;
+let _camelotCraftGame: any = null;
 
 async function _bootCamelotCraftGame(): Promise<void> {
   if (_camelotCraftGame) {
@@ -4381,6 +4446,8 @@ async function _bootCamelotCraftGame(): Promise<void> {
     _camelotCraftGame = null;
   }
   viewManager.clearWorld();
+  const { CamelotCraftGame } = await import("./camelotcraft/CamelotCraftGame");
+
   _camelotCraftGame = new CamelotCraftGame();
   await _camelotCraftGame.boot();
   const _onExit = () => {
@@ -4398,7 +4465,7 @@ async function _bootCamelotCraftGame(): Promise<void> {
 // Eagle Flight (flight simulator) boot
 // ---------------------------------------------------------------------------
 
-let _eagleFlightGame: EagleFlightGame | null = null;
+let _eagleFlightGame: any = null;
 
 async function _bootEagleFlightGame(): Promise<void> {
   if (_eagleFlightGame) {
@@ -4406,6 +4473,8 @@ async function _bootEagleFlightGame(): Promise<void> {
     _eagleFlightGame = null;
   }
   viewManager.clearWorld();
+  const { EagleFlightGame } = await import("./eagleflight/EagleFlightGame");
+
   _eagleFlightGame = new EagleFlightGame();
   await _eagleFlightGame.boot();
   const _onExit = () => {
@@ -4423,7 +4492,7 @@ async function _bootEagleFlightGame(): Promise<void> {
 // Terraria (2D sandbox) boot
 // ---------------------------------------------------------------------------
 
-let _terrariaGame: TerrariaGame | null = null;
+let _terrariaGame: any = null;
 
 async function _bootTerrariaGame(): Promise<void> {
   if (_terrariaGame) {
@@ -4431,6 +4500,8 @@ async function _bootTerrariaGame(): Promise<void> {
     _terrariaGame = null;
   }
   viewManager.clearWorld();
+  const { TerrariaGame } = await import("./terraria/TerrariaGame");
+
   _terrariaGame = new TerrariaGame();
   await _terrariaGame.boot();
   const _onExit = () => {
@@ -4448,7 +4519,7 @@ async function _bootTerrariaGame(): Promise<void> {
 // Civilization (Civ 2-style 4X) boot
 // ---------------------------------------------------------------------------
 
-let _civGame: CivGame | null = null;
+let _civGame: any = null;
 
 async function _bootCivGame(): Promise<void> {
   if (_civGame) {
@@ -4456,6 +4527,8 @@ async function _bootCivGame(): Promise<void> {
     _civGame = null;
   }
   viewManager.clearWorld();
+  const { CivGame } = await import("./civilization/CivGame");
+
   _civGame = new CivGame();
   await _civGame.boot();
   const _onExit = () => {
@@ -4473,13 +4546,15 @@ async function _bootCivGame(): Promise<void> {
 // Morgan stealth-sorcery mode boot
 // ---------------------------------------------------------------------------
 
-let _morganGame: MorganGame | null = null;
+let _morganGame: any = null;
 
 async function _bootMorganGame(): Promise<void> {
   if (_morganGame) {
     _morganGame.destroy();
     _morganGame = null;
   }
+  const { MorganGame } = await import("./morgan/MorganGame");
+
   _morganGame = new MorganGame();
   await _morganGame.boot();
   const _onExit = () => {
@@ -4497,13 +4572,15 @@ async function _bootMorganGame(): Promise<void> {
 // Jousting tournament mode boot
 // ---------------------------------------------------------------------------
 
-let _joustingGame: JoustingGame | null = null;
+let _joustingGame: any = null;
 
 async function _bootJoustingGame(): Promise<void> {
   if (_joustingGame) {
     _joustingGame.destroy();
     _joustingGame = null;
   }
+  const { JoustingGame } = await import("./jousting/JoustingGame");
+
   _joustingGame = new JoustingGame();
   await _joustingGame.boot();
   const _onExit = () => {
@@ -4521,13 +4598,15 @@ async function _bootJoustingGame(): Promise<void> {
 // Exodus mode boot
 // ---------------------------------------------------------------------------
 
-let _exodusGame: ExodusGame | null = null;
+let _exodusGame: any = null;
 
 async function _bootExodusGame(): Promise<void> {
   if (_exodusGame) {
     _exodusGame.destroy();
     _exodusGame = null;
   }
+  const { ExodusGame } = await import("./exodus/ExodusGame");
+
   _exodusGame = new ExodusGame();
   await _exodusGame.boot();
   const _onExit = () => {
@@ -4545,10 +4624,12 @@ async function _bootExodusGame(): Promise<void> {
 // Coven mode boot
 // ---------------------------------------------------------------------------
 
-let _covenGame: CovenGame | null = null;
+let _covenGame: any = null;
 
 async function _bootCovenGame(): Promise<void> {
   if (_covenGame) { _covenGame.destroy(); _covenGame = null; }
+  const { CovenGame } = await import("./coven/CovenGame");
+
   _covenGame = new CovenGame();
   await _covenGame.boot();
   const _onExit = () => {
@@ -4563,10 +4644,12 @@ async function _bootCovenGame(): Promise<void> {
 // Shadowhand mode boot
 // ---------------------------------------------------------------------------
 
-let _shadowhandGame: ShadowhandGame | null = null;
+let _shadowhandGame: any = null;
 
 async function _bootShadowhandGame(): Promise<void> {
   if (_shadowhandGame) { _shadowhandGame.destroy(); _shadowhandGame = null; }
+  const { ShadowhandGame } = await import("./shadowhand/ShadowhandGame");
+
   _shadowhandGame = new ShadowhandGame();
   await _shadowhandGame.boot();
   const _onExit = () => {
@@ -4581,10 +4664,12 @@ async function _bootShadowhandGame(): Promise<void> {
 // Alchemist mode boot
 // ---------------------------------------------------------------------------
 
-let _alchemistGame: AlchemistGame | null = null;
+let _alchemistGame: any = null;
 
 async function _bootAlchemistGame(): Promise<void> {
   if (_alchemistGame) { _alchemistGame.destroy(); _alchemistGame = null; }
+  const { AlchemistGame } = await import("./alchemist/AlchemistGame");
+
   _alchemistGame = new AlchemistGame();
   await _alchemistGame.boot();
   const _onExit = () => {
@@ -4599,10 +4684,12 @@ async function _bootAlchemistGame(): Promise<void> {
 // Siege mode boot
 // ---------------------------------------------------------------------------
 
-let _siegeGame: SiegeGame | null = null;
+let _siegeGame: any = null;
 
 async function _bootSiegeGame(): Promise<void> {
   if (_siegeGame) { _siegeGame.destroy(); _siegeGame = null; }
+  const { SiegeGame } = await import("./siege/SiegeGame");
+
   _siegeGame = new SiegeGame();
   await _siegeGame.boot();
   const _onExit = () => {
@@ -4617,10 +4704,12 @@ async function _bootSiegeGame(): Promise<void> {
 // Tavern mode boot
 // ---------------------------------------------------------------------------
 
-let _tavernGame: TavernGame | null = null;
+let _tavernGame: any = null;
 
 async function _bootTavernGame(): Promise<void> {
   if (_tavernGame) { _tavernGame.destroy(); _tavernGame = null; }
+  const { TavernGame } = await import("./tavern/TavernGame");
+
   _tavernGame = new TavernGame();
   await _tavernGame.boot();
   const _onExit = () => {
@@ -4635,10 +4724,12 @@ async function _bootTavernGame(): Promise<void> {
 // Hunt mode boot
 // ---------------------------------------------------------------------------
 
-let _huntGame: HuntGame | null = null;
+let _huntGame: any = null;
 
 async function _bootHuntGame(): Promise<void> {
   if (_huntGame) { _huntGame.destroy(); _huntGame = null; }
+  const { HuntGame } = await import("./hunt/HuntGame");
+
   _huntGame = new HuntGame();
   await _huntGame.boot();
   const _onExit = () => {
@@ -4653,10 +4744,12 @@ async function _bootHuntGame(): Promise<void> {
 // Race mode boot
 // ---------------------------------------------------------------------------
 
-let _raceGame: RaceGame | null = null;
+let _raceGame: any = null;
 
 async function _bootRaceGame(): Promise<void> {
   if (_raceGame) { _raceGame.destroy(); _raceGame = null; }
+  const { RaceGame } = await import("./race/RaceGame");
+
   _raceGame = new RaceGame();
   await _raceGame.boot();
   const _onExit = () => {
@@ -4671,10 +4764,12 @@ async function _bootRaceGame(): Promise<void> {
 // Necromancer mode boot
 // ---------------------------------------------------------------------------
 
-let _necroGame: NecroGame | null = null;
+let _necroGame: any = null;
 
 async function _bootNecroGame(): Promise<void> {
   if (_necroGame) { _necroGame.destroy(); _necroGame = null; }
+  const { NecroGame } = await import("./necromancer/NecroGame");
+
   _necroGame = new NecroGame();
   await _necroGame.boot();
   const _onExit = () => {
