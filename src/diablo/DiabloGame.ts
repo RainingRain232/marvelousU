@@ -871,6 +871,16 @@ export class DiabloGame {
           }
         } else {
           this._targetEnemyId = null;
+          // Swing at air animation (no target hit, but show the attack)
+          const p = this._state.player;
+          if (p.attackTimer <= 0) {
+            const worldPos = this._getMouseWorldPos();
+            const swingAngle = Math.atan2(worldPos.x - p.x, worldPos.z - p.z);
+            p.attackTimer = 0.4;
+            p.isAttacking = true;
+            p.activeSkillAnimTimer = 0.3;
+            this._renderer.showSwingArc(p.x, p.y, p.z, swingAngle, 0xccccaa);
+          }
         }
       }
     }
@@ -1076,6 +1086,7 @@ export class DiabloGame {
       this._portalX = gridW / 2;
       this._portalZ = gridD / 2;
       this._portalActive = true;
+      this._renderer.showPortalRune(this._portalX, this._portalZ);
 
       this._state.dungeonLayout = null;
 

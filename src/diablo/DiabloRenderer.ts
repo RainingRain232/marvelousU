@@ -217,6 +217,9 @@ export class DiabloRenderer {
   private _targetEnemyId: string | null = null;
   private _hoverEnemyId: string | null = null;
 
+  // Town portal rune
+  private _portalRuneGroup: THREE.Group | null = null;
+
   // Post-processing
   private _bloomComposer: EffectComposer | null = null;
 
@@ -2964,6 +2967,8 @@ export class DiabloRenderer {
 
     // Target/hover indicators
     this._updateTargetIndicators(state);
+    // Portal rune animation
+    this._updatePortalRune();
 
     // Swing arc fade
     if (this._swingArc && this._swingArcTimer > 0) {
@@ -6198,6 +6203,124 @@ export class DiabloRenderer {
       this._hoverRing.rotation.y = this._time * 0.8;
     } else {
       this._hoverRing.visible = false;
+    }
+  }
+
+  /** Show a glowing rune circle at the town portal location. */
+  showPortalRune(x: number, z: number): void {
+    // Remove old portal rune if any
+    if (this._portalRuneGroup) {
+      this._disposeObject3D(this._portalRuneGroup);
+      this._scene.remove(this._portalRuneGroup);
+      this._portalRuneGroup = null;
+    }
+
+    const group = new THREE.Group();
+    const y = getTerrainHeight(x, z) + 0.05;
+    group.position.set(x, y, z);
+
+    const runeMat = new THREE.MeshStandardMaterial({
+      color: 0x2244cc,
+      emissive: 0x2244cc,
+      emissiveIntensity: 1.5,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const runeGlowMat = new THREE.MeshStandardMaterial({
+      color: 0x4488ff,
+      emissive: 0x4488ff,
+      emissiveIntensity: 2.0,
+      transparent: true,
+      opacity: 0.4,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+
+    // Outer circle
+    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(4.0, 0.08, 8, 48), runeMat);
+    outerRing.rotation.x = -Math.PI / 2;
+    outerRing.name = 'portal-outer';
+    group.add(outerRing);
+
+    // Inner circle
+    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.06, 8, 48), runeMat);
+    innerRing.rotation.x = -Math.PI / 2;
+    innerRing.name = 'portal-inner';
+    group.add(innerRing);
+
+    // Rune symbols (6 evenly spaced around the circle, using flat planes with text)
+    const runeChars = ['\u16A0', '\u16B1', '\u16C1', '\u16D2', '\u16A8', '\u16BE'];
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const rx = Math.cos(angle) * 3.4;
+      const rz = Math.sin(angle) * 3.4;
+
+      // Small glowing disc for each rune position
+      const disc = new THREE.Mesh(
+        new THREE.CircleGeometry(0.25, 12),
+        runeGlowMat.clone(),
+      );
+      disc.rotation.x = -Math.PI / 2;
+      disc.position.set(rx, 0.02, rz);
+      group.add(disc);
+    }
+
+    // Cross lines (4 lines connecting through center)
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI;
+      const lineGeo = new THREE.PlaneGeometry(7.6, 0.04);
+      const line = new THREE.Mesh(lineGeo, runeMat);
+      line.rotation.x = -Math.PI / 2;
+      line.rotation.z = angle;
+      line.position.y = 0.01;
+      group.add(line);
+    }
+
+    // Center glow disc
+    const centerGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(1.2, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0x2266ff,
+        emissive: 0x2266ff,
+        emissiveIntensity: 2.5,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    centerGlow.rotation.x = -Math.PI / 2;
+    centerGlow.position.y = 0.02;
+    centerGlow.name = 'portal-center';
+    group.add(centerGlow);
+
+    // Point light for ambient blue glow
+    const light = new THREE.PointLight(0x4488ff, 1.5, 10, 1.5);
+    light.position.y = 1.0;
+    group.add(light);
+
+    this._scene.add(group);
+    this._portalRuneGroup = group;
+  }
+
+  /** Animate the portal rune (called per frame from update). */
+  private _updatePortalRune(): void {
+    if (!this._portalRuneGroup) return;
+    const g = this._portalRuneGroup;
+    // Rotate outer ring slowly
+    const outer = g.getObjectByName('portal-outer');
+    if (outer) outer.rotation.z = this._time * 0.3;
+    // Rotate inner ring opposite direction
+    const inner = g.getObjectByName('portal-inner');
+    if (inner) inner.rotation.z = -this._time * 0.5;
+    // Pulse center glow
+    const center = g.getObjectByName('portal-center') as THREE.Mesh | undefined;
+    if (center) {
+      const pulse = 0.25 + Math.sin(this._time * 2) * 0.1;
+      (center.material as THREE.MeshStandardMaterial).opacity = pulse;
+      center.scale.setScalar(1.0 + Math.sin(this._time * 1.5) * 0.1);
     }
   }
 
