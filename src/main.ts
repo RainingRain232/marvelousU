@@ -148,6 +148,9 @@ import { JoustingGame } from "./jousting/JoustingGame";
 import { ExodusGame } from "./exodus/ExodusGame";
 import { CovenGame } from "./coven/CovenGame";
 import { CaravanGame } from "./caravan/CaravanGame";
+import { ChariotGame } from "./chariot/ChariotGame";
+import { BearingGame } from "./bearing/BearingGame";
+import { MatrixGame } from "./matrix/MatrixGame";
 import { ShadowhandGame } from "./shadowhand/ShadowhandGame";
 import { AlchemistGame } from "./alchemist/AlchemistGame";
 import { SiegeGame } from "./siege/SiegeGame";
@@ -845,6 +848,21 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.LOT) {
       menuScreen.hide();
       _bootLotGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.CHARIOT) {
+      menuScreen.hide();
+      _bootChariotGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.BEARING) {
+      menuScreen.hide();
+      _bootBearingGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.MATRIX) {
+      menuScreen.hide();
+      _bootMatrixGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -2908,6 +2926,60 @@ async function _bootCaravanGame(): Promise<void> {
 
   _caravanGame = new CaravanGame();
   await _caravanGame.boot();
+}
+
+// ---------------------------------------------------------------------------
+// Chariot racing mode boot
+// ---------------------------------------------------------------------------
+
+let _chariotGame: ChariotGame | null = null;
+
+async function _bootChariotGame(): Promise<void> {
+  if (_chariotGame) { _chariotGame.destroy(); _chariotGame = null; }
+  _chariotGame = new ChariotGame();
+  await _chariotGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("chariotExit", _onExit);
+    if (_chariotGame) { _chariotGame.destroy(); _chariotGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("chariotExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Bearing navigation mode boot
+// ---------------------------------------------------------------------------
+
+let _bearingGame: BearingGame | null = null;
+
+async function _bootBearingGame(): Promise<void> {
+  if (_bearingGame) { _bearingGame.destroy(); _bearingGame = null; }
+  _bearingGame = new BearingGame();
+  await _bearingGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("bearingExit", _onExit);
+    if (_bearingGame) { _bearingGame.destroy(); _bearingGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("bearingExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Matrix bullet-time mode boot
+// ---------------------------------------------------------------------------
+
+let _matrixGame: MatrixGame | null = null;
+
+async function _bootMatrixGame(): Promise<void> {
+  if (_matrixGame) { _matrixGame.destroy(); _matrixGame = null; }
+  _matrixGame = new MatrixGame();
+  await _matrixGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("matrixExit", _onExit);
+    if (_matrixGame) { _matrixGame.destroy(); _matrixGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("matrixExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

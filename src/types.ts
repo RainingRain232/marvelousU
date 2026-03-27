@@ -734,6 +734,9 @@ export enum GameMode {
   LEVIATHAN = "leviathan",
   SWORD_OF_AVALON = "sword_of_avalon",
   DEPTHS = "depths",
+  CHARIOT = "chariot",
+  BEARING = "bearing",
+  MATRIX = "matrix",
 }
 
 // ---------------------------------------------------------------------------

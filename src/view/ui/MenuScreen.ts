@@ -601,6 +601,9 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.FOREST, label: "FOREST OF CAMELOT", desc: "Defend the Great Oak as the Green Knight — wield nature magic, command the seasons, fight the Blight across sacred groves", skipSetup: true, tag: "NEW" },
   { mode: GameMode.PENDULUM, label: "PENDULUM", desc: "Guard the Clock Tower as the Clockwork Knight — wield chrono-magic, ride the pendulum's rhythm, freeze time itself against automaton hordes", skipSetup: true, tag: "NEW" },
   { mode: GameMode.LEVIATHAN, label: "LEVIATHAN", desc: "Descend into a sunken cathedral beneath the ocean — recover Excalibur fragments, fight bioluminescent horrors, manage oxygen in the crushing deep", skipSetup: true, tag: "3D" },
+  { mode: GameMode.CHARIOT, label: "CHARIOT", desc: "3D chariot racing — 5 tracks, power-ups, drifting & tournament", skipSetup: true, tag: "3D" },
+  { mode: GameMode.BEARING, label: "BEARING", desc: "3D compass navigation — find sacred waypoints before sunset", skipSetup: true, tag: "3D" },
+  { mode: GameMode.MATRIX, label: "MATRIX", desc: "3D bullet-time arena — dodge, deflect & chain combos in slow-motion", skipSetup: true, tag: "3D" },
 ];
 
 // ---------------------------------------------------------------------------
