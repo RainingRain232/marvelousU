@@ -797,10 +797,11 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   skillBarBg.style.cssText = `
     position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
     padding:10px 14px;display:flex;gap:6px;
-    background:linear-gradient(180deg, rgba(45,38,25,0.95), rgba(25,20,10,0.97), rgba(35,28,18,0.95));
-    border:2px solid #8b7a4a;border-radius:8px;
+    background:linear-gradient(180deg, rgba(35,28,18,0.95), rgba(18,14,8,0.97), rgba(28,22,14,0.95));
+    border:2px solid #7a6a3a;border-radius:8px;
+    box-shadow:0 3px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,168,78,0.15),
+      0 0 1px rgba(200,168,78,0.2), 0 -2px 10px rgba(200,168,78,0.05);
     animation:hud-bar-breathe 4s ease-in-out infinite;
-    background-image:repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(200,168,78,0.015) 8px, rgba(200,168,78,0.015) 16px);
   `;
   // Left end-cap ornament
   const skillCapL = document.createElement("div");
@@ -1579,8 +1580,8 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
 
   // === Animated torches flanking the skill bar ===
   const torchPositions = [
-    { side: "left", xOffset: "-280px" },
-    { side: "right", xOffset: "280px" },
+    { side: "left", xOffset: "-238px" },
+    { side: "right", xOffset: "238px" },
   ];
   for (const tp of torchPositions) {
     const torchWrap = document.createElement("div");

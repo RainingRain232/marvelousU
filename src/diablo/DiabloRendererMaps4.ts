@@ -2966,40 +2966,164 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
     // ── 4. Gargoyle rainspouts (on building corners) ──
     for (let i = 0; i < 6; i++) {
       const grgSpout = new THREE.Group();
-      const spBody = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.7), darkStoneMat);
-      spBody.position.y = 0.2;
-      grgSpout.add(spBody);
-      const spHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 14), darkStoneMat);
-      spHead.scale.set(1, 0.9, 1.2);
-      spHead.position.set(0, 0.45, 0.4);
-      grgSpout.add(spHead);
-      const spMouth = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10),
-        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 }));
-      spMouth.position.set(0, 0.42, 0.55);
-      grgSpout.add(spMouth);
-      const spWingL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.35), darkStoneMat);
-      spWingL.position.set(-0.45, 0.35, 0.1);
-      spWingL.rotation.z = 0.4;
-      spWingL.rotation.y = 0.3;
-      grgSpout.add(spWingL);
-      const spWingR = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.35), darkStoneMat);
-      spWingR.position.set(0.45, 0.35, 0.1);
-      spWingR.rotation.z = -0.4;
-      spWingR.rotation.y = -0.3;
-      grgSpout.add(spWingR);
-      for (let ft = 0; ft < 2; ft++) {
-        const claw = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.15), darkStoneMat);
-        claw.position.set(ft === 0 ? -0.15 : 0.15, 0.03, 0.3);
-        grgSpout.add(claw);
+      const gargStoneMat = new THREE.MeshStandardMaterial({ color: 0x3a3a44, roughness: 0.8, metalness: 0.05 });
+      const gargDarkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: 0.95 });
+      const gargEyeMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff2200, emissiveIntensity: 0.6 });
+
+      // Haunched body (torso + hunched back)
+      const spTorso = new THREE.Mesh(new THREE.SphereGeometry(0.25, 24, 20), gargStoneMat);
+      spTorso.scale.set(1, 0.8, 1.3);
+      spTorso.position.set(0, 0.25, 0.15);
+      grgSpout.add(spTorso);
+      // Spine ridge along the back
+      for (let sp = 0; sp < 5; sp++) {
+        const spineKnob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), gargStoneMat);
+        spineKnob.position.set(0, 0.38 - sp * 0.04, -0.05 + sp * 0.06);
+        grgSpout.add(spineKnob);
       }
-      const waterChannel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.8, 8), darkStoneMat);
+      // Neck
+      const spNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.15, 16), gargStoneMat);
+      spNeck.position.set(0, 0.4, 0.35);
+      spNeck.rotation.x = -0.4;
+      grgSpout.add(spNeck);
+      // Head (detailed, angular)
+      const spHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 24, 20), gargStoneMat);
+      spHead.scale.set(1, 0.85, 1.2);
+      spHead.position.set(0, 0.5, 0.45);
+      grgSpout.add(spHead);
+      // Brow ridge
+      const browRidge = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 8, 16, Math.PI), gargStoneMat);
+      browRidge.position.set(0, 0.55, 0.52);
+      browRidge.rotation.x = 0.3;
+      grgSpout.add(browRidge);
+      // Glowing eyes
+      for (const eSide of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 10), gargEyeMat);
+        eye.position.set(eSide * 0.06, 0.52, 0.58);
+        grgSpout.add(eye);
+      }
+      // Snout / jaw
+      const spSnout = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.14, 12), gargStoneMat);
+      spSnout.position.set(0, 0.46, 0.6);
+      spSnout.rotation.x = -Math.PI / 2;
+      grgSpout.add(spSnout);
+      // Open mouth
+      const spMouth = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), gargDarkMat);
+      spMouth.position.set(0, 0.44, 0.68);
+      grgSpout.add(spMouth);
+      // Lower jaw
+      const lowerJaw = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.08, 10), gargStoneMat);
+      lowerJaw.position.set(0, 0.41, 0.62);
+      lowerJaw.rotation.x = -Math.PI / 2 + 0.3;
+      grgSpout.add(lowerJaw);
+      // Horns (curved using torus segments)
+      for (const hSide of [-1, 1]) {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.18, 12), gargStoneMat);
+        horn.position.set(hSide * 0.1, 0.6, 0.38);
+        horn.rotation.z = hSide * 0.5;
+        horn.rotation.x = -0.3;
+        grgSpout.add(horn);
+        // Horn ridges
+        for (let hr = 0; hr < 3; hr++) {
+          const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.025 - hr * 0.005, 0.005, 6, 12), gargStoneMat);
+          ridge.position.set(hSide * (0.1 + hr * 0.015 * hSide), 0.6 + hr * 0.04, 0.38 - hr * 0.01);
+          ridge.rotation.z = hSide * 0.5;
+          grgSpout.add(ridge);
+        }
+      }
+      // Pointed ears
+      for (const eSide of [-1, 1]) {
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 10), gargStoneMat);
+        ear.position.set(eSide * 0.15, 0.52, 0.42);
+        ear.rotation.z = eSide * 0.8;
+        grgSpout.add(ear);
+      }
+      // Wings (folded, with membrane and finger bones)
+      for (const wSide of [-1, 1]) {
+        // Wing membrane
+        const wingMembrane = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.45, 4, 3), gargStoneMat);
+        wingMembrane.position.set(wSide * 0.5, 0.35, 0.05);
+        wingMembrane.rotation.y = wSide * 0.6;
+        wingMembrane.rotation.z = wSide * 0.5;
+        wingMembrane.rotation.x = 0.15;
+        grgSpout.add(wingMembrane);
+        // Wing bone spars
+        for (let wb = 0; wb < 3; wb++) {
+          const boneSpar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.006, 0.45, 8), gargStoneMat);
+          boneSpar.position.set(wSide * (0.25 + wb * 0.12), 0.38, 0.05 - wb * 0.02);
+          boneSpar.rotation.z = wSide * (0.4 + wb * 0.15);
+          boneSpar.rotation.x = 0.1;
+          grgSpout.add(boneSpar);
+        }
+        // Wing claw tip
+        const wingClaw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.05, 8), gargStoneMat);
+        wingClaw.position.set(wSide * 0.8, 0.55, 0.02);
+        wingClaw.rotation.z = wSide * 1.2;
+        grgSpout.add(wingClaw);
+      }
+      // Muscular arms gripping the ledge
+      for (const aSide of [-1, 1]) {
+        // Upper arm
+        const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.2, 12), gargStoneMat);
+        upperArm.position.set(aSide * 0.2, 0.15, 0.3);
+        upperArm.rotation.z = aSide * 0.5;
+        upperArm.rotation.x = -0.4;
+        grgSpout.add(upperArm);
+        // Forearm
+        const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, 0.18, 12), gargStoneMat);
+        forearm.position.set(aSide * 0.25, 0.04, 0.4);
+        forearm.rotation.x = -0.8;
+        grgSpout.add(forearm);
+        // Clawed hand
+        for (let cl = 0; cl < 4; cl++) {
+          const claw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 8), gargStoneMat);
+          claw.position.set(aSide * 0.25 + (cl - 1.5) * 0.015, -0.02, 0.48 + cl * 0.008);
+          claw.rotation.x = -0.5;
+          grgSpout.add(claw);
+        }
+      }
+      // Legs (crouched)
+      for (const lSide of [-1, 1]) {
+        const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.045, 0.2, 12), gargStoneMat);
+        thigh.position.set(lSide * 0.12, 0.08, 0.1);
+        thigh.rotation.x = 0.6;
+        thigh.rotation.z = lSide * 0.2;
+        grgSpout.add(thigh);
+        const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.18, 12), gargStoneMat);
+        shin.position.set(lSide * 0.14, -0.02, 0.2);
+        shin.rotation.x = -0.3;
+        grgSpout.add(shin);
+        // Taloned feet
+        for (let tl = 0; tl < 3; tl++) {
+          const talon = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.05, 8), gargStoneMat);
+          talon.position.set(lSide * 0.14 + (tl - 1) * 0.02, -0.08, 0.28 + tl * 0.005);
+          talon.rotation.x = -0.6;
+          grgSpout.add(talon);
+        }
+      }
+      // Tail (segmented, curling)
+      let tailX = 0, tailY = 0.15, tailZ = -0.2;
+      for (let tSeg = 0; tSeg < 6; tSeg++) {
+        const tailSeg = new THREE.Mesh(new THREE.SphereGeometry(0.035 - tSeg * 0.004, 10, 8), gargStoneMat);
+        tailSeg.position.set(tailX, tailY - tSeg * 0.02, tailZ - tSeg * 0.08);
+        grgSpout.add(tailSeg);
+      }
+      // Tail spike
+      const tailSpike = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08, 8), gargStoneMat);
+      tailSpike.position.set(0, 0.03, -0.7);
+      tailSpike.rotation.x = Math.PI / 2;
+      grgSpout.add(tailSpike);
+      // Water channel from mouth
+      const waterChannel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.6, 12), darkStoneMat);
       waterChannel.rotation.x = Math.PI / 2;
-      waterChannel.position.set(0, 0.38, 0.9);
+      waterChannel.position.set(0, 0.4, 0.95);
       grgSpout.add(waterChannel);
-      const drip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8),
+      // Water drip
+      const drip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0x556688, transparent: true, opacity: 0.4 }));
-      drip.position.set(0, 0.32, 1.3);
+      drip.position.set(0, 0.34, 1.25);
       grgSpout.add(drip);
+
       const gAngle = (i / 6) * Math.PI * 2;
       const grgSpX = Math.cos(gAngle) * w * 0.32;
       const grgSpZ = Math.sin(gAngle) * d * 0.32;

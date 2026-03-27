@@ -264,14 +264,8 @@ export function drawMinimapContent(
       }
     }
 
-    // Excalibur fragment marker
-    const questInfo = EXCALIBUR_QUEST_INFO[state.currentMap];
-    if (questInfo && !state.player.excaliburFragments.includes(state.currentMap)) {
-      // Draw a star near center of map (fragment is from boss)
-      ctx.fillStyle = '#ffd700';
-      ctx.font = '12px serif';
-      ctx.fillText('\u2694\uFE0F', toMx(0) - 6, toMy(0) + 5);
-    }
+    // Excalibur fragment marker removed — it always drew at map center
+    // which overlapped with the portal and didn't indicate the actual boss location.
   }
 
   // Player as green arrow/triangle

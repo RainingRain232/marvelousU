@@ -1135,6 +1135,25 @@ export class DiabloGame {
     this._generateDailyChallenges();
     this._mapDeathCount = 0;
 
+    // Ensure player always has a starter familiar, summoned and active
+    if (this._state.player.pets.length === 0) {
+      const starterPet = this._createPet(PetSpecies.WOLF_PUP);
+      this._state.player.pets.push(starterPet);
+    }
+    // Auto-summon the first pet if none is active
+    if (!this._state.player.activePetId) {
+      const pet = this._state.player.pets[0];
+      if (pet) {
+        pet.isSummoned = true;
+        pet.aiState = PetAIState.FOLLOWING;
+        pet.x = this._state.player.x + 2;
+        pet.z = this._state.player.z + 2;
+        pet.y = 0;
+        pet.hp = pet.maxHp;
+        this._state.player.activePetId = pet.id;
+      }
+    }
+
     if (!this._firstPlayHelpShown) {
       this._firstPlayHelpShown = true;
       this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z, 'Press H for controls', '#aaaaaa');
