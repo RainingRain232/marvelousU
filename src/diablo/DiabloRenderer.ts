@@ -4064,6 +4064,33 @@ export class DiabloRenderer {
         mesh.scale.setScalar(enemy.scale || 1);
       }
 
+      // Boss ring animation (spin rings, bob runes, flicker flames)
+      if (enemy.isBoss) {
+        const outerRing = mesh.getObjectByName('boss-ring-outer');
+        if (outerRing) outerRing.rotation.z = this._time * 0.3;
+        const innerRing = mesh.getObjectByName('boss-ring-inner');
+        if (innerRing) innerRing.rotation.z = -this._time * 0.5;
+        for (let ri = 0; ri < 8; ri++) {
+          const rune = mesh.getObjectByName(`boss-rune-${ri}`);
+          if (rune) {
+            const runeAngle = (ri / 8) * Math.PI * 2 + this._time * 0.4;
+            const runeR = (enemy.scale || 1) * 1.2 * 0.9;
+            rune.position.set(Math.cos(runeAngle) * runeR, 0.07 + Math.sin(this._time * 2 + ri) * 0.03, Math.sin(runeAngle) * runeR);
+            rune.rotation.z = -runeAngle;
+          }
+        }
+        for (let fi = 0; fi < 4; fi++) {
+          const flame = mesh.getObjectByName(`boss-flame-${fi}`);
+          if (flame) {
+            const fAngle = (fi / 4) * Math.PI * 2 + Math.PI / 4;
+            const fR = (enemy.scale || 1) * 1.2;
+            flame.position.y = 0.15 + Math.sin(this._time * 3 + fi * 1.5) * 0.1;
+            flame.position.x = Math.cos(fAngle) * fR;
+            flame.position.z = Math.sin(fAngle) * fR;
+          }
+        }
+      }
+
       // Boss shield sphere
       if (enemy.bossShieldTimer && enemy.bossShieldTimer > 0) {
         let shieldMesh = this._shieldMeshes.get(enemy.id + "_boss");

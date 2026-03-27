@@ -315,48 +315,85 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <!-- Shoulder muscle striations -->
     <path d="M 28 56 Q 34 60 30 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
     <path d="M 192 56 Q 186 60 190 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
-    <!-- LEFT CLAW gripping orb (3 talon fingers wrapping around) -->
-    <!-- Left finger 1 (top) — long curved talon -->
-    <path d="M 34 80 Q 24 86 18 96 Q 14 104 16 108 Q 20 104 22 98 Q 26 90 32 84 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 18 96 Q 10 88 4 82 Q 2 78 4 80 Q 8 84 14 90" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
-    <!-- Left finger 2 (middle) — long curved talon -->
-    <path d="M 30 94 Q 18 102 12 114 Q 8 124 12 126 Q 16 120 18 112 Q 22 104 28 98 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 12 114 Q 4 106 -2 98 Q -4 94 -2 96 Q 2 100 8 108" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
-    <!-- Left finger 3 (bottom) — long curved talon -->
-    <path d="M 28 110 Q 16 120 10 134 Q 6 144 10 146 Q 14 140 16 132 Q 20 122 26 114 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 10 134 Q 2 126 -4 118 Q -6 114 -4 116 Q 0 120 6 128" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
-    <!-- Left finger joint knuckles (larger) -->
-    <circle cx="26" cy="88" r="2.5" fill="#1a1410" opacity="0.5"/>
-    <circle cx="20" cy="104" r="2.5" fill="#1a1410" opacity="0.5"/>
-    <circle cx="16" cy="122" r="2.5" fill="#1a1410" opacity="0.5"/>
-    <!-- Left finger segment lines -->
-    <path d="M 22 92 Q 20 94 22 96" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
-    <path d="M 16 108 Q 14 110 16 112" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
-    <path d="M 14 128 Q 12 130 14 132" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
-    <!-- LEFT THUMB (wraps from behind, also taloned) -->
-    <path d="M 38 68 Q 28 76 22 86 Q 20 92 24 94 Q 26 88 30 80 Z" fill="#14100a" stroke="#201810" stroke-width="0.7"/>
-    <path d="M 22 86 Q 16 80 12 74 Q 10 72 12 73 Q 16 76 20 82" fill="#1a1410" stroke="#221a10" stroke-width="0.6"/>
-    <!-- RIGHT CLAW gripping orb (mirror — 3 talon fingers) -->
+    <!-- LEFT CLAW gripping orb (3 thick talon fingers + thumb) -->
+    <!-- Left finger 1 (top) — thick with 2 phalanges + curved talon -->
+    <path d="M 36 76 Q 28 80 22 88 Q 16 96 14 104 Q 12 110 16 112 Q 20 108 22 100 Q 26 92 30 86 Q 34 80 36 76 Z" fill="#14100a" stroke="#221a10" stroke-width="1"/>
+    <!-- Finger 1 highlight (top edge) -->
+    <path d="M 35 77 Q 28 82 23 90 Q 18 98 16 105" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <!-- Finger 1 inner shadow -->
+    <path d="M 33 80 Q 26 86 20 96 Q 16 104 15 109" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
+    <!-- Finger 1 talon (long, curved, sharp) -->
+    <path d="M 16 104 Q 8 94 2 84 Q -1 78 1 79 Q 5 84 10 92 Q 14 100 16 104" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
+    <!-- Finger 1 talon shine -->
+    <path d="M 12 96 Q 7 90 3 83" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
+    <!-- Finger 1 knuckle + joint wrinkles -->
+    <circle cx="28" cy="86" r="3.5" fill="#16120c" opacity="0.5"/>
+    <circle cx="20" cy="98" r="3" fill="#16120c" opacity="0.4"/>
+    <path d="M 25 88 Q 23 90 25 92" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 19 100 Q 17 102 19 104" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
+    <!-- Left finger 2 (middle) — thickest finger -->
+    <path d="M 32 92 Q 22 100 16 110 Q 10 120 8 128 Q 6 134 10 134 Q 14 128 18 118 Q 22 108 28 100 Q 32 94 32 92 Z" fill="#120e08" stroke="#221a10" stroke-width="1"/>
+    <path d="M 31 93 Q 22 102 17 112 Q 12 122 9 130" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 30 96 Q 20 106 14 118 Q 10 126 8 132" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
+    <!-- Finger 2 talon -->
+    <path d="M 10 128 Q 2 118 -4 108 Q -7 102 -5 103 Q -1 108 4 116 Q 8 124 10 128" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
+    <path d="M 6 120 Q 0 112 -4 106" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
+    <circle cx="24" cy="102" r="3.5" fill="#16120c" opacity="0.5"/>
+    <circle cx="16" cy="116" r="3" fill="#16120c" opacity="0.4"/>
+    <path d="M 21 104 Q 19 106 21 108" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 14 118 Q 12 120 14 122" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
+    <!-- Left finger 3 (bottom) -->
+    <path d="M 28 110 Q 18 120 12 132 Q 8 142 6 150 Q 4 156 8 154 Q 12 148 16 138 Q 20 128 26 118 Q 28 112 28 110 Z" fill="#0e0c06" stroke="#221a10" stroke-width="1"/>
+    <path d="M 27 111 Q 18 122 13 134 Q 9 144 7 152" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 26 114 Q 16 126 10 140 Q 8 146 6 152" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
+    <!-- Finger 3 talon -->
+    <path d="M 8 148 Q 0 138 -6 128 Q -9 122 -7 123 Q -3 128 2 136 Q 6 144 8 148" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
+    <path d="M 4 140 Q -2 132 -6 126" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
+    <circle cx="20" cy="120" r="3" fill="#16120c" opacity="0.5"/>
+    <circle cx="14" cy="136" r="2.5" fill="#16120c" opacity="0.4"/>
+    <path d="M 17 122 Q 15 124 17 126" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
+    <!-- LEFT THUMB (wraps from behind, thicker) -->
+    <path d="M 40 66 Q 32 72 26 82 Q 22 90 20 96 Q 18 102 22 100 Q 24 94 28 86 Q 32 78 38 72 Z" fill="#16120c" stroke="#221a10" stroke-width="0.9"/>
+    <path d="M 38 68 Q 32 74 27 84 Q 24 90 22 96" fill="none" stroke="#2a2218" stroke-width="0.7" opacity="0.5"/>
+    <!-- Thumb talon -->
+    <path d="M 22 96 Q 16 88 10 80 Q 8 76 10 78 Q 14 82 18 90 Q 22 96 22 96" fill="#1e1a12" stroke="#2a2218" stroke-width="0.7"/>
+    <!-- Webbing between thumb and finger 1 -->
+    <path d="M 36 76 Q 34 72 38 68" fill="none" stroke="#0e0c08" stroke-width="2" opacity="0.25"/>
+    <!-- RIGHT CLAW gripping orb (mirror — 3 thick talon fingers + thumb) -->
     <!-- Right finger 1 (top) -->
-    <path d="M 186 80 Q 196 86 202 96 Q 206 104 204 108 Q 200 104 198 98 Q 194 90 188 84 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 202 96 Q 210 88 216 82 Q 218 78 216 80 Q 212 84 206 90" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <path d="M 184 76 Q 192 80 198 88 Q 204 96 206 104 Q 208 110 204 112 Q 200 108 198 100 Q 194 92 190 86 Q 186 80 184 76 Z" fill="#14100a" stroke="#221a10" stroke-width="1"/>
+    <path d="M 185 77 Q 192 82 197 90 Q 202 98 204 105" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 187 80 Q 194 86 200 96 Q 204 104 205 109" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 204 104 Q 212 94 218 84 Q 221 78 219 79 Q 215 84 210 92 Q 206 100 204 104" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
+    <path d="M 208 96 Q 213 90 217 83" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
+    <circle cx="192" cy="86" r="3.5" fill="#16120c" opacity="0.5"/>
+    <circle cx="200" cy="98" r="3" fill="#16120c" opacity="0.4"/>
+    <path d="M 195 88 Q 197 90 195 92" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 201 100 Q 203 102 201 104" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
     <!-- Right finger 2 (middle) -->
-    <path d="M 190 94 Q 202 102 208 114 Q 212 124 208 126 Q 204 120 202 112 Q 198 104 192 98 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 208 114 Q 216 106 222 98 Q 224 94 222 96 Q 218 100 212 108" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <path d="M 188 92 Q 198 100 204 110 Q 210 120 212 128 Q 214 134 210 134 Q 206 128 202 118 Q 198 108 192 100 Q 188 94 188 92 Z" fill="#120e08" stroke="#221a10" stroke-width="1"/>
+    <path d="M 189 93 Q 198 102 203 112 Q 208 122 211 130" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 190 96 Q 200 106 206 118 Q 210 126 212 132" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 210 128 Q 218 118 224 108 Q 227 102 225 103 Q 221 108 216 116 Q 212 124 210 128" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
+    <path d="M 214 120 Q 220 112 224 106" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
+    <circle cx="196" cy="102" r="3.5" fill="#16120c" opacity="0.5"/>
+    <circle cx="204" cy="116" r="3" fill="#16120c" opacity="0.4"/>
+    <path d="M 199 104 Q 201 106 199 108" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 206 118 Q 208 120 206 122" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
     <!-- Right finger 3 (bottom) -->
-    <path d="M 192 110 Q 204 120 210 134 Q 214 144 210 146 Q 206 140 204 132 Q 200 122 194 114 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 210 134 Q 218 126 224 118 Q 226 114 224 116 Q 220 120 214 128" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
-    <!-- Right finger joint knuckles (larger) -->
-    <circle cx="194" cy="88" r="2.5" fill="#1a1410" opacity="0.5"/>
-    <circle cx="200" cy="104" r="2.5" fill="#1a1410" opacity="0.5"/>
-    <circle cx="204" cy="122" r="2.5" fill="#1a1410" opacity="0.5"/>
-    <!-- Right finger segment lines -->
-    <path d="M 198 92 Q 200 94 198 96" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
-    <path d="M 204 108 Q 206 110 204 112" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
-    <path d="M 206 128 Q 208 130 206 132" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
-    <!-- RIGHT THUMB (mirror, also taloned) -->
-    <path d="M 182 68 Q 192 76 198 86 Q 200 92 196 94 Q 194 88 190 80 Z" fill="#14100a" stroke="#201810" stroke-width="0.7"/>
-    <path d="M 198 86 Q 204 80 208 74 Q 210 72 208 73 Q 204 76 200 82" fill="#1a1410" stroke="#221a10" stroke-width="0.6"/>
+    <path d="M 192 110 Q 202 120 208 132 Q 212 142 214 150 Q 216 156 212 154 Q 208 148 204 138 Q 200 128 194 118 Q 192 112 192 110 Z" fill="#0e0c06" stroke="#221a10" stroke-width="1"/>
+    <path d="M 193 111 Q 202 122 207 134 Q 211 144 213 152" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
+    <path d="M 194 114 Q 204 126 210 140 Q 212 146 214 152" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 212 148 Q 220 138 226 128 Q 229 122 227 123 Q 223 128 218 136 Q 214 144 212 148" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
+    <path d="M 216 140 Q 222 132 226 126" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
+    <circle cx="200" cy="120" r="3" fill="#16120c" opacity="0.5"/>
+    <circle cx="206" cy="136" r="2.5" fill="#16120c" opacity="0.4"/>
+    <path d="M 203 122 Q 205 124 203 126" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
+    <!-- RIGHT THUMB -->
+    <path d="M 180 66 Q 188 72 194 82 Q 198 90 200 96 Q 202 102 198 100 Q 196 94 192 86 Q 188 78 182 72 Z" fill="#16120c" stroke="#221a10" stroke-width="0.9"/>
+    <path d="M 182 68 Q 188 74 193 84 Q 196 90 198 96" fill="none" stroke="#2a2218" stroke-width="0.7" opacity="0.5"/>
+    <path d="M 198 96 Q 204 88 210 80 Q 212 76 210 78 Q 206 82 202 90 Q 198 96 198 96" fill="#1e1a12" stroke="#2a2218" stroke-width="0.7"/>
+    <path d="M 184 76 Q 186 72 182 68" fill="none" stroke="#0e0c08" stroke-width="2" opacity="0.25"/>
     <!-- Head (larger, more detailed) -->
     <path d="M 110 14 C 90 12 76 18 74 30 C 72 42 80 50 95 52 C 100 52 110 53 120 52
              C 140 50 148 42 146 30 C 144 18 130 12 110 14 Z" fill="#12100a" stroke="#1a1410" stroke-width="1"/>
