@@ -1,4 +1,6 @@
 import { DiabloRenderer, getTerrainHeight } from "./DiabloRenderer";
+import { hasSave, saveGame, showSaveRecoveryPrompt } from "./DiabloSaveLoad";
+import { loadLeaderboard, saveLeaderboard, addLeaderboardEntry, showLeaderboard } from "./DiabloLeaderboard";
 import { DiabloNetwork } from './DiabloNetwork';
 import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloLoot,
@@ -49,440 +51,22 @@ import {
   COSMETIC_DEFS,
   TALENT_SYNERGIES,
 } from "./DiabloConfig";
-
-// ────────────────────────────────────────────────────────────────────────────
-// Rarity color strings for UI (hex CSS colors)
-// ────────────────────────────────────────────────────────────────────────────
-const RARITY_CSS: Record<ItemRarity, string> = {
-  [ItemRarity.COMMON]: "#cccccc",
-  [ItemRarity.UNCOMMON]: "#44ff44",
-  [ItemRarity.RARE]: "#4488ff",
-  [ItemRarity.EPIC]: "#aa44ff",
-  [ItemRarity.LEGENDARY]: "#ff8800",
-  [ItemRarity.MYTHIC]: "#ff2222",
-  [ItemRarity.DIVINE]: "#ffd700",
-};
-
-// Rarity glow box-shadow effects (stronger for higher rarities)
-const RARITY_GLOW: Record<ItemRarity, string> = {
-  [ItemRarity.COMMON]: "none",
-  [ItemRarity.UNCOMMON]: "0 0 4px #44ff44",
-  [ItemRarity.RARE]: "0 0 6px #4488ff",
-  [ItemRarity.EPIC]: "0 0 8px #aa44ff, 0 0 3px #aa44ff inset",
-  [ItemRarity.LEGENDARY]: "0 0 10px #ff8800, 0 0 5px #ff8800 inset",
-  [ItemRarity.MYTHIC]: "0 0 12px #ff2222, 0 0 6px #ff2222 inset",
-  [ItemRarity.DIVINE]: "0 0 14px #ffd700, 0 0 7px #ffd700 inset",
-};
-
-// Border width by rarity
-const RARITY_BORDER: Record<ItemRarity, number> = {
-  [ItemRarity.COMMON]: 1,
-  [ItemRarity.UNCOMMON]: 1,
-  [ItemRarity.RARE]: 2,
-  [ItemRarity.EPIC]: 2,
-  [ItemRarity.LEGENDARY]: 3,
-  [ItemRarity.MYTHIC]: 3,
-  [ItemRarity.DIVINE]: 3,
-};
-
-// Rarity tier number (for stars display)
-const RARITY_TIER: Record<ItemRarity, number> = {
-  [ItemRarity.COMMON]: 1,
-  [ItemRarity.UNCOMMON]: 2,
-  [ItemRarity.RARE]: 3,
-  [ItemRarity.EPIC]: 4,
-  [ItemRarity.LEGENDARY]: 5,
-  [ItemRarity.MYTHIC]: 6,
-  [ItemRarity.DIVINE]: 7,
-};
-
-// Background tint RGBA (low opacity rarity color)
-const RARITY_BG: Record<ItemRarity, string> = {
-  [ItemRarity.COMMON]: "rgba(204,204,204,0.06)",
-  [ItemRarity.UNCOMMON]: "rgba(68,255,68,0.10)",
-  [ItemRarity.RARE]: "rgba(68,136,255,0.10)",
-  [ItemRarity.EPIC]: "rgba(170,68,255,0.12)",
-  [ItemRarity.LEGENDARY]: "rgba(255,136,0,0.13)",
-  [ItemRarity.MYTHIC]: "rgba(255,34,34,0.14)",
-  [ItemRarity.DIVINE]: "rgba(255,215,0,0.15)",
-};
-
-// Rarity badge symbol (corner indicator)
-const RARITY_BADGE: Record<ItemRarity, string> = {
-  [ItemRarity.COMMON]: "",
-  [ItemRarity.UNCOMMON]: "\u25C6",
-  [ItemRarity.RARE]: "\u25C6",
-  [ItemRarity.EPIC]: "\u25C6",
-  [ItemRarity.LEGENDARY]: "\u2726",
-  [ItemRarity.MYTHIC]: "\u2726",
-  [ItemRarity.DIVINE]: "\u2726",
-};
-
-// Whether this rarity gets the pulse animation class
-function rarityNeedsAnim(r: ItemRarity): boolean {
-  return r === ItemRarity.LEGENDARY || r === ItemRarity.MYTHIC || r === ItemRarity.DIVINE;
-}
-
-// Map any item slot string to a canonical equip key (handles config items that may
-// use non-enum string values like "MAIN_HAND", "HEAD", "CHEST", etc.)
-function resolveEquipKey(slot: string): keyof DiabloEquipment | null {
-  const s = slot as string;
-  if (s === "HELMET" || s === "HEAD") return "helmet";
-  if (s === "BODY" || s === "CHEST") return "body";
-  if (s === "GAUNTLETS" || s === "HANDS") return "gauntlets";
-  if (s === "LEGS") return "legs";
-  if (s === "FEET") return "feet";
-  if (s === "ACCESSORY_1" || s === "RING" || s === "AMULET") return "accessory1";
-  if (s === "ACCESSORY_2") return "accessory2";
-  if (s === "WEAPON" || s === "MAIN_HAND") return "weapon";
-  if (s === "LANTERN") return "lantern";
-  if (s === "OFF_HAND" || s === "BELT" || s === "QUIVER" || s === "ORB") return null;
-  return null;
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Map clear kill targets per map
-// ────────────────────────────────────────────────────────────────────────────
-const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
-  [DiabloMapId.FOREST]: 50,
-  [DiabloMapId.ELVEN_VILLAGE]: 40,
-  [DiabloMapId.NECROPOLIS_DUNGEON]: 60,
-  [DiabloMapId.VOLCANIC_WASTES]: 70,
-  [DiabloMapId.ABYSSAL_RIFT]: 80,
-  [DiabloMapId.DRAGONS_SANCTUM]: 100,
-  [DiabloMapId.SUNSCORCH_DESERT]: 35,
-  [DiabloMapId.EMERALD_GRASSLANDS]: 30,
-  [DiabloMapId.WHISPERING_MARSH]: 35,
-  [DiabloMapId.CRYSTAL_CAVERNS]: 40,
-  [DiabloMapId.FROZEN_TUNDRA]: 55,
-  [DiabloMapId.HAUNTED_CATHEDRAL]: 60,
-  [DiabloMapId.THORNWOOD_THICKET]: 55,
-  [DiabloMapId.CLOCKWORK_FOUNDRY]: 75,
-  [DiabloMapId.CRIMSON_CITADEL]: 80,
-  [DiabloMapId.STORMSPIRE_PEAK]: 85,
-  [DiabloMapId.SHADOW_REALM]: 90,
-  [DiabloMapId.PRIMORDIAL_ABYSS]: 120,
-  [DiabloMapId.MOONLIT_GROVE]: 25,
-  [DiabloMapId.CORAL_DEPTHS]: 35,
-  [DiabloMapId.ANCIENT_LIBRARY]: 40,
-  [DiabloMapId.JADE_TEMPLE]: 50,
-  [DiabloMapId.ASHEN_BATTLEFIELD]: 55,
-  [DiabloMapId.FUNGAL_DEPTHS]: 70,
-  [DiabloMapId.OBSIDIAN_FORTRESS]: 80,
-  [DiabloMapId.CELESTIAL_RUINS]: 90,
-  [DiabloMapId.INFERNAL_THRONE]: 100,
-  [DiabloMapId.ASTRAL_VOID]: 130,
-  [DiabloMapId.SHATTERED_COLOSSEUM]: 25,
-  [DiabloMapId.PETRIFIED_GARDEN]: 30,
-  [DiabloMapId.SUNKEN_CITADEL]: 40,
-  [DiabloMapId.WYRMSCAR_CANYON]: 50,
-  [DiabloMapId.PLAGUEROT_SEWERS]: 55,
-  [DiabloMapId.ETHEREAL_SANCTUM]: 75,
-  [DiabloMapId.IRON_WASTES]: 80,
-  [DiabloMapId.BLIGHTED_THRONE]: 95,
-  [DiabloMapId.CHRONO_LABYRINTH]: 110,
-  [DiabloMapId.ELDRITCH_NEXUS]: 140,
-  [DiabloMapId.CITY_RUINS]: 30,
-  [DiabloMapId.CITY]: 35,
-  [DiabloMapId.CAMELOT]: 0,
-};
-
-// ────────────────────────────────────────────────────────────────────────────
-// Boss names per map
-// ────────────────────────────────────────────────────────────────────────────
-const BOSS_NAMES: Record<DiabloMapId, string[]> = {
-  [DiabloMapId.FOREST]: ["Oakrot the Ancient", "Grimfang Alpha", "Bandit King Varros"],
-  [DiabloMapId.ELVEN_VILLAGE]: ["Shadowlord Ael'thar", "Corrupted Archon", "Darkstalker Prime"],
-  [DiabloMapId.NECROPOLIS_DUNGEON]: ["Lich Overlord Morthis", "Bonecrusher", "Wraith King Null"],
-  [DiabloMapId.VOLCANIC_WASTES]: ["Ignis the Unquenched", "Emberlord Pyraxis", "Magma King Volrath"],
-  [DiabloMapId.ABYSSAL_RIFT]: ["Xal'thuun the Void Maw", "Entropy Incarnate", "Riftlord Nihilus"],
-  [DiabloMapId.DRAGONS_SANCTUM]: ["Vyrathion the Ancient", "Drakemaw the Endless", "Scorchfather Pyranax"],
-  [DiabloMapId.SUNSCORCH_DESERT]: ["Sandclaw the Burrower", "Dune Reaver Kassim", "Mirage Serpent"],
-  [DiabloMapId.EMERALD_GRASSLANDS]: ["Thunderhoof the Wild", "Warchief Garon", "Skytalon the Fierce"],
-  [DiabloMapId.WHISPERING_MARSH]: ["Murkfang the Bloated", "Swamp Witch Hessia", "Hydra Broodmother"],
-  [DiabloMapId.CRYSTAL_CAVERNS]: ["Geode King Crysanthus", "Shard Weaver", "Prismatic Terror"],
-  [DiabloMapId.FROZEN_TUNDRA]: ["Frostjaw the Undying", "Blizzard Warden Kael", "Glacier Breaker"],
-  [DiabloMapId.HAUNTED_CATHEDRAL]: ["Archbishop Maledict", "The Desecrator", "Doom Gargoyle Grath"],
-  [DiabloMapId.THORNWOOD_THICKET]: ["Thornqueen Brambliss", "Rotfather Mycos", "Blightweaver Nyx"],
-  [DiabloMapId.CLOCKWORK_FOUNDRY]: ["Forgefire Construct VII", "The Brass Overlord", "Titan-Frame Omega"],
-  [DiabloMapId.CRIMSON_CITADEL]: ["Count Sanguinar", "The Crimson Inquisitor", "Blood Archon Vex"],
-  [DiabloMapId.STORMSPIRE_PEAK]: ["Stormcaller Zephyros", "Thunder Wyrm Voltaris", "Gale Lord Tempestus"],
-  [DiabloMapId.SHADOW_REALM]: ["The Dreaming Horror", "Nightmare Sovereign", "Oblivion Incarnate"],
-  [DiabloMapId.PRIMORDIAL_ABYSS]: ["Maw of the Void", "Entropy Colossus", "The Primordial Hunger"],
-  [DiabloMapId.MOONLIT_GROVE]: ["Silvanus the Moonstruck", "Duskfang Alpha", "Titania's Shadow"],
-  [DiabloMapId.CORAL_DEPTHS]: ["Leviathan Spawn Thalassos", "Siren Empress Calypsa", "The Drowned Colossus"],
-  [DiabloMapId.ANCIENT_LIBRARY]: ["Archmage Scriptus", "The Living Encyclopedia", "Grimoire Tyrant Lexicon"],
-  [DiabloMapId.JADE_TEMPLE]: ["Stone Guardian Xian", "Serpent God Quetzal", "The Jade Sovereign"],
-  [DiabloMapId.ASHEN_BATTLEFIELD]: ["General Ashfall", "The Undying Marshal", "War Titan Bellicus"],
-  [DiabloMapId.FUNGAL_DEPTHS]: ["Mycorrhiza Prime", "Sporequeen Toxica", "The Fungal Overmind"],
-  [DiabloMapId.OBSIDIAN_FORTRESS]: ["Dark Castellan Malachar", "Obsidian Overlord Nox", "The Black Sovereign"],
-  [DiabloMapId.CELESTIAL_RUINS]: ["Archon Stellaris", "The Fallen Star", "Cosmic Judge Astraeus"],
-  [DiabloMapId.INFERNAL_THRONE]: ["Demon King Abaddon", "Hellfire Sovereign Surtur", "The Undying Tyrant"],
-  [DiabloMapId.ASTRAL_VOID]: ["Reality Eater Oblivion", "The Unmaker", "Void Emperor Nihilax"],
-  [DiabloMapId.SHATTERED_COLOSSEUM]: ["Champion Maxentius", "Beastmaster Ferox", "The Arena Reborn"],
-  [DiabloMapId.PETRIFIED_GARDEN]: ["Gorgon Empress Lithia", "Basilisk Primus", "The Living Statue"],
-  [DiabloMapId.SUNKEN_CITADEL]: ["Admiral Davy Depths", "The Drowned Leviathan", "Abyssal Castellan Nereus"],
-  [DiabloMapId.WYRMSCAR_CANYON]: ["Broodmother Cindrax", "Canyon Lord Scorchion", "The First Flame"],
-  [DiabloMapId.PLAGUEROT_SEWERS]: ["Plague King Festus", "The Bile Colossus", "Ratking Supreme"],
-  [DiabloMapId.ETHEREAL_SANCTUM]: ["High Arbiter Kael", "The Unbound Seraph", "Phase Lord Etherion"],
-  [DiabloMapId.IRON_WASTES]: ["Siege Lord Decimax", "The Rust Titan", "War Engine Omega"],
-  [DiabloMapId.BLIGHTED_THRONE]: ["King Malachar the Rotting", "Crown of Pestilence", "The Undying Court"],
-  [DiabloMapId.CHRONO_LABYRINTH]: ["Chronarch Tempus", "The Paradox Engine", "Time Eater Ouroboros"],
-  [DiabloMapId.ELDRITCH_NEXUS]: ["Overmind Xul'tharax", "The Convergence", "Elder Brain Infinitus"],
-  [DiabloMapId.CITY_RUINS]: ["Captain Harren the Undying", "The Rubble Colossus", "Gatekeeper Voss"],
-  [DiabloMapId.CITY]: ["Warden-Commander Blackthorn", "The Iron Magistrate", "Sergeant Grieves"],
-  [DiabloMapId.CAMELOT]: [],
-};
-
-// ────────────────────────────────────────────────────────────────────────────
-// Main quest: The Fall of Excalibur — hints per map
-// ────────────────────────────────────────────────────────────────────────────
-const EXCALIBUR_QUEST_INFO: Partial<Record<DiabloMapId, { fragment: string; hint: string; lore: string }>> = {
-  [DiabloMapId.SUNSCORCH_DESERT]: {
-    fragment: "The Pommel of Excalibur",
-    hint: "Sir Bedivere's tomb lies among the southern ruins. Seek the Sandsworn Revenant that guards it.",
-    lore: "Bedivere carried the Pommel into the desert but fell to Mordred's curse. His body still clutches the shard.",
-  },
-  [DiabloMapId.EMERALD_GRASSLANDS]: {
-    fragment: "The Crossguard of Excalibur",
-    hint: "The raider camp to the northeast holds what Sir Percival died to protect. Look for Warchief Garon.",
-    lore: "Percival sheltered refugees here, but Mordred's Oathbreaker found him. The Crossguard was taken as a trophy.",
-  },
-  [DiabloMapId.FOREST]: {
-    fragment: "The Lower Blade of Excalibur",
-    hint: "Morgan le Fay planted the shard in the Great Oak at the forest's heart. The corruption spreads from there.",
-    lore: "The forest itself has become the guardian. Cut through the Blighted Heartwood to claim what was stolen.",
-  },
-  [DiabloMapId.ELVEN_VILLAGE]: {
-    fragment: "The Upper Blade of Excalibur",
-    hint: "Archon Sylvaris has gone mad with the fragment's power. He lurks in the central crystal spire.",
-    lore: "The elves meant well when they kept the blade, but its unsheathed power shattered the Archon's mind.",
-  },
-  [DiabloMapId.NECROPOLIS_DUNGEON]: {
-    fragment: "The Blade Core of Excalibur",
-    hint: "Deep in the catacombs, a death knight waits — one who was once Sir Lancelot. Steel yourself.",
-    lore: "Lancelot descended alone to reclaim the Core. Mordred's necromancers slew him and raised his corpse as a guardian.",
-  },
-  [DiabloMapId.VOLCANIC_WASTES]: {
-    fragment: "The Enchantment Rune of Excalibur",
-    hint: "The demon Balor consumed Merlin's essence along with the Rune. He burns in the deepest caldera.",
-    lore: "Merlin's binding magic gave Excalibur its power. Without the Rune, the blade is but common steel.",
-  },
-  [DiabloMapId.ABYSSAL_RIFT]: {
-    fragment: "The Scabbard of Excalibur",
-    hint: "Morgan le Fay fled into the void with the Scabbard. She prepares a ritual to destroy it — hurry.",
-    lore: "The Scabbard grants invulnerability to its bearer. Morgan knows that without it, Mordred can still be slain.",
-  },
-  [DiabloMapId.DRAGONS_SANCTUM]: {
-    fragment: "The Soul of the Blade",
-    hint: "Aurelion the Eternal bonded with Excalibur's sentient core. Prove your worth to the gold dragon.",
-    lore: "The Soul chose the dragon to survive. It will not yield to the unworthy — but it yearns to be whole again.",
-  },
-  [DiabloMapId.WHISPERING_MARSH]: {
-    fragment: "The Hilt Binding of Excalibur",
-    hint: "Deep within the miasma, Sir Galahad's spirit guards the binding. Purify the marsh to reach him.",
-    lore: "Galahad wrapped the Hilt Binding in holy cloth and sank it in the marsh, hoping the corruption would never find it.",
-  },
-  [DiabloMapId.CRYSTAL_CAVERNS]: {
-    fragment: "The Crystal Focus of Excalibur",
-    hint: "The crystal deep in the caverns amplified Excalibur's power. The Prismatic Wyrm has swallowed it whole.",
-    lore: "Merlin embedded a crystal focus in the blade to channel ley lines. When shattered, it fell into the earth.",
-  },
-  [DiabloMapId.FROZEN_TUNDRA]: {
-    fragment: "The Frozen Edge of Excalibur",
-    hint: "The blade fragment lies entombed in eternal ice. Only by slaying the Glacial Titan can the ice be broken.",
-    lore: "Sir Gawain carried the Edge to the tundra's heart, where he froze it in place with his dying breath.",
-  },
-  [DiabloMapId.HAUNTED_CATHEDRAL]: {
-    fragment: "The Sacred Blessing of Excalibur",
-    hint: "The cathedral's altar still holds the blessing. Free the spirits of the corrupted priests to reclaim it.",
-    lore: "The Archbishop was tasked with guarding Excalibur's divine enchantment, but Mordred's curse turned faith to madness.",
-  },
-  [DiabloMapId.THORNWOOD_THICKET]: {
-    fragment: "The Living Heartwood of Excalibur",
-    hint: "The Thornmother has absorbed the heartwood into her being. Slay her to reclaim the shard of living steel.",
-    lore: "The Lady of the Lake embedded life into the blade. The heartwood shard grew roots and became part of the thicket.",
-  },
-};
-
-const CAMELOT_FIRST_VISIT_TEXT = [
-  "Mordred has betrayed Camelot and shattered Excalibur.",
-  "Eight fragments lie scattered across the corrupted lands.",
-  "Speak to the merchants for guidance. Recover the shards.",
-  "Reforge the blade. End Mordred's reign.",
-];
-
-// ────────────────────────────────────────────────────────────────────────────
-// Merchant dialogue lines (story flavor)
-// ────────────────────────────────────────────────────────────────────────────
-const VENDOR_DIALOGUE: Record<VendorType, string[]> = {
-  [VendorType.BLACKSMITH]: [
-    "I forged arms for the Round Table once. Now I forge them for you — the last hope of Camelot.",
-    "Mordred's forces grow bolder each day. The patrols have stopped returning from the Necropolis.",
-    "Excalibur... I held it once, to sharpen the edge. There was a hum in the steel, like a heartbeat. We must make it whole.",
-    "Sir Lancelot was the finest swordsman I ever knew. If he truly fell in the catacombs... be careful down there.",
-    "The desert traders say Bedivere's tomb glows at night. The Pommel still calls out for the blade.",
-  ],
-  [VendorType.ARCANIST]: [
-    "I sense the fragments scattered across the land — each one pulses with Merlin's residual magic.",
-    "Morgan le Fay was my teacher once, before the darkness took her. She hides in the Rift now, the coward.",
-    "The elves of Aelindor sealed their village after the Archon went mad. Whatever he found, it broke him.",
-    "When Excalibur shattered, I felt it in my bones. Every mage did. The world's magic... fractured.",
-    "The Enchantment Rune is the key. Without Merlin's binding, the blade is just metal. The demon Balor must fall.",
-  ],
-  [VendorType.ALCHEMIST]: [
-    "I've been brewing restoratives day and night. The wounded keep coming, and the dead... the dead keep rising.",
-    "Brother monks in the Necropolis fell silent weeks ago. I fear the worst for their relics — and their souls.",
-    "The volcanic wastes reek of brimstone and stolen magic. Something terrible feeds on Merlin's power there.",
-    "Stock up on potions before the Abyssal Rift. The void drains life from the unwary.",
-    "I pray for Arthur's return from Avalon. Until then, you carry Camelot's hope on your shoulders.",
-  ],
-  [VendorType.JEWELER]: [
-    "These gems once adorned the crowns of Camelot. Now I sell them to fund the resistance.",
-    "The grasslands were peaceful once. Now raiders ride under Mordred's black banner.",
-    "I've heard whispers of a dragon in the eastern sanctum — old as the world, guarding something precious.",
-    "If you find the Scabbard of Excalibur, bring it here. I can verify its authenticity by the gemwork.",
-    "Mordred wears a crown of black iron. When you face him, aim for the arrogance.",
-  ],
-  [VendorType.GENERAL_MERCHANT]: [
-    "I've traveled every road in this kingdom. They're all dangerous now. Mordred's patrols are everywhere.",
-    "The forest has gone wrong — trees moving, shadows with teeth. It wasn't like that before the blade shattered.",
-    "I sell a bit of everything because everyone needs a bit of everything these days. Dark times.",
-    "A merchant from the desert told me he saw a tomb glowing blue at night. That's unnatural, that is.",
-    "You look like you can handle yourself. Good. Camelot needs fighters, not merchants. ...Don't tell anyone I said that.",
-  ],
-};
-
-const NIGHT_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
-  [DiabloMapId.FOREST]: EnemyType.NIGHT_FOREST_WENDIGO,
-  [DiabloMapId.ELVEN_VILLAGE]: EnemyType.NIGHT_ELVEN_BANSHEE_QUEEN,
-  [DiabloMapId.NECROPOLIS_DUNGEON]: EnemyType.NIGHT_NECRO_DEATH_KNIGHT,
-  [DiabloMapId.VOLCANIC_WASTES]: EnemyType.NIGHT_VOLCANIC_INFERNO_TITAN,
-  [DiabloMapId.ABYSSAL_RIFT]: EnemyType.NIGHT_RIFT_VOID_EMPEROR,
-  [DiabloMapId.DRAGONS_SANCTUM]: EnemyType.NIGHT_DRAGON_SHADOW_WYRM,
-  [DiabloMapId.SUNSCORCH_DESERT]: EnemyType.NIGHT_DESERT_SANDSTORM_DJINN,
-  [DiabloMapId.EMERALD_GRASSLANDS]: EnemyType.NIGHT_GRASSLAND_STAMPEDE_KING,
-  [DiabloMapId.WHISPERING_MARSH]: EnemyType.NIGHT_MARSH_SWAMP_MOTHER,
-  [DiabloMapId.CRYSTAL_CAVERNS]: EnemyType.NIGHT_CAVERNS_CRYSTAL_KING,
-  [DiabloMapId.FROZEN_TUNDRA]: EnemyType.NIGHT_TUNDRA_FROST_EMPRESS,
-  [DiabloMapId.HAUNTED_CATHEDRAL]: EnemyType.NIGHT_CATHEDRAL_ARCH_LICH,
-  [DiabloMapId.THORNWOOD_THICKET]: EnemyType.NIGHT_THORNWOOD_BLIGHT_LORD,
-  [DiabloMapId.CLOCKWORK_FOUNDRY]: EnemyType.NIGHT_FOUNDRY_IRON_TYRANT,
-  [DiabloMapId.CRIMSON_CITADEL]: EnemyType.NIGHT_CITADEL_BLOOD_EMPEROR,
-  [DiabloMapId.STORMSPIRE_PEAK]: EnemyType.NIGHT_STORMSPIRE_THUNDER_GOD,
-  [DiabloMapId.SHADOW_REALM]: EnemyType.NIGHT_SHADOW_DREAM_EATER,
-  [DiabloMapId.PRIMORDIAL_ABYSS]: EnemyType.NIGHT_ABYSS_WORLD_ENDER,
-  [DiabloMapId.CITY_RUINS]: EnemyType.NIGHT_RUINS_REVENANT_KING,
-  [DiabloMapId.CITY]: EnemyType.NIGHT_CITY_SHADOW_MAGISTRATE,
-};
-
-// ────────────────────────────────────────────────────────────────────────────
-// Lore discovery points — flavor text near landmarks
-// ────────────────────────────────────────────────────────────────────────────
-interface LorePoint { x: number; z: number; radius: number; title: string; text: string; }
-const MAP_LORE_POINTS: Partial<Record<DiabloMapId, LorePoint[]>> = {
-  [DiabloMapId.EMERALD_GRASSLANDS]: [
-    { x: -22, z: 19, radius: 8, title: "The Old Windmill", text: "This mill once ground grain for three villages. When the miller's daughter vanished one harvest moon, the blades stopped turning. Locals say you can still hear grinding stones on windless nights." },
-    { x: 25, z: -22, radius: 8, title: "Thornfield Farmstead", text: "The Thornfield family farmed this land for seven generations. They abandoned it overnight when their cattle began speaking in tongues. The barn door has never been opened since." },
-    { x: 0, z: -10, radius: 6, title: "The Stone Bridge", text: "Built by dwarven masons in the Third Age, this bridge has survived floods, wars, and a dragon's tantrum. The runes carved beneath it are said to ward off river spirits." },
-    { x: 8, z: 13, radius: 6, title: "The Campfire Ring", text: "Wandering knights gather here to trade stories and sharpen blades. The ashes never fully cool — some say a fire elemental sleeps beneath the stones, keeping travelers warm." },
-  ],
-  [DiabloMapId.FOREST]: [
-    { x: 0, z: 0, radius: 10, title: "The Heart of Darkwood", text: "At the forest's center stands an oak so ancient its roots drink from underground rivers. Druids once held council here before the corruption spread through the soil." },
-    { x: -30, z: -20, radius: 8, title: "Poacher's Camp", text: "Discarded traps and weathered tents mark where the Blackthorn poachers operated. They hunted everything — until the forest began hunting them back." },
-    { x: 25, z: 30, radius: 8, title: "The Whispering Clearing", text: "Trees lean inward here as if sharing a secret. Those who rest in this clearing report dreams of a silver stag leading them deeper into the wood." },
-  ],
-  [DiabloMapId.SUNSCORCH_DESERT]: [
-    { x: 0, z: 0, radius: 10, title: "The Buried Colossus", text: "A hand of carved stone rises from the dunes — the only visible remnant of a titan that fell in battle ages ago. Sand traders use it as a landmark, though its fingers seem to shift between visits." },
-    { x: -30, z: 20, radius: 8, title: "Oasis of False Promise", text: "This waterhole appears clear and inviting, but its waters carry a subtle venom. Desert nomads know to drink only after boiling. Many a careless traveler has met their end here." },
-  ],
-  [DiabloMapId.NECROPOLIS_DUNGEON]: [
-    { x: 0, z: 0, radius: 8, title: "The Ossuary Gate", text: "Ten thousand skulls line the entrance hall, each belonging to a soldier of the Last Crusade. Their eye sockets glow faintly on moonless nights, as if still standing watch." },
-    { x: -20, z: -15, radius: 8, title: "The Embalmer's Chamber", text: "Jars of preserving fluid still line the shelves, each labeled in a language predating the kingdom. Whatever lies in the sealed sarcophagi was meant to stay preserved — not to rise again." },
-  ],
-  [DiabloMapId.VOLCANIC_WASTES]: [
-    { x: 10, z: -20, radius: 8, title: "The Crucible", text: "Blacksmiths once forged legendary weapons in this natural furnace. The last sword made here — Ashbringer — shattered upon striking a demon lord and released a wildfire that still burns." },
-    { x: -25, z: 15, radius: 8, title: "Obsidian Flow", text: "This river of cooled glass formed when two volcanoes erupted simultaneously. Alchemists prize its shards, claiming they can trap souls within the glassy surface." },
-  ],
-  [DiabloMapId.ELVEN_VILLAGE]: [
-    { x: 0, z: 0, radius: 10, title: "The Crystal Spires", text: "These towers once channeled moonlight into pure arcane energy. When the corruption came, the light turned inward, and the elves who remained were transformed into something between living and shadow." },
-    { x: 20, z: -20, radius: 8, title: "The Singing Fountain", text: "Enchanted water still flows here, humming melodies that change with the seasons. The elves believed it foretold the future — its current song is a dirge." },
-  ],
-  [DiabloMapId.ABYSSAL_RIFT]: [
-    { x: 0, z: 0, radius: 10, title: "The Rift Scar", text: "When the Archmage Nihilus tore reality apart, this wound in the world refused to heal. Time flows differently here — a moment inside can be an hour outside, or the reverse." },
-  ],
-  [DiabloMapId.DRAGONS_SANCTUM]: [
-    { x: 0, z: 0, radius: 10, title: "The Hoard Plateau", text: "Mountains of gold stretch as far as the eye can see, accumulated over millennia by the Elder Dragons. Each coin bears the face of a conquered king — there are thousands of different faces." },
-  ],
-  [DiabloMapId.CRYSTAL_CAVERNS]: [
-    { x: 0, z: 15, radius: 8, title: "The Resonance Chamber", text: "Strike any crystal here and the entire cavern hums in harmony. The dwarves discovered that certain melodies could grow new crystals, others could shatter them — and one forbidden chord could collapse the mountain." },
-  ],
-  [DiabloMapId.FROZEN_TUNDRA]: [
-    { x: -20, z: 0, radius: 8, title: "The Frozen Legion", text: "An entire army stands encased in ice, swords raised mid-charge. No one knows what froze them so instantly. Their faces show not fear, but surprise — whatever struck them, they never saw it coming." },
-  ],
-  [DiabloMapId.HAUNTED_CATHEDRAL]: [
-    { x: 0, z: 0, radius: 8, title: "The Desecrated Altar", text: "Holy symbols have been inverted, prayer books rewritten in blood. The archbishop who turned claimed he heard God speak from below the crypt. The voice still whispers to those who kneel." },
-  ],
-  [DiabloMapId.CITY_RUINS]: [
-    { x: 0, z: 0, radius: 10, title: "The Broken Gate", text: "The city fell in a single night. The gate, forged from blessed iron, was torn apart from the inside. Whatever destroyed this city did not invade — it was already within the walls." },
-    { x: 20, z: 20, radius: 8, title: "The Clocktower", text: "The great clock stopped at midnight and has never been repaired. Scavengers avoid it, claiming the bell tolls on its own when death walks nearby." },
-  ],
-  [DiabloMapId.CITY]: [
-    { x: 0, z: 0, radius: 10, title: "Market Square", text: "Thornwall's market was once the busiest in the realm. Now the stalls are empty but for the garrison's enforcers, who tax the air itself. Merchants whisper of a resistance gathering in the sewers below." },
-    { x: -15, z: -20, radius: 8, title: "The Warden's Tower", text: "Commander Blackthorn watches from the highest window, day and night, never sleeping. Guards speak in hushed tones of the deal he struck — eternal vigilance in exchange for something far worse than death." },
-  ],
-};
-
-const DAY_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
-  [DiabloMapId.FOREST]: EnemyType.DAY_FOREST_STAG_GUARDIAN,
-  [DiabloMapId.ELVEN_VILLAGE]: EnemyType.DAY_ELVEN_CORRUPTED_SENTINEL,
-  [DiabloMapId.NECROPOLIS_DUNGEON]: EnemyType.DAY_NECRO_BONE_GOLEM,
-  [DiabloMapId.VOLCANIC_WASTES]: EnemyType.DAY_VOLCANIC_EMBER_BRUTE,
-  [DiabloMapId.ABYSSAL_RIFT]: EnemyType.DAY_RIFT_VOID_STALKER,
-  [DiabloMapId.DRAGONS_SANCTUM]: EnemyType.DAY_DRAGON_DRAKE_MATRIARCH,
-  [DiabloMapId.SUNSCORCH_DESERT]: EnemyType.DAY_DESERT_SAND_GOLEM,
-  [DiabloMapId.EMERALD_GRASSLANDS]: EnemyType.DAY_GRASSLAND_BULL_CHIEFTAIN,
-  [DiabloMapId.WHISPERING_MARSH]: EnemyType.DAY_MARSH_BOG_TROLL,
-  [DiabloMapId.CRYSTAL_CAVERNS]: EnemyType.DAY_CAVERNS_CRYSTAL_SPIDER,
-  [DiabloMapId.FROZEN_TUNDRA]: EnemyType.DAY_TUNDRA_FROST_BEAR,
-  [DiabloMapId.HAUNTED_CATHEDRAL]: EnemyType.DAY_CATHEDRAL_FALLEN_TEMPLAR,
-  [DiabloMapId.THORNWOOD_THICKET]: EnemyType.DAY_THORNWOOD_VINE_COLOSSUS,
-  [DiabloMapId.CLOCKWORK_FOUNDRY]: EnemyType.DAY_FOUNDRY_BRONZE_SENTINEL,
-  [DiabloMapId.CRIMSON_CITADEL]: EnemyType.DAY_CITADEL_BLOODHOUND_ALPHA,
-  [DiabloMapId.STORMSPIRE_PEAK]: EnemyType.DAY_STORMSPIRE_WIND_ELEMENTAL,
-  [DiabloMapId.SHADOW_REALM]: EnemyType.DAY_SHADOW_SHADE_STALKER,
-  [DiabloMapId.PRIMORDIAL_ABYSS]: EnemyType.DAY_ABYSS_LESSER_HORROR,
-  [DiabloMapId.CITY_RUINS]: EnemyType.DAY_RUINS_FALLEN_CAPTAIN,
-  [DiabloMapId.CITY]: EnemyType.DAY_CITY_CORRUPT_WARDEN,
-};
-
-// ────────────────────────────────────────────────────────────────────────────
-// Hoisted constant arrays/maps (avoid re-creating per frame)
-// ────────────────────────────────────────────────────────────────────────────
-const RARITY_ORDER = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE] as const;
-
-const MAP_NAME_MAP: Record<string, string> = {
-  [DiabloMapId.FOREST]: "Darkwood Forest",
-  [DiabloMapId.ELVEN_VILLAGE]: "Aelindor",
-  [DiabloMapId.NECROPOLIS_DUNGEON]: "Necropolis Depths",
-  [DiabloMapId.VOLCANIC_WASTES]: "Volcanic Wastes",
-  [DiabloMapId.ABYSSAL_RIFT]: "Abyssal Rift",
-  [DiabloMapId.DRAGONS_SANCTUM]: "Dragon's Sanctum",
-  [DiabloMapId.SUNSCORCH_DESERT]: "Sunscorch Desert",
-  [DiabloMapId.EMERALD_GRASSLANDS]: "Emerald Grasslands",
-  [DiabloMapId.CAMELOT]: "Camelot",
-};
-
-const WEATHER_LABELS: Record<Weather, string> = {
-  [Weather.NORMAL]: "",
-  [Weather.FOGGY]: "\uD83C\uDF2B\uFE0F Foggy",
-  [Weather.CLEAR]: "\u2600\uFE0F Clear Skies",
-  [Weather.STORMY]: "\u26C8\uFE0F Stormy",
-};
+import {
+  RARITY_CSS, RARITY_GLOW, RARITY_BORDER, RARITY_TIER, RARITY_BG, RARITY_BADGE,
+  rarityNeedsAnim, resolveEquipKey,
+  MAP_KILL_TARGET, BOSS_NAMES, EXCALIBUR_QUEST_INFO, CAMELOT_FIRST_VISIT_TEXT,
+  VENDOR_DIALOGUE, NIGHT_BOSS_MAP, DAY_BOSS_MAP,
+  MAP_LORE_POINTS, RARITY_ORDER, MAP_NAME_MAP, WEATHER_LABELS,
+} from "./DiabloConstants";
+import {
+  createAudioState, ensureAudio as ensureAudioCtx,
+  startBgm, stopBgm, playSound as playSoundEffect, destroyAudio,
+} from "./DiabloAudioSystem";
+import type { SoundType } from "./DiabloAudioSystem";
+import { drawMinimapContent, isExplored, type MinimapContext } from "./DiabloMinimap";
 
 // ────────────────────────────────────────────────────────────────────────────
 // DiabloGame
-// ────────────────────────────────────────────────────────────────────────────
 export class DiabloGame {
   private _state!: DiabloState;
   private _renderer!: DiabloRenderer;
@@ -634,18 +218,8 @@ export class DiabloGame {
   // @ts-ignore assigned but value never read (reserved for future use)
   private _safeZoneRadius: number = 20;
 
-  // Procedural audio system
-  private _audioCtx: AudioContext | null = null;
-  private _audioMuted: boolean = false;
-  private _audioVolume: number = 0.3;
-
-  // Background music (ambient oscillator drones)
-  private _bgmOscillators: OscillatorNode[] = [];
-  private _bgmGains: GainNode[] = [];
-  // @ts-ignore assigned but value never read (reserved for future use)
-  private _bgmPlaying: boolean = false;
-  // @ts-ignore assigned but value never read (reserved for future use)
-  private _currentBgmMap: string = '';
+  // Procedural audio system (delegated to DiabloAudioSystem)
+  private _audio = createAudioState();
 
   // Skill mastery XP tracking (feature: mastery per skill)
   private _skillMasteryXp: Map<SkillId, number> = new Map();
@@ -721,60 +295,19 @@ export class DiabloGame {
   //  LEADERBOARD
   // ──────────────────────────────────────────────────────────────
   private _loadLeaderboard(): void {
-    try {
-      const raw = localStorage.getItem('diablo_gr_leaderboard');
-      this._grLeaderboard = raw ? JSON.parse(raw) : [];
-    } catch { this._grLeaderboard = []; }
+    this._grLeaderboard = loadLeaderboard();
   }
 
   private _saveLeaderboard(): void {
-    localStorage.setItem('diablo_gr_leaderboard', JSON.stringify(this._grLeaderboard));
+    saveLeaderboard(this._grLeaderboard);
   }
 
   private _addLeaderboardEntry(entry: GRLeaderboardEntry): void {
-    this._grLeaderboard.push(entry);
-    this._grLeaderboard.sort((a, b) => b.grLevel - a.grLevel || b.timeRemaining - a.timeRemaining);
-    this._grLeaderboard = this._grLeaderboard.slice(0, 10);
-    this._saveLeaderboard();
+    this._grLeaderboard = addLeaderboardEntry(this._grLeaderboard, entry);
   }
 
   private _showLeaderboard(): void {
-    this._menuEl.innerHTML = '';
-    const panel = document.createElement('div');
-    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,15,10,0.95);border:2px solid #8b6914;border-radius:8px;padding:20px;color:#fff;font-family:Georgia,serif;min-width:450px;z-index:100;';
-
-    const title = document.createElement('h2');
-    title.style.cssText = 'text-align:center;color:#ffd700;margin:0 0 15px;';
-    title.textContent = 'Greater Rift Leaderboard';
-    panel.appendChild(title);
-
-    if (this._grLeaderboard.length === 0) {
-      const empty = document.createElement('p');
-      empty.style.cssText = 'text-align:center;color:#888;';
-      empty.textContent = 'No records yet. Complete a Greater Rift!';
-      panel.appendChild(empty);
-    } else {
-      const table = document.createElement('div');
-      table.style.cssText = 'font-size:13px;';
-      table.innerHTML = '<div style="display:flex;padding:4px 0;border-bottom:1px solid #555;color:#ffd700;"><span style="flex:0.5;">#</span><span style="flex:2;">Player</span><span style="flex:1;">Class</span><span style="flex:0.5;">Lv</span><span style="flex:0.5;">GR</span><span style="flex:1;">Time</span><span style="flex:1;">Date</span></div>';
-
-      for (let i = 0; i < this._grLeaderboard.length; i++) {
-        const e = this._grLeaderboard[i];
-        const mins = Math.floor(e.timeRemaining / 60);
-        const secs = Math.floor(e.timeRemaining % 60);
-        const medalColor = i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : '#aaa';
-        table.innerHTML += `<div style="display:flex;padding:3px 0;border-bottom:1px solid #333;"><span style="flex:0.5;color:${medalColor};">${i + 1}</span><span style="flex:2;">${e.playerName}</span><span style="flex:1;">${e.class}</span><span style="flex:0.5;">${e.level}</span><span style="flex:0.5;color:#ff8800;">${e.grLevel}</span><span style="flex:1;">${mins}:${secs.toString().padStart(2, '0')}</span><span style="flex:1;color:#888;">${e.date}</span></div>`;
-      }
-      panel.appendChild(table);
-    }
-
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = 'display:block;margin:15px auto 0;padding:8px 20px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;';
-    closeBtn.textContent = 'Close';
-    closeBtn.addEventListener('click', () => this._showMapSelect());
-    panel.appendChild(closeBtn);
-
-    this._menuEl.appendChild(panel);
+    showLeaderboard(this._menuEl, this._grLeaderboard, () => this._showMapSelect());
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -5055,6 +4588,22 @@ export class DiabloGame {
         0% { transform:translate(-50%,-50%) rotate(0deg); }
         100% { transform:translate(-50%,-50%) rotate(360deg); }
       }
+      @keyframes hud-bar-breathe {
+        0%, 100% { box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.25),
+          inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 1px rgba(200,168,78,0.3),
+          0 -2px 15px rgba(200,168,78,0.08); }
+        50% { box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.35),
+          inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 3px rgba(200,168,78,0.4),
+          0 -2px 20px rgba(200,168,78,0.15); }
+      }
+      @keyframes hud-orb-low-pulse {
+        0%, 100% { border-color: rgba(255,40,40,0.6); }
+        50% { border-color: rgba(255,80,80,0.9); }
+      }
+      @keyframes hud-slot-hover-glow {
+        0%, 100% { box-shadow:inset 0 0 20px rgba(200,168,78,0.15), 0 0 8px rgba(200,168,78,0.2); }
+        50% { box-shadow:inset 0 0 25px rgba(200,168,78,0.25), 0 0 14px rgba(200,168,78,0.35); }
+      }
     `;
     this._hud.appendChild(hudStyleEl);
 
@@ -5109,9 +4658,11 @@ export class DiabloGame {
     `;
     this._hpText = document.createElement("div");
     this._hpText.style.cssText = `
-      position:relative;z-index:3;color:#ffcccc;font-size:14px;font-weight:bold;text-align:center;
-      text-shadow:0 1px 4px rgba(0,0,0,0.95), 0 0 10px rgba(200,20,20,0.4);
+      position:relative;z-index:3;color:#ffdddd;font-size:15px;font-weight:bold;text-align:center;
+      text-shadow:0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,1),
+        0 0 20px rgba(180,20,20,0.3);
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      letter-spacing:1px;
     `;
     // Skull decoration on top
     const hpSkull = document.createElement("div");
@@ -5260,9 +4811,11 @@ export class DiabloGame {
     `;
     this._mpText = document.createElement("div");
     this._mpText.style.cssText = `
-      position:relative;z-index:3;color:#ccccff;font-size:14px;font-weight:bold;text-align:center;
-      text-shadow:0 1px 4px rgba(0,0,0,0.95), 0 0 10px rgba(30,30,200,0.4);
+      position:relative;z-index:3;color:#ddddff;font-size:15px;font-weight:bold;text-align:center;
+      text-shadow:0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,1),
+        0 0 20px rgba(40,40,200,0.3);
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
+      letter-spacing:1px;
     `;
     // Arcane rune decoration on top
     const mpRune = document.createElement("div");
@@ -5364,12 +4917,11 @@ export class DiabloGame {
     const skillBarBg = document.createElement("div");
     skillBarBg.style.cssText = `
       position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
-      padding:10px 18px;display:flex;gap:8px;
+      padding:10px 14px;display:flex;gap:6px;
       background:linear-gradient(180deg, rgba(45,38,25,0.95), rgba(25,20,10,0.97), rgba(35,28,18,0.95));
       border:2px solid #8b7a4a;border-radius:8px;
-      box-shadow:0 4px 20px rgba(0,0,0,0.7), inset 0 1px 0 rgba(200,168,78,0.25),
-        inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 1px rgba(200,168,78,0.3),
-        0 -2px 15px rgba(200,168,78,0.08);
+      animation:hud-bar-breathe 4s ease-in-out infinite;
+      background-image:repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(200,168,78,0.015) 8px, rgba(200,168,78,0.015) 16px);
     `;
     // Left end-cap ornament
     const skillCapL = document.createElement("div");
@@ -5436,16 +4988,20 @@ export class DiabloGame {
     for (let i = 0; i < 6; i++) {
       const slotWrap = document.createElement("div");
       slotWrap.style.cssText = `
-        position:relative;width:78px;height:78px;
+        position:relative;width:66px;height:66px;
       `;
       const slot = document.createElement("div");
       slot.style.cssText = `
-        width:78px;height:78px;background:linear-gradient(180deg, rgba(30,25,15,0.95), rgba(12,8,3,0.97));
+        width:66px;height:66px;
+        background:linear-gradient(145deg, rgba(40,32,18,0.97), rgba(18,12,5,0.98), rgba(30,24,12,0.96));
         border:2px solid #9a8a4a;border-radius:8px;display:flex;flex-direction:column;
         align-items:center;justify-content:center;position:relative;overflow:hidden;
-        box-shadow:inset 0 1px 0 rgba(200,168,78,0.25), inset 0 -1px 0 rgba(0,0,0,0.4),
-          0 2px 8px rgba(0,0,0,0.6), inset 0 0 25px rgba(200,168,78,0.05),
-          inset 0 0 8px rgba(0,0,0,0.3);
+        box-shadow:inset 0 1px 0 rgba(200,168,78,0.3), inset 0 -1px 0 rgba(0,0,0,0.5),
+          0 2px 10px rgba(0,0,0,0.7), inset 0 0 20px rgba(200,168,78,0.06),
+          inset 0 0 8px rgba(0,0,0,0.4);
+        background-image:
+          radial-gradient(ellipse at 30% 20%, rgba(200,168,78,0.06) 0%, transparent 60%),
+          repeating-conic-gradient(from 0deg, rgba(200,168,78,0.02) 0deg 15deg, transparent 15deg 30deg);
       `;
       // Ornate frame corners on each slot
       const cornerDeco = document.createElement("div");
@@ -5458,7 +5014,9 @@ export class DiabloGame {
       const cdOverlay = document.createElement("div");
       cdOverlay.style.cssText = `
         position:absolute;top:0;left:0;width:100%;height:0%;
-        background:rgba(0,0,0,0.65);transition:height 0.1s;pointer-events:none;
+        background:linear-gradient(180deg, rgba(0,0,0,0.75), rgba(10,5,0,0.6) 80%, rgba(60,40,10,0.2));
+        transition:height 0.1s;pointer-events:none;
+        border-bottom:1px solid rgba(200,168,78,0.25);
       `;
 
       const cdText = document.createElement("div");
@@ -5477,7 +5035,7 @@ export class DiabloGame {
       keyLabel.textContent = String(i + 1);
 
       const iconEl = document.createElement("div");
-      iconEl.style.cssText = "font-size:30px;z-index:1;";
+      iconEl.style.cssText = "font-size:34px;z-index:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7));";
       iconEl.className = "skill-icon";
 
       // Inner bevel highlight (raised stone look)
@@ -5610,8 +5168,8 @@ export class DiabloGame {
     this._goldText.style.cssText = `
       font-size:20px;color:#ffd700;margin-bottom:6px;
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 0 8px rgba(255,215,0,0.4), 0 1px 3px rgba(0,0,0,0.8);
-      letter-spacing:0.5px;
+      text-shadow:0 0 8px rgba(255,215,0,0.5), 0 0 16px rgba(255,215,0,0.2), 0 1px 3px rgba(0,0,0,0.9);
+      letter-spacing:1px;transition:text-shadow 0.3s, transform 0.2s;
     `;
     this._levelText = document.createElement("div");
     this._levelText.style.cssText = `
@@ -6248,7 +5806,14 @@ export class DiabloGame {
         this._hpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + fi * 16}px rgba(255,40,40,${0.5 * fi * pulse})) drop-shadow(0 0 ${6 + fi * 8}px rgba(255,100,100,${0.3 * fi}))`;
       }
     } else {
-      this._hpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(180,20,20,0.35))';
+      // Low HP warning pulse (< 30% HP)
+      if (hpPct < 0.3 && hpPct > 0) {
+        const pulse = 0.5 + Math.sin(Date.now() * 0.006) * 0.5;
+        const danger = (0.3 - hpPct) / 0.3; // 0→1 as HP gets lower
+        this._hpOrbWrap.style.filter = `drop-shadow(0 0 ${14 + danger * 12}px rgba(255,30,30,${0.3 + pulse * 0.35 * danger}))`;
+      } else {
+        this._hpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(180,20,20,0.35))';
+      }
     }
 
     // Mana orb
@@ -6272,7 +5837,14 @@ export class DiabloGame {
       const pulse = 0.6 + Math.sin(Date.now() * 0.02) * 0.4;
       this._mpOrbWrap.style.filter = `drop-shadow(0 0 ${12 + mi * 16}px rgba(60,60,255,${0.5 * mi * pulse})) drop-shadow(0 0 ${6 + mi * 8}px rgba(120,120,255,${0.3 * mi}))`;
     } else {
-      this._mpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(30,30,200,0.35))';
+      // Low mana warning pulse (< 20% mana)
+      if (mpPct < 0.2 && mpPct > 0) {
+        const pulse = 0.5 + Math.sin(Date.now() * 0.005) * 0.5;
+        const danger = (0.2 - mpPct) / 0.2;
+        this._mpOrbWrap.style.filter = `drop-shadow(0 0 ${14 + danger * 10}px rgba(80,80,255,${0.25 + pulse * 0.3 * danger}))`;
+      } else {
+        this._mpOrbWrap.style.filter = 'drop-shadow(0 0 12px rgba(30,30,200,0.35))';
+      }
     }
 
     // Skill bar
@@ -6348,12 +5920,44 @@ export class DiabloGame {
 
     // Top right
     if (p.gold !== this._lastGoldValue) {
+      const gained = p.gold > this._lastGoldValue;
       this._lastGoldValue = p.gold;
       this._goldText.innerHTML = `<span style="filter:drop-shadow(0 0 3px rgba(255,215,0,0.4))">\uD83E\uDE99</span> ${p.gold.toLocaleString()}`;
+      // Flash gold text on gain
+      if (gained) {
+        this._goldText.style.textShadow = '0 0 16px rgba(255,215,0,0.9), 0 0 32px rgba(255,215,0,0.5), 0 1px 3px rgba(0,0,0,0.9)';
+        this._goldText.style.transform = 'scale(1.08)';
+        setTimeout(() => {
+          this._goldText.style.textShadow = '0 0 8px rgba(255,215,0,0.5), 0 0 16px rgba(255,215,0,0.2), 0 1px 3px rgba(0,0,0,0.9)';
+          this._goldText.style.transform = 'scale(1)';
+        }, 300);
+      }
     }
     if (p.level !== this._lastLevelValue) {
+      const didLevelUp = this._lastLevelValue > 0 && p.level > this._lastLevelValue;
       this._lastLevelValue = p.level;
       this._levelText.innerHTML = `\u2694 Level ${p.level}`;
+      if (didLevelUp) {
+        // Level-up flash: golden burst on level text
+        this._levelText.style.color = '#fff';
+        this._levelText.style.textShadow = '0 0 20px rgba(255,215,0,1), 0 0 40px rgba(255,215,0,0.7), 0 0 60px rgba(255,180,0,0.5)';
+        this._levelText.style.transform = 'scale(1.15)';
+        this._levelText.style.transition = 'all 0.15s ease-out';
+        // Also flash the entire top-right panel border gold
+        if (this._topRightPanel) {
+          this._topRightPanel.style.borderColor = '#ffd700';
+          this._topRightPanel.style.boxShadow = '0 0 20px rgba(255,215,0,0.5), 0 4px 12px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,215,0,0.1)';
+        }
+        setTimeout(() => {
+          this._levelText.style.color = '#c8a84e';
+          this._levelText.style.textShadow = '0 0 6px rgba(200,168,78,0.3), 0 1px 2px rgba(0,0,0,0.7)';
+          this._levelText.style.transform = 'scale(1)';
+          if (this._topRightPanel) {
+            this._topRightPanel.style.borderColor = '#7a6a3a';
+            this._topRightPanel.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,78,0.15), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2), inset 0 0 0 1px rgba(200,168,78,0.08), 0 0 0 1px rgba(0,0,0,0.3)';
+          }
+        }, 800);
+      }
     }
     if (this._state.killCount !== this._lastKillValue || this._state.deathCount !== this._lastDeathValue) {
       this._lastKillValue = this._state.killCount;
@@ -10469,203 +10073,22 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  PROCEDURAL AUDIO
+  //  PROCEDURAL AUDIO (delegated to DiabloAudioSystem.ts)
   // ──────────────────────────────────────────────────────────────
   private _ensureAudio(): AudioContext | null {
-    if (!this._audioCtx) {
-      try { this._audioCtx = new AudioContext(); } catch { return null; }
-    }
-    if (this._audioCtx.state === 'suspended') {
-      this._audioCtx.resume();
-    }
-    return this._audioCtx;
+    return ensureAudioCtx(this._audio);
   }
 
   private _startBgm(mapId: DiabloMapId): void {
-    this._stopBgm();
-    const ctx = this._ensureAudio();
-    if (!ctx || this._audioMuted) return;
-
-    this._currentBgmMap = mapId;
-    this._bgmPlaying = true;
-
-    // Map biome to ambient tone parameters
-    const biomes: Record<string, { freqs: number[]; types: OscillatorType[]; vol: number }> = {
-      FOREST: { freqs: [110, 165, 220], types: ['sine', 'sine', 'triangle'], vol: 0.03 },
-      ELVEN_VILLAGE: { freqs: [220, 330, 440], types: ['sine', 'sine', 'sine'], vol: 0.025 },
-      NECROPOLIS_DUNGEON: { freqs: [55, 82, 110], types: ['sawtooth', 'sine', 'sine'], vol: 0.02 },
-      VOLCANIC_WASTES: { freqs: [65, 98, 130], types: ['sawtooth', 'sawtooth', 'sine'], vol: 0.025 },
-      FROZEN_TUNDRA: { freqs: [196, 294, 392], types: ['sine', 'sine', 'triangle'], vol: 0.02 },
-      HAUNTED_CATHEDRAL: { freqs: [82, 123, 164], types: ['sine', 'triangle', 'sine'], vol: 0.025 },
-      SHADOW_REALM: { freqs: [55, 73, 110], types: ['sawtooth', 'sine', 'sawtooth'], vol: 0.02 },
-      CAMELOT: { freqs: [196, 247, 294], types: ['sine', 'sine', 'triangle'], vol: 0.03 },
-      CRYSTAL_CAVERNS: { freqs: [330, 440, 523], types: ['sine', 'sine', 'sine'], vol: 0.02 },
-      CORAL_DEPTHS: { freqs: [130, 196, 262], types: ['sine', 'triangle', 'sine'], vol: 0.025 },
-    };
-
-    // Default dark ambient for unlisted maps
-    const params = biomes[mapId] || { freqs: [73, 110, 146], types: ['sine', 'sine', 'triangle'] as OscillatorType[], vol: 0.02 };
-
-    for (let i = 0; i < params.freqs.length; i++) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = params.types[i];
-      osc.frequency.setValueAtTime(params.freqs[i], ctx.currentTime);
-      // Slow LFO modulation for atmosphere
-      const lfoDepth = params.freqs[i] * 0.02;
-      osc.frequency.linearRampToValueAtTime(params.freqs[i] + lfoDepth, ctx.currentTime + 4 + i * 2);
-      osc.frequency.linearRampToValueAtTime(params.freqs[i] - lfoDepth, ctx.currentTime + 8 + i * 2);
-      osc.frequency.linearRampToValueAtTime(params.freqs[i], ctx.currentTime + 12 + i * 2);
-
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(params.vol, ctx.currentTime + 2); // Fade in
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-
-      this._bgmOscillators.push(osc);
-      this._bgmGains.push(gain);
-    }
+    startBgm(this._audio, mapId);
   }
 
   private _stopBgm(): void {
-    const ctx = this._audioCtx;
-    if (!ctx) return;
-
-    for (let i = 0; i < this._bgmOscillators.length; i++) {
-      try {
-        this._bgmGains[i].gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
-        this._bgmOscillators[i].stop(ctx.currentTime + 1.5);
-      } catch { /* already stopped */ }
-    }
-    this._bgmOscillators = [];
-    this._bgmGains = [];
-    this._bgmPlaying = false;
-    this._currentBgmMap = '';
+    stopBgm(this._audio);
   }
 
-  private _playSound(type: 'hit' | 'crit' | 'skill' | 'levelup' | 'loot' | 'death' | 'boss' | 'dodge' | 'potion' | 'gold'): void {
-    if (this._audioMuted) return;
-    const ctx = this._ensureAudio();
-    if (!ctx) return;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    const now = ctx.currentTime;
-    const vol = this._audioVolume;
-
-    switch (type) {
-      case 'hit':
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(200, now);
-        osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
-        gain.gain.setValueAtTime(vol * 0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-        osc.start(now);
-        osc.stop(now + 0.1);
-        break;
-      case 'crit': {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
-        gain.gain.setValueAtTime(vol * 0.5, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-        osc.start(now);
-        osc.stop(now + 0.15);
-        const noise = ctx.createOscillator();
-        noise.type = 'sawtooth';
-        noise.frequency.setValueAtTime(800, now);
-        noise.frequency.exponentialRampToValueAtTime(200, now + 0.05);
-        const ng = ctx.createGain();
-        ng.gain.setValueAtTime(vol * 0.3, now);
-        ng.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-        noise.connect(ng);
-        ng.connect(ctx.destination);
-        noise.start(now);
-        noise.stop(now + 0.08);
-        break;
-      }
-      case 'skill':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, now);
-        osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
-        gain.gain.setValueAtTime(vol * 0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-        osc.start(now);
-        osc.stop(now + 0.2);
-        break;
-      case 'levelup':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.linearRampToValueAtTime(800, now + 0.2);
-        osc.frequency.linearRampToValueAtTime(1200, now + 0.5);
-        gain.gain.setValueAtTime(vol * 0.5, now);
-        gain.gain.linearRampToValueAtTime(vol * 0.3, now + 0.3);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-        osc.start(now);
-        osc.stop(now + 0.6);
-        break;
-      case 'loot':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, now);
-        osc.frequency.setValueAtTime(1000, now + 0.05);
-        osc.frequency.setValueAtTime(1200, now + 0.1);
-        gain.gain.setValueAtTime(vol * 0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-        osc.start(now);
-        osc.stop(now + 0.2);
-        break;
-      case 'death':
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.exponentialRampToValueAtTime(50, now + 0.8);
-        gain.gain.setValueAtTime(vol * 0.5, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-        osc.start(now);
-        osc.stop(now + 0.8);
-        break;
-      case 'boss':
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(100, now);
-        osc.frequency.linearRampToValueAtTime(200, now + 0.3);
-        osc.frequency.linearRampToValueAtTime(80, now + 0.6);
-        gain.gain.setValueAtTime(vol * 0.6, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-        osc.start(now);
-        osc.stop(now + 0.8);
-        break;
-      case 'dodge':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(500, now);
-        osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
-        gain.gain.setValueAtTime(vol * 0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-        osc.start(now);
-        osc.stop(now + 0.08);
-        break;
-      case 'potion':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, now);
-        osc.frequency.linearRampToValueAtTime(900, now + 0.15);
-        gain.gain.setValueAtTime(vol * 0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-        osc.start(now);
-        osc.stop(now + 0.2);
-        break;
-      case 'gold':
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, now);
-        osc.frequency.setValueAtTime(1400, now + 0.03);
-        gain.gain.setValueAtTime(vol * 0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-        osc.start(now);
-        osc.stop(now + 0.08);
-        break;
-    }
+  private _playSound(type: SoundType): void {
+    playSoundEffect(this._audio, type);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -11291,79 +10714,14 @@ export class DiabloGame {
   //  HELPER: Check if save exists
   // ──────────────────────────────────────────────────────────────
   private _hasSave(): boolean {
-    return localStorage.getItem("diablo_save") !== null;
+    return hasSave();
   }
 
   // ──────────────────────────────────────────────────────────────
   //  SAVE GAME
   // ──────────────────────────────────────────────────────────────
   private _saveGame(): void {
-    const save = {
-      version: 2,
-      timestamp: Date.now(),
-      player: {
-        ...this._state.player,
-        skillCooldowns: Object.fromEntries(this._state.player.skillCooldowns),
-      },
-      currentMap: this._state.currentMap,
-      timeOfDay: this._state.timeOfDay,
-      killCount: this._state.killCount,
-      persistentInventory: this._state.persistentInventory,
-      persistentGold: this._state.persistentGold,
-      persistentLevel: this._state.persistentLevel,
-      persistentXp: this._state.persistentXp,
-      persistentStash: this._state.persistentStash,
-      mapCleared: this._state.mapCleared,
-      difficulty: this._state.difficulty,
-      playerTalents: this._state.player.talents,
-      playerTalentPoints: this._state.player.talentPoints,
-      playerPotions: this._state.player.potions,
-      playerPotionSlots: this._state.player.potionSlots,
-      activeQuests: this._state.activeQuests,
-      completedQuestIds: this._state.completedQuestIds,
-      completedMaps: this._state.completedMaps,
-      chestsOpened: this._chestsOpened,
-      goldEarnedTotal: this._goldEarnedTotal,
-      totalKills: this._totalKills,
-      greaterRift: {
-        bestRiftLevel: this._state.greaterRift.bestRiftLevel,
-        keystones: this._state.greaterRift.keystones,
-      },
-      excaliburFragments: this._state.player.excaliburFragments,
-      excaliburReforged: this._state.player.excaliburReforged,
-      mordredDefeated: this._state.player.mordredDefeated,
-      // Retention features
-      achievements: this._state.player.achievements,
-      dailyChallenges: this._state.player.dailyChallenges,
-      dailyStreak: this._state.player.dailyStreak,
-      lastDailyDate: this._state.player.lastDailyDate,
-      unlockedCosmetics: this._state.player.unlockedCosmetics,
-      activeTrail: this._state.player.activeTrail,
-      activeAura: this._state.player.activeAura,
-      activeTitle: this._state.player.activeTitle,
-    };
-    // Backup previous save before overwriting
-    const prevSave = localStorage.getItem("diablo_save");
-    if (prevSave) {
-      localStorage.setItem("diablo_save_backup", prevSave);
-    }
-    localStorage.setItem("diablo_save", JSON.stringify(save));
-
-    // Show floating notification
-    const notification = document.createElement("div");
-    notification.style.cssText =
-      "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);" +
-      "color:#4f4;font-size:28px;font-weight:bold;font-family:'Georgia',serif;" +
-      "text-shadow:0 0 15px rgba(0,255,0,0.5);pointer-events:none;" +
-      "transition:opacity 1s;opacity:1;z-index:50;";
-    notification.textContent = "Game Saved!";
-    this._menuEl.appendChild(notification);
-    setTimeout(() => {
-      notification.style.opacity = "0";
-    }, 800);
-    setTimeout(() => {
-      if (notification.parentElement) notification.parentElement.removeChild(notification);
-    }, 2000);
+    saveGame({ state: this._state, menuEl: this._menuEl, chestsOpened: this._chestsOpened, goldEarnedTotal: this._goldEarnedTotal, totalKills: this._totalKills });
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -11573,57 +10931,7 @@ export class DiabloGame {
   //  SAVE RECOVERY PROMPT
   // ──────────────────────────────────────────────────────────────
   private _showSaveRecoveryPrompt(): void {
-    this._menuEl.innerHTML = '';
-    const panel = document.createElement('div');
-    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(30,10,10,0.95);border:2px solid #ff4444;border-radius:8px;padding:25px;color:#fff;font-family:Georgia,serif;max-width:450px;text-align:center;z-index:200;';
-
-    const hasBackup = localStorage.getItem("diablo_save_backup") !== null;
-
-    panel.innerHTML = `
-      <h2 style="color:#ff4444;margin:0 0 15px;">Save Data Corrupted</h2>
-      <p style="color:#aaa;font-size:14px;margin-bottom:15px;">
-        Your save data could not be loaded. This may have been caused by a browser issue.
-      </p>
-      ${hasBackup ? `
-        <button id="recovery-backup" style="padding:8px 20px;background:#44aa44;color:#fff;border:1px solid #44ff44;border-radius:4px;cursor:pointer;font-family:Georgia,serif;margin:5px;display:block;width:100%;">
-          Restore Backup Save
-        </button>
-      ` : ''}
-      <button id="recovery-fresh" style="padding:8px 20px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;margin:5px;display:block;width:100%;">
-        Start Fresh
-      </button>
-      <button id="recovery-export" style="padding:8px 20px;background:#335;color:#fff;border:1px solid #558;border-radius:4px;cursor:pointer;font-family:Georgia,serif;margin:5px;display:block;width:100%;">
-        Export Corrupted Data (for debug)
-      </button>
-    `;
-    this._menuEl.appendChild(panel);
-
-    if (hasBackup) {
-      document.getElementById('recovery-backup')?.addEventListener('click', () => {
-        const backup = localStorage.getItem("diablo_save_backup");
-        if (backup) {
-          localStorage.setItem("diablo_save", backup);
-          location.reload();
-        }
-      });
-    }
-
-    document.getElementById('recovery-fresh')?.addEventListener('click', () => {
-      localStorage.removeItem("diablo_save");
-      localStorage.removeItem("diablo_save_backup");
-      location.reload();
-    });
-
-    document.getElementById('recovery-export')?.addEventListener('click', () => {
-      const corrupted = localStorage.getItem("diablo_save") || '';
-      const blob = new Blob([corrupted], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'diablo_save_corrupted.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    });
+    showSaveRecoveryPrompt(this._menuEl);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -12170,254 +11478,13 @@ export class DiabloGame {
   //  MINIMAP
   // ──────────────────────────────────────────────────────────────
   private _drawMinimapContent(ctx: CanvasRenderingContext2D, W: number, H: number): void {
-    const p = this._state.player;
-    const mapId = this._state.currentMap;
-    const mapCfg = MAP_CONFIGS[mapId];
-    const mapW = mapCfg.width;
-    const mapD = mapCfg.depth;
-
-    ctx.clearRect(0, 0, W, H);
-
-    const bgColors: Record<string, string> = {
-      [DiabloMapId.FOREST]: "rgba(10,30,10,0.85)",
-      [DiabloMapId.ELVEN_VILLAGE]: "rgba(10,25,30,0.85)",
-      [DiabloMapId.NECROPOLIS_DUNGEON]: "rgba(20,10,30,0.85)",
-      [DiabloMapId.CAMELOT]: "rgba(30,22,12,0.85)",
-    };
-    ctx.fillStyle = bgColors[mapId] || "rgba(15,15,15,0.85)";
-    ctx.fillRect(0, 0, W, H);
-
-    const scale = Math.min(W / mapW, H / mapD) * 0.85;
-    const cx = W / 2;
-    const cy = H / 2;
-
-    const toMx = (wx: number) => cx + wx * scale;
-    const toMy = (wz: number) => cy + wz * scale;
-
-    const halfW = mapW / 2;
-    const halfD = mapD / 2;
-
-    // Grid overlay
-    ctx.strokeStyle = "rgba(90,74,42,0.15)";
-    ctx.lineWidth = 0.5;
-    const gridStep = 20;
-    for (let gx = -halfW; gx <= halfW; gx += gridStep) {
-      ctx.beginPath();
-      ctx.moveTo(toMx(gx), toMy(-halfD));
-      ctx.lineTo(toMx(gx), toMy(halfD));
-      ctx.stroke();
-    }
-    for (let gz = -halfD; gz <= halfD; gz += gridStep) {
-      ctx.beginPath();
-      ctx.moveTo(toMx(-halfW), toMy(gz));
-      ctx.lineTo(toMx(halfW), toMy(gz));
-      ctx.stroke();
-    }
-
-    // Map border
-    ctx.strokeStyle = "rgba(200,168,78,0.6)";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(toMx(-halfW), toMy(-halfD), mapW * scale, mapD * scale);
-
-    // Fog of war overlay for combat maps
-    const useFogOfWar = mapId !== DiabloMapId.CAMELOT && this._state.exploredGrid.length > 0;
-
-    if (mapId === DiabloMapId.CAMELOT) {
-      // Walls
-      ctx.strokeStyle = "rgba(80,80,80,0.7)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(toMx(-halfW + 1), toMy(-halfD + 1), (mapW - 2) * scale, (mapD - 2) * scale);
-
-      // Roads
-      ctx.strokeStyle = "rgba(100,70,40,0.5)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(toMx(-halfW), toMy(0));
-      ctx.lineTo(toMx(halfW), toMy(0));
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(toMx(0), toMy(-halfD));
-      ctx.lineTo(toMx(0), toMy(halfD));
-      ctx.stroke();
-
-      // Castle
-      ctx.fillStyle = "rgba(70,65,55,0.5)";
-      ctx.fillRect(toMx(-10), toMy(-halfD + 2), 20 * scale, 8 * scale);
-
-      // Buildings
-      ctx.strokeStyle = "rgba(90,85,75,0.5)";
-      ctx.lineWidth = 1;
-      const bldgs = [
-        { x: -20, z: -15, w: 8, h: 6 },
-        { x: 12, z: -15, w: 8, h: 6 },
-        { x: -20, z: 8, w: 8, h: 6 },
-        { x: 12, z: 8, w: 8, h: 6 },
-        { x: -5, z: -22, w: 10, h: 5 },
-      ];
-      for (const b of bldgs) {
-        ctx.strokeRect(toMx(b.x), toMy(b.z), b.w * scale, b.h * scale);
-      }
-
-      // Vendors as blue dots
-      const vendorColors: Record<string, string> = {
-        [VendorType.BLACKSMITH]: "#4488ff",
-        [VendorType.ARCANIST]: "#4488ff",
-        [VendorType.ALCHEMIST]: "#4488ff",
-        [VendorType.JEWELER]: "#4488ff",
-        [VendorType.GENERAL_MERCHANT]: "#4488ff",
-      };
-      ctx.font = `${Math.max(7, W / 25)}px sans-serif`;
-      for (const v of this._state.vendors) {
-        const mx = toMx(v.x);
-        const my = toMy(v.z);
-        ctx.fillStyle = vendorColors[v.type] || "#4488ff";
-        ctx.beginPath();
-        ctx.arc(mx, my, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "rgba(200,190,170,0.8)";
-        ctx.fillText(v.name.split(" ")[0], mx + 5, my + 3);
-      }
-      // Town portal in Camelot
-      if (this._portalActive) {
-        const px = toMx(this._portalX);
-        const py = toMy(this._portalZ);
-        const t = Date.now() / 600;
-        const pulse = 3 + Math.sin(t) * 1.5;
-        ctx.fillStyle = `rgba(100,130,255,${0.3 + Math.sin(t) * 0.15})`;
-        ctx.beginPath();
-        ctx.arc(px, py, pulse + 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#88bbff";
-        ctx.beginPath();
-        ctx.arc(px, py, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "rgba(130,180,255,0.8)";
-        ctx.font = `${Math.max(7, W / 28)}px sans-serif`;
-        ctx.fillText("\uD83C\uDF00", px - 5, py - 6);
-      }
-    } else {
-      // Enemies
-      for (const enemy of this._state.enemies) {
-        if (enemy.state === EnemyState.DEAD) continue;
-        if (enemy.type && (enemy.type as string).startsWith("NIGHT_")) continue;
-        if (useFogOfWar && !this._isExplored(enemy.x, enemy.z)) continue;
-        const mx = toMx(enemy.x);
-        const my = toMy(enemy.z);
-        ctx.fillStyle = "#ff3333";
-        const r = enemy.isBoss ? 4 : 2;
-        ctx.beginPath();
-        ctx.arc(mx, my, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Loot (colored by rarity)
-      for (const loot of this._state.loot) {
-        if (useFogOfWar && !this._isExplored(loot.x, loot.z)) continue;
-        ctx.fillStyle = RARITY_CSS[loot.item.rarity] || "#ffff00";
-        // Pulse effect for rare+ loot
-        const rarityIdx = RARITY_ORDER.indexOf(loot.item.rarity);
-        let lootRadius = 1.5;
-        if (rarityIdx >= 2) { // RARE+
-          const pulse = 1 + Math.sin(Date.now() * 0.005) * 0.5;
-          lootRadius = 2.0 + pulse;
-        }
-        ctx.beginPath();
-        ctx.arc(toMx(loot.x), toMy(loot.z), lootRadius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Treasure chests as yellow dots
-      for (const chest of this._state.treasureChests) {
-        if (chest.opened) continue;
-        if (useFogOfWar && !this._isExplored(chest.x, chest.z)) continue;
-        ctx.fillStyle = "#ffdd00";
-        ctx.beginPath();
-        ctx.arc(toMx(chest.x), toMy(chest.z), 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Town portal marker
-      if (this._portalActive) {
-        const px = toMx(this._portalX);
-        const py = toMy(this._portalZ);
-        const t = Date.now() / 600;
-        const pulse = 3 + Math.sin(t) * 1.5;
-        ctx.fillStyle = `rgba(100,130,255,${0.3 + Math.sin(t) * 0.15})`;
-        ctx.beginPath();
-        ctx.arc(px, py, pulse + 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#88bbff";
-        ctx.beginPath();
-        ctx.arc(px, py, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "rgba(130,180,255,0.8)";
-        ctx.font = `${Math.max(7, W / 28)}px sans-serif`;
-        ctx.fillText("\uD83C\uDF00", px - 5, py - 6);
-      }
-
-      // Fog of war darkening
-      if (useFogOfWar) {
-        const fogStepPx = Math.max(2, Math.floor(scale));
-        ctx.fillStyle = "rgba(0,0,0,0.7)";
-        for (let wx = -halfW; wx < halfW; wx += fogStepPx / scale) {
-          for (let wz = -halfD; wz < halfD; wz += fogStepPx / scale) {
-            if (!this._isExplored(wx, wz)) {
-              ctx.fillRect(toMx(wx), toMy(wz), fogStepPx, fogStepPx);
-            }
-          }
-        }
-      }
-
-      // Landmarks as grey shapes
-      ctx.fillStyle = "rgba(120,110,100,0.3)";
-      ctx.fillRect(toMx(-5), toMy(-5), 10 * scale, 10 * scale);
-
-      // Quest markers on minimap
-      // Bounty targets
-      if (this._state.activeBounties) {
-        for (const bounty of this._state.activeBounties) {
-          if (bounty.isComplete || bounty.mapId !== this._state.currentMap) continue;
-          const bountyEnemy = this._state.enemies.find(e => e.id === `bounty-enemy-${bounty.id}`);
-          if (bountyEnemy) {
-            const bx = toMx(bountyEnemy.x);
-            const bz = toMy(bountyEnemy.z);
-            // Draw skull icon
-            ctx.fillStyle = '#ff4444';
-            ctx.font = '10px serif';
-            ctx.fillText('\u{1F480}', bx - 5, bz + 4);
-          }
-        }
-      }
-
-      // Excalibur fragment marker
-      const questInfo = EXCALIBUR_QUEST_INFO[this._state.currentMap];
-      if (questInfo && !this._state.player.excaliburFragments.includes(this._state.currentMap)) {
-        // Draw a star near center of map (fragment is from boss)
-        ctx.fillStyle = '#ffd700';
-        ctx.font = '12px serif';
-        ctx.fillText('\u2694\uFE0F', toMx(0) - 6, toMy(0) + 5);
-      }
-    }
-
-    // Player as green arrow/triangle
-    const pmx = toMx(p.x);
-    const pmy = toMy(p.z);
-    ctx.save();
-    ctx.translate(pmx, pmy);
-    ctx.rotate(this._firstPerson ? -p.angle : -p.angle + Math.PI);
-    ctx.fillStyle = "#44ff44";
-    ctx.beginPath();
-    ctx.moveTo(0, -5);
-    ctx.lineTo(-3.5, 4);
-    ctx.lineTo(3.5, 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-
-    // Map name removed from minimap canvas — shown only below the minimap
+    drawMinimapContent(ctx, {
+      state: this._state,
+      portalActive: this._portalActive,
+      portalX: this._portalX,
+      portalZ: this._portalZ,
+      firstPerson: this._firstPerson,
+    }, W, H);
   }
 
   private _updateMinimap(): void {
@@ -14254,14 +13321,7 @@ export class DiabloGame {
   }
 
   private _isExplored(wx: number, wz: number): boolean {
-    const mapCfg = MAP_CONFIGS[this._state.currentMap];
-    const halfW = mapCfg.width / 2;
-    const halfD = mapCfg.depth / 2;
-    const gx = Math.floor(wx + halfW);
-    const gz = Math.floor(wz + halfD);
-    const grid = this._state.exploredGrid;
-    if (gx < 0 || gx >= mapCfg.width || gz < 0 || gz >= mapCfg.depth) return false;
-    return grid[gx] ? grid[gx][gz] : false;
+    return isExplored(this._state, wx, wz);
   }
 
   // ══════════════════════════════════════════════════════════════

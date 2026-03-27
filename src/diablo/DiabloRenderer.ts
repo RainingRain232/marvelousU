@@ -266,7 +266,7 @@ export class DiabloRenderer {
     this._playerGroup = new THREE.Group();
     this._scene.add(this._playerGroup);
 
-    const groundGeo = new THREE.PlaneGeometry(200, 200, 200, 200);
+    const groundGeo = new THREE.PlaneGeometry(200, 200, 256, 256);
     groundGeo.rotateX(-Math.PI / 2);
     const posAttr = groundGeo.attributes.position;
     const defaultColors: number[] = [];
@@ -449,8 +449,8 @@ export class DiabloRenderer {
     const pebbleMat = new THREE.MeshStandardMaterial({ color: darkGround, roughness: 1.0, metalness: 0 });
     const dirtMat = new THREE.MeshBasicMaterial({ color: darkGround, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
 
-    // Scatter pebbles (80)
-    for (let i = 0; i < 80; i++) {
+    // Scatter pebbles (120)
+    for (let i = 0; i < 120; i++) {
       const px = (Math.random() - 0.5) * w * 0.9;
       const pz = (Math.random() - 0.5) * d * 0.9;
       const size = 0.03 + Math.random() * 0.06;
@@ -461,8 +461,8 @@ export class DiabloRenderer {
       this._envGroup.add(pebble);
     }
 
-    // Scatter dirt/shadow patches (50) — flat dark circles that break up the ground
-    for (let i = 0; i < 50; i++) {
+    // Scatter dirt/shadow patches (80) — flat dark circles that break up the ground
+    for (let i = 0; i < 80; i++) {
       const dx = (Math.random() - 0.5) * w * 0.85;
       const dz = (Math.random() - 0.5) * d * 0.85;
       const size = 0.3 + Math.random() * 0.8;
@@ -473,18 +473,18 @@ export class DiabloRenderer {
       this._envGroup.add(disc);
     }
 
-    // Scatter tiny ground plants/weeds (40) — small cone clusters
+    // Scatter tiny ground plants/weeds (60) — small cone clusters
     const plantColors = [
       lightGround.clone().multiplyScalar(1.1),
       avgColor.clone(),
       darkGround.clone().lerp(new THREE.Color(0x228822), 0.3),
     ];
     const plantGeo = new THREE.ConeGeometry(1, 1, 3);
-    for (let i = 0; i < 40; i++) {
-      const px = (Math.random() - 0.5) * w * 0.8;
-      const pz = (Math.random() - 0.5) * d * 0.8;
+    for (let i = 0; i < 60; i++) {
+      const px = (Math.random() - 0.5) * w * 0.85;
+      const pz = (Math.random() - 0.5) * d * 0.85;
       const tuft = new THREE.Group();
-      const bladeCount = 2 + Math.floor(Math.random() * 3);
+      const bladeCount = 2 + Math.floor(Math.random() * 4);
       const pColor = plantColors[i % plantColors.length];
       const pMat = new THREE.MeshStandardMaterial({ color: pColor, roughness: 0.95 });
       for (let j = 0; j < bladeCount; j++) {
@@ -497,6 +497,240 @@ export class DiabloRenderer {
       }
       tuft.position.set(px, getTerrainHeight(px, pz), pz);
       this._envGroup.add(tuft);
+    }
+  }
+
+  /**
+   * Add biome-aware ground clutter: scattered stones, grass clumps, twigs,
+   * leaf litter, cracks, and small debris. Called after map-specific builders
+   * to fill in empty ground areas with micro-detail.
+   */
+  private _addGroundClutter(mapId: string, w: number, d: number): void {
+    // Sample existing terrain vertex colors to determine biome palette
+    const groundGeo = this._groundPlane?.geometry;
+    if (!groundGeo) return;
+    const colorAttr = groundGeo.getAttribute('color');
+    if (!colorAttr) return;
+
+    // Sample a few vertices for average color
+    const avg = new THREE.Color(0, 0, 0);
+    const sampleCount = Math.min(20, colorAttr.count);
+    for (let i = 0; i < sampleCount; i++) {
+      const idx = Math.floor(Math.random() * colorAttr.count);
+      avg.r += colorAttr.getX(idx);
+      avg.g += colorAttr.getY(idx);
+      avg.b += colorAttr.getZ(idx);
+    }
+    avg.multiplyScalar(1 / sampleCount);
+
+    const dark = avg.clone().multiplyScalar(0.55);
+    const light = avg.clone().multiplyScalar(1.35);
+    const warm = avg.clone().lerp(new THREE.Color(0x886644), 0.3);
+
+    // Shared low-poly geometries
+    const stoneGeo = new THREE.DodecahedronGeometry(1, 0);
+    const flatGeo = new THREE.CircleGeometry(1, 5);
+    flatGeo.rotateX(-Math.PI / 2);
+    const bladeGeo = new THREE.ConeGeometry(1, 1, 3);
+    const twigGeo = new THREE.CylinderGeometry(0.015, 0.01, 1, 3);
+
+    // --- 1. Extra scattered stones (120) ---
+    const stoneMat = new THREE.MeshStandardMaterial({ color: dark, roughness: 1.0, metalness: 0 });
+    const stoneMat2 = new THREE.MeshStandardMaterial({ color: warm, roughness: 0.95, metalness: 0 });
+    for (let i = 0; i < 120; i++) {
+      const px = (Math.random() - 0.5) * w * 0.92;
+      const pz = (Math.random() - 0.5) * d * 0.92;
+      const size = 0.04 + Math.random() * 0.1;
+      const stone = new THREE.Mesh(stoneGeo, i % 3 === 0 ? stoneMat2 : stoneMat);
+      stone.scale.set(
+        size * (0.6 + Math.random() * 0.8),
+        size * (0.2 + Math.random() * 0.4),
+        size * (0.6 + Math.random() * 0.8)
+      );
+      stone.position.set(px, getTerrainHeight(px, pz) + size * 0.1, pz);
+      stone.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.3);
+      this._envGroup.add(stone);
+    }
+
+    // --- 2. Ground stain patches (70) — break up uniform color ---
+    const stainMat = new THREE.MeshBasicMaterial({
+      color: dark, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
+    });
+    const stainMat2 = new THREE.MeshBasicMaterial({
+      color: warm, transparent: true, opacity: 0.10, side: THREE.DoubleSide, depthWrite: false,
+    });
+    for (let i = 0; i < 70; i++) {
+      const px = (Math.random() - 0.5) * w * 0.88;
+      const pz = (Math.random() - 0.5) * d * 0.88;
+      const size = 0.4 + Math.random() * 1.5;
+      const patch = new THREE.Mesh(flatGeo, i % 3 === 0 ? stainMat2 : stainMat);
+      patch.scale.set(size, 1, size * (0.6 + Math.random() * 0.8));
+      patch.position.set(px, getTerrainHeight(px, pz) + 0.015, pz);
+      patch.rotation.y = Math.random() * Math.PI * 2;
+      this._envGroup.add(patch);
+    }
+
+    // --- 3. Dense grass tufts (100) - multi-blade clusters ---
+    // Determine if biome should have grass (skip for lava/void/ice-heavy biomes)
+    const noGrassBiomes = ['VOLCANIC_WASTES', 'ABYSSAL_RIFT', 'SHADOW_REALM', 'PRIMORDIAL_ABYSS',
+      'NECROPOLIS_DUNGEON', 'ASTRAL_VOID', 'INFERNAL_THRONE', 'CORAL_DEPTHS', 'SUNKEN_CITADEL',
+      'IRON_WASTES', 'CLOCKWORK_FOUNDRY', 'CHRONO_LABYRINTH', 'ELDRITCH_NEXUS'];
+    const hasGrass = !noGrassBiomes.includes(mapId);
+
+    if (hasGrass) {
+      const grassColor = avg.clone().lerp(new THREE.Color(0x338833), 0.4);
+      const grassColor2 = avg.clone().lerp(new THREE.Color(0x557722), 0.3);
+      const grassMat = new THREE.MeshStandardMaterial({ color: grassColor, roughness: 0.95, metalness: 0 });
+      const grassMat2 = new THREE.MeshStandardMaterial({ color: grassColor2, roughness: 0.95, metalness: 0 });
+
+      for (let i = 0; i < 100; i++) {
+        const px = (Math.random() - 0.5) * w * 0.88;
+        const pz = (Math.random() - 0.5) * d * 0.88;
+        const tuft = new THREE.Group();
+        const count = 3 + Math.floor(Math.random() * 5);
+        for (let j = 0; j < count; j++) {
+          const h = 0.1 + Math.random() * 0.2;
+          const blade = new THREE.Mesh(bladeGeo, j % 2 === 0 ? grassMat : grassMat2);
+          blade.scale.set(0.015 + Math.random() * 0.02, h, 0.015 + Math.random() * 0.02);
+          blade.position.set((Math.random() - 0.5) * 0.15, h * 0.5, (Math.random() - 0.5) * 0.15);
+          blade.rotation.z = (Math.random() - 0.5) * 0.7;
+          blade.rotation.y = Math.random() * Math.PI;
+          tuft.add(blade);
+        }
+        tuft.position.set(px, getTerrainHeight(px, pz), pz);
+        this._envGroup.add(tuft);
+      }
+    }
+
+    // --- 4. Twigs and sticks (50) ---
+    const twigMat = new THREE.MeshStandardMaterial({ color: warm.clone().multiplyScalar(0.7), roughness: 1.0 });
+    for (let i = 0; i < 50; i++) {
+      const px = (Math.random() - 0.5) * w * 0.85;
+      const pz = (Math.random() - 0.5) * d * 0.85;
+      const len = 0.2 + Math.random() * 0.5;
+      const twig = new THREE.Mesh(twigGeo, twigMat);
+      twig.scale.set(1, len, 1);
+      twig.position.set(px, getTerrainHeight(px, pz) + 0.01, pz);
+      twig.rotation.set(Math.PI / 2 + (Math.random() - 0.5) * 0.3, 0, Math.random() * Math.PI * 2);
+      this._envGroup.add(twig);
+    }
+
+    // --- 5. Biome-specific ground accents ---
+    // Desert: small sand ripple ridges
+    const sandBiomes = ['SUNSCORCH_DESERT', 'ASHEN_BATTLEFIELD', 'WYRMSCAR_CANYON', 'SHATTERED_COLOSSEUM'];
+    if (sandBiomes.includes(mapId)) {
+      const rippleMat = new THREE.MeshBasicMaterial({ color: light, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false });
+      const rippleGeo = new THREE.PlaneGeometry(1, 0.04);
+      rippleGeo.rotateX(-Math.PI / 2);
+      for (let i = 0; i < 80; i++) {
+        const px = (Math.random() - 0.5) * w * 0.85;
+        const pz = (Math.random() - 0.5) * d * 0.85;
+        const ripple = new THREE.Mesh(rippleGeo, rippleMat);
+        const rw = 1 + Math.random() * 3;
+        ripple.scale.set(rw, 1, 1);
+        ripple.position.set(px, getTerrainHeight(px, pz) + 0.02, pz);
+        ripple.rotation.y = Math.random() * Math.PI;
+        this._envGroup.add(ripple);
+      }
+    }
+
+    // Frozen biomes: ice shards on ground
+    const iceBiomes = ['FROZEN_TUNDRA', 'STORMSPIRE_PEAK'];
+    if (iceBiomes.includes(mapId)) {
+      const iceMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.2, metalness: 0.4, transparent: true, opacity: 0.6 });
+      const iceGeo = new THREE.BoxGeometry(1, 1, 1);
+      for (let i = 0; i < 40; i++) {
+        const px = (Math.random() - 0.5) * w * 0.85;
+        const pz = (Math.random() - 0.5) * d * 0.85;
+        const shard = new THREE.Mesh(iceGeo, iceMat);
+        const s = 0.05 + Math.random() * 0.15;
+        shard.scale.set(s * 0.5, s * (1 + Math.random()), s * 0.3);
+        shard.position.set(px, getTerrainHeight(px, pz) + s * 0.3, pz);
+        shard.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.3 + 0.2);
+        this._envGroup.add(shard);
+      }
+    }
+
+    // Dark/undead biomes: bone fragments
+    const boneBiomes = ['NECROPOLIS_DUNGEON', 'HAUNTED_CATHEDRAL', 'BLIGHTED_THRONE', 'PLAGUEROT_SEWERS', 'CRIMSON_CITADEL'];
+    if (boneBiomes.includes(mapId)) {
+      const boneMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.9 });
+      for (let i = 0; i < 35; i++) {
+        const px = (Math.random() - 0.5) * w * 0.85;
+        const pz = (Math.random() - 0.5) * d * 0.85;
+        const bone = new THREE.Mesh(twigGeo, boneMat);
+        const len = 0.15 + Math.random() * 0.35;
+        bone.scale.set(1.5, len, 1.5);
+        bone.position.set(px, getTerrainHeight(px, pz) + 0.02, pz);
+        bone.rotation.set(Math.PI / 2 + (Math.random() - 0.5) * 0.4, 0, Math.random() * Math.PI * 2);
+        this._envGroup.add(bone);
+      }
+    }
+
+    // Magical biomes: glowing ground runes/spots
+    const magicBiomes = ['ABYSSAL_RIFT', 'SHADOW_REALM', 'CELESTIAL_RUINS', 'ETHEREAL_SANCTUM',
+      'ASTRAL_VOID', 'ELDRITCH_NEXUS', 'PRIMORDIAL_ABYSS'];
+    if (magicBiomes.includes(mapId)) {
+      const runeColors = [0x6633ff, 0x3366ff, 0xff33ff, 0x33ffff, 0xff6633];
+      for (let i = 0; i < 25; i++) {
+        const px = (Math.random() - 0.5) * w * 0.85;
+        const pz = (Math.random() - 0.5) * d * 0.85;
+        const runeColor = runeColors[i % runeColors.length];
+        const runeMat = new THREE.MeshBasicMaterial({
+          color: runeColor, transparent: true, opacity: 0.15 + Math.random() * 0.1,
+          side: THREE.DoubleSide, depthWrite: false,
+        });
+        const rune = new THREE.Mesh(flatGeo, runeMat);
+        const s = 0.3 + Math.random() * 0.6;
+        rune.scale.set(s, 1, s);
+        rune.position.set(px, getTerrainHeight(px, pz) + 0.03, pz);
+        rune.rotation.y = Math.random() * Math.PI * 2;
+        this._envGroup.add(rune);
+      }
+    }
+
+    // Fungal/organic biomes: small mushroom caps
+    const fungalBiomes = ['FUNGAL_DEPTHS', 'WHISPERING_MARSH', 'THORNWOOD_THICKET'];
+    if (fungalBiomes.includes(mapId)) {
+      const capGeo = new THREE.SphereGeometry(1, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+      const stemGeo = new THREE.CylinderGeometry(0.3, 0.4, 1, 5);
+      const capColors = [0x884422, 0xaa6633, 0x663311, 0xcc8844, 0x995533];
+      for (let i = 0; i < 45; i++) {
+        const px = (Math.random() - 0.5) * w * 0.85;
+        const pz = (Math.random() - 0.5) * d * 0.85;
+        const mush = new THREE.Group();
+        const s = 0.04 + Math.random() * 0.08;
+        const capMat = new THREE.MeshStandardMaterial({ color: capColors[i % capColors.length], roughness: 0.8 });
+        const stemMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.9 });
+        const cap = new THREE.Mesh(capGeo, capMat);
+        cap.scale.set(s, s * 0.6, s);
+        cap.position.y = s * 0.8;
+        const stem = new THREE.Mesh(stemGeo, stemMat);
+        stem.scale.set(s * 0.3, s * 0.7, s * 0.3);
+        stem.position.y = s * 0.35;
+        mush.add(stem);
+        mush.add(cap);
+        mush.position.set(px, getTerrainHeight(px, pz), pz);
+        this._envGroup.add(mush);
+      }
+    }
+
+    // Industrial/metal biomes: scrap metal pieces
+    const metalBiomes = ['CLOCKWORK_FOUNDRY', 'IRON_WASTES', 'OBSIDIAN_FORTRESS'];
+    if (metalBiomes.includes(mapId)) {
+      const scrapMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.6, metalness: 0.5 });
+      const scrapMat2 = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.7, metalness: 0.3 });
+      const plateGeo = new THREE.BoxGeometry(1, 0.02, 1);
+      for (let i = 0; i < 40; i++) {
+        const px = (Math.random() - 0.5) * w * 0.85;
+        const pz = (Math.random() - 0.5) * d * 0.85;
+        const scrap = new THREE.Mesh(Math.random() > 0.5 ? plateGeo : stoneGeo, i % 2 === 0 ? scrapMat : scrapMat2);
+        const s = 0.08 + Math.random() * 0.2;
+        scrap.scale.set(s * (0.5 + Math.random()), s * 0.3, s * (0.5 + Math.random()));
+        scrap.position.set(px, getTerrainHeight(px, pz) + 0.02, pz);
+        scrap.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.3);
+        this._envGroup.add(scrap);
+      }
     }
   }
 
@@ -749,6 +983,9 @@ export class DiabloRenderer {
         this._buildCity(cfg.width, cfg.depth);
         break;
     }
+
+    // Add universal biome-aware ground clutter to all maps
+    this._addGroundClutter(mapId, cfg.width, cfg.depth);
 
     // Tint sky dome to match map atmosphere
     if (this._skyDome) {
