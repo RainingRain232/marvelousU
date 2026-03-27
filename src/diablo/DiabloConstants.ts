@@ -3,7 +3,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import {
-  DiabloMapId, ItemRarity, EnemyType, VendorType, Weather,
+  DiabloMapId, DiabloClass, ItemRarity, EnemyType, VendorType, Weather,
   DiabloEquipment,
 } from "./DiabloTypes";
 
@@ -435,4 +435,138 @@ export const WEATHER_LABELS: Record<Weather, string> = {
   [Weather.FOGGY]: "\uD83C\uDF2B\uFE0F Foggy",
   [Weather.CLEAR]: "\u2600\uFE0F Clear Skies",
   [Weather.STORMY]: "\u26C8\uFE0F Stormy",
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Spawn quotes — per class, per map (character says a line on entering a map)
+// ────────────────────────────────────────────────────────────────────────────
+export const SPAWN_QUOTES: Partial<Record<DiabloMapId, Record<DiabloClass, string>>> = {
+  [DiabloMapId.FOREST]: {
+    [DiabloClass.WARRIOR]: "These woods remind me of the training grounds. Time to cut some timber.",
+    [DiabloClass.MAGE]: "I sense ancient ley lines beneath these roots...",
+    [DiabloClass.RANGER]: "Finally, home turf. Every tree is an ally.",
+    [DiabloClass.PALADIN]: "The light fades here. Stay vigilant.",
+    [DiabloClass.NECROMANCER]: "So many bones buried under these leaves. Delightful.",
+    [DiabloClass.ASSASSIN]: "Good. Plenty of shadows to work with.",
+  },
+  [DiabloMapId.ELVEN_VILLAGE]: {
+    [DiabloClass.WARRIOR]: "Elven lands... I'll try not to break anything.",
+    [DiabloClass.MAGE]: "The arcane resonance here is extraordinary.",
+    [DiabloClass.RANGER]: "The elves taught me everything I know about the bow.",
+    [DiabloClass.PALADIN]: "Even the elves need the Light's protection now.",
+    [DiabloClass.NECROMANCER]: "Elves live so long, yet they still fear death. How quaint.",
+    [DiabloClass.ASSASSIN]: "Beautiful place. Shame about the monsters.",
+  },
+  [DiabloMapId.NECROPOLIS_DUNGEON]: {
+    [DiabloClass.WARRIOR]: "A graveyard. Lovely. At least the dead fight fair.",
+    [DiabloClass.MAGE]: "The veil between worlds is thin here. I must be careful.",
+    [DiabloClass.RANGER]: "Arrows work on the undead, right? ...Right?",
+    [DiabloClass.PALADIN]: "This unholy ground shall be purified!",
+    [DiabloClass.NECROMANCER]: "Ah, the Necropolis. I feel right at home.",
+    [DiabloClass.ASSASSIN]: "Can't backstab a skeleton. This'll be interesting.",
+  },
+  [DiabloMapId.VOLCANIC_WASTES]: {
+    [DiabloClass.WARRIOR]: "Hot enough to forge a blade. I like it.",
+    [DiabloClass.MAGE]: "Fire magic is amplified here. Excellent.",
+    [DiabloClass.RANGER]: "Bowstrings don't last long in this heat...",
+    [DiabloClass.PALADIN]: "The fires of judgement burn eternal.",
+    [DiabloClass.NECROMANCER]: "Even the dead don't rest in this inferno.",
+    [DiabloClass.ASSASSIN]: "The heat haze makes for perfect camouflage.",
+  },
+  [DiabloMapId.ABYSSAL_RIFT]: {
+    [DiabloClass.WARRIOR]: "I've stared into the abyss before. It blinked first.",
+    [DiabloClass.MAGE]: "The void calls to me... I must resist.",
+    [DiabloClass.RANGER]: "Can't track what doesn't leave footprints.",
+    [DiabloClass.PALADIN]: "By the Light, what manner of evil lurks here?",
+    [DiabloClass.NECROMANCER]: "The boundary between realms is... deliciously thin.",
+    [DiabloClass.ASSASSIN]: "Darkness within darkness. My kind of place.",
+  },
+  [DiabloMapId.DRAGONS_SANCTUM]: {
+    [DiabloClass.WARRIOR]: "Dragon scales make the finest armor. Let's go shopping.",
+    [DiabloClass.MAGE]: "Dragonfire and sorcery — a volatile combination.",
+    [DiabloClass.RANGER]: "I once shot a dragon. Once.",
+    [DiabloClass.PALADIN]: "Even dragons bow before the righteous.",
+    [DiabloClass.NECROMANCER]: "Imagine raising a dragon from the dead...",
+    [DiabloClass.ASSASSIN]: "Find the soft spot under the chin. Simple.",
+  },
+  [DiabloMapId.SUNSCORCH_DESERT]: {
+    [DiabloClass.WARRIOR]: "Sand in my armor. This is going to be a long day.",
+    [DiabloClass.MAGE]: "Mirages everywhere. Hard to tell what's real.",
+    [DiabloClass.RANGER]: "At least there's no underbrush to trip over.",
+    [DiabloClass.PALADIN]: "The sun's fury rivals the Light itself.",
+    [DiabloClass.NECROMANCER]: "The desert preserves the dead beautifully.",
+    [DiabloClass.ASSASSIN]: "Nowhere to hide out here. I hate deserts.",
+  },
+  [DiabloMapId.EMERALD_GRASSLANDS]: {
+    [DiabloClass.WARRIOR]: "Open field. Good. No excuses, just steel.",
+    [DiabloClass.MAGE]: "The wind carries whispers of old magic here.",
+    [DiabloClass.RANGER]: "I can see for miles. Nothing sneaks up on me here.",
+    [DiabloClass.PALADIN]: "Green pastures. Almost peaceful... almost.",
+    [DiabloClass.NECROMANCER]: "All this life... it's almost nauseating.",
+    [DiabloClass.ASSASSIN]: "Too exposed. I'll have to be quick.",
+  },
+  [DiabloMapId.WHISPERING_MARSH]: {
+    [DiabloClass.WARRIOR]: "My boots are already soaked. Wonderful.",
+    [DiabloClass.MAGE]: "Bog gas and spell components — same difference.",
+    [DiabloClass.RANGER]: "The swamp has eyes. And teeth.",
+    [DiabloClass.PALADIN]: "Even the muck cannot dim the Light.",
+    [DiabloClass.NECROMANCER]: "Swamps are nature's graveyards. Perfect.",
+    [DiabloClass.ASSASSIN]: "The fog will serve me well.",
+  },
+  [DiabloMapId.CRYSTAL_CAVERNS]: {
+    [DiabloClass.WARRIOR]: "Pretty rocks. Hope they shatter like the rest.",
+    [DiabloClass.MAGE]: "These crystals pulse with raw mana!",
+    [DiabloClass.RANGER]: "Echoes everywhere. No sneaking in here.",
+    [DiabloClass.PALADIN]: "The Light refracts beautifully through crystal.",
+    [DiabloClass.NECROMANCER]: "Crystals trap souls. I wonder what's inside these...",
+    [DiabloClass.ASSASSIN]: "Every surface is a mirror. Annoying.",
+  },
+  [DiabloMapId.FROZEN_TUNDRA]: {
+    [DiabloClass.WARRIOR]: "Cold keeps the blood pumping. I'm ready.",
+    [DiabloClass.MAGE]: "Ice magic flows like water here.",
+    [DiabloClass.RANGER]: "Tracks in the snow. Easy prey.",
+    [DiabloClass.PALADIN]: "The cold tests the faithful. I shall not falter.",
+    [DiabloClass.NECROMANCER]: "The cold preserves my minions. Efficient.",
+    [DiabloClass.ASSASSIN]: "White snow, dark shadows. Perfect contrast.",
+  },
+  [DiabloMapId.HAUNTED_CATHEDRAL]: {
+    [DiabloClass.WARRIOR]: "Ghosts can't parry a sword. Or can they?",
+    [DiabloClass.MAGE]: "Spectral energies saturate this place.",
+    [DiabloClass.RANGER]: "Arrows pass right through ghosts. This is bad.",
+    [DiabloClass.PALADIN]: "This holy ground has been desecrated. No more!",
+    [DiabloClass.NECROMANCER]: "The spirits here are... chatty.",
+    [DiabloClass.ASSASSIN]: "Even ghosts have patterns. I'll find theirs.",
+  },
+  [DiabloMapId.CAMELOT]: {
+    [DiabloClass.WARRIOR]: "Camelot. The war table awaits.",
+    [DiabloClass.MAGE]: "The towers of Camelot hum with enchantments.",
+    [DiabloClass.RANGER]: "Good to rest the bowstring for a while.",
+    [DiabloClass.PALADIN]: "Home. May the Light guard these walls.",
+    [DiabloClass.NECROMANCER]: "Even Camelot's graveyards are... well maintained.",
+    [DiabloClass.ASSASSIN]: "I know every shadow in this city.",
+  },
+  [DiabloMapId.CRIMSON_CITADEL]: {
+    [DiabloClass.WARRIOR]: "A fortress. Finally, a proper siege.",
+    [DiabloClass.MAGE]: "Blood magic lingers in these walls.",
+    [DiabloClass.RANGER]: "High walls and narrow corridors. Not ideal.",
+    [DiabloClass.PALADIN]: "This crimson stain upon the land ends today.",
+    [DiabloClass.NECROMANCER]: "So much death within these walls. I approve.",
+    [DiabloClass.ASSASSIN]: "Fortresses have blind spots. I know them all.",
+  },
+  [DiabloMapId.SHADOW_REALM]: {
+    [DiabloClass.WARRIOR]: "Can't swing a sword at nothing... or can I?",
+    [DiabloClass.MAGE]: "Reality bends here. Fascinating and terrifying.",
+    [DiabloClass.RANGER]: "No light, no shadows, no tracks. Just... nothing.",
+    [DiabloClass.PALADIN]: "The Light pierces even this abyss!",
+    [DiabloClass.NECROMANCER]: "The boundary between life and death doesn't exist here.",
+    [DiabloClass.ASSASSIN]: "I AM the shadow. This is my domain.",
+  },
+  [DiabloMapId.INFERNAL_THRONE]: {
+    [DiabloClass.WARRIOR]: "The throne of demons. Let's dethrone them.",
+    [DiabloClass.MAGE]: "Hellfire and brimstone. My shield spells better hold.",
+    [DiabloClass.RANGER]: "Fire-tipped arrows it is, then.",
+    [DiabloClass.PALADIN]: "Into the heart of evil itself. The Light will prevail!",
+    [DiabloClass.NECROMANCER]: "Even demons can be raised. They just complain more.",
+    [DiabloClass.ASSASSIN]: "Kill the king, the kingdom falls. Simple.",
+  },
 };

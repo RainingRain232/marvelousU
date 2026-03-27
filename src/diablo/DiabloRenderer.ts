@@ -291,7 +291,7 @@ export class DiabloRenderer {
     this._playerGroup = new THREE.Group();
     this._scene.add(this._playerGroup);
 
-    const groundGeo = new THREE.PlaneGeometry(200, 200, 256, 256);
+    const groundGeo = new THREE.PlaneGeometry(500, 500, 256, 256);
     groundGeo.rotateX(-Math.PI / 2);
     const posAttr = groundGeo.attributes.position;
     const defaultColors: number[] = [];

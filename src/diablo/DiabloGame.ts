@@ -70,6 +70,7 @@ import {
   MAP_KILL_TARGET, BOSS_NAMES, EXCALIBUR_QUEST_INFO, CAMELOT_FIRST_VISIT_TEXT,
   VENDOR_DIALOGUE, NIGHT_BOSS_MAP, DAY_BOSS_MAP,
   MAP_LORE_POINTS, RARITY_ORDER, MAP_NAME_MAP, WEATHER_LABELS,
+  SPAWN_QUOTES,
 } from "./DiabloConstants";
 import {
   createAudioState, ensureAudio as ensureAudioCtx,
@@ -1011,27 +1012,18 @@ export class DiabloGame {
         this._state.exploredGrid[x][z] = false;
       }
     }
-    // Spawn player near a random corner of the map (with padding)
-    const cornerPadX = gridW * 0.12;
-    const cornerPadZ = gridD * 0.12;
-    const corners = [
-      { x: cornerPadX, z: cornerPadZ },
-      { x: gridW - cornerPadX, z: cornerPadZ },
-      { x: cornerPadX, z: gridD - cornerPadZ },
-      { x: gridW - cornerPadX, z: gridD - cornerPadZ },
-    ];
-    const corner = corners[Math.floor(Math.random() * corners.length)];
-    const spawnX = corner.x + (Math.random() * 2 - 1);
-    const spawnZ = corner.z + (Math.random() * 2 - 1);
+    // Spawn player near the town portal (map center) with a small offset
+    const portalSpawnX = gridW / 2 + (Math.random() * 4 - 2);
+    const portalSpawnZ = gridD / 2 + (Math.random() * 4 - 2);
 
-    this._state.player.x = spawnX;
-    this._state.player.y = getTerrainHeight(spawnX, spawnZ);
-    this._state.player.z = spawnZ;
-    // Mark spawn location as enemy-free safe zone
-    this._safeZoneX = spawnX;
-    this._safeZoneZ = spawnZ;
+    this._state.player.x = portalSpawnX;
+    this._state.player.y = getTerrainHeight(portalSpawnX, portalSpawnZ);
+    this._state.player.z = portalSpawnZ;
+    // Mark portal area as enemy-free safe zone
+    this._safeZoneX = gridW / 2;
+    this._safeZoneZ = gridD / 2;
     this._safeZoneRadius = 40;
-    this._revealAroundPlayer(spawnX, spawnZ);
+    this._revealAroundPlayer(portalSpawnX, portalSpawnZ);
     this._state.player.hp = this._state.player.maxHp;
     this._state.player.mana = this._state.player.maxMana;
 
@@ -1108,6 +1100,20 @@ export class DiabloGame {
     if (!this._firstPlayHelpShown) {
       this._firstPlayHelpShown = true;
       this._addFloatingText(this._state.player.x, this._state.player.y + 2, this._state.player.z, 'Press H for controls', '#aaaaaa');
+    }
+
+    // Character spawn quote
+    const mapQuotes = SPAWN_QUOTES[mapId];
+    if (mapQuotes) {
+      const quote = mapQuotes[this._state.player.class];
+      if (quote) {
+        setTimeout(() => {
+          this._addFloatingText(
+            this._state.player.x, this._state.player.y + 3.5, this._state.player.z,
+            `"${quote}"`, '#eeddaa',
+          );
+        }, 800);
+      }
     }
 
     // Main quest popup on map entry
@@ -2861,6 +2867,13 @@ export class DiabloGame {
     let ez = p.z + Math.sin(angle) * dist;
     ex = Math.max(-halfW, Math.min(halfW, ex));
     ez = Math.max(-halfD, Math.min(halfD, ez));
+
+    // Don't spawn inside the portal safe zone
+    if (this._portalActive) {
+      const pdx = ex - this._portalX;
+      const pdz = ez - this._portalZ;
+      if (Math.sqrt(pdx * pdx + pdz * pdz) < this._safeZoneRadius) return;
+    }
 
     this._spawnEnemyAt(ex, ez);
   }
