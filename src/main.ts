@@ -200,6 +200,7 @@ import { DepthsGame } from "./depths/DepthsGame";
 import { KnightBallGame } from "./knightball/KnightBallGame";
 import { EpsilonGame } from "./epsilon/EpsilonGame";
 import { GrandGame } from "./grand/GrandGame";
+import { RampartGame } from "./rampart/RampartGame";
 import { camelotHubScreen } from "@view/ui/CamelotHubScreen";
 
 // World mode imports
@@ -440,6 +441,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     [GameMode.KNIGHT_BALL]: 64,
     [GameMode.EPSILON]: 65,
     [GameMode.GRAND]: 66,
+    [GameMode.RAMPART]: 67,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -864,6 +866,11 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     if (menuScreen.selectedGameMode === GameMode.GRAND) {
       menuScreen.hide();
       _bootGrandGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.RAMPART) {
+      menuScreen.hide();
+      _bootRampartGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -3746,6 +3753,24 @@ async function _bootGrandGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("grandExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Rampart boot
+// ---------------------------------------------------------------------------
+
+let _rampartGame: RampartGame | null = null;
+
+async function _bootRampartGame(): Promise<void> {
+  if (_rampartGame) { _rampartGame.destroy(); _rampartGame = null; }
+  _rampartGame = new RampartGame();
+  await _rampartGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("rampartExit", _onExit);
+    if (_rampartGame) { _rampartGame.destroy(); _rampartGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("rampartExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

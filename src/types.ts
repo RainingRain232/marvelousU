@@ -740,6 +740,7 @@ export enum GameMode {
   KNIGHT_BALL = "knight_ball",
   EPSILON = "epsilon",
   GRAND = "grand",
+  RAMPART = "rampart",
 }
 
 // ---------------------------------------------------------------------------
