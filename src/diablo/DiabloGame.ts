@@ -201,6 +201,7 @@ export class DiabloGame {
   private _totalKills: number = 0;
   private _questTrackerDirty: boolean = true;
   private _questTrackerDirtyTimer: number = 0;
+  private _inventoryFullMsgTimer: number = 0;
 
   // Safe zone (enemy-free spawn area)
   // @ts-ignore assigned but value never read (reserved for future use)
@@ -1897,6 +1898,9 @@ export class DiabloGame {
         p.activeSkillId = null;
       }
     }
+
+    // Inventory full message cooldown
+    if (this._inventoryFullMsgTimer > 0) this._inventoryFullMsgTimer -= dt;
 
     // Potion cooldown (ad1a2850)
     if (p.potionCooldown > 0) {
@@ -3680,7 +3684,10 @@ export class DiabloGame {
 
     const emptyIdx = p.inventory.findIndex((s) => s.item === null);
     if (emptyIdx < 0) {
-      this._addFloatingText(p.x, p.y + 2, p.z, "Inventory Full!", "#ff4444");
+      if (this._inventoryFullMsgTimer <= 0) {
+        this._addFloatingText(p.x, p.y + 2, p.z, "Inventory Full!", "#ff4444");
+        this._inventoryFullMsgTimer = 5;
+      }
       return;
     }
 
@@ -4971,8 +4978,9 @@ export class DiabloGame {
 
       switch (ability) {
         case BossAbility.GROUND_SLAM: {
-          // Show telegraph before impact
+          // Inner + outer telegraph rings
           this._renderer.showTelegraph(`gs-${enemy.id}`, enemy.x, enemy.z, 6, 0xff4400, 1.0);
+          this._renderer.showTelegraph(`gs-inner-${enemy.id}`, enemy.x, enemy.z, 3, 0xff6600, 0.8);
           const aoe: DiabloAOE = {
             id: this._genId(),
             x: enemy.x, y: 0, z: enemy.z,
@@ -4982,12 +4990,20 @@ export class DiabloGame {
             ownerId: enemy.id, tickInterval: 0.5, lastTickTimer: 0,
           };
           this._state.aoeEffects.push(aoe);
-          this._renderer.spawnParticles(ParticleType.DUST, enemy.x, enemy.y + 0.5, enemy.z, 20, this._state.particles);
-          this._renderer.shakeCamera(0.3, 0.4);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "GROUND SLAM!", "#ff8844");
+          // Shockwave ring of dust particles
+          for (let ring = 0; ring < 12; ring++) {
+            const ringAngle = (ring / 12) * Math.PI * 2;
+            this._renderer.spawnParticles(ParticleType.DUST, enemy.x + Math.cos(ringAngle) * 4, enemy.y + 0.3, enemy.z + Math.sin(ringAngle) * 4, 3, this._state.particles);
+          }
+          this._renderer.spawnParticles(ParticleType.DUST, enemy.x, enemy.y + 1, enemy.z, 25, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.BLOOD, enemy.x, enemy.y + 0.2, enemy.z, 8, this._state.particles);
+          this._renderer.shakeCamera(0.5, 0.5);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "GROUND SLAM!", "#ff8844");
           break;
         }
         case BossAbility.CHARGE: {
+          const startX = enemy.x;
+          const startZ = enemy.z;
           const dx = p.x - enemy.x;
           const dz = p.z - enemy.z;
           const cLen = Math.sqrt(dx * dx + dz * dz);
@@ -5001,17 +5017,31 @@ export class DiabloGame {
             this._addFloatingText(p.x, p.y + 2, p.z, `-${Math.round(dmg)}`, "#ff4444");
             if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
           }
-          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "CHARGE!", "#ffaa00");
+          // Trail of fire/dust along the charge path
+          for (let trail = 0; trail < 6; trail++) {
+            const t = trail / 6;
+            const tx = startX + (enemy.x - startX) * t;
+            const tz = startZ + (enemy.z - startZ) * t;
+            this._renderer.spawnParticles(ParticleType.FIRE, tx, 0.5, tz, 4, this._state.particles);
+            this._renderer.spawnParticles(ParticleType.DUST, tx, 0.2, tz, 3, this._state.particles);
+          }
+          // Impact burst at destination
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 20, this._state.particles);
+          this._renderer.shakeCamera(0.3, 0.3);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "CHARGE!", "#ffaa00");
           break;
         }
         case BossAbility.SUMMON_ADDS: {
+          // Summoning circle telegraph
+          this._renderer.showTelegraph(`summon-${enemy.id}`, enemy.x, enemy.z, 5, 0x8844ff, 1.5);
           for (let i = 0; i < 3; i++) {
-            const angle = Math.random() * Math.PI * 2;
+            const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
+            const spawnX = enemy.x + Math.cos(angle) * 4;
+            const spawnZ = enemy.z + Math.sin(angle) * 4;
             const addEnemy: DiabloEnemy = {
               id: this._genId(),
               type: EnemyType.SKELETON_WARRIOR,
-              x: enemy.x + Math.cos(angle) * 4, y: 0, z: enemy.z + Math.sin(angle) * 4,
+              x: spawnX, y: 0, z: spawnZ,
               angle: Math.random() * Math.PI * 2,
               hp: enemy.maxHp * 0.1, maxHp: enemy.maxHp * 0.1,
               damage: enemy.damage * 0.3, damageType: DamageType.PHYSICAL, armor: 2, speed: 4,
@@ -5022,9 +5052,14 @@ export class DiabloGame {
               scale: 0.8, level: enemy.level,
             };
             this._state.enemies.push(addEnemy);
+            // Spawn burst at each minion location
+            this._renderer.spawnParticles(ParticleType.LIGHTNING, spawnX, 0.5, spawnZ, 8, this._state.particles);
+            this._renderer.spawnParticles(ParticleType.DUST, spawnX, 0.2, spawnZ, 5, this._state.particles);
           }
-          this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "SUMMON!", "#aa44ff");
+          // Central summoning burst
+          this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 2, enemy.z, 20, this._state.particles);
+          this._renderer.shakeCamera(0.15, 0.3);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "RISE, MY MINIONS!", "#aa44ff");
           break;
         }
         case BossAbility.ENRAGE: {
@@ -5032,37 +5067,55 @@ export class DiabloGame {
             enemy.bossEnraged = true;
             enemy.damage *= 1.5;
             enemy.speed *= 1.3;
-            this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 25, this._state.particles);
-            this._renderer.shakeCamera(0.2, 0.5);
-            this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "ENRAGED!", "#ff0000");
+            // Massive fire explosion
+            for (let ring = 0; ring < 8; ring++) {
+              const ringAngle = (ring / 8) * Math.PI * 2;
+              this._renderer.spawnParticles(ParticleType.FIRE, enemy.x + Math.cos(ringAngle) * 2, enemy.y + 1, enemy.z + Math.sin(ringAngle) * 2, 5, this._state.particles);
+            }
+            this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 2, enemy.z, 35, this._state.particles);
+            this._renderer.spawnParticles(ParticleType.BLOOD, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
+            this._renderer.shakeCamera(0.6, 0.7);
+            this._addFloatingText(enemy.x, enemy.y + 4, enemy.z, "ENRAGED!", "#ff0000");
+            enemy.bossAbilityGlowTimer = 3.0; // Longer glow for enrage
           }
           break;
         }
         case BossAbility.SHIELD: {
           enemy.bossShieldTimer = 4.0;
-          this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "SHIELD!", "#4488ff");
+          // Crystalline shield formation particles
+          for (let i = 0; i < 10; i++) {
+            const sAngle = (i / 10) * Math.PI * 2;
+            this._renderer.spawnParticles(ParticleType.ICE, enemy.x + Math.cos(sAngle) * 1.5, enemy.y + 1, enemy.z + Math.sin(sAngle) * 1.5, 3, this._state.particles);
+          }
+          this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 1.5, enemy.z, 20, this._state.particles);
+          this._renderer.shakeCamera(0.1, 0.2);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "SHIELD!", "#4488ff");
           break;
         }
         case BossAbility.METEOR_RAIN: {
+          // Show telegraph for each meteor with staggered sizes
           for (let i = 0; i < 5; i++) {
-            const mx = p.x + (Math.random() * 12 - 6);
-            const mz = p.z + (Math.random() * 12 - 6);
-            // Show telegraph circle for each meteor
-            this._renderer.showTelegraph(`meteor-${enemy.id}-${i}`, mx, mz, 3, 0xff2200, 1.5);
+            const mx = p.x + (Math.random() * 14 - 7);
+            const mz = p.z + (Math.random() * 14 - 7);
+            const meteorRadius = 2.5 + Math.random() * 1.5;
+            this._renderer.showTelegraph(`meteor-${enemy.id}-${i}`, mx, mz, meteorRadius, 0xff2200, 1.5);
             const aoe: DiabloAOE = {
               id: this._genId(),
               x: mx, y: 0, z: mz,
-              radius: 3, damage: enemy.damage * 1.2,
+              radius: meteorRadius, damage: enemy.damage * 1.2,
               damageType: DamageType.FIRE,
               duration: 1.0, timer: 0,
               ownerId: enemy.id, tickInterval: 0.5, lastTickTimer: 0,
             };
             this._state.aoeEffects.push(aoe);
+            // Impact particles per meteor
+            this._renderer.spawnParticles(ParticleType.FIRE, mx, 0.5, mz, 8, this._state.particles);
+            this._renderer.spawnParticles(ParticleType.DUST, mx, 0.3, mz, 5, this._state.particles);
           }
-          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 2, enemy.z, 30, this._state.particles);
-          this._renderer.shakeCamera(0.4, 0.6);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "METEOR RAIN!", "#ff4400");
+          // Sky fire burst above boss
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 4, enemy.z, 40, this._state.particles);
+          this._renderer.shakeCamera(0.5, 0.8);
+          this._addFloatingText(enemy.x, enemy.y + 4, enemy.z, "METEOR RAIN!", "#ff4400");
           break;
         }
         case BossAbility.FIRE_WALL: {
@@ -5081,25 +5134,40 @@ export class DiabloGame {
               if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
             }
           }
-          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 15, this._state.particles);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "FIRE WALL!", "#ff4400");
+          // Fire particles along each wall position
+          for (let w2 = 0; w2 < numWalls; w2++) {
+            const wAngle2 = (this._state.time * 0.5) + (w2 * Math.PI * 2 / numWalls);
+            const wDist2 = 5 + Math.sin(this._state.time) * 2;
+            const fwx = enemy.x + Math.sin(wAngle2) * wDist2;
+            const fwz = enemy.z + Math.cos(wAngle2) * wDist2;
+            this._renderer.spawnParticles(ParticleType.FIRE, fwx, 0.5, fwz, 6, this._state.particles);
+            this._renderer.showTelegraph(`fw-${enemy.id}-${w2}`, fwx, fwz, 2, 0xff4400, 0.5);
+          }
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1.5, enemy.z, 20, this._state.particles);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "FIRE WALL!", "#ff4400");
           break;
         }
         case BossAbility.TELEPORT_STRIKE: {
+          // Vanish particles at start location
+          const tsStartX = enemy.x, tsStartZ = enemy.z;
+          this._renderer.spawnParticles(ParticleType.LIGHTNING, tsStartX, 1, tsStartZ, 15, this._state.particles);
           const behindAngle = p.angle + Math.PI;
           enemy.x = p.x + Math.sin(behindAngle) * 3;
           enemy.z = p.z + Math.cos(behindAngle) * 3;
+          // Appear particles at destination
+          this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, 1, enemy.z, 15, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.DUST, enemy.x, 0.3, enemy.z, 10, this._state.particles);
           const tsDist = this._dist(enemy.x, enemy.z, p.x, p.z);
           if (tsDist < 4) {
             const dmg = enemy.damage * 2;
             if (p.invulnTimer <= 0) {
               p.hp -= dmg;
-              this._addFloatingText(p.x, p.y + 2, p.z, `AMBUSH! ${Math.round(dmg)}`, '#ff4444');
+              this._addFloatingText(p.x, p.y + 2, p.z, `AMBUSH! -${Math.round(dmg)}`, '#ff4444');
               if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
             }
           }
-          this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 1, enemy.z, 20, this._state.particles);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "TELEPORT STRIKE!", "#aa44ff");
+          this._renderer.shakeCamera(0.2, 0.2);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "TELEPORT STRIKE!", "#aa44ff");
           break;
         }
         case BossAbility.DEATH_BEAM: {
@@ -5111,13 +5179,21 @@ export class DiabloGame {
             const angleDiff = Math.abs(beamAngle - enemy.angle);
             if (angleDiff < 0.3 || angleDiff > Math.PI * 2 - 0.3) {
               p.hp -= 40 * dt;
-              this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(40 * dt)}`, '#ff0000');
+              this._addFloatingText(p.x, p.y + 2, p.z, `-${Math.round(40 * dt)}`, '#ff0000');
               if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
             }
           }
           enemy.angle = Math.atan2(beamDx, beamDz);
-          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1.5, enemy.z, 10, this._state.particles);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "DEATH BEAM!", "#ff0000");
+          // Beam trail particles from boss to player direction
+          for (let bt = 0; bt < 5; bt++) {
+            const t = bt / 5;
+            const bpx = enemy.x + beamDx * t * 0.8;
+            const bpz = enemy.z + beamDz * t * 0.8;
+            this._renderer.spawnParticles(ParticleType.FIRE, bpx, 1.2, bpz, 4, this._state.particles);
+          }
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1.5, enemy.z, 15, this._state.particles);
+          this._renderer.shakeCamera(0.15, 0.2);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "DEATH BEAM!", "#ff0000");
           break;
         }
         case BossAbility.ARENA_SHRINK: {
@@ -5126,7 +5202,6 @@ export class DiabloGame {
             const asDist = 20 + Math.random() * 10;
             const ax = enemy.x + Math.sin(asAngle) * asDist;
             const az = enemy.z + Math.cos(asAngle) * asDist;
-            // Show telegraph for each arena shrink zone
             this._renderer.showTelegraph(`arena-${enemy.id}-${i}`, ax, az, 4, 0xff0000, 2.0);
             this._state.aoeEffects.push({
               id: `arena-shrink-${this._nextId++}`,
@@ -5141,9 +5216,14 @@ export class DiabloGame {
               lastTickTimer: 0,
               statusEffect: StatusEffect.BURNING,
             });
+            // Fire ring at each zone
+            this._renderer.spawnParticles(ParticleType.FIRE, ax, 0.5, az, 8, this._state.particles);
           }
-          this._renderer.shakeCamera(0.3, 0.5);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "ARENA SHRINK!", "#ff8844");
+          // Central warning burst
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 2, enemy.z, 25, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.DUST, enemy.x, 0.5, enemy.z, 15, this._state.particles);
+          this._renderer.shakeCamera(0.4, 0.6);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, "THE ARENA CLOSES!", "#ff8844");
           break;
         }
         case BossAbility.MINION_FRENZY: {
@@ -5158,16 +5238,30 @@ export class DiabloGame {
               buffCount++;
             }
           }
-          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 20, this._state.particles);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, `MINION FRENZY! (${buffCount})`, "#ff4444");
+          // Buff wave particles radiating outward
+          for (let bw = 0; bw < 8; bw++) {
+            const bwAngle = (bw / 8) * Math.PI * 2;
+            this._renderer.spawnParticles(ParticleType.FIRE, enemy.x + Math.cos(bwAngle) * 6, 0.5, enemy.z + Math.sin(bwAngle) * 6, 4, this._state.particles);
+          }
+          this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1.5, enemy.z, 25, this._state.particles);
+          this._renderer.showTelegraph(`frenzy-${enemy.id}`, enemy.x, enemy.z, 15, 0xff4444, 1.0);
+          this._renderer.shakeCamera(0.2, 0.3);
+          this._addFloatingText(enemy.x, enemy.y + 3.5, enemy.z, `MINION FRENZY! (${buffCount} buffed)`, "#ff4444");
           break;
         }
         case BossAbility.PHASE_TRANSITION: {
           enemy.bossShieldTimer = 3.0;
           enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * 0.1);
-          this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 1, enemy.z, 25, this._state.particles);
-          this._renderer.shakeCamera(0.5, 0.8);
-          this._addFloatingText(enemy.x, enemy.y + 3, enemy.z, "PHASE TRANSITION!", "#00ffff");
+          // Massive energy implosion
+          for (let pt = 0; pt < 12; pt++) {
+            const ptAngle = (pt / 12) * Math.PI * 2;
+            this._renderer.spawnParticles(ParticleType.ICE, enemy.x + Math.cos(ptAngle) * 3, 1, enemy.z + Math.sin(ptAngle) * 3, 5, this._state.particles);
+          }
+          this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 2, enemy.z, 35, this._state.particles);
+          this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 3, enemy.z, 15, this._state.particles);
+          this._renderer.showTelegraph(`phase-${enemy.id}`, enemy.x, enemy.z, 8, 0x00ffff, 2.0);
+          this._renderer.shakeCamera(0.6, 1.0);
+          this._addFloatingText(enemy.x, enemy.y + 4, enemy.z, "PHASE TRANSITION!", "#00ffff");
           break;
         }
       }
