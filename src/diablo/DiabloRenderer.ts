@@ -211,6 +211,12 @@ export class DiabloRenderer {
   private _poisonMistGeo: THREE.SphereGeometry | null = null;
   private _poisonBubbleGeo: THREE.SphereGeometry | null = null;
 
+  // Targeting indicators
+  private _targetRing: THREE.Group | null = null;
+  private _hoverRing: THREE.Group | null = null;
+  private _targetEnemyId: string | null = null;
+  private _hoverEnemyId: string | null = null;
+
   // Post-processing
   private _bloomComposer: EffectComposer | null = null;
 
@@ -2875,6 +2881,9 @@ export class DiabloRenderer {
       }
     }
 
+    // Target/hover indicators
+    this._updateTargetIndicators(state);
+
     // Swing arc fade
     if (this._swingArc && this._swingArcTimer > 0) {
       this._swingArcTimer -= dt;
@@ -5404,6 +5413,9 @@ export class DiabloRenderer {
       this._castOverlay = null;
     }
 
+    if (this._targetRing) { this._disposeObject3D(this._targetRing); this._scene.remove(this._targetRing); this._targetRing = null; }
+    if (this._hoverRing) { this._disposeObject3D(this._hoverRing); this._scene.remove(this._hoverRing); this._hoverRing = null; }
+
     if (this.canvas && this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
     }
@@ -5909,6 +5921,127 @@ export class DiabloRenderer {
         if (d.obj.parent) d.obj.parent.remove(d.obj);
         this._destroyingProps.splice(i, 1);
       }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  ENEMY TARGETING INDICATORS
+  // ════════════════════════════════════════════════════════════════════════
+
+  private _createTargetRing(color: number, emissive: number, opacity: number): THREE.Group {
+    const group = new THREE.Group();
+
+    // Main ring
+    const ringGeo = new THREE.TorusGeometry(1.0, 0.06, 16, 48);
+    const ringMat = new THREE.MeshStandardMaterial({
+      color, emissive, emissiveIntensity: 2.0,
+      transparent: true, opacity, side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.name = 'targetRingMain';
+    group.add(ring);
+
+    // Inner ring (thinner, slightly brighter)
+    const innerGeo = new THREE.TorusGeometry(0.75, 0.03, 12, 48);
+    const innerMat = new THREE.MeshStandardMaterial({
+      color, emissive, emissiveIntensity: 3.0,
+      transparent: true, opacity: opacity * 0.6, side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    inner.rotation.x = -Math.PI / 2;
+    inner.name = 'targetRingInner';
+    group.add(inner);
+
+    // 4 directional chevrons pointing inward
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      const chevGeo = new THREE.ConeGeometry(0.08, 0.2, 4);
+      const chev = new THREE.Mesh(chevGeo, ringMat.clone());
+      chev.position.set(Math.cos(angle) * 1.15, 0.02, Math.sin(angle) * 1.15);
+      chev.rotation.x = -Math.PI / 2;
+      chev.rotation.z = -angle + Math.PI;
+      chev.name = 'targetChevron';
+      group.add(chev);
+    }
+
+    group.visible = false;
+    this._scene.add(group);
+    return group;
+  }
+
+  setTargetEnemy(id: string | null): void {
+    this._targetEnemyId = id;
+  }
+
+  setHoverEnemy(id: string | null): void {
+    this._hoverEnemyId = id;
+  }
+
+  /** Get enemy id under the given screen coordinates (for hover detection). */
+  getEnemyAtScreen(mx: number, my: number): string | null {
+    const ndcX = (mx / this._renderer.domElement.clientWidth) * 2 - 1;
+    const ndcY = -(my / this._renderer.domElement.clientHeight) * 2 + 1;
+    this._raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this._camera);
+
+    for (const [id, mesh] of this._enemyMeshes) {
+      const intersects = this._raycaster.intersectObject(mesh, true);
+      if (intersects.length > 0) return id;
+    }
+    return null;
+  }
+
+  private _updateTargetIndicators(state: DiabloState): void {
+    // Ensure rings exist
+    if (!this._targetRing) {
+      this._targetRing = this._createTargetRing(0xff3333, 0xff2222, 0.9);
+    }
+    if (!this._hoverRing) {
+      this._hoverRing = this._createTargetRing(0xffcc44, 0xffaa22, 0.5);
+    }
+
+    // --- Target ring (red, locked target) ---
+    const targetEnemy = this._targetEnemyId
+      ? state.enemies.find(e => e.id === this._targetEnemyId)
+      : null;
+
+    if (targetEnemy && targetEnemy.state !== EnemyState.DEAD && targetEnemy.state !== EnemyState.DYING) {
+      this._targetRing.visible = true;
+      const scale = (targetEnemy.scale || 1) * 1.2;
+      this._targetRing.scale.setScalar(scale);
+      this._targetRing.position.set(targetEnemy.x, targetEnemy.y + 0.08, targetEnemy.z);
+      // Pulsing rotation + scale
+      const pulse = 1.0 + Math.sin(this._time * 4) * 0.08;
+      this._targetRing.scale.setScalar(scale * pulse);
+      this._targetRing.rotation.y = this._time * 1.2;
+      // Pulsing opacity on main ring
+      const mainRing = this._targetRing.getObjectByName('targetRingMain') as THREE.Mesh | undefined;
+      if (mainRing) {
+        (mainRing.material as THREE.MeshStandardMaterial).opacity = 0.7 + Math.sin(this._time * 5) * 0.2;
+      }
+    } else {
+      this._targetRing.visible = false;
+      if (this._targetEnemyId && !targetEnemy) {
+        this._targetEnemyId = null;
+      }
+    }
+
+    // --- Hover ring (gold, mouse-over) --- skip if same as target
+    const hoverId = this._hoverEnemyId;
+    const hoverEnemy = (hoverId && hoverId !== this._targetEnemyId)
+      ? state.enemies.find(e => e.id === hoverId)
+      : null;
+
+    if (hoverEnemy && hoverEnemy.state !== EnemyState.DEAD && hoverEnemy.state !== EnemyState.DYING) {
+      this._hoverRing.visible = true;
+      const scale = (hoverEnemy.scale || 1) * 1.1;
+      this._hoverRing.scale.setScalar(scale);
+      this._hoverRing.position.set(hoverEnemy.x, hoverEnemy.y + 0.06, hoverEnemy.z);
+      this._hoverRing.rotation.y = this._time * 0.8;
+    } else {
+      this._hoverRing.visible = false;
     }
   }
 

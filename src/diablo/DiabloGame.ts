@@ -509,6 +509,7 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   destroy(): void {
     cancelAnimationFrame(this._rafId);
+    document.body.style.cursor = '';
     window.removeEventListener("keydown", this._boundKeyDown);
     window.removeEventListener("keyup", this._boundKeyUp);
     window.removeEventListener("mousemove", this._boundMouseMove);
@@ -768,6 +769,13 @@ export class DiabloGame {
     if (this._firstPerson && this._pointerLocked) {
       this._mouseDX += e.movementX;
       this._mouseDY += e.movementY;
+    }
+    // Hover detection for enemy targeting
+    if (this._state.phase === DiabloPhase.PLAYING && !this._firstPerson) {
+      const hoverId = this._renderer.getEnemyAtScreen(e.clientX, e.clientY);
+      this._renderer.setHoverEnemy(hoverId);
+      // Change cursor when hovering an enemy
+      document.body.style.cursor = hoverId ? 'crosshair' : '';
     }
   }
 
@@ -1465,6 +1473,7 @@ export class DiabloGame {
       this._processAchievementNotifications();
     }
 
+    this._renderer.setTargetEnemy(this._targetEnemyId);
     this._renderer.update(this._state, dt);
     this._rafId = requestAnimationFrame(this._gameLoop);
   };
