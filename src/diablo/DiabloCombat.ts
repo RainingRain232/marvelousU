@@ -1092,8 +1092,21 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
     }
   }
 
-  const worldMouse = ctx.getMouseWorldPos();
-  const angle = Math.atan2(worldMouse.x - p.x, worldMouse.z - p.z);
+  // Aim at targeted enemy if one is selected, otherwise aim at mouse
+  let aimX: number, aimZ: number;
+  const targetId = ctx.mutableState.targetEnemyId;
+  const targetEnemy = targetId ? ctx.state.enemies.find(e => e.id === targetId) : null;
+  if (targetEnemy) {
+    aimX = targetEnemy.x;
+    aimZ = targetEnemy.z;
+  } else {
+    const worldMouse = ctx.getMouseWorldPos();
+    aimX = worldMouse.x;
+    aimZ = worldMouse.z;
+  }
+  const angle = Math.atan2(aimX - p.x, aimZ - p.z);
+  // Face the aim direction
+  p.angle = angle;
   const baseDmg = getSkillDamage(ctx, def);
   const modDmg = baseDmg * branchMods.damageMult;
   const modRadius = (r: number) => r * branchMods.aoeRadiusMult;
