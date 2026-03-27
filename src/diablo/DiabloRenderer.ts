@@ -443,22 +443,26 @@ export class DiabloRenderer {
   private _buildMapBorder(w: number, d: number): void {
     const hw = w / 2;
     const hd = d / 2;
-    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.9, metalness: 0.05 });
-    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.95 });
+    // Varied stone materials (lighter/darker/mossy)
+    const stoneMats = [
+      new THREE.MeshStandardMaterial({ color: 0x7a7a72, roughness: 0.88, metalness: 0.02 }),
+      new THREE.MeshStandardMaterial({ color: 0x666660, roughness: 0.92, metalness: 0.03 }),
+      new THREE.MeshStandardMaterial({ color: 0x8a8878, roughness: 0.85, metalness: 0.02 }),
+      new THREE.MeshStandardMaterial({ color: 0x5a5a55, roughness: 0.95, metalness: 0.01 }),
+      new THREE.MeshStandardMaterial({ color: 0x6a7a62, roughness: 0.9, metalness: 0.02 }),  // mossy
+    ];
     const postMat = new THREE.MeshStandardMaterial({ color: 0x4a3a28, roughness: 0.85 });
-    const stoneGeo = new THREE.DodecahedronGeometry(1, 1);
-    const postGeo = new THREE.CylinderGeometry(0.15, 0.2, 2.0, 6);
+    // Higher detail geometry (detail level 2 = smoother, more polygons)
+    const stoneGeoLg = new THREE.DodecahedronGeometry(1, 2);
+    const stoneGeoSm = new THREE.DodecahedronGeometry(1, 2);
+    const postGeo = new THREE.CylinderGeometry(0.18, 0.25, 2.5, 8);
 
-    // Place stones along each edge
     const spacing = 4;
     const edges: { x: number; z: number }[] = [];
-
-    // Top and bottom edges
     for (let x = -hw; x <= hw; x += spacing) {
       edges.push({ x, z: -hd });
       edges.push({ x, z: hd });
     }
-    // Left and right edges
     for (let z = -hd + spacing; z < hd; z += spacing) {
       edges.push({ x: -hw, z });
       edges.push({ x: hw, z });
@@ -466,34 +470,70 @@ export class DiabloRenderer {
 
     for (const pos of edges) {
       const ty = getTerrainHeight(pos.x, pos.z);
+      const group = new THREE.Group();
 
-      // Main boulder
-      const stone = new THREE.Mesh(stoneGeo, Math.random() > 0.4 ? stoneMat : stoneDarkMat);
-      const sx = 0.6 + Math.random() * 0.8;
-      const sy = 0.3 + Math.random() * 0.4;
-      const sz = 0.6 + Math.random() * 0.8;
+      // Main boulder (larger, more detailed)
+      const mat = stoneMats[Math.floor(Math.random() * stoneMats.length)];
+      const stone = new THREE.Mesh(stoneGeoLg, mat);
+      const sx = 0.7 + Math.random() * 0.9;
+      const sy = 0.4 + Math.random() * 0.5;
+      const sz = 0.7 + Math.random() * 0.9;
       stone.scale.set(sx, sy, sz);
-      stone.position.set(
+      stone.position.y = sy * 0.35;
+      stone.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
+      stone.castShadow = true;
+      group.add(stone);
+
+      // Moss patch on top (50% chance)
+      if (Math.random() > 0.5) {
+        const mossMat = stoneMats[4]; // mossy green
+        const moss = new THREE.Mesh(
+          new THREE.SphereGeometry(sx * 0.5, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+          mossMat,
+        );
+        moss.position.y = sy * 0.65;
+        moss.scale.set(1, 0.3, 1);
+        group.add(moss);
+      }
+
+      // 1-2 smaller companion stones
+      const compCount = 1 + Math.floor(Math.random() * 2);
+      for (let c = 0; c < compCount; c++) {
+        const cMat = stoneMats[Math.floor(Math.random() * 4)];
+        const comp = new THREE.Mesh(stoneGeoSm, cMat);
+        const cr = 0.25 + Math.random() * 0.35;
+        comp.scale.set(cr, cr * 0.6, cr);
+        comp.position.set(
+          (Math.random() - 0.5) * 2.0,
+          cr * 0.2,
+          (Math.random() - 0.5) * 2.0,
+        );
+        comp.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
+        comp.castShadow = true;
+        group.add(comp);
+      }
+
+      // Pebbles scattered at base (3-5)
+      for (let p = 0; p < 3 + Math.floor(Math.random() * 3); p++) {
+        const peb = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.06, 1),
+          stoneMats[Math.floor(Math.random() * 4)],
+        );
+        peb.position.set(
+          (Math.random() - 0.5) * 2.5,
+          0.04,
+          (Math.random() - 0.5) * 2.5,
+        );
+        peb.scale.y = 0.5;
+        group.add(peb);
+      }
+
+      group.position.set(
         pos.x + (Math.random() - 0.5) * 1.5,
-        ty + sy * 0.3,
+        ty,
         pos.z + (Math.random() - 0.5) * 1.5,
       );
-      stone.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
-      this._scene.add(stone);
-
-      // Smaller companion stone
-      if (Math.random() > 0.4) {
-        const small = new THREE.Mesh(stoneGeo, stoneDarkMat);
-        const sr = 0.2 + Math.random() * 0.4;
-        small.scale.set(sr, sr * 0.6, sr);
-        small.position.set(
-          pos.x + (Math.random() - 0.5) * 2.5,
-          ty + sr * 0.2,
-          pos.z + (Math.random() - 0.5) * 2.5,
-        );
-        small.rotation.y = Math.random() * Math.PI;
-        this._scene.add(small);
-      }
+      this._scene.add(group);
     }
 
     // Corner posts (larger markers at the 4 corners)
@@ -504,10 +544,10 @@ export class DiabloRenderer {
     for (const c of corners) {
       const ty = getTerrainHeight(c.x, c.z);
       const post = new THREE.Mesh(postGeo, postMat);
-      post.position.set(c.x, ty + 1.0, c.z);
+      post.position.set(c.x, ty + 1.25, c.z);
       this._scene.add(post);
       // Stone base
-      const base = new THREE.Mesh(stoneGeo, stoneMat);
+      const base = new THREE.Mesh(stoneGeoLg, stoneMats[0]);
       base.scale.set(1.2, 0.5, 1.2);
       base.position.set(c.x, ty + 0.3, c.z);
       this._scene.add(base);
