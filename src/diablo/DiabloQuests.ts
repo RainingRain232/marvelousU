@@ -291,5 +291,11 @@ export function updateQuestTracker(
     html += `<div style="color:#ffd700;font-size:10px;margin-top:6px;border-top:1px solid #5a4a2a;padding-top:4px;">Prestige ${state.player.prestigeLevel} | +${state.player.prestigeBonuses.damagePercent}% DMG +${state.player.prestigeBonuses.hpPercent}% HP</div>`;
   }
 
-  trackerEl.innerHTML = html;
+  // Update the content container (not the tracker itself, to preserve close button)
+  const contentEl = trackerEl.querySelector("#quest-tracker-content") as HTMLDivElement | null;
+  if (contentEl) {
+    contentEl.innerHTML = html;
+  } else {
+    trackerEl.innerHTML = html;
+  }
 }

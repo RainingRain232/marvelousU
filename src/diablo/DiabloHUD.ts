@@ -1397,6 +1397,10 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     questTracker.dataset.userHidden = "true";
   });
   questTracker.appendChild(questCloseBtn);
+  // Content container (so innerHTML updates don't destroy the close button)
+  const questContent = document.createElement("div");
+  questContent.id = "quest-tracker-content";
+  questTracker.appendChild(questContent);
   // Scroll top decoration
   const questScrollTop = document.createElement("div");
   questScrollTop.style.cssText = `
