@@ -193,6 +193,20 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
       0%, 100% { border-color: rgba(255,40,40,0.6); }
       50% { border-color: rgba(255,80,80,0.9); }
     }
+    @keyframes hud-orb-rune-spin {
+      0% { transform:rotate(0deg); }
+      100% { transform:rotate(360deg); }
+    }
+    @keyframes hud-orb-inner-pulse {
+      0%, 100% { opacity:0.3; }
+      50% { opacity:0.6; }
+    }
+    @keyframes hud-hp-liquid {
+      0%, 100% { border-radius:50% 50% 50% 50% / 48% 52% 48% 52%; }
+      25% { border-radius:50% 50% 50% 50% / 52% 48% 52% 48%; }
+      50% { border-radius:50% 50% 50% 50% / 49% 51% 49% 51%; }
+      75% { border-radius:50% 50% 50% 50% / 51% 49% 51% 49%; }
+    }
     @keyframes hud-slot-hover-glow {
       0%, 100% { box-shadow:inset 0 0 20px rgba(200,168,78,0.15), 0 0 8px rgba(200,168,78,0.2); }
       50% { box-shadow:inset 0 0 25px rgba(200,168,78,0.25), 0 0 14px rgba(200,168,78,0.35); }
@@ -237,16 +251,26 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   const hpBar = document.createElement("div");
   hpBar.style.cssText = `
     position:absolute;bottom:0;left:0;width:100%;height:100%;
-    background:radial-gradient(circle at 40% 40%, rgba(220,40,40,0.9), rgba(140,10,10,0.85));
+    background:radial-gradient(circle at 40% 40%, rgba(220,40,40,0.9), rgba(160,15,15,0.85), rgba(100,5,5,0.9));
     border-radius:50%;transition:height 0.3s;
-    box-shadow:inset 0 -5px 15px rgba(255,60,60,0.3);
+    box-shadow:inset 0 -5px 15px rgba(255,60,60,0.3), inset 0 3px 8px rgba(255,120,120,0.15);
+    animation:hud-hp-liquid 3s ease-in-out infinite;
   `;
+  // Surface highlight (liquid sheen)
+  const hpSheen = document.createElement("div");
+  hpSheen.style.cssText = `
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    background:linear-gradient(170deg, rgba(255,180,180,0.15) 0%, transparent 40%, transparent 60%, rgba(255,100,100,0.08) 100%);
+    border-radius:50%;pointer-events:none;z-index:1;
+  `;
+  hpBar.appendChild(hpSheen);
   // Inner glow overlay
   const hpGlow = document.createElement("div");
   hpGlow.style.cssText = `
-    position:absolute;top:10%;left:15%;width:40%;height:30%;
-    background:radial-gradient(ellipse, rgba(255,180,180,0.25), transparent);
+    position:absolute;top:8%;left:12%;width:35%;height:25%;
+    background:radial-gradient(ellipse, rgba(255,200,200,0.35), transparent);
     border-radius:50%;pointer-events:none;z-index:2;
+    animation:hud-orb-inner-pulse 2s ease-in-out infinite;
   `;
   const hpText = document.createElement("div");
   hpText.style.cssText = `
@@ -350,6 +374,42 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   hpBottomOrnament.textContent = "\u269C";
   hpOrbWrap.appendChild(hpBottomOrnament);
 
+  // Rotating rune ring (slow spin, adds arcane feel)
+  const hpRuneRing = document.createElement("div");
+  hpRuneRing.style.cssText = `
+    position:absolute;width:158px;height:158px;border-radius:50%;
+    top:50%;left:50%;transform-origin:center center;
+    animation:hud-orb-rune-spin 20s linear infinite;
+    pointer-events:none;z-index:0;
+  `;
+  const runeChars = ["\u16A0", "\u16B1", "\u16C1", "\u16D2", "\u16A8", "\u16BE"];
+  for (let r = 0; r < 6; r++) {
+    const rune = document.createElement("div");
+    const angle = (r / 6) * 360;
+    rune.style.cssText = `
+      position:absolute;width:16px;height:16px;
+      top:50%;left:50%;font-size:11px;color:rgba(200,168,78,0.35);
+      text-shadow:0 0 4px rgba(200,168,78,0.2);
+      transform-origin:0 0;transform:rotate(${angle}deg) translate(0, -79px) rotate(-${angle}deg) translate(-8px,-8px);
+      text-align:center;line-height:16px;
+      font-family:'Segoe UI Symbol','Apple Symbols',sans-serif;
+    `;
+    rune.textContent = runeChars[r];
+    hpRuneRing.appendChild(rune);
+  }
+  hpOrbWrap.appendChild(hpRuneRing);
+
+  // Outer glow ring (subtle red ambient)
+  const hpAmbientGlow = document.createElement("div");
+  hpAmbientGlow.style.cssText = `
+    position:absolute;width:160px;height:160px;border-radius:50%;
+    top:50%;left:50%;transform:translate(-50%,-50%);
+    box-shadow:0 0 20px rgba(180,20,20,0.2), 0 0 40px rgba(180,20,20,0.1);
+    pointer-events:none;z-index:-2;
+    animation:hud-orb-inner-pulse 3s ease-in-out infinite;
+  `;
+  hpOrbWrap.appendChild(hpAmbientGlow);
+
   hud.appendChild(hpOrbWrap);
 
   // Mana orb - bottom right (ornate)
@@ -389,16 +449,26 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   const mpBar = document.createElement("div");
   mpBar.style.cssText = `
     position:absolute;bottom:0;left:0;width:100%;height:100%;
-    background:radial-gradient(circle at 40% 40%, rgba(60,60,240,0.9), rgba(20,20,140,0.85));
+    background:radial-gradient(circle at 40% 40%, rgba(70,70,240,0.9), rgba(30,30,160,0.85), rgba(10,10,100,0.9));
     border-radius:50%;transition:height 0.3s;
-    box-shadow:inset 0 -5px 15px rgba(60,60,255,0.3);
+    box-shadow:inset 0 -5px 15px rgba(60,60,255,0.3), inset 0 3px 8px rgba(120,120,255,0.15);
+    animation:hud-hp-liquid 3.5s ease-in-out infinite;
   `;
+  // Surface highlight (arcane sheen)
+  const mpSheen = document.createElement("div");
+  mpSheen.style.cssText = `
+    position:absolute;top:0;left:0;width:100%;height:100%;
+    background:linear-gradient(170deg, rgba(180,180,255,0.15) 0%, transparent 40%, transparent 60%, rgba(100,100,255,0.08) 100%);
+    border-radius:50%;pointer-events:none;z-index:1;
+  `;
+  mpBar.appendChild(mpSheen);
   // Inner glow
   const mpGlow = document.createElement("div");
   mpGlow.style.cssText = `
-    position:absolute;top:10%;left:15%;width:40%;height:30%;
-    background:radial-gradient(ellipse, rgba(180,180,255,0.25), transparent);
+    position:absolute;top:8%;left:12%;width:35%;height:25%;
+    background:radial-gradient(ellipse, rgba(200,200,255,0.35), transparent);
     border-radius:50%;pointer-events:none;z-index:2;
+    animation:hud-orb-inner-pulse 2.5s ease-in-out infinite;
   `;
   const mpText = document.createElement("div");
   mpText.style.cssText = `
@@ -501,6 +571,42 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   `;
   mpBottomOrnament.textContent = "\u25C6";
   mpOrbWrap.appendChild(mpBottomOrnament);
+
+  // Rotating arcane rune ring (slow reverse spin)
+  const mpRuneRing = document.createElement("div");
+  mpRuneRing.style.cssText = `
+    position:absolute;width:158px;height:158px;border-radius:50%;
+    top:50%;left:50%;transform-origin:center center;
+    animation:hud-orb-rune-spin 25s linear infinite reverse;
+    pointer-events:none;z-index:0;
+  `;
+  const mpRuneChars = ["\u16A2", "\u16B7", "\u16C7", "\u16D6", "\u16AA", "\u16CF"];
+  for (let r = 0; r < 6; r++) {
+    const rune = document.createElement("div");
+    const angle = (r / 6) * 360;
+    rune.style.cssText = `
+      position:absolute;width:16px;height:16px;
+      top:50%;left:50%;font-size:11px;color:rgba(100,120,200,0.35);
+      text-shadow:0 0 4px rgba(100,120,200,0.2);
+      transform-origin:0 0;transform:rotate(${angle}deg) translate(0, -79px) rotate(-${angle}deg) translate(-8px,-8px);
+      text-align:center;line-height:16px;
+      font-family:'Segoe UI Symbol','Apple Symbols',sans-serif;
+    `;
+    rune.textContent = mpRuneChars[r];
+    mpRuneRing.appendChild(rune);
+  }
+  mpOrbWrap.appendChild(mpRuneRing);
+
+  // Outer glow ring (subtle blue ambient)
+  const mpAmbientGlow = document.createElement("div");
+  mpAmbientGlow.style.cssText = `
+    position:absolute;width:160px;height:160px;border-radius:50%;
+    top:50%;left:50%;transform:translate(-50%,-50%);
+    box-shadow:0 0 20px rgba(30,30,200,0.2), 0 0 40px rgba(30,30,200,0.1);
+    pointer-events:none;z-index:-2;
+    animation:hud-orb-inner-pulse 3.5s ease-in-out infinite;
+  `;
+  mpOrbWrap.appendChild(mpAmbientGlow);
 
   hud.appendChild(mpOrbWrap);
 
@@ -1215,67 +1321,58 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   for (const tp of torchPositions) {
     const torchWrap = document.createElement("div");
     torchWrap.style.cssText = `
-      position:absolute;bottom:36px;left:50%;
+      position:absolute;bottom:30px;left:50%;
       transform:translateX(calc(${tp.xOffset} - 50%));
-      width:24px;height:56px;pointer-events:none;z-index:10;
+      width:30px;height:80px;pointer-events:none;z-index:10;
     `;
-    // Torch bracket (wall mount)
-    const bracket = document.createElement("div");
-    bracket.style.cssText = `
-      position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-      width:14px;height:6px;
-      background:linear-gradient(180deg, #8b7a4a, #5a4a2a);
-      border-radius:2px;
-      box-shadow:0 1px 2px rgba(0,0,0,0.5);
-    `;
-    torchWrap.appendChild(bracket);
-    // Torch handle
+    // Torch handle (stick)
     const torchHandle = document.createElement("div");
     torchHandle.style.cssText = `
-      position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
-      width:8px;height:32px;
-      background:linear-gradient(180deg, #8b6914, #6b4f0e, #4a3508, #6b4f0e);
+      position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+      width:6px;height:48px;
+      background:linear-gradient(180deg, #8b6914, #6b4f0e, #4a3508, #3a2508);
       border-radius:2px 2px 3px 3px;
-      box-shadow:inset 1px 0 0 rgba(200,168,78,0.2), inset -1px 0 0 rgba(0,0,0,0.3),
+      box-shadow:inset 1px 0 0 rgba(200,168,78,0.25), inset -1px 0 0 rgba(0,0,0,0.3),
         0 0 3px rgba(0,0,0,0.5);
     `;
     torchWrap.appendChild(torchHandle);
-    // Torch cup (holds fire)
+    // Torch cup (sits on top of handle)
     const cup = document.createElement("div");
     cup.style.cssText = `
-      position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
-      width:16px;height:8px;
-      background:linear-gradient(180deg, #5a4a2a, #3a2a1a);
-      border-radius:2px 2px 4px 4px;
-      box-shadow:0 1px 2px rgba(0,0,0,0.4);
+      position:absolute;bottom:44px;left:50%;transform:translateX(-50%);
+      width:14px;height:10px;
+      background:linear-gradient(180deg, #3a2a1a, #5a4a2a, #3a2a1a);
+      border-radius:3px 3px 5px 5px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.5), inset 0 1px 1px rgba(200,168,78,0.15);
     `;
     torchWrap.appendChild(cup);
-    // Flame (centered above cup)
+    // Flame (anchored to top of cup)
     const flame = document.createElement("div");
     flame.style.cssText = `
-      position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
-      width:16px;height:24px;
-      background:radial-gradient(ellipse at 50% 65%, #ffee66, #ffaa00, #ff5500, transparent);
+      position:absolute;bottom:50px;left:50%;transform:translateX(-50%);
+      width:18px;height:26px;
+      background:radial-gradient(ellipse at 50% 70%, #ffee66, #ffaa00 40%, #ff5500 70%, transparent);
       border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
       animation:hud-torch-flicker 0.4s ease-in-out infinite alternate;
       filter:blur(0.5px);
     `;
     torchWrap.appendChild(flame);
-    // Inner flame core
+    // Inner flame core (sits inside the flame)
     const flameCore = document.createElement("div");
     flameCore.style.cssText = `
-      position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
-      width:8px;height:12px;
-      background:radial-gradient(ellipse at 50% 60%, #ffffcc, #ffee66, transparent);
+      position:absolute;bottom:52px;left:50%;transform:translateX(-50%);
+      width:8px;height:14px;
+      background:radial-gradient(ellipse at 50% 60%, #ffffee, #ffee66, transparent);
       border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
       pointer-events:none;
     `;
     torchWrap.appendChild(flameCore);
-    // Flame glow
+    // Flame glow (ambient light around flame)
     const flameGlow = document.createElement("div");
     flameGlow.style.cssText = `
-      position:absolute;bottom:40px;left:50%;transform:translateX(-50%);
-      width:10px;height:10px;border-radius:50%;
+      position:absolute;bottom:48px;left:50%;transform:translateX(-50%);
+      width:30px;height:30px;border-radius:50%;
+      background:radial-gradient(circle, rgba(255,170,0,0.25), transparent 70%);
       animation:hud-torch-glow 0.6s ease-in-out infinite alternate;
       pointer-events:none;
     `;

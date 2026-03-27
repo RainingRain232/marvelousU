@@ -2405,27 +2405,99 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       mctx.scene.add(stem);
     }
 
-    // ── Deciduous trees (scattered) ──
+    // ── Deciduous trees (scattered, polished) ──
+    const barkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.92, metalness: 0.02 });
+    const barkDarkMat = new THREE.MeshStandardMaterial({ color: 0x3d2510, roughness: 0.95 });
+    const leafDarkMat = new THREE.MeshStandardMaterial({ color: 0x338818, roughness: 0.55, transparent: true, opacity: 0.75, depthWrite: false });
+    const leafBrightMat = new THREE.MeshStandardMaterial({ color: 0x55cc33, roughness: 0.45, transparent: true, opacity: 0.65, depthWrite: false });
+
     for (let i = 0; i < 30; i++) {
       const tree = new THREE.Group();
       const trunkH = 3 + Math.random() * 3;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.35, trunkH, 23), woodMat);
+      const trunkRTop = 0.15 + Math.random() * 0.08;
+      const trunkRBot = trunkRTop * 1.6 + Math.random() * 0.1;
+
+      // Trunk with taper
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkRTop, trunkRBot, trunkH, 12), barkMat);
       trunk.position.y = trunkH / 2;
+      trunk.castShadow = true;
       tree.add(trunk);
-      // Canopy (multiple spheres)
+
+      // Bark rings (subtle wood detail)
+      const barkRingCount = 2 + Math.floor(Math.random() * 2);
+      for (let br = 0; br < barkRingCount; br++) {
+        const ringY = 0.4 + (br / barkRingCount) * trunkH * 0.6;
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(trunkRBot * 1.1, trunkRBot * 0.18, 8, 14),
+          barkDarkMat,
+        );
+        ring.position.y = ringY;
+        ring.rotation.x = Math.PI / 2;
+        tree.add(ring);
+      }
+
+      // Exposed roots at base (3-5)
+      const rootCount = 3 + Math.floor(Math.random() * 3);
+      for (let r = 0; r < rootCount; r++) {
+        const rootAngle = (r / rootCount) * Math.PI * 2 + Math.random() * 0.5;
+        const rootLen = 0.4 + Math.random() * 0.6;
+        const root = new THREE.Mesh(
+          new THREE.CylinderGeometry(trunkRBot * 0.25, trunkRBot * 0.1, rootLen, 6),
+          barkMat,
+        );
+        root.position.set(Math.cos(rootAngle) * trunkRBot * 0.7, rootLen * 0.2, Math.sin(rootAngle) * trunkRBot * 0.7);
+        root.rotation.z = Math.cos(rootAngle) * 0.9;
+        root.rotation.x = Math.sin(rootAngle) * 0.9;
+        tree.add(root);
+      }
+
+      // Main branches (2-3 splitting from upper trunk)
+      const branchCount = 2 + Math.floor(Math.random() * 2);
+      for (let b = 0; b < branchCount; b++) {
+        const brAng = (b / branchCount) * Math.PI * 2 + Math.random() * 0.8;
+        const brLen = 1.0 + Math.random() * 1.5;
+        const branch = new THREE.Mesh(
+          new THREE.CylinderGeometry(trunkRTop * 0.3, trunkRTop * 0.7, brLen, 6),
+          barkMat,
+        );
+        branch.position.set(
+          Math.cos(brAng) * trunkRTop * 0.5,
+          trunkH * 0.55 + Math.random() * trunkH * 0.35,
+          Math.sin(brAng) * trunkRTop * 0.5,
+        );
+        branch.rotation.z = (Math.random() - 0.5) * 1.2 + (brAng > Math.PI ? 0.5 : -0.5);
+        branch.rotation.y = brAng;
+        tree.add(branch);
+      }
+
+      // Canopy (4-5 overlapping spheres for fuller look)
       const canopyR = 1.5 + Math.random() * 2;
-      for (let c = 0; c < 3; c++) {
+      const leafMats = [leafMat, leafDarkMat, leafBrightMat];
+      const canopyCount = 4 + Math.floor(Math.random() * 2);
+      for (let c = 0; c < canopyCount; c++) {
+        const lr = canopyR * (0.5 + Math.random() * 0.5);
         const canopy = new THREE.Mesh(
-          new THREE.SphereGeometry(canopyR * (0.7 + Math.random() * 0.4), 44, 23),
-          leafMat,
+          new THREE.SphereGeometry(lr, 16, 12),
+          leafMats[c % leafMats.length],
         );
         canopy.position.set(
-          (Math.random() - 0.5) * canopyR * 0.6,
-          trunkH + canopyR * 0.3 + (Math.random() - 0.5) * canopyR * 0.3,
-          (Math.random() - 0.5) * canopyR * 0.6,
+          (Math.random() - 0.5) * canopyR * 0.7,
+          trunkH + canopyR * 0.2 + (Math.random() - 0.5) * canopyR * 0.4,
+          (Math.random() - 0.5) * canopyR * 0.7,
         );
+        canopy.castShadow = true;
         tree.add(canopy);
       }
+
+      // Shadow disc at base
+      const shadowDisc = new THREE.Mesh(
+        new THREE.CircleGeometry(canopyR * 1.1, 16),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15, depthWrite: false }),
+      );
+      shadowDisc.rotation.x = -Math.PI / 2;
+      shadowDisc.position.y = 0.02;
+      tree.add(shadowDisc);
+
       const trX = (Math.random() - 0.5) * w * 0.85;
       const trZ = (Math.random() - 0.5) * d * 0.85;
       tree.position.set(trX, getTerrainHeight(trX, trZ, 1.4), trZ);
@@ -3080,21 +3152,86 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     gatePostB.position.set(farmX + Math.cos(gateAngleB) * fenceR, 0.8, farmZ + Math.sin(gateAngleB) * fenceR);
     mctx.scene.add(gatePostB);
 
-    // ── Rock outcrops ──
-    for (let i = 0; i < 12; i++) {
+    // ── Rock outcrops (polished with moss, layering, and pebbles) ──
+    const rockDarkMat = new THREE.MeshStandardMaterial({ color: 0x6a6a5f, roughness: 0.9 });
+    const rockLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a88, roughness: 0.85, metalness: 0.05 });
+    const rockMossMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.8, transparent: true, opacity: 0.8 });
+    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6a, roughness: 0.9 });
+
+    for (let i = 0; i < 14; i++) {
       const rockGroup = new THREE.Group();
-      const cnt = 1 + Math.floor(Math.random() * 3);
+      const cnt = 2 + Math.floor(Math.random() * 3);
+      const rockMats = [stoneMat, rockDarkMat, rockLightMat];
+
       for (let r = 0; r < cnt; r++) {
-        const rh = 0.6 + Math.random() * 2;
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rh, 2), stoneMat);
-        const yScale = 0.5 + Math.random() * 0.5;
+        const rh = 0.5 + Math.random() * 1.8;
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(rh, 2),
+          rockMats[Math.floor(Math.random() * rockMats.length)],
+        );
+        const yScale = 0.4 + Math.random() * 0.5;
         rock.scale.set(0.7 + Math.random() * 0.6, yScale, 0.7 + Math.random() * 0.6);
         rock.position.set((Math.random() - 0.5) * 2, rh * yScale * 0.35, (Math.random() - 0.5) * 2);
+        rock.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
+        rock.castShadow = true;
         rockGroup.add(rock);
+
+        // Moss patches on top of larger rocks
+        if (rh > 0.8 && Math.random() > 0.3) {
+          const mossR = rh * 0.5 + Math.random() * rh * 0.3;
+          const moss = new THREE.Mesh(
+            new THREE.SphereGeometry(mossR, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+            rockMossMat,
+          );
+          moss.position.set(rock.position.x, rock.position.y + rh * yScale * 0.3, rock.position.z);
+          rockGroup.add(moss);
+        }
+
+        // Sedimentary layer lines on larger rocks
+        if (rh > 1.0) {
+          const layerCount = 1 + Math.floor(Math.random() * 2);
+          for (let l = 0; l < layerCount; l++) {
+            const layerY = rock.position.y + (l + 0.5) * rh * yScale * 0.3;
+            const layer = new THREE.Mesh(
+              new THREE.TorusGeometry(rh * 0.7, 0.02, 4, 16),
+              rockDarkMat,
+            );
+            layer.position.set(rock.position.x, layerY, rock.position.z);
+            layer.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.2;
+            rockGroup.add(layer);
+          }
+        }
       }
+
+      // Scattered pebbles around base (5-8)
+      const pebbleCount = 5 + Math.floor(Math.random() * 4);
+      for (let p = 0; p < pebbleCount; p++) {
+        const pebble = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.1, 1),
+          pebbleMat,
+        );
+        pebble.position.set(
+          (Math.random() - 0.5) * 3.5,
+          0.03,
+          (Math.random() - 0.5) * 3.5,
+        );
+        pebble.scale.y = 0.5 + Math.random() * 0.3;
+        rockGroup.add(pebble);
+      }
+
+      // Ground shadow disc
+      const shadowR = cnt * 0.8 + 0.5;
+      const shadow = new THREE.Mesh(
+        new THREE.CircleGeometry(shadowR, 12),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12, depthWrite: false }),
+      );
+      shadow.rotation.x = -Math.PI / 2;
+      shadow.position.y = 0.01;
+      rockGroup.add(shadow);
+
       const roX = (Math.random() - 0.5) * w * 0.85;
       const roZ = (Math.random() - 0.5) * d * 0.85;
-      rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4) - 0.2, roZ);
+      rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4) - 0.15, roZ);
       mctx.scene.add(rockGroup);
     }
 

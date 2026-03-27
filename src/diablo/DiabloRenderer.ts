@@ -3031,63 +3031,115 @@ export class DiabloRenderer {
       if (enemy.state === EnemyState.ATTACK) {
         const at = enemy.attackTimer;
         const baseScale = enemy.scale || 1;
+        const isBoss = !!enemy.isBoss;
+        // Boss multipliers for more dramatic animations
+        const bm = isBoss ? 2.0 : 1.0;
 
         if (at > 0 && at <= 0.5) {
-          // === WIND-UP PHASE (attackTimer 0.5 -> 0) ===
+          // === WIND-UP + STRIKE PHASE (attackTimer 0.5 -> 0) ===
           const windUpProgress = 1.0 - at / 0.5; // 0 -> 1 as timer counts down
 
-          // Lunge forward toward the player
-          const lungeAmount = Math.sin(windUpProgress * Math.PI * 0.5) * 0.4;
-          mesh.position.x += Math.sin(enemy.angle) * lungeAmount;
-          mesh.position.z += Math.cos(enemy.angle) * lungeAmount;
+          if (windUpProgress < 0.6) {
+            // -- WIND-UP: pull back and raise up --
+            const wp = windUpProgress / 0.6; // normalize to 0-1
 
-          // Tilt forward (leaning into the attack)
-          mesh.rotation.x = windUpProgress * 0.3;
+            // Pull back away from player (rearing up)
+            const pullBack = Math.sin(wp * Math.PI * 0.5) * 0.3 * bm;
+            mesh.position.x -= Math.sin(enemy.angle) * pullBack;
+            mesh.position.z -= Math.cos(enemy.angle) * pullBack;
 
-          // Weapon swing: tilt to one side as weapon is raised
-          mesh.rotation.z = windUpProgress * 0.35;
+            // Lean backward (winding up)
+            mesh.rotation.x = -wp * 0.35 * bm;
 
-          // Slight rise before the slam
-          if (enemy.isBoss) {
-            // Boss: rise up dramatically before slamming down
-            mesh.position.y += windUpProgress * 0.6;
-            mesh.scale.setScalar(baseScale * (1.0 + windUpProgress * 0.08));
-          }
+            // Raise one side (arm raise simulation)
+            mesh.rotation.z = wp * 0.45 * bm;
 
-          // Brief scale pulse right at the moment of strike (near 0)
-          if (at < 0.08) {
-            mesh.scale.setScalar(baseScale * 1.12);
-            mesh.position.y += 0.1;
-            // Weapon swing snaps to the other side on strike
-            mesh.rotation.z = -0.4;
-            mesh.rotation.x = 0.4;
+            // Rise up
+            mesh.position.y += wp * 0.3 * bm;
 
-            if (enemy.isBoss) {
-              // Boss slam: crash down
-              mesh.position.y = enemy.y - 0.15;
-              mesh.scale.setScalar(baseScale * 1.18);
-              mesh.rotation.x = 0.5;
+            if (isBoss) {
+              // Boss: puff up during wind-up
+              mesh.scale.setScalar(baseScale * (1.0 + wp * 0.12));
+              // Slight side-to-side shake during charge-up
+              const shake = Math.sin(this._time * 25) * wp * 0.05;
+              mesh.position.x += shake;
+            }
+          } else if (windUpProgress < 0.85) {
+            // -- STRIKE: fast forward slam --
+            const sp = (windUpProgress - 0.6) / 0.25; // 0 -> 1
+
+            // Lunge forward hard
+            const lungeAmount = sp * 0.8 * bm;
+            mesh.position.x += Math.sin(enemy.angle) * lungeAmount;
+            mesh.position.z += Math.cos(enemy.angle) * lungeAmount;
+
+            // Slam down hard (forward lean + arm swing)
+            mesh.rotation.x = -0.35 * bm * (1 - sp) + sp * 0.55 * bm;
+            mesh.rotation.z = 0.45 * bm * (1 - sp) + sp * (-0.5 * bm);
+
+            // Drop height on impact
+            if (isBoss) {
+              mesh.position.y += (1 - sp) * 0.6 - sp * 0.2;
+              mesh.scale.setScalar(baseScale * (1.12 - sp * 0.04));
+            } else {
+              mesh.position.y += (1 - sp) * 0.3;
+            }
+          } else {
+            // -- IMPACT: hit moment, recoil --
+            const ip = (windUpProgress - 0.85) / 0.15; // 0 -> 1
+
+            // Hold lunge position
+            mesh.position.x += Math.sin(enemy.angle) * 0.8 * bm;
+            mesh.position.z += Math.cos(enemy.angle) * 0.8 * bm;
+
+            // Impact pose: leaning forward, arms down
+            mesh.rotation.x = 0.55 * bm * (1 - ip * 0.3);
+            mesh.rotation.z = -0.5 * bm * (1 - ip * 0.3);
+
+            // Scale pulse on impact
+            const impactPulse = 1.0 + Math.sin(ip * Math.PI) * 0.15;
+            mesh.scale.setScalar(baseScale * impactPulse);
+
+            if (isBoss) {
+              // Boss ground slam: squash down
+              mesh.position.y = enemy.y - 0.2 * (1 - ip);
+              mesh.scale.set(
+                baseScale * impactPulse * 1.08,
+                baseScale * impactPulse * 0.88,
+                baseScale * impactPulse * 1.08,
+              );
             }
           }
         } else if (at > 0.5) {
-          // === COOLDOWN / RECOVERY PHASE (attackTimer 1.5 -> 0.5) ===
-          const cooldownProgress = (at - 0.5) / 1.0; // 1 -> 0 as timer counts down
+          // === RECOVERY PHASE (attackTimer 1.5 -> 0.5) ===
+          const cooldownProgress = (at - 0.5) / 1.0; // 1 -> 0
 
-          // Recovery sway: gentle rocking oscillation
-          const swaySpeed = 4.0;
-          const swayAmount = 0.12 * cooldownProgress;
-          mesh.rotation.z = Math.sin(this._time * swaySpeed + enemy.id.charCodeAt(0)) * swayAmount;
+          if (cooldownProgress > 0.7) {
+            // Early recovery: bounce back from strike
+            const rp = (cooldownProgress - 0.7) / 0.3;
+            mesh.rotation.x = 0.3 * bm * rp;
+            mesh.rotation.z = -0.2 * bm * rp;
+            // Pull back from lunge position
+            const retreatAmount = rp * 0.4 * bm;
+            mesh.position.x -= Math.sin(enemy.angle) * retreatAmount;
+            mesh.position.z -= Math.cos(enemy.angle) * retreatAmount;
 
-          // Subtle backward lean recovering from the strike
-          mesh.rotation.x = -0.1 * cooldownProgress;
+            if (isBoss) {
+              const bossRecoverScale = 1.0 + rp * 0.06;
+              mesh.scale.setScalar(baseScale * bossRecoverScale);
+            }
+          } else {
+            // Late recovery: settle back to idle
+            const sp = cooldownProgress / 0.7;
+            mesh.rotation.x = -0.06 * sp;
+            // Gentle breathing sway
+            mesh.rotation.z = Math.sin(this._time * 3 + enemy.id.charCodeAt(0)) * 0.05 * sp;
+            mesh.position.y += Math.abs(Math.sin(this._time * 2.5)) * 0.03 * sp;
 
-          // Recovery bob
-          mesh.position.y += Math.abs(Math.sin(this._time * 3)) * 0.04 * cooldownProgress;
-
-          if (enemy.isBoss) {
-            // Boss recovery: scale pulse settling down
-            const bossRecoverPulse = 1.0 + Math.sin(this._time * 6) * 0.04 * cooldownProgress;
-            mesh.scale.setScalar(baseScale * bossRecoverPulse);
+            if (isBoss) {
+              const bossSettlePulse = 1.0 + Math.sin(this._time * 4) * 0.02 * sp;
+              mesh.scale.setScalar(baseScale * bossSettlePulse);
+            }
           }
         }
       }
