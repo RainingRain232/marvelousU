@@ -1191,7 +1191,7 @@ export function buildFrozenTundra(mctx: MapBuildContext, w: number, d: number): 
     // ── Deep sculpted snow drifts ──
     for (let i = 0; i < 15; i++) {
       const ddGrp = new THREE.Group();
-      const dW = 5 + Math.random() * 10, dH = 0.8 + Math.random() * 1.8, dD = 4 + Math.random() * 8;
+      const dW = 6 + Math.random() * 12, dH = 0.08 + Math.random() * 0.12, dD = 5 + Math.random() * 10;
       const dMain = new THREE.Mesh(new THREE.SphereGeometry(1, 36, 27), snowMat);
       dMain.scale.set(dW, dH, dD);
       ddGrp.add(dMain);

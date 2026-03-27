@@ -1729,6 +1729,9 @@ export class DiabloGame {
     p.x = Math.max(-halfW, Math.min(halfW, p.x));
     p.z = Math.max(-halfD, Math.min(halfD, p.z));
 
+    // Follow terrain height continuously
+    p.y = getTerrainHeight(p.x, p.z);
+
     // Building collision — push player out of buildings
     const playerR = 0.4;
     for (const [cx, cz, chw, chd] of this._renderer.buildingColliders) {

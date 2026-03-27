@@ -842,14 +842,14 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
     const flagMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6, side: THREE.DoubleSide });
     const tentMat = new THREE.MeshStandardMaterial({ color: 0xaa7744, roughness: 0.8, side: THREE.DoubleSide });
 
-    // ── Sand dunes (low rolling hills with ridge lines, ripples, grass tufts) ──
+    // ── Sand dunes (flat ground patches for color variation) ──
     const duneRidgeMat = new THREE.MeshStandardMaterial({ color: 0xe0c888, roughness: 0.88 });
     const duneRippleThinMat = new THREE.MeshStandardMaterial({ color: 0xc8a868, roughness: 0.95 });
     const duneGrassMat = new THREE.MeshStandardMaterial({ color: 0x889944, roughness: 0.8 });
     for (let i = 0; i < 35; i++) {
-      const sx = 10 + Math.random() * 22;
-      const sy = 0.3 + Math.random() * 0.8;
-      const sz = 10 + Math.random() * 22;
+      const sx = 12 + Math.random() * 24;
+      const sy = 0.06 + Math.random() * 0.1;
+      const sz = 12 + Math.random() * 24;
       const duneGrp = new THREE.Group();
       const geo = new THREE.SphereGeometry(1, 36, 27);
       geo.scale(sx, sy, sz);
@@ -2365,21 +2365,19 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     const hayMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 });
     const roofMat = new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.8 });
 
-    // ── Gently rolling hills (low enough to walk over) ──
+    // ── Gently rolling hills (flat ground patches for color variation) ──
     for (let i = 0; i < 25; i++) {
-      const sx = 10 + Math.random() * 18;
-      const sy = 0.3 + Math.random() * 0.7;
-      const sz = 10 + Math.random() * 18;
+      const sx = 12 + Math.random() * 20;
+      const sy = 0.06 + Math.random() * 0.08;
+      const sz = 12 + Math.random() * 20;
       const hill = new THREE.Mesh(
         new THREE.SphereGeometry(1, 36, 27),
         i % 2 === 0 ? grassDarkMat : grassLightMat,
       );
       hill.scale.set(sx, sy, sz);
-      hill.position.set(
-        (Math.random() - 0.5) * w * 0.9,
-        sy * 0.3,
-        (Math.random() - 0.5) * d * 0.9,
-      );
+      const hx = (Math.random() - 0.5) * w * 0.9;
+      const hz = (Math.random() - 0.5) * d * 0.9;
+      hill.position.set(hx, getTerrainHeight(hx, hz, 1.4) + sy * 0.3, hz);
       mctx.scene.add(hill);
     }
 

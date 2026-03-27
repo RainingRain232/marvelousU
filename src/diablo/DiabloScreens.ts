@@ -4141,7 +4141,9 @@ export function showTalentTree(ctx: ScreenContext): void {
               box-shadow:inset 0 0 20px rgba(0,0,0,0.2);text-align:center;">
               ${summaryHtml}
             </div>
-            <div style="margin-top:12px;color:#888;font-size:12px;text-align:center;">Press T or Escape to close</div>
+            <div style="margin-top:12px;color:#888;font-size:13px;text-align:center;">
+              <span style="color:#5a8a2a;">Left-click</span> to assign &nbsp;\u2022&nbsp; <span style="color:#aa4444;">Right-click</span> to remove &nbsp;\u2022&nbsp; Press T or Escape to close
+            </div>
           </div>
         </div>`;
 
@@ -4165,7 +4167,7 @@ export function showTalentTree(ctx: ScreenContext): void {
           });
           el.addEventListener("mouseleave", () => {
             el.style.borderColor = "#5a8a2a";
-            el.style.boxShadow = "none";
+            el.style.boxShadow = rank > 0 ? "0 0 8px rgba(90,138,42,0.2)" : "none";
           });
           el.addEventListener("click", () => {
             p.talents[node.id] = (p.talents[node.id] || 0) + 1;
@@ -4174,6 +4176,32 @@ export function showTalentTree(ctx: ScreenContext): void {
             ctx.recalculatePlayerStats();
             renderTree();
           });
+        }
+
+        // Right-click to remove a point
+        if (rank > 0) {
+          el.addEventListener("contextmenu", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            p.talents[node.id] = Math.max(0, (p.talents[node.id] || 0) - 1);
+            if (p.talents[node.id] === 0) delete p.talents[node.id];
+            p.talentPoints++;
+            ctx.setStatsDirty(); ctx.setTalentsDirty();
+            ctx.recalculatePlayerStats();
+            renderTree();
+          });
+          if (!canInvest) {
+            // Still need hover effects for removable nodes
+            el.addEventListener("mouseenter", () => {
+              el.style.borderColor = "#aa4444";
+              el.style.boxShadow = "0 0 10px rgba(180,60,60,0.3)";
+            });
+            el.addEventListener("mouseleave", () => {
+              el.style.borderColor = isMaxed ? "#ffd700" : "#5a8a2a";
+              el.style.boxShadow = isMaxed ? "0 0 10px rgba(255,215,0,0.2),inset 0 0 10px rgba(255,215,0,0.05)" : "0 0 8px rgba(90,138,42,0.2)";
+            });
+          }
+          el.style.cursor = "pointer";
         }
       });
     };
