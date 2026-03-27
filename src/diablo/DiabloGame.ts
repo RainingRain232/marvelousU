@@ -1,4 +1,5 @@
 import { DiabloRenderer, getTerrainHeight } from "./DiabloRenderer";
+import davinciBg from './davinci.jpg';
 import { hasSave, saveGame, showSaveRecoveryPrompt } from "./DiabloSaveLoad";
 import { loadLeaderboard, saveLeaderboard, addLeaderboardEntry, showLeaderboard } from "./DiabloLeaderboard";
 import { DiabloNetwork } from './DiabloNetwork';
@@ -454,14 +455,61 @@ export class DiabloGame {
   //  BOOT
   // ──────────────────────────────────────────────────────────────
   async boot(): Promise<void> {
+    // ── Loading screen ──
+    const loadingEl = document.createElement("div");
+    loadingEl.style.cssText = `
+      position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;
+      background:#080604;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      font-family:'Georgia','Palatino Linotype','Book Antiqua',serif;color:#c8a84e;
+    `;
+    loadingEl.innerHTML = `
+      <div style="font-size:42px;letter-spacing:6px;text-shadow:0 0 20px rgba(200,168,78,0.4);margin-bottom:16px;">
+        DIABLO MODE
+      </div>
+      <div style="font-size:14px;color:#887766;letter-spacing:3px;margin-bottom:30px;">
+        Preparing the realm...
+      </div>
+      <div style="width:300px;height:6px;background:rgba(90,74,42,0.3);border-radius:3px;overflow:hidden;border:1px solid #3a2a1a;">
+        <div id="diablo-load-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#8b6914,#c8a84e);border-radius:3px;transition:width 0.3s;"></div>
+      </div>
+      <div id="diablo-load-text" style="font-size:11px;color:#665533;margin-top:10px;">Loading assets...</div>
+    `;
+    document.body.appendChild(loadingEl);
+    const loadBar = loadingEl.querySelector("#diablo-load-bar") as HTMLDivElement;
+    const loadText = loadingEl.querySelector("#diablo-load-text") as HTMLDivElement;
+
+    const setProgress = (pct: number, text: string) => {
+      loadBar.style.width = `${pct}%`;
+      loadText.textContent = text;
+    };
+
+    // Step 1: Preload background image
+    setProgress(10, "Loading background art...");
+    await new Promise<void>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve(); // continue even if image fails
+      img.src = davinciBg;
+    });
+
+    // Step 2: Initialize state
+    setProgress(30, "Initializing game state...");
     this._state = createDefaultState();
     this._loadLeaderboard();
     this._loadKeyBindings();
+
+    // Step 3: Initialize renderer
+    setProgress(50, "Preparing renderer...");
     const w = window.innerWidth;
     const h = window.innerHeight;
     this._renderer = new DiabloRenderer();
     this._renderer.init(w, h);
     document.body.appendChild(this._renderer.canvas);
+
+    // Allow a frame for the renderer to set up
+    await new Promise(r => requestAnimationFrame(r));
+    setProgress(70, "Building interface...");
 
     // HUD overlay
     this._hud = document.createElement("div");
@@ -511,7 +559,19 @@ export class DiabloGame {
       }
     });
 
+    setProgress(85, "Building HUD...");
     this._buildHUD();
+
+    // Allow a frame for DOM to settle
+    await new Promise(r => requestAnimationFrame(r));
+    setProgress(100, "Ready!");
+
+    // Fade out loading screen
+    loadingEl.style.transition = "opacity 0.4s";
+    loadingEl.style.opacity = "0";
+    await new Promise(r => setTimeout(r, 400));
+    loadingEl.remove();
+
     this._showClassSelect();
     this._lastTime = performance.now();
     this._rafId = requestAnimationFrame(this._gameLoop);

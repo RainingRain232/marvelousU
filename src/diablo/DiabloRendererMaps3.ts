@@ -3708,39 +3708,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       mctx.scene.add(butterfly);
     }
 
-    // ── Small winding streams ──
-    for (let i = 0; i < 3; i++) {
-      const brook = new THREE.Group();
-      const segments = 8 + Math.floor(Math.random() * 5);
-      let bx = (Math.random() - 0.5) * w * 0.3;
-      let bz = (Math.random() - 0.5) * d * 0.4;
-      for (let s = 0; s < segments; s++) {
-        const segW = 1.5 + Math.random() * 1;
-        const seg = new THREE.Mesh(new THREE.PlaneGeometry(segW, 5), waterMat);
-        seg.rotation.x = -Math.PI / 2;
-        seg.position.set(bx, 0.035, bz);
-        const dir = Math.random() * Math.PI * 0.5 - Math.PI * 0.25;
-        seg.rotation.z = dir;
-        brook.add(seg);
-        bx += Math.cos(dir + Math.PI / 2) * 4;
-        bz += Math.sin(dir + Math.PI / 2) * 4;
-      }
-      // Stream bank pebbles
-      for (let p = 0; p < 15; p++) {
-        const pebble = new THREE.Mesh(
-          new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 17, 16),
-          new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.9 }),
-        );
-        pebble.scale.y = 0.4;
-        pebble.position.set(
-          (Math.random() - 0.5) * w * 0.3,
-          0.02,
-          (Math.random() - 0.5) * d * 0.3,
-        );
-        brook.add(pebble);
-      }
-      mctx.scene.add(brook);
-    }
+    // Small winding streams removed — main creek/stream provides water features
 
     // ── Wooden fences (field dividers) ──
     for (let i = 0; i < 6; i++) {
