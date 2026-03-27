@@ -147,6 +147,32 @@ export function generateVendorInventory(type: VendorType, playerLevel: number): 
   return items;
 }
 
+// Generate a small, cheap inventory for the portal NPC (very minor items)
+export function generatePortalNpcInventory(playerLevel: number): DiabloItem[] {
+  const items: DiabloItem[] = [];
+  const db = ITEM_DATABASE;
+
+  // Only common and uncommon items, low level
+  const allowedTypes = [ItemType.SWORD, ItemType.DAGGER, ItemType.BOW, ItemType.BOOTS, ItemType.HELMET, ItemType.CHEST_ARMOR, ItemType.RING];
+  const eligible = db.filter(item =>
+    allowedTypes.includes(item.type) &&
+    item.rarity === ItemRarity.COMMON &&
+    item.level <= Math.max(1, playerLevel - 2)
+  );
+
+  // Pick 3-5 cheap items
+  const count = 3 + Math.floor(Math.random() * 3);
+  const shuffled = [...eligible].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+    const item = { ...shuffled[i], id: `portal_npc_${i}` };
+    // Halve the price — he's a humble peddler
+    item.value = Math.max(1, Math.floor(item.value * 0.5));
+    items.push(item);
+  }
+
+  return items;
+}
+
 // ---------------------------------------------------------------------------
 //  POTION DEFINITIONS
 // ---------------------------------------------------------------------------

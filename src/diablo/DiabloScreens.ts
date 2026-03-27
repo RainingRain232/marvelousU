@@ -6,7 +6,7 @@ import {
   DiabloState, DiabloClass, DiabloMapId, DiabloPhase, ItemRarity,
   DiabloDifficulty, SkillId, TimeOfDay, DiabloItem, DiabloEquipment,
   DiabloLoot, TalentEffectType, Weather, MapModifier,
-  DiabloVendor, VendorType, DiabloPotion, PotionType,
+  DiabloVendor, VendorType, DiabloPotion, PotionType, DiabloPortalNpc,
   CraftType, CraftingStationType, MaterialType, AdvancedCraftingRecipe,
   DiabloQuest, QuestType,
   createDefaultPlayer,
@@ -25,6 +25,8 @@ import {
   RARITY_CSS, RARITY_GLOW, RARITY_BORDER, RARITY_BG, RARITY_BADGE,
   RARITY_TIER, rarityNeedsAnim, resolveEquipKey,
   VENDOR_DIALOGUE,
+  PORTAL_NPC_RUMORS, PORTAL_NPC_GENERIC_RUMORS, PORTAL_NPC_GREETING,
+  PORTAL_NPC_NAME,
 } from "./DiabloConstants";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -4573,6 +4575,258 @@ export function showVendorShop(ctx: ScreenContext, vendor: DiabloVendor): void {
           renderShop();
         });
       }
+    };
+
+    renderShop();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  15b. showPortalNpcShop — Old Cedric the Wayfarer (portal NPC on adventure maps)
+// ════════════════════════════════════════════════════════════════════════════
+
+export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapId: DiabloMapId): void {
+    const p = ctx.state.player;
+    ctx.setPhaseBeforeOverlay(DiabloPhase.PLAYING);
+    ctx.state.phase = DiabloPhase.INVENTORY;
+
+    // Build the rumor pool for this map
+    const mapRumors = PORTAL_NPC_RUMORS[mapId] || [];
+    const allRumors = [...mapRumors, ...PORTAL_NPC_GENERIC_RUMORS];
+    let rumorIdx = 0;
+
+    const renderShop = () => {
+      // Wares grid
+      let waresHtml = "";
+      for (let i = 0; i < npc.inventory.length; i++) {
+        const item = npc.inventory[i];
+        const rarityColor = RARITY_CSS[item.rarity];
+        const canAfford = p.gold >= item.value;
+        const priceColor = canAfford ? "#ffd700" : "#ff4444";
+        waresHtml += `
+          <div class="npc-ware" data-ware-idx="${i}" style="
+            width:110px;height:110px;background:rgba(15,10,5,0.9);border:2px solid ${rarityColor};
+            border-radius:6px;display:flex;flex-direction:column;align-items:center;
+            justify-content:center;cursor:pointer;pointer-events:auto;position:relative;
+            transition:border-color 0.2s,box-shadow 0.2s;
+          ">
+            <div style="font-size:28px;">${item.icon}</div>
+            <div style="font-size:12px;color:${rarityColor};margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;text-align:center;">${item.name}</div>
+            <div style="font-size:11px;color:${priceColor};margin-top:2px;">\uD83E\uDE99 ${item.value}</div>
+          </div>`;
+      }
+      if (npc.inventory.length === 0) {
+        waresHtml = `<div style="color:#888;font-size:14px;grid-column:1/-1;text-align:center;padding:30px;">I've nothing left to sell, I'm afraid.</div>`;
+      }
+
+      // Potion wares (minor potions only)
+      const npcPotions: DiabloPotion[] = [
+        { id: 'npc_hp_s', name: 'Small HP Potion', icon: '\u{1F9EA}', type: PotionType.HEALTH, value: 100, cooldown: 5, cost: 15 },
+        { id: 'npc_mp_s', name: 'Small Mana Potion', icon: '\u{1FAE7}', type: PotionType.MANA, value: 80, cooldown: 5, cost: 12 },
+      ];
+      let potionHtml = "";
+      for (let i = 0; i < npcPotions.length; i++) {
+        const pot = npcPotions[i];
+        const canAfford = p.gold >= pot.cost;
+        const priceColor = canAfford ? "#ffd700" : "#ff4444";
+        potionHtml += `
+          <div class="npc-potion" data-potion-idx="${i}" style="
+            width:110px;height:110px;background:rgba(15,10,5,0.9);border:2px solid #3a5a2a;
+            border-radius:6px;display:flex;flex-direction:column;align-items:center;
+            justify-content:center;cursor:pointer;pointer-events:auto;
+            transition:border-color 0.2s,box-shadow 0.2s;
+          ">
+            <div style="font-size:28px;">${pot.icon}</div>
+            <div style="font-size:12px;color:#88cc88;margin-top:4px;">${pot.name}</div>
+            <div style="font-size:11px;color:${priceColor};margin-top:2px;">\uD83E\uDE99 ${pot.cost}</div>
+          </div>`;
+      }
+
+      const currentRumor = allRumors[rumorIdx % allRumors.length];
+
+      let statusHtml = `<div id="npc-status" style="min-height:24px;color:#aaa;font-size:13px;text-align:center;margin-top:8px;"></div>`;
+
+      ctx.menuEl.innerHTML = `
+        <div style="
+          position:fixed;top:0;left:0;width:100%;height:100%;
+          background:rgba(5,3,1,0.92);display:flex;flex-direction:column;
+          align-items:center;justify-content:center;z-index:1000;
+          font-family:'Palatino Linotype','Book Antiqua',Palatino,serif;color:#e8dcc8;
+          pointer-events:auto;
+        ">
+          <div style="max-width:700px;width:90%;max-height:90vh;overflow-y:auto;padding:20px;">
+            <!-- Header -->
+            <div style="text-align:center;margin-bottom:16px;">
+              <div style="font-size:11px;color:#665533;letter-spacing:3px;margin-bottom:4px;">WAYFARER</div>
+              <div style="font-size:22px;color:#c8a84e;font-weight:bold;text-shadow:0 0 8px rgba(200,168,78,0.3);">
+                \uD83E\uDDD3 ${npc.name}
+              </div>
+              <div style="font-size:13px;color:#887766;margin-top:4px;font-style:italic;">
+                "Humble peddler and keeper of old tales"
+              </div>
+            </div>
+
+            <!-- Rumor / Lore section -->
+            <div style="
+              background:rgba(20,15,8,0.9);border:1px solid #3a3020;border-radius:8px;
+              padding:16px;margin-bottom:16px;
+            ">
+              <div style="font-size:11px;color:#665533;letter-spacing:2px;margin-bottom:8px;">RUMOR</div>
+              <div id="npc-rumor-text" style="font-size:14px;color:#ccbb99;line-height:1.6;font-style:italic;">
+                "${currentRumor}"
+              </div>
+              <div style="text-align:right;margin-top:10px;">
+                <button id="npc-rumor-btn" style="
+                  background:rgba(40,35,20,0.9);border:1px solid #5a4a2a;color:#c8a84e;
+                  padding:6px 16px;border-radius:4px;cursor:pointer;font-size:12px;
+                  font-family:inherit;transition:border-color 0.2s,background 0.2s;
+                ">Another Rumor</button>
+              </div>
+            </div>
+
+            <!-- Wares -->
+            <div style="
+              background:rgba(20,15,8,0.9);border:1px solid #3a3020;border-radius:8px;
+              padding:16px;margin-bottom:12px;
+            ">
+              <div style="font-size:11px;color:#665533;letter-spacing:2px;margin-bottom:10px;">WARES</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+                ${waresHtml}
+              </div>
+            </div>
+
+            <!-- Potions -->
+            <div style="
+              background:rgba(20,15,8,0.9);border:1px solid #3a3020;border-radius:8px;
+              padding:16px;margin-bottom:12px;
+            ">
+              <div style="font-size:11px;color:#665533;letter-spacing:2px;margin-bottom:10px;">POTIONS</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
+                ${potionHtml}
+              </div>
+            </div>
+
+            <!-- Gold & Status -->
+            <div style="text-align:center;margin-bottom:12px;">
+              <span style="color:#ffd700;font-size:14px;">\uD83E\uDE99 ${p.gold} Gold</span>
+            </div>
+            ${statusHtml}
+
+            <!-- Close -->
+            <div style="text-align:center;margin-top:12px;">
+              <button id="npc-close-btn" style="
+                background:rgba(40,30,15,0.9);border:2px solid #5a4a2a;color:#c8a84e;
+                padding:10px 40px;border-radius:6px;cursor:pointer;font-size:15px;
+                font-family:inherit;letter-spacing:2px;
+                transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;
+              ">CLOSE</button>
+            </div>
+          </div>
+        </div>`;
+
+      const showStatus = (msg: string, color: string) => {
+        const el = ctx.menuEl.querySelector("#npc-status") as HTMLDivElement | null;
+        if (el) { el.textContent = msg; el.style.color = color; }
+      };
+
+      // Wire up ware buy clicks
+      const wareSlots = ctx.menuEl.querySelectorAll(".npc-ware") as NodeListOf<HTMLDivElement>;
+      wareSlots.forEach((el) => {
+        const idx = parseInt(el.getAttribute("data-ware-idx")!, 10);
+        el.addEventListener("mouseenter", (ev) => showItemTooltip(ctx, ev, npc.inventory[idx]));
+        el.addEventListener("mouseleave", () => ctx.hideItemTooltip());
+        el.addEventListener("click", () => {
+          const item = npc.inventory[idx];
+          if (!item) return;
+          if (p.gold < item.value) {
+            showStatus("Not enough gold!", "#ff4444");
+            return;
+          }
+          p.gold -= item.value;
+          p.stats.totalGoldSpent += item.value;
+          const slot = p.inventory.find(s => s.item === null);
+          if (slot) {
+            slot.item = { ...item, id: ctx.genId() };
+          } else {
+            p.inventory.push({ item: { ...item, id: ctx.genId() }, locked: false });
+          }
+          npc.inventory.splice(idx, 1);
+          showStatus(`Purchased ${item.name}!`, "#44ff44");
+          renderShop();
+        });
+      });
+
+      // Wire up potion buy clicks
+      const potionSlots = ctx.menuEl.querySelectorAll(".npc-potion") as NodeListOf<HTMLDivElement>;
+      potionSlots.forEach((el) => {
+        const idx = parseInt(el.getAttribute("data-potion-idx")!, 10);
+        el.addEventListener("mouseenter", () => {
+          el.style.boxShadow = "0 0 12px rgba(60,180,60,0.3)";
+          el.style.borderColor = "#5a8a2a";
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.boxShadow = "none";
+          el.style.borderColor = "#3a5a2a";
+        });
+        el.addEventListener("click", () => {
+          const pot = npcPotions[idx];
+          if (!pot) return;
+          if (p.gold < pot.cost) {
+            showStatus("Not enough gold!", "#ff4444");
+            return;
+          }
+          p.gold -= pot.cost;
+          p.stats.totalGoldSpent += pot.cost;
+          const newPot: DiabloPotion = { ...pot, id: ctx.genId() };
+          let assigned = false;
+          for (let s = 0; s < 4; s++) {
+            if (!p.potionSlots[s]) {
+              p.potionSlots[s] = newPot;
+              assigned = true;
+              break;
+            }
+          }
+          if (!assigned) {
+            p.potions.push(newPot);
+          }
+          showStatus(`Purchased ${pot.name}!`, "#44ff44");
+          renderShop();
+        });
+      });
+
+      // Wire up rumor button
+      const rumorBtn = ctx.menuEl.querySelector("#npc-rumor-btn") as HTMLButtonElement | null;
+      if (rumorBtn) {
+        rumorBtn.addEventListener("click", () => {
+          rumorIdx = (rumorIdx + 1) % allRumors.length;
+          const textEl = ctx.menuEl.querySelector("#npc-rumor-text") as HTMLDivElement | null;
+          if (textEl) textEl.textContent = `"${allRumors[rumorIdx]}"`;
+        });
+        rumorBtn.addEventListener("mouseenter", () => {
+          rumorBtn.style.borderColor = "#c8a84e";
+          rumorBtn.style.background = "rgba(50,40,20,0.95)";
+        });
+        rumorBtn.addEventListener("mouseleave", () => {
+          rumorBtn.style.borderColor = "#5a4a2a";
+          rumorBtn.style.background = "rgba(40,35,20,0.9)";
+        });
+      }
+
+      // Wire up close button
+      const closeBtn = ctx.menuEl.querySelector("#npc-close-btn") as HTMLButtonElement;
+      closeBtn.addEventListener("mouseenter", () => {
+        closeBtn.style.borderColor = "#c8a84e";
+        closeBtn.style.boxShadow = "0 0 15px rgba(200,168,78,0.3)";
+        closeBtn.style.background = "rgba(50,40,20,0.95)";
+      });
+      closeBtn.addEventListener("mouseleave", () => {
+        closeBtn.style.borderColor = "#5a4a2a";
+        closeBtn.style.boxShadow = "none";
+        closeBtn.style.background = "rgba(40,30,15,0.9)";
+      });
+      closeBtn.addEventListener("click", () => {
+        ctx.state.phase = DiabloPhase.PLAYING;
+        ctx.menuEl.innerHTML = "";
+      });
     };
 
     renderShop();

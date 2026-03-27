@@ -1402,6 +1402,16 @@ export interface DiabloTownfolk {
   wanderRadius: number;
 }
 
+export interface DiabloPortalNpc {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  z: number;
+  angle: number;
+  inventory: DiabloItem[];
+}
+
 export interface DiabloAOE {
   id: string;
   x: number;
@@ -1645,6 +1655,7 @@ export interface DiabloState {
   particles: DiabloParticle[];
   vendors: DiabloVendor[];
   townfolk: DiabloTownfolk[];
+  portalNpc: DiabloPortalNpc | null;
   currentMap: DiabloMapId;
   camera: {
     x: number;
@@ -2138,6 +2149,7 @@ export function createDefaultState(): DiabloState {
     particles: [],
     vendors: [],
     townfolk: [],
+    portalNpc: null,
     currentMap: DiabloMapId.FOREST,
     camera: {
       x: 0,

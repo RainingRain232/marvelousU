@@ -390,6 +390,106 @@ export const MAP_LORE_POINTS: Partial<Record<DiabloMapId, LorePoint[]>> = {
   ],
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Portal NPC — a wandering hermit near the town portal on adventure maps
+// ────────────────────────────────────────────────────────────────────────────
+export const PORTAL_NPC_NAME = "Old Cedric the Wayfarer";
+
+export const PORTAL_NPC_GREETING: string[] = [
+  "Ah, another soul brave enough to venture here. Come, rest a moment by the portal.",
+  "The portal hums with Camelot's magic. As long as it stands, there is hope.",
+  "I've wandered these lands since before Mordred's betrayal. I know a thing or two.",
+  "Need supplies? I carry a few odds and ends. Nothing fancy, but it'll keep you alive.",
+  "Take care out there. The darkness is thicker than it used to be.",
+];
+
+export const PORTAL_NPC_RUMORS: Partial<Record<DiabloMapId, string[]>> = {
+  [DiabloMapId.EMERALD_GRASSLANDS]: [
+    "The grasslands were Camelot's breadbasket once. Now raiders burn the fields and the beasts have gone feral.",
+    "Warchief Garon's raiders took something precious from Sir Percival — a piece of Excalibur's crossguard. He wears it as a trophy.",
+    "The old windmill to the west still turns on windless nights. The miller's ghost doesn't know he's dead.",
+  ],
+  [DiabloMapId.FOREST]: [
+    "The Great Oak at the forest's heart bleeds black sap since Morgan le Fay planted a shard of Excalibur in its roots.",
+    "Poachers used to hunt these woods. Then the trees started hunting them back. The forest is alive — and angry.",
+    "I heard whispers of a silver stag deep in the woods. Druids say it guards the path to something ancient.",
+  ],
+  [DiabloMapId.SUNSCORCH_DESERT]: [
+    "Sir Bedivere's tomb glows blue at night. He still clutches the Pommel of Excalibur, even in death.",
+    "The oasis to the south looks inviting, but its waters are poisoned. Many careless travelers never left.",
+    "A buried colossus lies beneath the dunes — a titan felled in an age before memory. Its fingers shift between visits.",
+  ],
+  [DiabloMapId.NECROPOLIS_DUNGEON]: [
+    "Sir Lancelot went down alone to reclaim the Blade Core. Mordred's necromancers killed him and raised his corpse as a guardian.",
+    "Ten thousand skulls line the entrance. Soldiers of the Last Crusade, still standing watch after all these years.",
+    "The dead do not rest here. Whatever lurks below is older than the catacombs themselves.",
+  ],
+  [DiabloMapId.VOLCANIC_WASTES]: [
+    "The demon Balor consumed Merlin's essence along with the Enchantment Rune. He burns in the deepest caldera.",
+    "Blacksmiths once forged legendary weapons in these natural furnaces. The last sword made here — Ashbringer — shattered and started a wildfire that still burns.",
+    "The air reeks of brimstone and stolen magic. Something terrible feeds on Merlin's power here.",
+  ],
+  [DiabloMapId.ELVEN_VILLAGE]: [
+    "Archon Sylvaris went mad when they brought the Upper Blade to the crystal spire. The fragment's power shattered his mind.",
+    "The singing fountain still hums, but its song has turned to a dirge. The elves who remain are half-shadow now.",
+    "The elves sealed their village after the corruption. Whatever the Archon found, it broke him beyond repair.",
+  ],
+  [DiabloMapId.ABYSSAL_RIFT]: [
+    "Morgan le Fay fled into the void with the Scabbard. She's preparing a ritual to destroy it — you must hurry.",
+    "Time flows differently inside the Rift. A moment inside can be an hour outside, or the reverse.",
+    "The Scabbard grants invulnerability. Without it, Mordred can still be slain — that's why Morgan hides it here.",
+  ],
+  [DiabloMapId.DRAGONS_SANCTUM]: [
+    "Aurelion the Eternal bonded with Excalibur's sentient core. The Soul of the Blade chose the dragon to survive.",
+    "Mountains of gold stretch as far as the eye can see. Each coin bears the face of a conquered king.",
+    "The Soul will not yield to the unworthy — but it yearns to be whole again. Prove yourself.",
+  ],
+  [DiabloMapId.WHISPERING_MARSH]: [
+    "Sir Galahad wrapped the Hilt Binding in holy cloth and sank it in the marsh, hoping the corruption would never find it.",
+    "The swamp has eyes and teeth. Bog gas and ancient magic mix in ways that drive men mad.",
+    "Deep within the miasma, Galahad's spirit still guards what he died to protect.",
+  ],
+  [DiabloMapId.CRYSTAL_CAVERNS]: [
+    "Merlin embedded a crystal focus in Excalibur to channel ley lines. When the blade shattered, the focus fell into the earth.",
+    "Strike any crystal here and the entire cavern hums. One forbidden chord could collapse the mountain.",
+    "The Prismatic Wyrm has swallowed the Crystal Focus whole. You'll have to cut it out of the beast.",
+  ],
+  [DiabloMapId.FROZEN_TUNDRA]: [
+    "Sir Gawain carried the Frozen Edge to the tundra's heart and froze it in place with his dying breath.",
+    "An entire army stands encased in ice, swords raised mid-charge. Whatever froze them, they never saw it coming.",
+    "Only by slaying the Glacial Titan can the eternal ice be broken and the fragment reclaimed.",
+  ],
+  [DiabloMapId.HAUNTED_CATHEDRAL]: [
+    "The Archbishop was tasked with guarding Excalibur's divine enchantment, but Mordred's curse turned faith to madness.",
+    "Holy symbols have been inverted, prayer books rewritten in blood. The voice below the crypt still whispers.",
+    "Free the spirits of the corrupted priests to reclaim the Sacred Blessing.",
+  ],
+  [DiabloMapId.THORNWOOD_THICKET]: [
+    "The Lady of the Lake embedded life into Excalibur. When the blade shattered, the heartwood shard grew roots and became part of the thicket.",
+    "The Thornmother has absorbed the Living Heartwood into her being. She must be slain to reclaim it.",
+    "Watch your step — the thorns here are alive and hungry.",
+  ],
+  [DiabloMapId.CITY]: [
+    "Commander Blackthorn watches from the highest window, never sleeping. They say he traded something precious for eternal vigilance.",
+    "Thornwall's market was the busiest in the realm. Now the garrison taxes the air itself.",
+    "Merchants whisper of a resistance gathering in the sewers below the market square.",
+  ],
+  [DiabloMapId.CITY_RUINS]: [
+    "The city fell in a single night. The gate was torn apart from the inside — whatever destroyed this place was already within.",
+    "The great clocktower stopped at midnight. Scavengers avoid it — the bell tolls on its own when death walks nearby.",
+    "Corrupted watchmen still patrol their forgotten posts. They don't know the city they guard is dust.",
+  ],
+};
+
+// Fallback rumors for maps without specific entries
+export const PORTAL_NPC_GENERIC_RUMORS: string[] = [
+  "Mordred's corruption seeps deeper every day. The land itself is dying.",
+  "I've heard tell of powerful artifacts scattered across these lands. Keep your eyes sharp.",
+  "The fragments of Excalibur call out to each other. Can you feel it? A hum in the air.",
+  "Be careful of the night. Stronger creatures stir when the sun sets.",
+  "Camelot's merchants may charge more, but at least their goods are reliable. Mine are... functional.",
+];
+
 export const DAY_BOSS_MAP: Partial<Record<DiabloMapId, EnemyType>> = {
   [DiabloMapId.FOREST]: EnemyType.DAY_FOREST_STAG_GUARDIAN,
   [DiabloMapId.ELVEN_VILLAGE]: EnemyType.DAY_ELVEN_CORRUPTED_SENTINEL,

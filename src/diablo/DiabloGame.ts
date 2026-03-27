@@ -22,7 +22,7 @@ import {
   DiabloClass, DiabloMapId, DiabloPhase, ItemRarity, DiabloDifficulty,
   SkillId, EnemyState, EnemyType, StatusEffect, TimeOfDay, DamageType,
   DiabloItem, DiabloEquipment, DiabloPotion, PotionType,
-  VendorType, DiabloVendor, DiabloTownfolk, TownfolkRole,
+  VendorType, DiabloVendor, DiabloTownfolk, TownfolkRole, DiabloPortalNpc,
   BossAbility, EnemyBehavior,
   DiabloQuest, QuestType, CraftType,
   TalentEffectType,
@@ -41,7 +41,7 @@ import {
   SKILL_DEFS, MAP_CONFIGS, ENEMY_DEFS, ITEM_DATABASE, SET_BONUSES,
   LOOT_TABLES, RARITY_NAMES, XP_TABLE,
   ENEMY_SPAWN_WEIGHTS,
-  VENDOR_DEFS, generateVendorInventory,
+  VENDOR_DEFS, generateVendorInventory, generatePortalNpcInventory,
   DIFFICULTY_CONFIGS,
   BOSS_PHASE_CONFIGS,
   TALENT_TREES, TALENT_BRANCH_NAMES,
@@ -71,6 +71,7 @@ import {
   VENDOR_DIALOGUE, NIGHT_BOSS_MAP, DAY_BOSS_MAP,
   MAP_LORE_POINTS, RARITY_ORDER, MAP_NAME_MAP, WEATHER_LABELS,
   SPAWN_QUOTES,
+  PORTAL_NPC_NAME, PORTAL_NPC_GREETING, PORTAL_NPC_RUMORS, PORTAL_NPC_GENERIC_RUMORS,
 } from "./DiabloConstants";
 import {
   createAudioState, ensureAudio as ensureAudioCtx,
@@ -128,6 +129,7 @@ import {
   showSkillTreeScreen as screenShowSkillTreeScreen,
   showTalentTree as screenShowTalentTree,
   showVendorShop as screenShowVendorShop,
+  showPortalNpcShop as screenShowPortalNpcShop,
   showCraftingUI as screenShowCraftingUI,
   showAdvancedCraftingUI as screenShowAdvancedCraftingUI,
   showQuestBoard as screenShowQuestBoard,
@@ -616,7 +618,10 @@ export class DiabloGame {
       else if (e.code === "KeyQ") {
         this._useQuickPotion(PotionType.HEALTH);
       } else if (e.code === this._keyBindings.interact && this._state.currentMap !== DiabloMapId.CAMELOT) {
-        if (this._portalActive && this._dist(this._state.player.x, this._state.player.z, this._portalX, this._portalZ) < 4) {
+        const npc = this._state.portalNpc;
+        if (npc && this._dist(this._state.player.x, this._state.player.z, npc.x, npc.z) < 4) {
+          this._showPortalNpcShop(npc);
+        } else if (this._portalActive && this._dist(this._state.player.x, this._state.player.z, this._portalX, this._portalZ) < 4) {
           this._useTownPortal();
         } else {
           this._useQuickPotion(PotionType.MANA);
@@ -815,6 +820,15 @@ export class DiabloGame {
           }
           if (nearestVendor) {
             this._showVendorShop(nearestVendor);
+            return;
+          }
+        }
+
+        // Check portal NPC interaction on non-Camelot maps
+        if (this._state.currentMap !== DiabloMapId.CAMELOT && this._state.portalNpc) {
+          const npc = this._state.portalNpc;
+          if (this._dist(this._state.player.x, this._state.player.z, npc.x, npc.z) < 4) {
+            this._showPortalNpcShop(npc);
             return;
           }
         }
@@ -1057,6 +1071,7 @@ export class DiabloGame {
     if (mapId === DiabloMapId.CAMELOT) {
       // Camelot is a safe hub: no enemies, no dungeon
       this._state.dungeonLayout = null;
+      this._state.portalNpc = null;
       // Place town portal near the entrance of Camelot
       this._portalX = 0;
       this._portalZ = gridD / 2 - 5;
@@ -1088,6 +1103,17 @@ export class DiabloGame {
       this._portalZ = gridD / 2;
       this._portalActive = true;
       this._renderer.showPortalRune(this._portalX, this._portalZ);
+
+      // Spawn portal NPC near the town portal
+      this._state.portalNpc = {
+        id: this._genId(),
+        name: PORTAL_NPC_NAME,
+        x: this._portalX + 3,
+        y: 0,
+        z: this._portalZ + 2,
+        angle: Math.PI * 0.75,
+        inventory: generatePortalNpcInventory(this._state.player.level),
+      };
 
       this._state.dungeonLayout = null;
 
@@ -4484,6 +4510,12 @@ export class DiabloGame {
   private _vendorDialogueIdx: Record<string, number> = {};
 
   private _showVendorShop(vendor: DiabloVendor): void { screenShowVendorShop(this._screenCtx(), vendor); }
+
+  private _showPortalNpcShop(npc: DiabloPortalNpc): void {
+    const greeting = PORTAL_NPC_GREETING[Math.floor(Math.random() * PORTAL_NPC_GREETING.length)];
+    this._addFloatingText(npc.x, npc.y + 2, npc.z, `"${greeting}"`, '#ffd700');
+    screenShowPortalNpcShop(this._screenCtx(), npc, this._state.currentMap);
+  }
 
   // ──────────────────────────────────────────────────────────────
   //  MINIMAP

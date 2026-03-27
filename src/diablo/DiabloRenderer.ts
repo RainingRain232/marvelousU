@@ -57,6 +57,8 @@ export class DiabloRenderer {
   private _aoeMeshes: Map<string, THREE.Group> = new Map();
   private _vendorMeshes: Map<string, THREE.Group> = new Map();
   private _townfolkMeshes: Map<string, THREE.Group> = new Map();
+  private _portalNpcMesh: THREE.Group | null = null;
+  private _portalNpcId: string | null = null;
   private _floatTextSprites: Map<string, THREE.Sprite> = new Map();
   private _envGroup!: THREE.Group;
   private _currentMap: DiabloMapId | null = null;
@@ -938,6 +940,7 @@ export class DiabloRenderer {
     for (const [, m] of this._aoeMeshes) persistent.add(m);
     for (const [, m] of this._vendorMeshes) persistent.add(m);
     for (const [, m] of this._townfolkMeshes) persistent.add(m);
+    if (this._portalNpcMesh) persistent.add(this._portalNpcMesh);
     for (const [, m] of this._floatTextSprites) persistent.add(m);
     for (const [, m] of this._shieldMeshes) persistent.add(m);
     for (const [, m] of this._healBeams) persistent.add(m);
@@ -2931,6 +2934,36 @@ export class DiabloRenderer {
         this._scene.remove(mesh);
       }
       this._townfolkMeshes.clear();
+    }
+
+    // -- Portal NPC (non-Camelot maps) --
+    if (state.portalNpc) {
+      const npc = state.portalNpc;
+      if (this._portalNpcId !== npc.id) {
+        // Remove old mesh
+        if (this._portalNpcMesh) {
+          this._disposeObject3D(this._portalNpcMesh);
+          this._scene.remove(this._portalNpcMesh);
+        }
+        this._portalNpcMesh = this._buildTownfolkMesh('monk');
+        this._scene.add(this._portalNpcMesh);
+        this._portalNpcId = npc.id;
+      }
+      if (this._portalNpcMesh) {
+        this._portalNpcMesh.position.set(npc.x, npc.y, npc.z);
+        this._portalNpcMesh.rotation.y = npc.angle;
+        // Idle gentle sway
+        const sway = Math.sin(this._time * 1.2) * 0.04;
+        const leftArm = this._portalNpcMesh.getObjectByName('tf_left_arm');
+        const rightArm = this._portalNpcMesh.getObjectByName('tf_right_arm');
+        if (leftArm) leftArm.rotation.x = sway;
+        if (rightArm) rightArm.rotation.x = -sway;
+      }
+    } else if (this._portalNpcMesh) {
+      this._disposeObject3D(this._portalNpcMesh);
+      this._scene.remove(this._portalNpcMesh);
+      this._portalNpcMesh = null;
+      this._portalNpcId = null;
     }
 
     // -- Pets --
@@ -5734,6 +5767,13 @@ export class DiabloRenderer {
       this._scene.remove(mesh);
     }
     this._townfolkMeshes.clear();
+
+    if (this._portalNpcMesh) {
+      this._disposeObject3D(this._portalNpcMesh);
+      this._scene.remove(this._portalNpcMesh);
+      this._portalNpcMesh = null;
+      this._portalNpcId = null;
+    }
 
     for (const [, mesh] of this._shieldMeshes) {
       this._disposeObject3D(mesh);
