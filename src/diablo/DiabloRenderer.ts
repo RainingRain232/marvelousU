@@ -1885,6 +1885,262 @@ export class DiabloRenderer {
     return mesh;
   }
 
+  /** Build a custom detailed mesh for the portal NPC (Old Cedric the Wayfarer). */
+  private _buildPortalNpcMesh(): THREE.Group {
+    const mesh = new THREE.Group();
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xc8a070, roughness: 0.75 });
+    const cloakMat = new THREE.MeshStandardMaterial({ color: 0x4a3828, roughness: 0.85 });
+    const cloakDarkMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.9 });
+    const robeAccentMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.8 });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.8 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x887755, metalness: 0.4, roughness: 0.5 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 });
+    const warmGlowMat = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff8822, emissiveIntensity: 1.5, transparent: true, opacity: 0.8 });
+
+    // Head (weathered old face)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16), skinMat);
+    head.position.y = 1.4;
+    head.castShadow = true;
+    mesh.add(head);
+
+    // Wrinkled brow
+    for (let w = 0; w < 3; w++) {
+      const wrinkle = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.12, 6), new THREE.MeshStandardMaterial({ color: 0xa08050, roughness: 0.9 }));
+      wrinkle.position.set(0, 1.46 + w * 0.015, 0.13);
+      wrinkle.rotation.z = Math.PI / 2;
+      mesh.add(wrinkle);
+    }
+
+    // Eyes
+    const eyeDarkMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    for (const side of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), new THREE.MeshStandardMaterial({ color: 0xeeeedd }));
+      eye.position.set(side * 0.05, 1.42, 0.12);
+      mesh.add(eye);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.013, 8, 6), eyeDarkMat);
+      pupil.position.set(side * 0.05, 1.42, 0.14);
+      mesh.add(pupil);
+    }
+
+    // Bushy eyebrows
+    for (const side of [-1, 1]) {
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.02), new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.9 }));
+      brow.position.set(side * 0.05, 1.455, 0.12);
+      brow.rotation.z = side * -0.15;
+      mesh.add(brow);
+    }
+
+    // Nose (prominent, old man)
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), skinMat);
+    nose.position.set(0, 1.39, 0.15);
+    nose.scale.set(0.8, 1, 1.2);
+    mesh.add(nose);
+
+    // Long beard (layered for volume)
+    const beardMat = new THREE.MeshStandardMaterial({ color: 0xbbbbaa, roughness: 0.95 });
+    const beard1 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 12), beardMat);
+    beard1.position.set(0, 1.22, 0.08);
+    beard1.rotation.x = Math.PI;
+    mesh.add(beard1);
+    const beard2 = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 10), beardMat);
+    beard2.position.set(0, 1.18, 0.1);
+    beard2.rotation.x = Math.PI;
+    mesh.add(beard2);
+    // Mustache
+    for (const side of [-1, 1]) {
+      const stache = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, 0.06, 6), beardMat);
+      stache.position.set(side * 0.03, 1.35, 0.14);
+      stache.rotation.z = side * 0.8;
+      mesh.add(stache);
+    }
+
+    // Hood (large, draped)
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 16), cloakMat);
+    hood.position.set(0, 1.46, -0.04);
+    hood.scale.set(1, 0.9, 1.15);
+    mesh.add(hood);
+    // Hood rim
+    const hoodRim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.02, 8, 20, Math.PI), cloakDarkMat);
+    hoodRim.position.set(0, 1.42, 0.06);
+    hoodRim.rotation.x = 0.3;
+    mesh.add(hoodRim);
+
+    // Neck
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.08, 12), skinMat);
+    neck.position.y = 1.3;
+    mesh.add(neck);
+
+    // Torso (robed)
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.4, 14), cloakMat);
+    torso.position.y = 1.08;
+    torso.castShadow = true;
+    mesh.add(torso);
+
+    // Robe front opening (V-shape accent)
+    const robeV = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.3), robeAccentMat);
+    robeV.position.set(0, 1.08, 0.16);
+    mesh.add(robeV);
+
+    // Belt with pouches
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.02, 8, 20), leatherMat);
+    belt.position.y = 0.88;
+    belt.rotation.x = Math.PI / 2;
+    mesh.add(belt);
+    // Belt pouches (3)
+    for (let p = 0; p < 3; p++) {
+      const pAngle = -0.4 + p * 0.4;
+      const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.03), leatherMat);
+      pouch.position.set(Math.sin(pAngle) * 0.18, 0.86, Math.cos(pAngle) * 0.18);
+      pouch.rotation.y = pAngle;
+      mesh.add(pouch);
+    }
+    // Belt buckle
+    const buckle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.015, 12), metalMat);
+    buckle.position.set(0, 0.88, 0.18);
+    buckle.rotation.x = Math.PI / 2;
+    mesh.add(buckle);
+
+    // Lower robe (cone skirt)
+    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 16), cloakMat);
+    skirt.position.y = 0.5;
+    mesh.add(skirt);
+
+    // Cloak draping from shoulders
+    const cloakBack = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.8), cloakDarkMat);
+    cloakBack.position.set(0, 0.95, -0.15);
+    cloakBack.material.side = THREE.DoubleSide;
+    mesh.add(cloakBack);
+
+    // Arms
+    for (const side of [-1, 1]) {
+      const armGroup = new THREE.Group();
+      armGroup.position.set(side * 0.22, 1.15, 0);
+      armGroup.name = side === -1 ? 'tf_left_arm' : 'tf_right_arm';
+
+      // Sleeve
+      const sleeve = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 12), cloakMat);
+      sleeve.position.y = -0.08;
+      sleeve.rotation.x = Math.PI;
+      armGroup.add(sleeve);
+
+      // Forearm
+      const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.2, 10), skinMat);
+      fore.position.y = -0.25;
+      armGroup.add(fore);
+
+      // Hand
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), skinMat);
+      hand.position.y = -0.37;
+      hand.scale.set(1, 0.6, 0.8);
+      armGroup.add(hand);
+
+      mesh.add(armGroup);
+    }
+
+    // Walking staff (right hand)
+    const staffGroup = new THREE.Group();
+    const staffShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 2.0, 10), woodMat);
+    staffShaft.position.y = 0;
+    staffGroup.add(staffShaft);
+    // Staff knots
+    for (let k = 0; k < 3; k++) {
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), woodMat);
+      knot.position.y = -0.3 + k * 0.5;
+      knot.scale.set(1.2, 0.6, 1.2);
+      staffGroup.add(knot);
+    }
+    // Staff top curl (shepherd's crook hint)
+    const curl = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 8, 16, Math.PI * 1.2), woodMat);
+    curl.position.set(0, 1.05, 0.04);
+    curl.rotation.y = Math.PI / 2;
+    staffGroup.add(curl);
+    staffGroup.position.set(0.3, 0.5, 0);
+    mesh.add(staffGroup);
+
+    // Lantern (hanging from left hand)
+    const lanternGroup = new THREE.Group();
+    lanternGroup.name = 'npc-lantern';
+    // Handle
+    const lHandle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.005, 6, 12, Math.PI), metalMat);
+    lHandle.position.y = 0.06;
+    lanternGroup.add(lHandle);
+    // Frame (4 vertical bars + top/bottom rings)
+    const lTop = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.01, 12), metalMat);
+    lTop.position.y = 0.02;
+    lanternGroup.add(lTop);
+    const lBot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 12), metalMat);
+    lBot.position.y = -0.08;
+    lanternGroup.add(lBot);
+    for (let bar = 0; bar < 4; bar++) {
+      const bAngle = (bar / 4) * Math.PI * 2;
+      const lBar = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.1, 6), metalMat);
+      lBar.position.set(Math.cos(bAngle) * 0.033, -0.03, Math.sin(bAngle) * 0.033);
+      lanternGroup.add(lBar);
+    }
+    // Glass panes (transparent warm tint)
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xffdd88, transparent: true, opacity: 0.3, roughness: 0.1 });
+    const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.08, 12), glassMat);
+    glass.position.y = -0.03;
+    lanternGroup.add(glass);
+    // Flame inside
+    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 6), warmGlowMat);
+    flame.position.y = -0.02;
+    lanternGroup.add(flame);
+    // Light
+    const lLight = new THREE.PointLight(0xffaa44, 0.8, 4, 2);
+    lLight.position.y = -0.02;
+    lLight.name = 'npc-lantern-light';
+    lanternGroup.add(lLight);
+    lanternGroup.position.set(-0.3, 0.7, 0.1);
+    mesh.add(lanternGroup);
+
+    // Backpack / travel satchel
+    const packMat = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 0.85 });
+    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.22, 0.12), packMat);
+    pack.position.set(0, 1.0, -0.2);
+    mesh.add(pack);
+    // Pack flap
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.13), leatherMat);
+    flap.position.set(0, 1.12, -0.2);
+    mesh.add(flap);
+    // Bedroll on top of pack
+    const bedroll = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 10), new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 }));
+    bedroll.position.set(0, 1.16, -0.2);
+    bedroll.rotation.z = Math.PI / 2;
+    mesh.add(bedroll);
+    // Pack straps
+    for (const side of [-1, 1]) {
+      const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.35, 6), leatherMat);
+      strap.position.set(side * 0.08, 1.08, -0.08);
+      strap.rotation.x = 0.2;
+      mesh.add(strap);
+    }
+
+    // Boots (visible below robe)
+    for (const side of [-1, 1]) {
+      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.1, 10), leatherMat);
+      boot.position.set(side * 0.08, 0.12, 0);
+      mesh.add(boot);
+      const sole = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.14), new THREE.MeshStandardMaterial({ color: 0x222218, roughness: 0.95 }));
+      sole.position.set(side * 0.08, 0.06, 0.02);
+      mesh.add(sole);
+    }
+
+    // Interaction hint glow (subtle circle on ground)
+    const hintGlow = new THREE.Mesh(
+      new THREE.RingGeometry(0.4, 0.6, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 0.5,
+        transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    hintGlow.rotation.x = -Math.PI / 2;
+    hintGlow.position.y = 0.02;
+    mesh.add(hintGlow);
+
+    return mesh;
+  }
+
   buildPlayer(cls: DiabloClass): void {
     if (this._aimLine) { this._scene.remove(this._aimLine); this._aimLine = null; }
     const ctx: PlayerBuildContext = { playerGroup: this._playerGroup, scene: this._scene, aimLine: this._aimLine };
@@ -1905,38 +2161,114 @@ export class DiabloRenderer {
   private _createLootBeam(rarity: ItemRarity): THREE.Group {
     const group = new THREE.Group();
     const color = RARITY_COLORS[rarity];
+    const rarityIdx = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE].indexOf(rarity);
+    const isHighRarity = rarityIdx >= 2; // Rare+
 
-    // Floating octahedron
-    const octGeo = new THREE.OctahedronGeometry(0.2, 3);
+    // Ground glow disc
+    const glowOpacity = 0.1 + rarityIdx * 0.04;
+    const glowSize = 0.4 + rarityIdx * 0.1;
+    const groundGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(glowSize, 20),
+      new THREE.MeshStandardMaterial({
+        color, emissive: color, emissiveIntensity: 1.0,
+        transparent: true, opacity: glowOpacity, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    groundGlow.rotation.x = -Math.PI / 2;
+    groundGlow.position.y = 0.02;
+    group.add(groundGlow);
+
+    // Ground rune ring (Uncommon+)
+    if (rarityIdx >= 1) {
+      const runeRing = new THREE.Mesh(
+        new THREE.TorusGeometry(glowSize * 0.85, 0.015, 8, 24),
+        new THREE.MeshStandardMaterial({
+          color, emissive: color, emissiveIntensity: 0.8,
+          transparent: true, opacity: glowOpacity + 0.1, depthWrite: false,
+        }),
+      );
+      runeRing.rotation.x = -Math.PI / 2;
+      runeRing.position.y = 0.03;
+      runeRing.name = 'loot-rune-ring';
+      group.add(runeRing);
+    }
+
+    // Small stone pedestal base
+    const pedestalMat = new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.85, metalness: 0.05 });
+    const pedBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.08, 12), pedestalMat);
+    pedBase.position.y = 0.04;
+    group.add(pedBase);
+    const pedTop = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.04, 12), pedestalMat);
+    pedTop.position.y = 0.1;
+    group.add(pedTop);
+
+    // Floating item crystal (main visual — octahedron with inner gem)
+    const octGeo = new THREE.OctahedronGeometry(0.22, 2);
     const octMat = new THREE.MeshStandardMaterial({
-      color: color,
-      emissive: color,
-      emissiveIntensity: 0.6,
-      metalness: 0.4,
-      roughness: 0.3,
+      color, emissive: color, emissiveIntensity: 0.5 + rarityIdx * 0.15,
+      metalness: 0.5, roughness: 0.2,
     });
     const oct = new THREE.Mesh(octGeo, octMat);
     oct.position.y = 0.5;
     oct.castShadow = true;
     group.add(oct);
 
-    // Rarity-based light beam
-    const beamCfg = rarity === ItemRarity.RARE ? { h: 4, op: 0.2, ei: 1.0 }
-      : rarity === ItemRarity.EPIC ? { h: 6, op: 0.3, ei: 1.5 }
-      : (rarity === ItemRarity.LEGENDARY || rarity === ItemRarity.MYTHIC || rarity === ItemRarity.DIVINE) ? { h: 8, op: 0.4, ei: 2.0 }
+    // Inner core gem (brighter, smaller)
+    const coreGeo = new THREE.IcosahedronGeometry(0.1, 2);
+    const coreMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, emissive: color, emissiveIntensity: 1.5 + rarityIdx * 0.3,
+      transparent: true, opacity: 0.6, depthWrite: false,
+    });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    core.position.y = 0.5;
+    core.name = 'loot-core';
+    group.add(core);
+
+    // Orbiting sparkle motes (2 for common, up to 5 for divine)
+    const moteCount = Math.min(2 + rarityIdx, 6);
+    const moteMat = new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: 2.0,
+      transparent: true, opacity: 0.6, depthWrite: false,
+    });
+    for (let m = 0; m < moteCount; m++) {
+      const mote = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), moteMat);
+      mote.position.y = 0.5;
+      mote.name = `loot-mote-${m}`;
+      group.add(mote);
+    }
+
+    // Point light for the item
+    const lightIntensity = 0.3 + rarityIdx * 0.15;
+    const lootLight = new THREE.PointLight(color, lightIntensity, 3 + rarityIdx, 2);
+    lootLight.position.y = 0.5;
+    group.add(lootLight);
+
+    // Rarity-based light beam (Rare+)
+    const beamCfg = rarity === ItemRarity.RARE ? { h: 4, op: 0.15, ei: 1.0 }
+      : rarity === ItemRarity.EPIC ? { h: 6, op: 0.2, ei: 1.5 }
+      : (rarity === ItemRarity.LEGENDARY || rarity === ItemRarity.MYTHIC || rarity === ItemRarity.DIVINE) ? { h: 8, op: 0.3, ei: 2.0 }
       : null;
     if (beamCfg) {
-      const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, beamCfg.h, 36);
+      // Outer beam
+      const beamGeo = new THREE.CylinderGeometry(0.08, 0.03, beamCfg.h, 12);
       const beamMat = new THREE.MeshStandardMaterial({
-        color: color,
-        emissive: color,
-        emissiveIntensity: beamCfg.ei,
-        transparent: true,
-        opacity: beamCfg.op,
+        color, emissive: color, emissiveIntensity: beamCfg.ei,
+        transparent: true, opacity: beamCfg.op, depthWrite: false,
       });
       const beam = new THREE.Mesh(beamGeo, beamMat);
       beam.position.y = beamCfg.h / 2 + 0.5;
       group.add(beam);
+
+      // Inner beam (brighter, thinner)
+      const innerBeam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.01, beamCfg.h * 0.9, 8),
+        new THREE.MeshStandardMaterial({
+          color: 0xffffff, emissive: color, emissiveIntensity: beamCfg.ei * 1.5,
+          transparent: true, opacity: beamCfg.op * 0.5, depthWrite: false,
+        }),
+      );
+      innerBeam.position.y = beamCfg.h / 2 + 0.5;
+      group.add(innerBeam);
     }
 
     return group;
@@ -3100,7 +3432,7 @@ export class DiabloRenderer {
           this._disposeObject3D(this._portalNpcMesh);
           this._scene.remove(this._portalNpcMesh);
         }
-        this._portalNpcMesh = this._buildTownfolkMesh('monk');
+        this._portalNpcMesh = this._buildPortalNpcMesh();
         this._scene.add(this._portalNpcMesh);
         this._portalNpcId = npc.id;
       }
@@ -3113,6 +3445,12 @@ export class DiabloRenderer {
         const rightArm = this._portalNpcMesh.getObjectByName('tf_right_arm');
         if (leftArm) leftArm.rotation.x = sway;
         if (rightArm) rightArm.rotation.x = -sway;
+        // Lantern sway
+        const lantern = this._portalNpcMesh.getObjectByName('npc-lantern');
+        if (lantern) lantern.rotation.z = Math.sin(this._time * 1.8) * 0.08;
+        // Lantern light flicker
+        const lanternLight = this._portalNpcMesh.getObjectByName('npc-lantern-light') as THREE.PointLight | undefined;
+        if (lanternLight) lanternLight.intensity = 0.8 + Math.sin(this._time * 5) * 0.15;
       }
     } else if (this._portalNpcMesh) {
       this._disposeObject3D(this._portalNpcMesh);
@@ -3566,24 +3904,34 @@ export class DiabloRenderer {
       // Status effect visuals
       this._applyStatusTint(mesh, enemy.statusEffects);
 
-      // Boss enrage glow — dramatic multi-frequency pulsing with scale throb
-      if (enemy.bossEnraged) {
+      // Boss ability glow — red flash only while activating an ability (or permanently if enraged)
+      const glowActive = (enemy.bossAbilityGlowTimer !== undefined && enemy.bossAbilityGlowTimer > 0) || enemy.bossEnraged;
+      const enrageMats = this._enemyMaterials.get(enemy.id);
+      if (glowActive) {
+        const glowFade = enemy.bossEnraged ? 1.0 : Math.min(1, enemy.bossAbilityGlowTimer! / 0.5);
         const slowPulse = Math.sin(this._time * 3) * 0.3;
         const fastPulse = Math.sin(this._time * 8) * 0.2;
-        const flicker = Math.sin(this._time * 20) * 0.1;
-        const totalPulse = 0.6 + slowPulse + fastPulse + flicker;
-        const enrageMats = this._enemyMaterials.get(enemy.id);
+        const totalPulse = (0.6 + slowPulse + fastPulse) * glowFade;
         if (enrageMats) {
           const redShift = Math.sin(this._time * 4) > 0 ? 0xff2200 : 0xff0000;
           for (const m of enrageMats) {
             m.emissive.setHex(redShift);
-            m.emissiveIntensity = 0.5 + totalPulse * 1.0;
+            m.emissiveIntensity = totalPulse * 1.0;
           }
         }
-        // Boss scale throb when enraged
+        // Boss scale throb during ability
         const enrageBaseScale = enemy.scale || 1;
-        const enrageScale = enrageBaseScale * (1.0 + Math.sin(this._time * 5) * 0.03);
+        const enrageScale = enrageBaseScale * (1.0 + Math.sin(this._time * 5) * 0.03 * glowFade);
         mesh.scale.setScalar(enrageScale);
+      } else if (enemy.isBoss && enrageMats) {
+        // Reset emissive to normal when not glowing (prevents red leak)
+        for (const m of enrageMats) {
+          if (m.emissiveIntensity > 0.01) {
+            m.emissive.setHex(0x000000);
+            m.emissiveIntensity = 0;
+          }
+        }
+        mesh.scale.setScalar(enemy.scale || 1);
       }
 
       // Boss shield sphere
@@ -4357,8 +4705,32 @@ export class DiabloRenderer {
       // Bob up/down and rotate (ongoing after bounce settles)
       const bob = Math.sin(this._time * 2 + loot.x) * 0.2;
       mesh.position.set(loot.x, loot.y + bob + dropOffset, loot.z);
-      mesh.rotation.y = this._time * 0.8;
       mesh.scale.setScalar(scaleMultiplier);
+
+      // Rotate the main octahedron
+      const octChild = mesh.children[3]; // octahedron is 4th child (after glow, pedestal base, pedestal top)
+      if (octChild) octChild.rotation.y = this._time * 0.8;
+
+      // Counter-rotate the inner core
+      const core = mesh.getObjectByName('loot-core');
+      if (core) {
+        core.rotation.y = -this._time * 1.5;
+        core.rotation.x = this._time * 0.7;
+      }
+
+      // Spin rune ring
+      const runeRing = mesh.getObjectByName('loot-rune-ring');
+      if (runeRing) runeRing.rotation.z = this._time * 0.5;
+
+      // Orbit sparkle motes around the item
+      for (let m = 0; m < 6; m++) {
+        const mote = mesh.getObjectByName(`loot-mote-${m}`);
+        if (!mote) break;
+        const mAngle = this._time * 2.5 + (m / 6) * Math.PI * 2;
+        const mR = 0.3 + Math.sin(this._time * 1.5 + m) * 0.05;
+        const mY = 0.5 + Math.sin(this._time * 3 + m * 1.2) * 0.12;
+        mote.position.set(Math.cos(mAngle) * mR, mY + bob + dropOffset, Math.sin(mAngle) * mR);
+      }
     }
   }
 
@@ -6569,50 +6941,158 @@ export class DiabloRenderer {
     portalInner.name = 'portal-swirl';
     group.add(portalInner);
 
-    // 4 stone pillars around the portal
+    // Arcane inscriptions between rings (12 small rune symbols)
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const runeR = 2.1 + (i % 2) * 0.5;
+      const inscr = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.15), runeGlowMat.clone());
+      inscr.rotation.x = -Math.PI / 2;
+      inscr.rotation.z = angle;
+      inscr.position.set(Math.cos(angle) * runeR, 0.025, Math.sin(angle) * runeR);
+      group.add(inscr);
+    }
+
+    // Outer glow halo on ground
+    const groundHalo = new THREE.Mesh(
+      new THREE.RingGeometry(3.2, 4.0, 48),
+      new THREE.MeshStandardMaterial({
+        color: 0x2244cc, emissive: 0x1133aa, emissiveIntensity: 1.0,
+        transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    groundHalo.rotation.x = -Math.PI / 2;
+    groundHalo.position.y = 0.01;
+    group.add(groundHalo);
+
+    // 4 stone pillars around the portal (much more detailed)
     for (let i = 0; i < 4; i++) {
       const angle = (i / 4) * Math.PI * 2 + Math.PI / 4;
       const px = Math.cos(angle) * 3.2;
       const pz = Math.sin(angle) * 3.2;
       const pillar = new THREE.Group();
 
-      // Pillar base
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.3, 8), stoneMat);
-      base.position.y = 0.15;
-      pillar.add(base);
+      // Stepped base (3 layers)
+      const base1 = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.15, 16), stoneMat);
+      base1.position.y = 0.075;
+      pillar.add(base1);
+      const base2 = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.15, 16), stoneMat);
+      base2.position.y = 0.22;
+      pillar.add(base2);
+      const base3 = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.45, 0.1, 16), stoneDarkMat);
+      base3.position.y = 0.35;
+      pillar.add(base3);
 
-      // Pillar shaft
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2.5, 8), stoneDarkMat);
-      shaft.position.y = 1.55;
+      // Main pillar shaft (fluted - octagonal with grooves)
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 2.2, 16), stoneDarkMat);
+      shaft.position.y = 1.5;
       pillar.add(shaft);
 
-      // Pillar top
-      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 0.25, 8), stoneMat);
-      top.position.y = 2.9;
-      pillar.add(top);
+      // Fluting grooves (vertical lines on shaft)
+      for (let fl = 0; fl < 8; fl++) {
+        const flAngle = (fl / 8) * Math.PI * 2;
+        const groove = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.015, 0.02, 2.0, 6),
+          new THREE.MeshStandardMaterial({ color: 0x222230, roughness: 1.0 }),
+        );
+        groove.position.set(Math.cos(flAngle) * 0.27, 1.5, Math.sin(flAngle) * 0.27);
+        pillar.add(groove);
+      }
 
-      // Glowing rune on top
-      const runeLight = new THREE.PointLight(0x4488ff, 0.6, 4, 1.5);
-      runeLight.position.y = 3.1;
+      // Stone band rings on shaft
+      for (let band = 0; band < 3; band++) {
+        const bandRing = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.025, 8, 20), stoneMat);
+        bandRing.position.y = 0.7 + band * 0.7;
+        bandRing.rotation.x = Math.PI / 2;
+        pillar.add(bandRing);
+      }
+
+      // Capital (ornate top section)
+      const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.22, 0.3, 16), stoneMat);
+      capital.position.y = 2.75;
+      pillar.add(capital);
+
+      // Capital scrolls (4 small spheres at edges)
+      for (let sc = 0; sc < 4; sc++) {
+        const scAngle = (sc / 4) * Math.PI * 2;
+        const scroll = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), stoneMat);
+        scroll.position.set(Math.cos(scAngle) * 0.3, 2.75, Math.sin(scAngle) * 0.3);
+        pillar.add(scroll);
+      }
+
+      // Glowing rune crystal on top
+      const runeLight = new THREE.PointLight(0x4488ff, 0.8, 5, 1.5);
+      runeLight.position.y = 3.15;
       pillar.add(runeLight);
 
       const runeOrb = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 8, 6),
+        new THREE.OctahedronGeometry(0.14, 2),
         new THREE.MeshStandardMaterial({
           color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 3,
-          transparent: true, opacity: 0.8,
+          transparent: true, opacity: 0.85,
         }),
       );
-      runeOrb.position.y = 3.1;
+      runeOrb.position.y = 3.15;
+      runeOrb.name = `portal-orb-${i}`;
       pillar.add(runeOrb);
+
+      // Energy tendrils from orb to center (thin glowing lines)
+      const tendrilMat = new THREE.MeshStandardMaterial({
+        color: 0x4488ff, emissive: 0x3366cc, emissiveIntensity: 2.0,
+        transparent: true, opacity: 0.3, depthWrite: false,
+      });
+      const tendrilLen = Math.sqrt(px * px + pz * pz);
+      const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, tendrilLen, 6), tendrilMat);
+      tendril.position.set(px / 2, 3.0, pz / 2);
+      tendril.lookAt(0, 3.0, 0);
+      tendril.rotateX(Math.PI / 2);
+      group.add(tendril);
+
+      // Moss / weathering on base
+      if (i % 2 === 0) {
+        const moss = new THREE.Mesh(
+          new THREE.SphereGeometry(0.2, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+          new THREE.MeshStandardMaterial({ color: 0x4a6a3a, roughness: 0.95 }),
+        );
+        moss.position.y = 0.05;
+        moss.scale.set(1.5, 0.3, 1.5);
+        pillar.add(moss);
+      }
 
       pillar.position.set(px, 0, pz);
       group.add(pillar);
     }
 
-    // Central column of light
+    // Arching stone lintel between pillars (connecting arches)
+    for (let i = 0; i < 4; i++) {
+      const a1 = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const a2 = ((i + 1) / 4) * Math.PI * 2 + Math.PI / 4;
+      const arch = new THREE.Mesh(
+        new THREE.TorusGeometry(3.2, 0.08, 8, 16, Math.PI / 2),
+        stoneDarkMat,
+      );
+      arch.position.y = 2.9;
+      arch.rotation.x = Math.PI / 2;
+      arch.rotation.z = -(a1 + a2) / 2 + Math.PI / 4;
+      group.add(arch);
+    }
+
+    // Floating particle orbs (small glowing spheres drifting upward)
+    const particleOrbMat = new THREE.MeshStandardMaterial({
+      color: 0x88bbff, emissive: 0x6699ff, emissiveIntensity: 2.0,
+      transparent: true, opacity: 0.5, depthWrite: false,
+    });
+    for (let p = 0; p < 8; p++) {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), particleOrbMat);
+      const pAngle = Math.random() * Math.PI * 2;
+      const pR = 0.5 + Math.random() * 2;
+      orb.position.set(Math.cos(pAngle) * pR, 0.5 + Math.random() * 3, Math.sin(pAngle) * pR);
+      orb.name = `portal-particle-${p}`;
+      group.add(orb);
+    }
+
+    // Central column of light (wider, more layered)
     const lightBeam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.3, 0.8, 5, 12),
+      new THREE.CylinderGeometry(0.3, 0.8, 5, 16),
       new THREE.MeshStandardMaterial({
         color: 0x2244aa, emissive: 0x2244aa, emissiveIntensity: 1.5,
         transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
@@ -6622,10 +7102,27 @@ export class DiabloRenderer {
     lightBeam.name = 'portal-beam';
     group.add(lightBeam);
 
+    // Secondary inner beam (brighter, thinner)
+    const innerBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.1, 0.3, 4.5, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0x4488ff, emissive: 0x4488ff, emissiveIntensity: 2.0,
+        transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    innerBeam.position.y = 2.5;
+    innerBeam.name = 'portal-beam-inner';
+    group.add(innerBeam);
+
     // Main point light
-    const light = new THREE.PointLight(0x4488ff, 2.0, 12, 1.5);
+    const light = new THREE.PointLight(0x4488ff, 2.5, 14, 1.5);
     light.position.y = 2.0;
     group.add(light);
+
+    // Ground-level ambient light
+    const groundLight = new THREE.PointLight(0x2244aa, 1.0, 6, 2);
+    groundLight.position.y = 0.3;
+    group.add(groundLight);
 
     this._scene.add(group);
     this._portalRuneGroup = group;
@@ -6658,6 +7155,28 @@ export class DiabloRenderer {
     const beam = g.getObjectByName('portal-beam') as THREE.Mesh | undefined;
     if (beam) {
       (beam.material as THREE.MeshStandardMaterial).opacity = 0.08 + Math.sin(t * 1.5) * 0.04;
+    }
+    const beamInner = g.getObjectByName('portal-beam-inner') as THREE.Mesh | undefined;
+    if (beamInner) {
+      (beamInner.material as THREE.MeshStandardMaterial).opacity = 0.05 + Math.sin(t * 2.5) * 0.03;
+    }
+    // Spin orbs on pillar tops
+    for (let i = 0; i < 4; i++) {
+      const orb = g.getObjectByName(`portal-orb-${i}`);
+      if (orb) {
+        orb.rotation.y = t * 2.0 + i;
+        orb.position.y = 3.15 + Math.sin(t * 1.5 + i * 1.5) * 0.08;
+      }
+    }
+    // Drift floating particles upward (loop back down)
+    for (let p = 0; p < 8; p++) {
+      const particle = g.getObjectByName(`portal-particle-${p}`) as THREE.Mesh | undefined;
+      if (particle) {
+        particle.position.y += 0.008;
+        if (particle.position.y > 4.5) particle.position.y = 0.3;
+        const pOpa = 0.3 + Math.sin(t * 3 + p * 2) * 0.2;
+        (particle.material as THREE.MeshStandardMaterial).opacity = pOpa;
+      }
     }
   }
 

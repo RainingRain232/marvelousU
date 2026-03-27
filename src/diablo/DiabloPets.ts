@@ -239,17 +239,24 @@ export function updatePets(ctx: PetContext, dt: number): void {
           }
         }
 
-        // Loot pets: look for loot to collect
+        // Loot pets: look for loot to collect (throttled to every ~0.5s via attackTimer reuse)
         if (pet.petType === PetType.LOOT && pet.lootPickupRange > 0) {
-          let nearestLoot: DiabloLoot | null = null;
-          let nearestDist = pet.lootPickupRange;
-          for (const loot of ctx.state.loot) {
-            const d = ctx.dist(loot.x, loot.z, pet.x, pet.z);
-            if (d < nearestDist) { nearestDist = d; nearestLoot = loot; }
-          }
-          if (nearestLoot) {
-            pet.targetId = nearestLoot.id;
-            pet.aiState = PetAIState.COLLECTING_LOOT;
+          pet.attackTimer -= dt;
+          if (pet.attackTimer <= 0) {
+            pet.attackTimer = 0.5;
+            // Only scan if player has inventory space
+            if (p.inventory.some(s => s.item === null)) {
+              let nearestLoot: DiabloLoot | null = null;
+              let nearestDist = pet.lootPickupRange;
+              for (const loot of ctx.state.loot) {
+                const d = ctx.dist(loot.x, loot.z, pet.x, pet.z);
+                if (d < nearestDist) { nearestDist = d; nearestLoot = loot; }
+              }
+              if (nearestLoot) {
+                pet.targetId = nearestLoot.id;
+                pet.aiState = PetAIState.COLLECTING_LOOT;
+              }
+            }
           }
         }
 
@@ -355,6 +362,14 @@ export function updatePets(ctx: PetContext, dt: number): void {
           break;
         }
 
+        // Check if player inventory is full before moving to loot
+        const hasSpace = p.inventory.some(s => s.item === null);
+        if (!hasSpace) {
+          pet.targetId = null;
+          pet.aiState = PetAIState.RETURNING;
+          break;
+        }
+
         const distToLoot = ctx.dist(loot.x, loot.z, pet.x, pet.z);
         if (distToLoot > 1) {
           const dx = loot.x - pet.x;
@@ -367,9 +382,12 @@ export function updatePets(ctx: PetContext, dt: number): void {
           }
         } else {
           // Pick up loot - add to player inventory
-          const lootName = loot.item.name;
+          const lootCountBefore = ctx.state.loot.length;
           ctx.pickupLoot(loot.id);
-          ctx.addFloatingText(pet.x, pet.y + 1, pet.z, `${pet.customName} picked up ${lootName}`, "#44ffff");
+          // Only show message if loot was actually picked up (removed from ground)
+          if (ctx.state.loot.length < lootCountBefore) {
+            ctx.addFloatingText(pet.x, pet.y + 1, pet.z, `${pet.customName} picked up ${loot.item.name}`, "#44ffff");
+          }
           pet.targetId = null;
           pet.aiState = PetAIState.RETURNING;
         }

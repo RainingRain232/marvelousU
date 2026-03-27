@@ -617,11 +617,14 @@ export class DiabloGame {
       }
       else if (e.code === "KeyQ") {
         this._useQuickPotion(PotionType.HEALTH);
-      } else if (e.code === this._keyBindings.interact && this._state.currentMap !== DiabloMapId.CAMELOT) {
+      } else if (e.code === "KeyR" && this._state.currentMap !== DiabloMapId.CAMELOT) {
+        // Talk to portal NPC
         const npc = this._state.portalNpc;
         if (npc && this._dist(this._state.player.x, this._state.player.z, npc.x, npc.z) < 4) {
           this._showPortalNpcShop(npc);
-        } else if (this._portalActive && this._dist(this._state.player.x, this._state.player.z, this._portalX, this._portalZ) < 4) {
+        }
+      } else if (e.code === this._keyBindings.interact && this._state.currentMap !== DiabloMapId.CAMELOT) {
+        if (this._portalActive && this._dist(this._state.player.x, this._state.player.z, this._portalX, this._portalZ) < 4) {
           this._useTownPortal();
         } else {
           this._useQuickPotion(PotionType.MANA);
@@ -831,15 +834,6 @@ export class DiabloGame {
           }
           if (nearestVendor) {
             this._showVendorShop(nearestVendor);
-            return;
-          }
-        }
-
-        // Check portal NPC interaction on non-Camelot maps
-        if (this._state.currentMap !== DiabloMapId.CAMELOT && this._state.portalNpc) {
-          const npc = this._state.portalNpc;
-          if (this._dist(this._state.player.x, this._state.player.z, npc.x, npc.z) < 4) {
-            this._showPortalNpcShop(npc);
             return;
           }
         }
@@ -2228,7 +2222,7 @@ export class DiabloGame {
                 }
               }
             }
-            enemy.attackTimer = 1.5;
+            enemy.attackTimer = enemy.isBoss ? 2.2 : 1.5;
             if (dist > enemy.attackRange * 1.5) {
               enemy.state = EnemyState.CHASE;
               enemy.stateTimer = 0;
@@ -3665,8 +3659,6 @@ export class DiabloGame {
     const loot = this._state.loot[lootIdx];
 
     const p = this._state.player;
-    const dist = this._dist(p.x, p.z, loot.x, loot.z);
-    if (dist > 4) return;
 
     // Excalibur fragment collection
     if (loot.item.id.startsWith('excalibur-fragment-')) {
@@ -4965,6 +4957,9 @@ export class DiabloGame {
       }
 
       enemy.bossAbilityCooldown = Math.max(0, enemy.bossAbilityCooldown - dt);
+      if (enemy.bossAbilityGlowTimer !== undefined && enemy.bossAbilityGlowTimer > 0) {
+        enemy.bossAbilityGlowTimer = Math.max(0, enemy.bossAbilityGlowTimer - dt);
+      }
       if (enemy.bossAbilityCooldown > 0) continue;
 
       const dist = this._dist(enemy.x, enemy.z, p.x, p.z);
@@ -4972,6 +4967,7 @@ export class DiabloGame {
 
       const ability = phase.abilities[Math.floor(Math.random() * phase.abilities.length)];
       enemy.bossAbilityCooldown = 4.0;
+      enemy.bossAbilityGlowTimer = 1.5; // Red glow for 1.5s during ability
 
       switch (ability) {
         case BossAbility.GROUND_SLAM: {

@@ -1328,6 +1328,7 @@ export interface DiabloEnemy {
   bossAbilityCooldown?: number;
   bossEnraged?: boolean;
   bossShieldTimer?: number;
+  bossAbilityGlowTimer?: number;
   rangedCooldown?: number;
   shieldCooldown?: number;
   shieldActive?: boolean;

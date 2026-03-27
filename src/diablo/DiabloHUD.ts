@@ -315,34 +315,48 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <!-- Shoulder muscle striations -->
     <path d="M 28 56 Q 34 60 30 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
     <path d="M 192 56 Q 186 60 190 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
-    <!-- LEFT CLAW gripping orb (3 fingers + thumb wrapping around) -->
-    <path d="M 32 82 Q 22 90 18 100 Q 16 108 20 112 Q 22 108 24 102 Q 26 96 30 90 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 28 95 Q 16 105 12 118 Q 10 126 14 130 Q 16 124 20 116 Q 22 108 26 100 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 26 112 Q 14 124 10 140 Q 8 148 12 150 Q 16 144 18 136 Q 20 128 24 118 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
-    <!-- Left finger joint knuckles -->
-    <circle cx="25" cy="92" r="1.5" fill="#1a1410" opacity="0.4"/>
-    <circle cx="20" cy="108" r="1.5" fill="#1a1410" opacity="0.4"/>
-    <circle cx="18" cy="126" r="1.5" fill="#1a1410" opacity="0.4"/>
-    <!-- Left claw tips (sharp, curved) -->
-    <path d="M 18 100 Q 14 96 12 92 Q 11 90 13 90 Q 15 92 18 100" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
-    <path d="M 12 118 Q 8 114 6 110 Q 5 108 7 108 Q 9 110 12 118" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
-    <path d="M 10 140 Q 6 136 4 132 Q 3 130 5 130 Q 7 132 10 140" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
-    <!-- LEFT THUMB (wraps from behind) -->
-    <path d="M 36 70 Q 28 78 24 88 Q 22 94 26 96 Q 28 90 32 82 Z" fill="#14100a" stroke="#201810" stroke-width="0.6"/>
-    <!-- RIGHT CLAW gripping orb (mirror) -->
-    <path d="M 188 82 Q 198 90 202 100 Q 204 108 200 112 Q 198 108 196 102 Q 194 96 190 90 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 192 95 Q 204 105 208 118 Q 210 126 206 130 Q 204 124 200 116 Q 198 108 194 100 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
-    <path d="M 194 112 Q 206 124 210 140 Q 212 148 208 150 Q 204 144 202 136 Q 200 128 196 118 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
-    <!-- Right finger joint knuckles -->
-    <circle cx="195" cy="92" r="1.5" fill="#1a1410" opacity="0.4"/>
-    <circle cx="200" cy="108" r="1.5" fill="#1a1410" opacity="0.4"/>
-    <circle cx="202" cy="126" r="1.5" fill="#1a1410" opacity="0.4"/>
-    <!-- Right claw tips -->
-    <path d="M 202 100 Q 206 96 208 92 Q 209 90 207 90 Q 205 92 202 100" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
-    <path d="M 208 118 Q 212 114 214 110 Q 215 108 213 108 Q 211 110 208 118" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
-    <path d="M 210 140 Q 214 136 216 132 Q 217 130 215 130 Q 213 132 210 140" fill="#1a1410" stroke="#221a10" stroke-width="0.5"/>
-    <!-- RIGHT THUMB -->
-    <path d="M 184 70 Q 192 78 196 88 Q 198 94 194 96 Q 192 90 188 82 Z" fill="#14100a" stroke="#201810" stroke-width="0.6"/>
+    <!-- LEFT CLAW gripping orb (3 talon fingers wrapping around) -->
+    <!-- Left finger 1 (top) — long curved talon -->
+    <path d="M 34 80 Q 24 86 18 96 Q 14 104 16 108 Q 20 104 22 98 Q 26 90 32 84 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 18 96 Q 10 88 4 82 Q 2 78 4 80 Q 8 84 14 90" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <!-- Left finger 2 (middle) — long curved talon -->
+    <path d="M 30 94 Q 18 102 12 114 Q 8 124 12 126 Q 16 120 18 112 Q 22 104 28 98 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 12 114 Q 4 106 -2 98 Q -4 94 -2 96 Q 2 100 8 108" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <!-- Left finger 3 (bottom) — long curved talon -->
+    <path d="M 28 110 Q 16 120 10 134 Q 6 144 10 146 Q 14 140 16 132 Q 20 122 26 114 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 10 134 Q 2 126 -4 118 Q -6 114 -4 116 Q 0 120 6 128" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <!-- Left finger joint knuckles (larger) -->
+    <circle cx="26" cy="88" r="2.5" fill="#1a1410" opacity="0.5"/>
+    <circle cx="20" cy="104" r="2.5" fill="#1a1410" opacity="0.5"/>
+    <circle cx="16" cy="122" r="2.5" fill="#1a1410" opacity="0.5"/>
+    <!-- Left finger segment lines -->
+    <path d="M 22 92 Q 20 94 22 96" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 16 108 Q 14 110 16 112" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 14 128 Q 12 130 14 132" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
+    <!-- LEFT THUMB (wraps from behind, also taloned) -->
+    <path d="M 38 68 Q 28 76 22 86 Q 20 92 24 94 Q 26 88 30 80 Z" fill="#14100a" stroke="#201810" stroke-width="0.7"/>
+    <path d="M 22 86 Q 16 80 12 74 Q 10 72 12 73 Q 16 76 20 82" fill="#1a1410" stroke="#221a10" stroke-width="0.6"/>
+    <!-- RIGHT CLAW gripping orb (mirror — 3 talon fingers) -->
+    <!-- Right finger 1 (top) -->
+    <path d="M 186 80 Q 196 86 202 96 Q 206 104 204 108 Q 200 104 198 98 Q 194 90 188 84 Z" fill="#12100a" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 202 96 Q 210 88 216 82 Q 218 78 216 80 Q 212 84 206 90" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <!-- Right finger 2 (middle) -->
+    <path d="M 190 94 Q 202 102 208 114 Q 212 124 208 126 Q 204 120 202 112 Q 198 104 192 98 Z" fill="#100e08" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 208 114 Q 216 106 222 98 Q 224 94 222 96 Q 218 100 212 108" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <!-- Right finger 3 (bottom) -->
+    <path d="M 192 110 Q 204 120 210 134 Q 214 144 210 146 Q 206 140 204 132 Q 200 122 194 114 Z" fill="#0e0c06" stroke="#201810" stroke-width="0.8"/>
+    <path d="M 210 134 Q 218 126 224 118 Q 226 114 224 116 Q 220 120 214 128" fill="#1a1410" stroke="#221a10" stroke-width="0.8"/>
+    <!-- Right finger joint knuckles (larger) -->
+    <circle cx="194" cy="88" r="2.5" fill="#1a1410" opacity="0.5"/>
+    <circle cx="200" cy="104" r="2.5" fill="#1a1410" opacity="0.5"/>
+    <circle cx="204" cy="122" r="2.5" fill="#1a1410" opacity="0.5"/>
+    <!-- Right finger segment lines -->
+    <path d="M 198 92 Q 200 94 198 96" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 204 108 Q 206 110 204 112" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 206 128 Q 208 130 206 132" fill="none" stroke="#201810" stroke-width="0.6" opacity="0.4"/>
+    <!-- RIGHT THUMB (mirror, also taloned) -->
+    <path d="M 182 68 Q 192 76 198 86 Q 200 92 196 94 Q 194 88 190 80 Z" fill="#14100a" stroke="#201810" stroke-width="0.7"/>
+    <path d="M 198 86 Q 204 80 208 74 Q 210 72 208 73 Q 204 76 200 82" fill="#1a1410" stroke="#221a10" stroke-width="0.6"/>
     <!-- Head (larger, more detailed) -->
     <path d="M 110 14 C 90 12 76 18 74 30 C 72 42 80 50 95 52 C 100 52 110 53 120 52
              C 140 50 148 42 146 30 C 144 18 130 12 110 14 Z" fill="#12100a" stroke="#1a1410" stroke-width="1"/>
@@ -355,18 +369,30 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <path d="M 80 24 C 88 18 100 17 110 20 C 120 17 132 18 140 24" fill="none" stroke="#1e1810" stroke-width="2.5" stroke-linecap="round"/>
     <!-- Brow ridge underside shadow -->
     <path d="M 82 25 C 90 20 100 19 110 21 C 120 19 130 20 138 25" fill="none" stroke="#0a0806" stroke-width="1" opacity="0.4"/>
-    <!-- Deep-set eye sockets -->
-    <ellipse cx="95" cy="28" rx="7" ry="5" fill="#060402" stroke="#0e0a06" stroke-width="0.8"/>
-    <ellipse cx="125" cy="28" rx="7" ry="5" fill="#060402" stroke="#0e0a06" stroke-width="0.8"/>
-    <!-- Glowing red eyes with radial glow -->
-    <ellipse cx="95" cy="28" rx="6" ry="4" fill="url(#hpEyeGlow)" opacity="0.4"/>
-    <ellipse cx="125" cy="28" rx="6" ry="4" fill="url(#hpEyeGlow)" opacity="0.4"/>
-    <ellipse cx="95" cy="28" rx="3.5" ry="2.2" fill="#661111"/>
-    <ellipse cx="125" cy="28" rx="3.5" ry="2.2" fill="#661111"/>
-    <ellipse cx="95" cy="28" rx="1.5" ry="1" fill="#cc2222"/>
-    <ellipse cx="125" cy="28" rx="1.5" ry="1" fill="#cc2222"/>
-    <ellipse cx="95" cy="27.5" rx="0.6" ry="0.5" fill="#ff4444" opacity="0.9"/>
-    <ellipse cx="125" cy="27.5" rx="0.6" ry="0.5" fill="#ff4444" opacity="0.9"/>
+    <!-- Deep-set eye sockets (larger, more cavernous) -->
+    <ellipse cx="95" cy="28" rx="9" ry="6.5" fill="#040200" stroke="#0a0806" stroke-width="1"/>
+    <ellipse cx="125" cy="28" rx="9" ry="6.5" fill="#040200" stroke="#0a0806" stroke-width="1"/>
+    <!-- Socket inner shadow ring -->
+    <ellipse cx="95" cy="28" rx="8" ry="5.5" fill="none" stroke="#060402" stroke-width="1.5" opacity="0.6"/>
+    <ellipse cx="125" cy="28" rx="8" ry="5.5" fill="none" stroke="#060402" stroke-width="1.5" opacity="0.6"/>
+    <!-- Glowing red eyes — large outer glow -->
+    <ellipse cx="95" cy="28" rx="10" ry="7" fill="url(#hpEyeGlow)" opacity="0.3"/>
+    <ellipse cx="125" cy="28" rx="10" ry="7" fill="url(#hpEyeGlow)" opacity="0.3"/>
+    <!-- Mid glow layer -->
+    <ellipse cx="95" cy="28" rx="7" ry="5" fill="#441111" opacity="0.7"/>
+    <ellipse cx="125" cy="28" rx="7" ry="5" fill="#441111" opacity="0.7"/>
+    <!-- Bright iris -->
+    <ellipse cx="95" cy="28" rx="5" ry="3.5" fill="#881111"/>
+    <ellipse cx="125" cy="28" rx="5" ry="3.5" fill="#881111"/>
+    <!-- Inner bright core -->
+    <ellipse cx="95" cy="28" rx="3" ry="2" fill="#cc2222"/>
+    <ellipse cx="125" cy="28" rx="3" ry="2" fill="#cc2222"/>
+    <!-- Vertical slit pupil -->
+    <ellipse cx="95" cy="28" rx="0.8" ry="3" fill="#ff4444" opacity="0.95"/>
+    <ellipse cx="125" cy="28" rx="0.8" ry="3" fill="#ff4444" opacity="0.95"/>
+    <!-- Hot white center point -->
+    <ellipse cx="95" cy="28" rx="0.4" ry="1.2" fill="#ff8866" opacity="0.8"/>
+    <ellipse cx="125" cy="28" rx="0.4" ry="1.2" fill="#ff8866" opacity="0.8"/>
     <!-- Nose bridge and nostrils -->
     <path d="M 107 32 Q 110 36 113 32" fill="none" stroke="#1a1410" stroke-width="1.2"/>
     <circle cx="107" cy="34" r="1.2" fill="#0a0806"/>
@@ -636,34 +662,76 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <path d="M 165 150 Q 160 160 168 172" fill="none" stroke="#101828" stroke-width="0.8" opacity="0.3"/>
     <ellipse cx="38" cy="65" rx="18" ry="14" fill="#0a0e18" stroke="#101828" stroke-width="0.8" opacity="0.7"/>
     <ellipse cx="182" cy="65" rx="18" ry="14" fill="#0a0e18" stroke="#101828" stroke-width="0.8" opacity="0.7"/>
-    <!-- LEFT CLAW -->
-    <path d="M 32 82 Q 22 90 18 100 Q 16 108 20 112 Q 22 108 24 102 Q 26 96 30 90 Z" fill="#0a0e14" stroke="#142028" stroke-width="0.8"/>
-    <path d="M 28 95 Q 16 105 12 118 Q 10 126 14 130 Q 16 124 20 116 Q 22 108 26 100 Z" fill="#080c12" stroke="#142028" stroke-width="0.8"/>
-    <path d="M 26 112 Q 14 124 10 140 Q 8 148 12 150 Q 16 144 18 136 Q 20 128 24 118 Z" fill="#060a0e" stroke="#142028" stroke-width="0.8"/>
-    <path d="M 18 100 Q 14 96 12 92 Q 11 90 13 90 Q 15 92 18 100" fill="#101828" stroke="#182030" stroke-width="0.5"/>
-    <path d="M 12 118 Q 8 114 6 110 Q 5 108 7 108 Q 9 110 12 118" fill="#101828" stroke="#182030" stroke-width="0.5"/>
-    <path d="M 10 140 Q 6 136 4 132 Q 3 130 5 130 Q 7 132 10 140" fill="#101828" stroke="#182030" stroke-width="0.5"/>
-    <path d="M 36 70 Q 28 78 24 88 Q 22 94 26 96 Q 28 90 32 82 Z" fill="#0c1018" stroke="#142028" stroke-width="0.6"/>
-    <!-- RIGHT CLAW -->
-    <path d="M 188 82 Q 198 90 202 100 Q 204 108 200 112 Q 198 108 196 102 Q 194 96 190 90 Z" fill="#0a0e14" stroke="#142028" stroke-width="0.8"/>
-    <path d="M 192 95 Q 204 105 208 118 Q 210 126 206 130 Q 204 124 200 116 Q 198 108 194 100 Z" fill="#080c12" stroke="#142028" stroke-width="0.8"/>
-    <path d="M 194 112 Q 206 124 210 140 Q 212 148 208 150 Q 204 144 202 136 Q 200 128 196 118 Z" fill="#060a0e" stroke="#142028" stroke-width="0.8"/>
-    <path d="M 202 100 Q 206 96 208 92 Q 209 90 207 90 Q 205 92 202 100" fill="#101828" stroke="#182030" stroke-width="0.5"/>
-    <path d="M 208 118 Q 212 114 214 110 Q 215 108 213 108 Q 211 110 208 118" fill="#101828" stroke="#182030" stroke-width="0.5"/>
-    <path d="M 210 140 Q 214 136 216 132 Q 217 130 215 130 Q 213 132 210 140" fill="#101828" stroke="#182030" stroke-width="0.5"/>
-    <path d="M 184 70 Q 192 78 196 88 Q 198 94 194 96 Q 192 90 188 82 Z" fill="#0c1018" stroke="#142028" stroke-width="0.6"/>
+    <!-- LEFT CLAW (3 talon fingers wrapping around) -->
+    <!-- Left finger 1 (top) — long curved talon -->
+    <path d="M 34 80 Q 24 86 18 96 Q 14 104 16 108 Q 20 104 22 98 Q 26 90 32 84 Z" fill="#0a0e14" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 18 96 Q 10 88 4 82 Q 2 78 4 80 Q 8 84 14 90" fill="#101828" stroke="#182030" stroke-width="0.8"/>
+    <!-- Left finger 2 (middle) -->
+    <path d="M 30 94 Q 18 102 12 114 Q 8 124 12 126 Q 16 120 18 112 Q 22 104 28 98 Z" fill="#080c12" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 12 114 Q 4 106 -2 98 Q -4 94 -2 96 Q 2 100 8 108" fill="#101828" stroke="#182030" stroke-width="0.8"/>
+    <!-- Left finger 3 (bottom) -->
+    <path d="M 28 110 Q 16 120 10 134 Q 6 144 10 146 Q 14 140 16 132 Q 20 122 26 114 Z" fill="#060a0e" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 10 134 Q 2 126 -4 118 Q -6 114 -4 116 Q 0 120 6 128" fill="#101828" stroke="#182030" stroke-width="0.8"/>
+    <!-- Left knuckles -->
+    <circle cx="26" cy="88" r="2.5" fill="#101828" opacity="0.5"/>
+    <circle cx="20" cy="104" r="2.5" fill="#101828" opacity="0.5"/>
+    <circle cx="16" cy="122" r="2.5" fill="#101828" opacity="0.5"/>
+    <!-- Left finger segment lines -->
+    <path d="M 22 92 Q 20 94 22 96" fill="none" stroke="#142028" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 16 108 Q 14 110 16 112" fill="none" stroke="#142028" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 14 128 Q 12 130 14 132" fill="none" stroke="#142028" stroke-width="0.6" opacity="0.4"/>
+    <!-- LEFT THUMB (taloned) -->
+    <path d="M 38 68 Q 28 76 22 86 Q 20 92 24 94 Q 26 88 30 80 Z" fill="#0c1018" stroke="#142028" stroke-width="0.7"/>
+    <path d="M 22 86 Q 16 80 12 74 Q 10 72 12 73 Q 16 76 20 82" fill="#101828" stroke="#182030" stroke-width="0.6"/>
+    <!-- RIGHT CLAW (mirror — 3 talon fingers) -->
+    <!-- Right finger 1 (top) -->
+    <path d="M 186 80 Q 196 86 202 96 Q 206 104 204 108 Q 200 104 198 98 Q 194 90 188 84 Z" fill="#0a0e14" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 202 96 Q 210 88 216 82 Q 218 78 216 80 Q 212 84 206 90" fill="#101828" stroke="#182030" stroke-width="0.8"/>
+    <!-- Right finger 2 (middle) -->
+    <path d="M 190 94 Q 202 102 208 114 Q 212 124 208 126 Q 204 120 202 112 Q 198 104 192 98 Z" fill="#080c12" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 208 114 Q 216 106 222 98 Q 224 94 222 96 Q 218 100 212 108" fill="#101828" stroke="#182030" stroke-width="0.8"/>
+    <!-- Right finger 3 (bottom) -->
+    <path d="M 192 110 Q 204 120 210 134 Q 214 144 210 146 Q 206 140 204 132 Q 200 122 194 114 Z" fill="#060a0e" stroke="#142028" stroke-width="0.8"/>
+    <path d="M 210 134 Q 218 126 224 118 Q 226 114 224 116 Q 220 120 214 128" fill="#101828" stroke="#182030" stroke-width="0.8"/>
+    <!-- Right knuckles -->
+    <circle cx="194" cy="88" r="2.5" fill="#101828" opacity="0.5"/>
+    <circle cx="200" cy="104" r="2.5" fill="#101828" opacity="0.5"/>
+    <circle cx="204" cy="122" r="2.5" fill="#101828" opacity="0.5"/>
+    <!-- Right finger segment lines -->
+    <path d="M 198 92 Q 200 94 198 96" fill="none" stroke="#142028" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 204 108 Q 206 110 204 112" fill="none" stroke="#142028" stroke-width="0.6" opacity="0.4"/>
+    <path d="M 206 128 Q 208 130 206 132" fill="none" stroke="#142028" stroke-width="0.6" opacity="0.4"/>
+    <!-- RIGHT THUMB (taloned) -->
+    <path d="M 182 68 Q 192 76 198 86 Q 200 92 196 94 Q 194 88 190 80 Z" fill="#0c1018" stroke="#142028" stroke-width="0.7"/>
+    <path d="M 198 86 Q 204 80 208 74 Q 210 72 208 73 Q 204 76 200 82" fill="#101828" stroke="#182030" stroke-width="0.6"/>
     <!-- Head -->
     <path d="M 110 14 C 90 12 76 18 74 30 C 72 42 80 50 95 52 C 100 52 110 53 120 52
              C 140 50 148 42 146 30 C 144 18 130 12 110 14 Z" fill="#0a0e14" stroke="#101828" stroke-width="1"/>
     <path d="M 80 24 C 88 18 100 17 110 20 C 120 17 132 18 140 24" fill="none" stroke="#141c28" stroke-width="2.5" stroke-linecap="round"/>
-    <ellipse cx="95" cy="28" rx="7" ry="5" fill="#020408" stroke="#0a0e14" stroke-width="0.8"/>
-    <ellipse cx="125" cy="28" rx="7" ry="5" fill="#020408" stroke="#0a0e14" stroke-width="0.8"/>
-    <ellipse cx="95" cy="28" rx="3.5" ry="2.2" fill="#112266"/>
-    <ellipse cx="125" cy="28" rx="3.5" ry="2.2" fill="#112266"/>
-    <ellipse cx="95" cy="28" rx="1.5" ry="1" fill="#2244cc"/>
-    <ellipse cx="125" cy="28" rx="1.5" ry="1" fill="#2244cc"/>
-    <ellipse cx="95" cy="27.5" rx="0.6" ry="0.5" fill="#4488ff" opacity="0.9"/>
-    <ellipse cx="125" cy="27.5" rx="0.6" ry="0.5" fill="#4488ff" opacity="0.9"/>
+    <!-- Deep-set eye sockets (larger) -->
+    <ellipse cx="95" cy="28" rx="9" ry="6.5" fill="#010308" stroke="#0a0e14" stroke-width="1"/>
+    <ellipse cx="125" cy="28" rx="9" ry="6.5" fill="#010308" stroke="#0a0e14" stroke-width="1"/>
+    <!-- Socket inner shadow -->
+    <ellipse cx="95" cy="28" rx="8" ry="5.5" fill="none" stroke="#020408" stroke-width="1.5" opacity="0.6"/>
+    <ellipse cx="125" cy="28" rx="8" ry="5.5" fill="none" stroke="#020408" stroke-width="1.5" opacity="0.6"/>
+    <!-- Glowing blue eyes — large outer glow -->
+    <ellipse cx="95" cy="28" rx="10" ry="7" fill="#112266" opacity="0.3"/>
+    <ellipse cx="125" cy="28" rx="10" ry="7" fill="#112266" opacity="0.3"/>
+    <!-- Mid glow layer -->
+    <ellipse cx="95" cy="28" rx="7" ry="5" fill="#112244" opacity="0.7"/>
+    <ellipse cx="125" cy="28" rx="7" ry="5" fill="#112244" opacity="0.7"/>
+    <!-- Bright iris -->
+    <ellipse cx="95" cy="28" rx="5" ry="3.5" fill="#1133aa"/>
+    <ellipse cx="125" cy="28" rx="5" ry="3.5" fill="#1133aa"/>
+    <!-- Inner bright core -->
+    <ellipse cx="95" cy="28" rx="3" ry="2" fill="#2244cc"/>
+    <ellipse cx="125" cy="28" rx="3" ry="2" fill="#2244cc"/>
+    <!-- Vertical slit pupil -->
+    <ellipse cx="95" cy="28" rx="0.8" ry="3" fill="#4488ff" opacity="0.95"/>
+    <ellipse cx="125" cy="28" rx="0.8" ry="3" fill="#4488ff" opacity="0.95"/>
+    <!-- Hot white center point -->
+    <ellipse cx="95" cy="28" rx="0.4" ry="1.2" fill="#88bbff" opacity="0.8"/>
+    <ellipse cx="125" cy="28" rx="0.4" ry="1.2" fill="#88bbff" opacity="0.8"/>
     <path d="M 107 32 Q 110 36 113 32" fill="none" stroke="#101828" stroke-width="1.2"/>
     <circle cx="107" cy="34" r="1.2" fill="#040810"/>
     <circle cx="113" cy="34" r="1.2" fill="#040810"/>
@@ -2113,12 +2181,18 @@ export function updateHUD(
     refs.chestHint.style.display = "none";
   }
 
-  // Town portal proximity hint
+  // Town portal & NPC proximity hint
   if (ctx.portalActive) {
     const portalDist = ctx.dist(p.x, p.z, ctx.portalX, ctx.portalZ);
-    if (portalDist < 4) {
+    const npc = ctx.state.portalNpc;
+    const npcDist = npc ? ctx.dist(p.x, p.z, npc.x, npc.z) : 999;
+    if (portalDist < 4 || npcDist < 4) {
       refs.portalHint.style.display = "block";
-      refs.portalHint.textContent = "\uD83C\uDF00 Press [E] to use Town Portal \u2014 Return to Character Select";
+      let hint = "";
+      if (portalDist < 4) hint += "\uD83C\uDF00 Press [E] to use Town Portal";
+      if (portalDist < 4 && npcDist < 4) hint += "  \u2502  ";
+      if (npcDist < 4) hint += "\uD83E\uDDD3 Press [R] to talk to " + npc!.name;
+      refs.portalHint.textContent = hint;
     } else {
       refs.portalHint.style.display = "none";
     }
