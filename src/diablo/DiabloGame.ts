@@ -1061,6 +1061,7 @@ export class DiabloGame {
       this._portalX = 0;
       this._portalZ = gridD / 2 - 5;
       this._portalActive = true;
+      this._renderer.showPortalRune(this._portalX, this._portalZ);
       this._state.vendors = VENDOR_DEFS.map((vd) => ({
         id: this._genId(),
         type: vd.type,
