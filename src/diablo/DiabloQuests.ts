@@ -238,6 +238,8 @@ export function updateQuestTracker(
     trackerEl.style.display = "none";
     return;
   }
+  // Don't re-show if user manually closed it
+  if (trackerEl.dataset.userHidden === "true") return;
   trackerEl.style.display = "block";
   let html = '';
   if (active.length > 0) {

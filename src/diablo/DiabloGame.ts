@@ -498,6 +498,15 @@ export class DiabloGame {
     };
     document.addEventListener("pointerlockchange", this._boundPointerLockChange);
 
+    // Suppress Chrome "message channel" errors from pointer lock and DOM cleanup
+    window.addEventListener("unhandledrejection", (e) => {
+      if (e.reason?.message?.includes?.("message channel") ||
+          e.reason?.message?.includes?.("MessageChannel") ||
+          e.reason?.message?.includes?.("pointer lock")) {
+        e.preventDefault();
+      }
+    });
+
     this._buildHUD();
     this._showClassSelect();
     this._lastTime = performance.now();
@@ -919,6 +928,11 @@ export class DiabloGame {
       setStatsDirty: () => { this._statsDirty = true; },
       setEquipDirty: () => { this._equipDirty = true; },
       setPhaseBeforeOverlay: (phase) => { this._phaseBeforeOverlay = phase; },
+      showQuestTracker: () => {
+        this._hudRefs.questTracker.dataset.userHidden = "false";
+        this._hudRefs.questTracker.style.display = "block";
+        this._updateQuestTracker();
+      },
 
       // New fields for extracted screens
       sortStash: (sortBy) => this._sortStash(sortBy),
@@ -4008,23 +4022,17 @@ export class DiabloGame {
       };
     }
 
-    // Approximate: map screen coordinates to world using isometric projection
+    // Use accurate raycast against ground plane
+    const hit = this._renderer.getWorldPosAtScreen(this._mouseX, this._mouseY);
+    if (hit) return hit;
+
+    // Fallback: approximate projection
     const w = window.innerWidth;
     const h = window.innerHeight;
-
-    // Center of screen is roughly where the player is
     const dx = (this._mouseX - w / 2) / (w / 2);
     const dz = (this._mouseY - h / 2) / (h / 2);
-
-    // Scale factor based on camera distance
-    const camDist = this._state.camera.distance;
-    const scale = camDist * 0.6;
-
-    // Isometric-ish mapping: screen x maps to world x+z, screen y maps to world z-x
-    const worldX = p.x + dx * scale;
-    const worldZ = p.z + dz * scale;
-
-    return { x: worldX, z: worldZ };
+    const scale = (this._state.camera.distance || 18) * 0.6;
+    return { x: p.x + dx * scale, z: p.z + dz * scale };
   }
 
   // ──────────────────────────────────────────────────────────────

@@ -79,6 +79,7 @@ export interface ScreenContext {
   setStatsDirty(): void;
   setEquipDirty(): void;
   setPhaseBeforeOverlay(phase: DiabloPhase): void;
+  showQuestTracker(): void;
 
   // New fields for extracted screens
   sortStash(sortBy: "rarity" | "type" | "level"): void;
@@ -2824,6 +2825,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
           <button id="diablo-skillswap-btn" style="${btnBase}">&#8644; SWAP SKILLS</button>
           <button id="diablo-stash-btn" style="${btnBase}">&#9878; STASH</button>
           <button id="diablo-collection-btn" style="${btnBase}">&#10070; COLLECTION</button>
+          <button id="diablo-dailies-btn" style="${btnBase}">&#9733; DAILY CHALLENGES</button>
           <button id="diablo-save-btn" style="${saveBtn}">&#10004; SAVE GAME</button>
           ${loadBtnHtml}
           <button id="diablo-charselect-btn" style="${btnBase}">&#9733; CHARACTER SELECT</button>
@@ -2837,7 +2839,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-dailies-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -2929,6 +2931,11 @@ export function showPauseMenu(ctx: ScreenContext): void {
       ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
       ctx.state.phase = DiabloPhase.INVENTORY;
       showCollection(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-dailies-btn")!.addEventListener("click", () => {
+      ctx.showQuestTracker();
+      ctx.state.phase = DiabloPhase.PLAYING;
+      ctx.menuEl.innerHTML = "";
     });
     ctx.menuEl.querySelector("#diablo-charselect-btn")!.addEventListener("click", () => {
       ctx.state.phase = DiabloPhase.CLASS_SELECT;

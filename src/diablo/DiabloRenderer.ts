@@ -6032,6 +6032,24 @@ export class DiabloRenderer {
     this._hoverEnemyId = id;
   }
 
+  /** Raycast screen coordinates to world XZ position on the ground plane. */
+  getWorldPosAtScreen(mx: number, my: number): { x: number; z: number } | null {
+    const ndcX = (mx / this._renderer.domElement.clientWidth) * 2 - 1;
+    const ndcY = -(my / this._renderer.domElement.clientHeight) * 2 + 1;
+    this._raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this._camera);
+
+    // Intersect with y=0 plane analytically
+    const origin = this._raycaster.ray.origin;
+    const dir = this._raycaster.ray.direction;
+    if (Math.abs(dir.y) < 0.0001) return null; // ray parallel to ground
+    const t = -origin.y / dir.y;
+    if (t < 0) return null; // behind camera
+    return {
+      x: origin.x + dir.x * t,
+      z: origin.z + dir.z * t,
+    };
+  }
+
   /** Get enemy id under the given screen coordinates (for hover detection). */
   getEnemyAtScreen(mx: number, my: number): string | null {
     const ndcX = (mx / this._renderer.domElement.clientWidth) * 2 - 1;

@@ -1189,6 +1189,29 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
       inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 1px rgba(200,168,78,0.2);
     font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
   `;
+  // Close button (X) in top-right corner
+  const questCloseBtn = document.createElement("div");
+  questCloseBtn.style.cssText = `
+    position:absolute;top:4px;right:6px;width:20px;height:20px;
+    cursor:pointer;pointer-events:auto;z-index:10;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:#886644;line-height:1;
+    border-radius:3px;transition:all 0.15s;
+  `;
+  questCloseBtn.textContent = "\u2715";
+  questCloseBtn.addEventListener("mouseenter", () => {
+    questCloseBtn.style.color = "#ffcc88";
+    questCloseBtn.style.background = "rgba(200,168,78,0.15)";
+  });
+  questCloseBtn.addEventListener("mouseleave", () => {
+    questCloseBtn.style.color = "#886644";
+    questCloseBtn.style.background = "none";
+  });
+  questCloseBtn.addEventListener("click", () => {
+    questTracker.style.display = "none";
+    questTracker.dataset.userHidden = "true";
+  });
+  questTracker.appendChild(questCloseBtn);
   // Scroll top decoration
   const questScrollTop = document.createElement("div");
   questScrollTop.style.cssText = `
