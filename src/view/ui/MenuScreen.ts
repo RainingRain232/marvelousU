@@ -687,7 +687,11 @@ export class MenuScreen {
   private _screen1CardW = 820;
   private _screen1CardH = 0; // computed
   private _scrollY = 0;
+  private _targetScrollY = 0;
   private _onWheel: ((e: WheelEvent) => void) | null = null;
+  private _scrollTopGrad!: Graphics;
+  private _scrollBotGrad!: Graphics;
+  private _scrollTrack!: Graphics;
 
   // --- Screen 2: match setup ---
   private _screen2!: Container;
@@ -895,6 +899,14 @@ export class MenuScreen {
     this._buildScreen1();
     this._buildScreen2();
 
+    // Scroll indicators (gradient overlays at top/bottom edges)
+    this._scrollTopGrad = new Graphics();
+    this.container.addChild(this._scrollTopGrad);
+    this._scrollBotGrad = new Graphics();
+    this.container.addChild(this._scrollBotGrad);
+    this._scrollTrack = new Graphics();
+    this.container.addChild(this._scrollTrack);
+
     // Start on screen 1
     this._screen2.visible = false;
 
@@ -933,6 +945,14 @@ export class MenuScreen {
           if (this._cornerMiniCircles[i]) {
             this._cornerMiniCircles[i].rotation = this._cornerMiniPhases[i];
           }
+        }
+        // Smooth scroll interpolation
+        if (Math.abs(this._scrollY - this._targetScrollY) > 0.5) {
+          this._scrollY += (this._targetScrollY - this._scrollY) * Math.min(1, dt * 12);
+          this._layout();
+        } else if (this._scrollY !== this._targetScrollY) {
+          this._scrollY = this._targetScrollY;
+          this._layout();
         }
         // Title shimmer
         this._titleGlowPhase += dt;
@@ -1020,6 +1040,7 @@ export class MenuScreen {
     this._screen2.visible = false;
     this._s1FocusBorder.visible = false;
     this._scrollY = 0;
+    this._targetScrollY = 0;
     this._layout();
   }
 
@@ -1242,15 +1263,15 @@ export class MenuScreen {
 
     const COLS = 4;
     const gapX = 8;
-    const gapY = 5;
+    const gapY = 3;
     const tileW = Math.floor((CW - padX * 2 - gapX * (COLS - 1)) / COLS);
-    const tileH = 38;
+    const tileH = 32;
 
     let curY = 72;
     this._s1NavItems = [];
 
     for (const cat of categories) {
-      curY += 4;
+      curY += 2;
       // ── Category ornamental header (compact) ──
       const catGfx = new Graphics();
       catGfx.roundRect(padX, curY + 4, 12, 3, 1.5).fill({ color: cat.color, alpha: 0.5 });
@@ -1275,7 +1296,7 @@ export class MenuScreen {
         .fill({ color: cat.color, alpha: 0.18 });
       card.addChild(catLineRight);
 
-      curY += 18;
+      curY += 14;
 
       // ── Tinted category section background ──
       const catRows = Math.ceil(cat.indices.length / COLS);
@@ -1319,7 +1340,7 @@ export class MenuScreen {
           fontFamily: "monospace", fontSize: 10, fill: 0xddddee, fontWeight: "bold", letterSpacing: 1,
         }) });
         nameText.anchor.set(0.5, 0);
-        nameText.position.set(tileW / 2, 4);
+        nameText.position.set(tileW / 2, 3);
         tile.addChild(nameText);
 
         // Description
@@ -1328,7 +1349,7 @@ export class MenuScreen {
           wordWrap: true, wordWrapWidth: tileW - 12,
         }) });
         descText.anchor.set(0.5, 0);
-        descText.position.set(tileW / 2, 18);
+        descText.position.set(tileW / 2, 15);
         tile.addChild(descText);
 
         // Corner dots (tiny ornamental dots at tile corners)
@@ -1741,7 +1762,7 @@ export class MenuScreen {
       const sh = this._vm.screenHeight;
       const maxScroll = Math.max(0, this._screen1CardH - sh + 16);
       if (maxScroll <= 0) return;
-      this._scrollY = Math.min(maxScroll, Math.max(0, this._scrollY + e.deltaY));
+      this._targetScrollY = Math.min(maxScroll, Math.max(0, this._targetScrollY + e.deltaY));
       this._layout();
     };
     window.addEventListener("wheel", this._onWheel, { passive: true });
@@ -3048,7 +3069,11 @@ export class MenuScreen {
       const cardX = hasRoom
         ? Math.floor((sw - this._screen1CardW) / 2) - 100
         : Math.floor((sw - this._screen1CardW) / 2);
-      const naturalY = Math.max(8, Math.floor((sh - this._screen1CardH) / 2));
+      // If card fits on screen, center it. If too tall, pin to top with padding.
+      const fitsOnScreen = this._screen1CardH <= sh - 16;
+      const naturalY = fitsOnScreen
+        ? Math.max(8, Math.floor((sh - this._screen1CardH) / 2))
+        : 8;
       const cardY = naturalY - this._scrollY;
       this._screen1Card.position.set(cardX, cardY);
 
@@ -3100,6 +3125,55 @@ export class MenuScreen {
         this._sidePillarLeft.visible = sw > this._screen1CardW + 80;
         this._sidePillarRight.visible = sw > this._screen1CardW + 80;
       }
+
+      // Scroll indicators
+      const maxScroll = Math.max(0, this._screen1CardH - sh + 16);
+      const canScroll = maxScroll > 0;
+      const gradH = 32;
+
+      this._scrollTopGrad.clear();
+      this._scrollBotGrad.clear();
+      this._scrollTrack.clear();
+
+      if (canScroll) {
+        const scrollRatio = maxScroll > 0 ? this._scrollY / maxScroll : 0;
+
+        // Top fade gradient (visible when scrolled down)
+        if (this._scrollY > 2) {
+          const topAlpha = Math.min(0.9, this._scrollY / 60);
+          this._scrollTopGrad.rect(0, 0, sw, gradH).fill({ color: BG_COLOR, alpha: topAlpha });
+          // Arrow hint
+          this._scrollTopGrad.moveTo(sw / 2 - 8, 12).lineTo(sw / 2, 5).lineTo(sw / 2 + 8, 12)
+            .stroke({ color: 0xffd700, alpha: 0.4, width: 1.5 });
+        }
+
+        // Bottom fade gradient (visible when not fully scrolled)
+        if (this._scrollY < maxScroll - 2) {
+          const botAlpha = Math.min(0.9, (maxScroll - this._scrollY) / 60);
+          this._scrollBotGrad.rect(0, sh - gradH, sw, gradH).fill({ color: BG_COLOR, alpha: botAlpha });
+          // Arrow hint
+          this._scrollBotGrad.moveTo(sw / 2 - 8, sh - 12).lineTo(sw / 2, sh - 5).lineTo(sw / 2 + 8, sh - 12)
+            .stroke({ color: 0xffd700, alpha: 0.4, width: 1.5 });
+        }
+
+        // Mini scrollbar (right edge)
+        const trackX = sw - 8;
+        const trackH = sh - 40;
+        const trackY = 20;
+        const thumbH = Math.max(30, trackH * (sh / this._screen1CardH));
+        const thumbY = trackY + scrollRatio * (trackH - thumbH);
+
+        // Track
+        this._scrollTrack.roundRect(trackX, trackY, 4, trackH, 2)
+          .fill({ color: 0xffffff, alpha: 0.05 });
+        // Thumb
+        this._scrollTrack.roundRect(trackX, thumbY, 4, thumbH, 2)
+          .fill({ color: 0xffd700, alpha: 0.25 });
+      }
+
+      this._scrollTopGrad.visible = canScroll && this._screen1.visible;
+      this._scrollBotGrad.visible = canScroll && this._screen1.visible;
+      this._scrollTrack.visible = canScroll && this._screen1.visible;
     }
 
     if (this._screen2?.visible) {
