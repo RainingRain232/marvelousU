@@ -2741,31 +2741,67 @@ export function buildCamelot(mctx: MapBuildContext, w: number, d: number): void 
     mctx.envGroup.add(catGroup);
 
     // ═══════════════════════════════════════════════
-    // HALF-TIMBER DETAILS on buildings
+    // HALF-TIMBER DETAILS + BRICK MORTAR on buildings
     // ═══════════════════════════════════════════════
     const timberMat = new THREE.MeshStandardMaterial({ color: 0x4A2A0A, roughness: 0.85 });
-    for (let tbi = 0; tbi < 10; tbi++) {
+    const houseMortarMat = new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.95 });
+    for (let tbi = 0; tbi < Math.min(15, buildingPositions.length); tbi++) {
       const [tbx, tbz, tbw2, tbd] = buildingPositions[tbi];
-      const tbh = 3 + ((tbi * 7 + 3) % 5) * 0.4; // approximate building height
-      // Horizontal beams
-      for (const by of [0.5, tbh * 0.5, tbh * 0.85]) {
-        const hBeam = new THREE.Mesh(new THREE.BoxGeometry(tbw2 + 0.05, 0.06, 0.06), timberMat);
-        hBeam.position.set(tbx, by, tbz + tbd / 2 + 0.04);
+      const tbh = 3 + ((tbi * 7 + 3) % 5) * 0.4;
+      const frontZ = tbz + tbd / 2 + 0.04;
+      const backZ = tbz - tbd / 2 - 0.04;
+      const leftX = tbx - tbw2 / 2 - 0.04;
+      const rightX = tbx + tbw2 / 2 + 0.04;
+
+      // Horizontal timber beams on front face
+      for (const by of [0.3, tbh * 0.5, tbh * 0.85]) {
+        const hBeam = new THREE.Mesh(new THREE.BoxGeometry(tbw2 + 0.1, 0.07, 0.07), timberMat);
+        hBeam.position.set(tbx, by, frontZ);
         mctx.envGroup.add(hBeam);
       }
-      // Vertical beams at edges
-      for (const vx of [-tbw2 / 2, tbw2 / 2]) {
-        const vBeam = new THREE.Mesh(new THREE.BoxGeometry(0.06, tbh, 0.06), timberMat);
-        vBeam.position.set(tbx + vx, tbh / 2, tbz + tbd / 2 + 0.04);
+      // Vertical corner beams on front face
+      for (const vx of [-tbw2 / 2, 0, tbw2 / 2]) {
+        const vBeam = new THREE.Mesh(new THREE.BoxGeometry(0.07, tbh, 0.07), timberMat);
+        vBeam.position.set(tbx + vx, tbh / 2, frontZ);
         mctx.envGroup.add(vBeam);
       }
-      // Diagonal cross beam (X pattern)
-      const diagLen = Math.sqrt(tbw2 * tbw2 + (tbh * 0.35) * (tbh * 0.35));
-      const diagAngle = Math.atan2(tbh * 0.35, tbw2);
-      const diag = new THREE.Mesh(new THREE.BoxGeometry(diagLen, 0.04, 0.04), timberMat);
-      diag.rotation.z = diagAngle;
-      diag.position.set(tbx, tbh * 0.65, tbz + tbd / 2 + 0.04);
-      mctx.envGroup.add(diag);
+
+      // Horizontal timber beams on side faces
+      for (const sideX of [leftX, rightX]) {
+        for (const by of [0.3, tbh * 0.5, tbh * 0.85]) {
+          const sBeam = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, tbd + 0.1), timberMat);
+          sBeam.position.set(sideX, by, tbz);
+          mctx.envGroup.add(sBeam);
+        }
+      }
+
+      // Brick mortar lines on front wall (between timber beams)
+      const brickRows = Math.floor(tbh / 0.35);
+      for (let row = 0; row < brickRows; row++) {
+        const mY = 0.15 + row * 0.35;
+        // Horizontal mortar
+        const hMortar = new THREE.Mesh(new THREE.BoxGeometry(tbw2, 0.015, 0.02), houseMortarMat);
+        hMortar.position.set(tbx, mY, frontZ + 0.01);
+        mctx.envGroup.add(hMortar);
+      }
+      // Vertical brick joints on front wall (offset per row)
+      for (let row = 0; row < brickRows - 1; row++) {
+        const jY = 0.32 + row * 0.35;
+        const offset = row % 2 === 0 ? 0 : 0.3;
+        for (let jx = -tbw2 / 2 + 0.2 + offset; jx < tbw2 / 2; jx += 0.6) {
+          const vJoint = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.33, 0.02), houseMortarMat);
+          vJoint.position.set(tbx + jx, jY, frontZ + 0.01);
+          mctx.envGroup.add(vJoint);
+        }
+      }
+
+      // Brick mortar on one side wall
+      for (let row = 0; row < brickRows; row++) {
+        const mY = 0.15 + row * 0.35;
+        const sMortar = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, tbd), houseMortarMat);
+        sMortar.position.set(rightX + 0.01, mY, tbz);
+        mctx.envGroup.add(sMortar);
+      }
     }
 
     // ═══════════════════════════════════════════════
