@@ -380,10 +380,30 @@ export class DerbyRenderer {
     // Ground
     this._groundGfx.clear();
     this._groundGfx.rect(0, B.GROUND_Y, sw, sh - B.GROUND_Y).fill(zc.ground);
-    // Grass border above track
+    // Grass border above track (with grass tufts)
     this._groundGfx.rect(0, 280, sw, 30).fill(zc.ground + 0x060606);
+    const grassOffset = (sx * 0.8) % 20;
+    for (let gi = 0; gi < 40; gi++) {
+      const gx = ((gi * 22 - grassOffset) % (sw + 20)) - 10;
+      const gy = 283 + (gi % 3) * 3;
+      const gh = 4 + (gi % 4) * 2;
+      this._groundGfx.moveTo(gx, gy).lineTo(gx + 1, gy - gh).stroke({ color: zc.ground + 0x1a1a0a, width: 1, alpha: 0.3 });
+      this._groundGfx.moveTo(gx + 3, gy).lineTo(gx + 2, gy - gh + 1).stroke({ color: zc.ground + 0x0a1a0a, width: 1, alpha: 0.25 });
+    }
+    // Wildflowers along track edges
+    for (let fi = 0; fi < 10; fi++) {
+      const fx = ((fi * 87 + 13 - grassOffset * 1.2) % (sw + 40)) - 20;
+      const fy = 282 + (fi % 2) * 2;
+      const fc = [0xffdd44, 0xff6688, 0x88aaff, 0xffaacc][fi % 4];
+      this._groundGfx.circle(fx, fy, 1.5).fill({ color: fc, alpha: 0.4 });
+    }
     // Grass border below track
     this._groundGfx.rect(0, B.GROUND_Y - 10, sw, 15).fill(zc.ground + 0x060606);
+    for (let gi = 0; gi < 30; gi++) {
+      const gx = ((gi * 26 + 7 - grassOffset) % (sw + 20)) - 10;
+      const gy = B.GROUND_Y - 8;
+      this._groundGfx.moveTo(gx, gy).lineTo(gx + 1, gy - 5 - (gi % 3)).stroke({ color: zc.ground + 0x1a1a0a, width: 1, alpha: 0.25 });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -851,9 +871,60 @@ export class DerbyRenderer {
   // FX: particles managed via gsap
   // ---------------------------------------------------------------------------
 
-  private _renderFX(_state: DerbyState): void {
-    // FX graphics are cleared each frame; gsap-animated particles manage themselves
-    this._fxGfx.clear();
+  private _renderFX(state: DerbyState): void {
+    const g = this._fxGfx;
+    g.clear();
+    const p = state.player;
+    const t = state.time;
+    const px = PLAYER_SCREEN_X;
+    const py = p.laneY;
+
+    // Dust trail behind horse (always, stronger when sprinting)
+    const dustCount = p.sprinting ? 6 : 3;
+    for (let i = 0; i < dustCount; i++) {
+      const dx = px - 35 - i * 12 - Math.random() * 8;
+      const dy = py + 8 + (Math.random() - 0.5) * 10;
+      const ds = 2 + Math.random() * 3;
+      const da = (0.1 + Math.random() * 0.08) * (p.sprinting ? 1.5 : 1);
+      g.circle(dx, dy, ds).fill({ color: 0xaa9977, alpha: da });
+    }
+
+    // Speed lines at high speed or boost
+    if (p.boostTimer > 0 || p.sprinting) {
+      const lineCount = p.boostTimer > 0 ? 8 : 4;
+      for (let i = 0; i < lineCount; i++) {
+        const lx = Math.random() * this._sw;
+        const ly = 300 + (Math.random() - 0.5) * 120;
+        const lw = 20 + Math.random() * 40;
+        g.moveTo(lx, ly).lineTo(lx - lw, ly).stroke({
+          color: p.boostTimer > 0 ? 0xffcc44 : 0xffffff,
+          width: 0.5 + Math.random(),
+          alpha: 0.08 + Math.random() * 0.06,
+        });
+      }
+    }
+
+    // Hoofprint marks on track (periodic)
+    const hoofOffset = state.scrollX % 30;
+    for (let i = 0; i < 12; i++) {
+      const hx = px - 40 - i * 30 + hoofOffset;
+      if (hx < 0 || hx > this._sw) continue;
+      const hy = py + 12;
+      const ha = Math.max(0, 0.06 - i * 0.005);
+      g.ellipse(hx, hy, 2.5, 1.5).fill({ color: 0x553322, alpha: ha });
+      g.ellipse(hx + 5, hy - 1, 2.5, 1.5).fill({ color: 0x553322, alpha: ha });
+    }
+
+    // Sprint fire trail
+    if (p.sprinting && p.stamina > 0) {
+      for (let i = 0; i < 3; i++) {
+        const fx = px - 30 - i * 8 + (Math.random() - 0.5) * 6;
+        const fy = py + (Math.random() - 0.5) * 8;
+        const fs = 3 + Math.random() * 3;
+        g.circle(fx, fy, fs).fill({ color: 0xff6622, alpha: 0.12 - i * 0.03 });
+        g.circle(fx, fy, fs * 0.5).fill({ color: 0xffaa44, alpha: 0.08 });
+      }
+    }
   }
 
   // --- Public FX spawn methods (called from DerbyGame) ---

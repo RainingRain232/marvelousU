@@ -94,6 +94,32 @@ export class RampartRenderer {
     this._scene.add(this._explosionGroup);
     this._scene.add(this._muzzleFlashGroup);
 
+    // Ground fog layer for atmosphere
+    const fogGeo = new THREE.PlaneGeometry(200, 200);
+    fogGeo.rotateX(-Math.PI / 2);
+    const fogMat = new THREE.MeshBasicMaterial({
+      color: 0xccddee, transparent: true, opacity: 0.08,
+      depthWrite: false, side: THREE.DoubleSide,
+    });
+    const fogLayer = new THREE.Mesh(fogGeo, fogMat);
+    fogLayer.position.y = 0.3;
+    this._scene.add(fogLayer);
+
+    // Dust mote particles floating in the air
+    const dustGeo = new THREE.BufferGeometry();
+    const dustCount = 100;
+    const dustPositions = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i++) {
+      dustPositions[i * 3] = (Math.random() - 0.5) * 100;
+      dustPositions[i * 3 + 1] = 1 + Math.random() * 8;
+      dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+    }
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
+    const dustMat = new THREE.PointsMaterial({ color: 0xffeedd, size: 0.08, transparent: true, opacity: 0.35 });
+    const dustPoints = new THREE.Points(dustGeo, dustMat);
+    dustPoints.name = "dustMotes";
+    this._scene.add(dustPoints);
+
     this._buildTerrain();
     this._buildCastle();
     this._buildGridOverlay();
@@ -356,6 +382,21 @@ export class RampartRenderer {
 
     // Animate sun slightly
     this._sunLight.position.x = 30 + Math.sin(this._time * 0.05) * 10;
+
+    // Animate dust motes drifting
+    const dustPoints = this._scene.getObjectByName("dustMotes") as THREE.Points | undefined;
+    if (dustPoints) {
+      const pos = dustPoints.geometry.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        x += Math.sin(this._time * 0.3 + i * 0.5) * 0.02;
+        y += Math.sin(this._time * 0.5 + i * 0.3) * 0.005;
+        z += Math.cos(this._time * 0.2 + i * 0.7) * 0.02;
+        if (y > 10) y = 1;
+        pos.setXYZ(i, x, y, z);
+      }
+      pos.needsUpdate = true;
+    }
 
     // Flag waving
     for (let i = 0; i < this._flagMeshes.length; i++) {
@@ -920,22 +961,39 @@ export class RampartRenderer {
   // Particles
   // -----------------------------------------------------------------------
 
+  private _particlePool: THREE.Mesh[] = [];
+  private _sharedParticleGeo: THREE.SphereGeometry | null = null;
+
   private _updateParticles(state: RampartState): void {
-    while (this._particleGroup.children.length > 0) {
-      this._particleGroup.remove(this._particleGroup.children[0]);
+    // Lazy-init shared geometry
+    if (!this._sharedParticleGeo) {
+      this._sharedParticleGeo = new THREE.SphereGeometry(1, 6, 5);
     }
 
-    for (const p of state.particles) {
-      const alpha = p.life / p.maxLife;
-      const geo = new THREE.SphereGeometry(p.size * alpha, 4, 4);
-      const mat = new THREE.MeshBasicMaterial({
-        color: p.color,
-        transparent: true,
-        opacity: alpha,
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(p.x, p.y, p.z);
+    // Hide all pooled particles
+    for (const m of this._particlePool) m.visible = false;
+
+    // Grow pool if needed
+    while (this._particlePool.length < state.particles.length) {
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false });
+      const mesh = new THREE.Mesh(this._sharedParticleGeo, mat);
+      mesh.visible = false;
       this._particleGroup.add(mesh);
+      this._particlePool.push(mesh);
+    }
+
+    // Update visible particles from state
+    for (let i = 0; i < state.particles.length; i++) {
+      const p = state.particles[i];
+      const mesh = this._particlePool[i];
+      const alpha = p.life / p.maxLife;
+      mesh.visible = true;
+      mesh.position.set(p.x, p.y, p.z);
+      const s = p.size * alpha;
+      mesh.scale.setScalar(s);
+      const mat = mesh.material as THREE.MeshBasicMaterial;
+      mat.color.setHex(p.color);
+      mat.opacity = alpha * 0.8;
     }
   }
 
@@ -943,30 +1001,52 @@ export class RampartRenderer {
   // Explosions (AoE rings)
   // -----------------------------------------------------------------------
 
+  private _explosionPool: { ring: THREE.Mesh; glow: THREE.Mesh }[] = [];
+
   private _updateExplosions(state: RampartState): void {
-    // Remove old
-    while (this._explosionGroup.children.length > 0) {
-      this._explosionGroup.remove(this._explosionGroup.children[0]);
+    // Hide all pooled explosions
+    for (const e of this._explosionPool) { e.ring.visible = false; e.glow.visible = false; }
+
+    // Grow pool if needed
+    while (this._explosionPool.length < state.explosions.length) {
+      const ringGeo = new THREE.RingGeometry(0.1, 1, 24);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.visible = false;
+      this._explosionGroup.add(ring);
+      // Ground glow
+      const glowGeo = new THREE.CircleGeometry(1, 16);
+      glowGeo.rotateX(-Math.PI / 2);
+      const glowMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.visible = false;
+      this._explosionGroup.add(glow);
+      this._explosionPool.push({ ring, glow });
     }
 
-    for (const exp of state.explosions) {
-      const t = 1 - exp.life / exp.maxLife; // 0→1 as it expands
+    for (let i = 0; i < state.explosions.length; i++) {
+      const exp = state.explosions[i];
+      const t = 1 - exp.life / exp.maxLife;
       const alpha = exp.life / exp.maxLife;
+      const { ring, glow } = this._explosionPool[i];
 
       // Expanding ring
-      const innerR = exp.radius * t * 0.6;
-      const outerR = exp.radius * (t * 0.8 + 0.2);
-      const geo = new THREE.RingGeometry(innerR, outerR, 24);
-      geo.rotateX(-Math.PI / 2);
-      const mat = new THREE.MeshBasicMaterial({
-        color: exp.color,
-        transparent: true,
-        opacity: alpha * 0.5,
-        side: THREE.DoubleSide,
-      });
-      const ring = new THREE.Mesh(geo, mat);
+      ring.visible = true;
       ring.position.set(exp.x, exp.y + 0.15, exp.z);
-      this._explosionGroup.add(ring);
+      const s = exp.radius * (t * 0.8 + 0.2);
+      ring.scale.setScalar(s);
+      const ringMat = ring.material as THREE.MeshBasicMaterial;
+      ringMat.color.setHex(exp.color);
+      ringMat.opacity = alpha * 0.5;
+
+      // Ground glow beneath explosion
+      glow.visible = true;
+      glow.position.set(exp.x, exp.y + 0.05, exp.z);
+      glow.scale.setScalar(exp.radius * t * 0.5);
+      const glowMat = glow.material as THREE.MeshBasicMaterial;
+      glowMat.color.setHex(exp.color);
+      glowMat.opacity = alpha * 0.15;
 
       // Inner flash (bright center)
       if (t < 0.3) {

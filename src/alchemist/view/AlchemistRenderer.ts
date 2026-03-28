@@ -364,10 +364,21 @@ export class AlchemistRenderer {
     // Power-ups display
     const puY = py + ph - 100;
     u.moveTo(px + 10, puY).lineTo(px + pw - 10, puY).stroke({ color: COL, width: 0.5, alpha: 0.15 });
-    this._addText("Power-ups", px + pw / 2, puY + 3, { fontSize: 9, fill: 0xccaa88, fontWeight: "bold" }, true);
+    this._addText("Power-ups (use / buy)", px + pw / 2, puY + 3, { fontSize: 9, fill: 0xccaa88, fontWeight: "bold" }, true);
     this._addText(`Q: Shuffle (${state.shufflesRemaining})`, px + 8, puY + 16, { fontSize: 8, fill: state.shufflesRemaining > 0 ? 0xffaa44 : 0x555544 });
+    this._addText(`1: Buy 20g`, px + pw - 50, puY + 16, { fontSize: 7, fill: state.gold >= 20 ? 0xffd700 : 0x444433 });
     this._addText(`W: +30s (${state.timeExtensions})`, px + 8, puY + 28, { fontSize: 8, fill: state.timeExtensions > 0 ? 0x44ccff : 0x555544 });
+    this._addText(`2: Buy 15g`, px + pw - 50, puY + 28, { fontSize: 7, fill: state.gold >= 15 ? 0xffd700 : 0x444433 });
     this._addText(`E: Magnet (${state.magnetsRemaining})`, px + 8, puY + 40, { fontSize: 8, fill: state.magnetsRemaining > 0 ? 0xaa44ff : 0x555544 });
+    this._addText(`3: Buy 25g`, px + pw - 50, puY + 40, { fontSize: 7, fill: state.gold >= 25 ? 0xffd700 : 0x444433 });
+    // Serve streak display
+    if (state.serveStreak >= 2) {
+      this._addText(`\u{1F525} Serve Streak: ${state.serveStreak}x`, px + pw / 2, puY + 54, { fontSize: 8, fill: 0xff8844, fontWeight: "bold" }, true);
+    }
+    // Cascade multiplier
+    if (state.cascadeMultiplier > 1) {
+      this._addText(`Cascade: ${state.cascadeMultiplier}x`, px + pw / 2, puY + 66, { fontSize: 8, fill: 0xffcc44, fontWeight: "bold" }, true);
+    }
 
     // Log (bottom)
     const logY = py + ph - 50;

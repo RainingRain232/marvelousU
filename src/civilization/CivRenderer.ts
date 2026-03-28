@@ -833,8 +833,11 @@ export class CivRenderer {
 
   // ── Ambient (floating particles, damage numbers) ─────────────────────────
 
-  private _ambient(_state: CivGameState): void {
+  private _ambientTime = 0;
+
+  private _ambient(state: CivGameState): void {
     for (const ch of this.ambientC.removeChildren()) ch.destroy();
+    this._ambientTime += 0.016;
 
     // Floating texts (damage numbers, event text)
     for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
@@ -848,6 +851,25 @@ export class CivRenderer {
       this.ambientC.addChild(txt);
       this.dirty = true;
     }
+
+    // Ambient birds flying across screen (occasional)
+    const t = this._ambientTime;
+    const g = new Graphics();
+    for (let bi = 0; bi < 4; bi++) {
+      const bx = ((t * 20 + bi * 300) % 1200) - 100;
+      const by = 50 + bi * 40 + Math.sin(t * 1.5 + bi * 2) * 15;
+      const wingSpread = Math.sin(t * 6 + bi * 3) * 5;
+      g.moveTo(bx - 6, by + wingSpread).lineTo(bx, by).lineTo(bx + 6, by + wingSpread).stroke({ color: 0x333333, width: 0.8, alpha: 0.3 });
+    }
+
+    // Drifting cloud shadows on the map
+    for (let ci = 0; ci < 3; ci++) {
+      const cx = ((t * 8 + ci * 400) % 1400) - 200;
+      const cy = 100 + ci * 200 + Math.sin(t * 0.3 + ci) * 30;
+      g.ellipse(cx, cy, 60 + ci * 20, 25).fill({ color: 0x000000, alpha: 0.03 });
+    }
+
+    this.ambientC.addChild(g);
   }
 
   // ── Cities ───────────────────────────────────────────────────────────────

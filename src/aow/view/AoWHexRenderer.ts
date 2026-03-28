@@ -37,6 +37,9 @@ export class AoWHexRenderer {
   private _treeTops: THREE.Object3D[] = [];
   private _grailOrbs: THREE.Mesh[] = [];
   private _shrineGlows: THREE.Mesh[] = [];
+  private _ambientParticles: THREE.InstancedMesh | null = null;
+  private _particleCount = 60;
+  private _particleData: { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number }[] = [];
   private _time = 0;
 
   // Shared geometries and materials
@@ -904,6 +907,47 @@ export class AoWHexRenderer {
       mat.emissiveIntensity = 0.2 + Math.sin(this._time * 3) * 0.15;
       mat.opacity = 0.4 + Math.sin(this._time * 2.5) * 0.15;
     }
+
+    // Ambient floating particles (fireflies, dust motes)
+    if (!this._ambientParticles) {
+      const geo = new THREE.SphereGeometry(0.03, 4, 3);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffeeaa, transparent: true, opacity: 0.6 });
+      this._ambientParticles = new THREE.InstancedMesh(geo, mat, this._particleCount);
+      this._sceneManager.scene.add(this._ambientParticles);
+      const dummy = new THREE.Object3D();
+      for (let i = 0; i < this._particleCount; i++) {
+        this._particleData.push({
+          x: (Math.random() - 0.5) * 20, y: 0.5 + Math.random() * 1.5, z: (Math.random() - 0.5) * 20,
+          vx: (Math.random() - 0.5) * 0.3, vy: 0.1 + Math.random() * 0.2, vz: (Math.random() - 0.5) * 0.3,
+          life: Math.random() * 5,
+        });
+        dummy.position.set(this._particleData[i].x, this._particleData[i].y, this._particleData[i].z);
+        dummy.scale.setScalar(0.5 + Math.random() * 0.5);
+        dummy.updateMatrix();
+        this._ambientParticles.setMatrixAt(i, dummy.matrix);
+      }
+      this._ambientParticles.instanceMatrix.needsUpdate = true;
+    }
+    // Update particles
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < this._particleData.length; i++) {
+      const p = this._particleData[i];
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      p.life += dt;
+      // Reset when too high
+      if (p.y > 3 || p.life > 6) {
+        p.x = (Math.random() - 0.5) * 20; p.y = 0.3; p.z = (Math.random() - 0.5) * 20;
+        p.vx = (Math.random() - 0.5) * 0.3; p.vy = 0.1 + Math.random() * 0.2; p.vz = (Math.random() - 0.5) * 0.3;
+        p.life = 0;
+      }
+      const alpha = Math.min(1, p.life) * Math.max(0, 1 - (p.life / 6));
+      const scale = (0.3 + alpha * 0.7) * (0.5 + Math.sin(this._time * 3 + i) * 0.3);
+      dummy.position.set(p.x, p.y, p.z);
+      dummy.scale.setScalar(scale);
+      dummy.updateMatrix();
+      this._ambientParticles!.setMatrixAt(i, dummy.matrix);
+    }
+    this._ambientParticles!.instanceMatrix.needsUpdate = true;
   }
 
   // ---------------------------------------------------------------------------

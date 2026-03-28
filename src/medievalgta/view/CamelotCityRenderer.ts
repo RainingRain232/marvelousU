@@ -41,6 +41,7 @@ export class CamelotCityRenderer {
   private windowLightsLayer = new Graphics();
   private chimneySmoke = new Graphics();
   private particleGfx = new Graphics();
+  private _cachedDarkness = 0;
 
   init(): void {
     this.container.removeChildren();
@@ -1762,6 +1763,7 @@ export class CamelotCityRenderer {
       darkness = 0.65 * (1 - (dt - 0.75) / 0.25);
     }
 
+    this._cachedDarkness = darkness;
     if (darkness > 0.02) {
       g.rect(0, 0, WW, WH).fill({ color: tintColor, alpha: darkness });
     }
@@ -1836,7 +1838,48 @@ export class CamelotCityRenderer {
     for (const p of particles) {
       if (p.life <= 0) continue;
       const alpha = Math.min(1, p.life / p.maxLife);
-      g.circle(p.pos.x, p.pos.y, p.size).fill({ color: p.color, alpha });
+      const sz = p.size * alpha;
+
+      // Glow for larger/brighter particles
+      if (p.size > 2) {
+        g.circle(p.pos.x, p.pos.y, sz * 2).fill({ color: p.color, alpha: alpha * 0.1 });
+      }
+
+      // Main particle
+      g.circle(p.pos.x, p.pos.y, sz).fill({ color: p.color, alpha });
+
+      // Motion trail for fast-moving particles
+      if (p.vel && (Math.abs(p.vel.x) + Math.abs(p.vel.y) > 50)) {
+        const tLen = Math.min(1, (Math.abs(p.vel.x) + Math.abs(p.vel.y)) / 200);
+        g.moveTo(p.pos.x, p.pos.y)
+          .lineTo(p.pos.x - p.vel.x * 0.03 * tLen, p.pos.y - p.vel.y * 0.03 * tLen)
+          .stroke({ color: p.color, width: sz * 0.6, alpha: alpha * 0.4 });
+      }
     }
+
+    // Ambient: drifting dust motes in the city
+    const t = Date.now() * 0.001;
+    for (let i = 0; i < 12; i++) {
+      const dx = ((i * 277 + t * 8) % WW);
+      const dy = ((i * 431 + 91 + Math.sin(t * 0.5 + i * 1.3) * 40) % WH);
+      const da = 0.04 + Math.sin(t * 1.5 + i) * 0.02;
+      g.circle(dx, dy, 1 + (i % 3) * 0.3).fill({ color: 0xddccaa, alpha: da });
+    }
+
+    // Ambient: torch flicker at night near buildings
+    const darkness = this._getDarkness();
+    if (darkness > 0.2) {
+      const torchPositions = [[900, 560], [1450, 560], [2100, 560], [2250, 1210], [900, 1210]];
+      for (const [tx, ty] of torchPositions) {
+        const flicker = 0.3 + Math.sin(t * 8 + tx * 0.1) * 0.15;
+        g.circle(tx, ty, 25).fill({ color: 0xff8833, alpha: flicker * darkness * 0.08 });
+        g.circle(tx, ty, 12).fill({ color: 0xffaa44, alpha: flicker * darkness * 0.12 });
+        g.circle(tx, ty, 4).fill({ color: 0xffdd88, alpha: flicker * darkness * 0.2 });
+      }
+    }
+  }
+
+  private _getDarkness(): number {
+    return this._cachedDarkness;
   }
 }
