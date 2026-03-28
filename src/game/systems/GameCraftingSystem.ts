@@ -175,6 +175,14 @@ export function canEnchant(
   const ench = ENCHANTMENT_DEFS.find(e => e.id === enchantId);
   if (!ench) return false;
 
+  // Check max level
+  const p = state.player;
+  if (_inventoryIndex >= 0 && _inventoryIndex < p.inventory.length) {
+    const itemId = p.inventory[_inventoryIndex].def.id;
+    const existing = state.enchantments.find(e => e.itemId === itemId && e.enchantId === enchantId);
+    if ((existing?.level ?? 0) >= ench.maxLevel) return false;
+  }
+
   // Check material cost
   for (const cost of ench.baseCost) {
     if (getMaterialCount(state, cost.matId) < cost.quantity) return false;
@@ -197,11 +205,6 @@ export function enchantItem(
   }
   const inv = p.inventory[inventoryIndex];
 
-  // Consume materials
-  for (const cost of ench.baseCost) {
-    removeMaterial(state, cost.matId, cost.quantity);
-  }
-
   // Get current enchantment level on this item
   const itemId = inv.def.id;
   let existing = state.enchantments.find(e => e.itemId === itemId && e.enchantId === enchantId);
@@ -209,6 +212,11 @@ export function enchantItem(
 
   if (currentLevel >= ench.maxLevel) {
     return { success: false, level: currentLevel, destroyed: false };
+  }
+
+  // Consume materials
+  for (const cost of ench.baseCost) {
+    removeMaterial(state, cost.matId, cost.quantity);
   }
 
   // Success chance decreases with level

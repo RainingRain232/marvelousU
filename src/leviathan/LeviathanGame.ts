@@ -101,35 +101,34 @@ export class LeviathanGame {
   }
 
   private _registerInput(): void {
-    const s = this._state;
     this._onKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      s.keys.add(key);
+      this._state.keys.add(key);
       if (key === "escape") {
         if (document.pointerLockElement) document.exitPointerLock();
-        if (s.phase === "playing") {
-          if (s.upgradeMenuOpen) { s.upgradeMenuOpen = false; }
-          else { s.paused = !s.paused; }
+        if (this._state.phase === "playing") {
+          if (this._state.upgradeMenuOpen) { this._state.upgradeMenuOpen = false; }
+          else { this._state.paused = !this._state.paused; }
         }
       }
       if (key === "tab") {
         e.preventDefault();
-        if (s.phase === "playing" && s.nearAltar && !s.escaping) {
-          s.upgradeMenuOpen = !s.upgradeMenuOpen;
-          if (s.upgradeMenuOpen && document.pointerLockElement) document.exitPointerLock();
+        if (this._state.phase === "playing" && this._state.nearAltar && !this._state.escaping) {
+          this._state.upgradeMenuOpen = !this._state.upgradeMenuOpen;
+          if (this._state.upgradeMenuOpen && document.pointerLockElement) document.exitPointerLock();
         }
       }
     };
-    this._onKeyUp = (e: KeyboardEvent) => { s.keys.delete(e.key.toLowerCase()); };
+    this._onKeyUp = (e: KeyboardEvent) => { this._state.keys.delete(e.key.toLowerCase()); };
     this._onMouseMove = (e: MouseEvent) => {
-      s.mouseX = e.clientX; s.mouseY = e.clientY;
-      if (s.pointerLocked) { s.mouseDX += e.movementX; s.mouseDY += e.movementY; }
+      this._state.mouseX = e.clientX; this._state.mouseY = e.clientY;
+      if (this._state.pointerLocked) { this._state.mouseDX += e.movementX; this._state.mouseDY += e.movementY; }
     };
-    this._onMouseDown = (e: MouseEvent) => { if (e.button === 0) s.mouseDown = true; if (e.button === 2) s.rightMouseDown = true; };
-    this._onMouseUp = (e: MouseEvent) => { if (e.button === 0) s.mouseDown = false; if (e.button === 2) s.rightMouseDown = false; };
+    this._onMouseDown = (e: MouseEvent) => { if (e.button === 0) this._state.mouseDown = true; if (e.button === 2) this._state.rightMouseDown = true; };
+    this._onMouseUp = (e: MouseEvent) => { if (e.button === 0) this._state.mouseDown = false; if (e.button === 2) this._state.rightMouseDown = false; };
     this._onContextMenu = (e: Event) => e.preventDefault();
-    this._onClick = () => { if (s.phase === "playing") this._renderer.canvas.requestPointerLock(); };
-    this._onPointerLockChange = () => { s.pointerLocked = document.pointerLockElement === this._renderer.canvas; };
+    this._onClick = () => { if (this._state.phase === "playing") this._renderer.canvas.requestPointerLock(); };
+    this._onPointerLockChange = () => { this._state.pointerLocked = document.pointerLockElement === this._renderer.canvas; };
 
     window.addEventListener("keydown", this._onKeyDown);
     window.addEventListener("keyup", this._onKeyUp);

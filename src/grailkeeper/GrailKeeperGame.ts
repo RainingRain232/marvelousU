@@ -2075,7 +2075,10 @@ export class GrailKeeperGame {
       // Distant islands bob (idle)
       for (let i = 0; i < 8; i++) {
         const dIsland = this._scene.getObjectByName(`distIsland${i}`);
-        if (dIsland) dIsland.position.y += Math.sin(this._time * 0.3 + i) * 0.003;
+        if (dIsland) {
+          if (dIsland.userData.baseY === undefined) dIsland.userData.baseY = dIsland.position.y;
+          dIsland.position.y = dIsland.userData.baseY + Math.sin(this._time * 0.3 + i) * 0.15;
+        }
       }
       return;
     }

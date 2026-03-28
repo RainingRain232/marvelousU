@@ -118,6 +118,7 @@ export function createAscentState(startPhase: AscentPhase = AscentPhase.PLAYING)
     bossMaxHp: 0,
     highScore: meta.highScore,
     deathCount: meta.totalDeaths,
+    lastBossShootTime: 0,
   };
 }
 

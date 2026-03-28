@@ -309,21 +309,10 @@ export class AscentGame {
       this._renderer.spawnDashBurst(player.x + player.width / 2, dashScreenY, player.facing);
     }
 
-    // Apply speed boost multiplier on top
-    if (player.speedBoostTimer > 0 && player.vx !== 0) {
-      player.vx *= B.SPEED_BOOST_MULT;
-    }
-
     // Update facing direction
     if (player.vx < 0) player.facing = -1;
     else if (player.vx > 0) player.facing = 1;
 
-    // Screen wrapping — if the player walks off one side, appear on the other
-    if (player.x + player.width < 0) {
-      player.x = B.WORLD_WIDTH;
-    } else if (player.x > B.WORLD_WIDTH) {
-      player.x = -player.width;
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -369,6 +358,7 @@ export class AscentGame {
     resetGenerator();
     this._state = createAscentState(AscentPhase.PLAYING);
     this._wasGrounded = false;
+    this._prevVy = 0;
     this._prevHp = this._state.player.hp;
     this._prevCoins = 0;
     this._prevEnemyCount = 0;

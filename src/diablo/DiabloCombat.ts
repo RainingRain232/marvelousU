@@ -137,6 +137,15 @@ export function getSkillDamage(ctx: CombatContext, def: any): number {
     case DiabloClass.RANGER:
       base = p.dexterity * 1.3 + weaponBonus;
       break;
+    case DiabloClass.PALADIN:
+      base = p.strength * 1.3 + p.vitality * 0.5 + weaponBonus;
+      break;
+    case DiabloClass.NECROMANCER:
+      base = p.intelligence * 1.1 + p.vitality * 0.4 + weaponBonus;
+      break;
+    case DiabloClass.ASSASSIN:
+      base = p.dexterity * 1.4 + p.strength * 0.3 + weaponBonus;
+      break;
   }
   const hasBattleCry = p.statusEffects.some((e) => e.source === "BATTLE_CRY");
   if (hasBattleCry) base *= 1.3;
@@ -876,8 +885,6 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
   // Check enemy death
   if (target.hp <= 0) {
     target.hp = 0;
-    target.state = EnemyState.DYING;
-    target.deathTimer = 0;
     // Death knockback — push enemy away from player
     const kbAngle = Math.atan2(target.z - p.z, target.x - p.x);
     const kbDist = target.isBoss ? 1.0 : 2.0 + Math.random() * 1.5;
@@ -896,125 +903,10 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
     if (ms.comboCount >= 3) {
       ctx.addFloatingText(p.x, p.y + 3.5, p.z, `${ms.comboCount}x COMBO`, '#ffaa00');
     }
-
-    const meleeXpMult = ctx.state.weather === Weather.CLEAR ? 1.1 : 1.0;
-    let meleeXpAmount = Math.floor(target.xpReward * meleeXpMult * ms.comboMultiplier);
-    // Prestige XP bonus
-    if (p.prestigeBonuses.xpPercent > 0) {
-      meleeXpAmount = Math.floor(meleeXpAmount * (1 + p.prestigeBonuses.xpPercent / 100));
-    }
-    p.xp += meleeXpAmount;
-    ctx.addFloatingText(target.x, target.y + 1.5, target.z, `+${meleeXpAmount} XP`, '#aaccff');
-    let goldFromKill = Math.floor((5 + Math.random() * 10 * target.level) * ms.comboMultiplier);
-    // Prestige gold bonus
-    if (p.prestigeBonuses.goldPercent > 0) {
-      goldFromKill = Math.floor(goldFromKill * (1 + p.prestigeBonuses.goldPercent / 100));
-    }
-    p.gold += goldFromKill;
-    ctx.playSound('gold');
-    ms.goldEarnedTotal += goldFromKill;
-    ctx.state.killCount++;
-    ms.totalKills++;
-    // Achievement tracking: enemy kill
-    ctx.incrementAchievement('first_blood');
-    ctx.incrementAchievement('centurion');
-    ctx.incrementAchievement('slayer');
-    ctx.incrementAchievement('massacre');
-    ctx.updateDailyProgress('kill');
-    ctx.updateDailyProgress('collect_gold', goldFromKill);
-    ctx.updateAchievement('gold_hoarder', p.gold);
-    if (target.isBoss) {
-      ctx.incrementAchievement('boss_slayer');
-      ctx.incrementAchievement('boss_hunter');
-      ctx.updateDailyProgress('boss_kill');
-    }
-    // Stat tracking (melee kill)
-    p.stats.totalKills++;
-    p.stats.currentKillStreak++;
-    // Kill streak announcements
-    const streak = p.stats.currentKillStreak;
-    if (streak === 5) {
-      ctx.addFloatingText(p.x, p.y + 4, p.z, 'KILLING SPREE!', '#ff8800');
-      ctx.renderer.shakeCamera(0.2, 0.3);
-    } else if (streak === 10) {
-      ctx.addFloatingText(p.x, p.y + 4, p.z, 'RAMPAGE!', '#ff4400');
-      ctx.renderer.shakeCamera(0.3, 0.4);
-    } else if (streak === 20) {
-      ctx.addFloatingText(p.x, p.y + 4, p.z, 'MASSACRE!', '#ff0000');
-      ctx.renderer.shakeCamera(0.5, 0.6);
-    } else if (streak === 50) {
-      ctx.addFloatingText(p.x, p.y + 4, p.z, 'LEGENDARY SLAYER!', '#ffd700');
-      ctx.renderer.shakeCamera(0.6, 0.8);
-      ms.slowMotionTimer = 0.5;
-      ms.slowMotionScale = 0.3;
-    }
-    p.stats.longestKillStreak = Math.max(p.stats.longestKillStreak, p.stats.currentKillStreak);
-    p.stats.totalGoldEarned += goldFromKill;
-    if (target.isBoss) p.stats.totalBossKills++;
     ms.targetEnemyId = null;
 
-    // Trigger legendary on_kill effects
-    triggerLegendaryEffects(ctx, 'on_kill', {
-      targetX: target.x, targetZ: target.z, damage: 0, enemyMaxHp: target.maxHp,
-      enemyStatusEffects: target.statusEffects
-    });
-
-    ctx.renderer.spawnParticles(ParticleType.DUST, target.x, target.y + 0.5, target.z, 8 + Math.floor(Math.random() * 5), ctx.state.particles);
-
-    // Roll loot
-    const lootItems = ctx.rollLoot(target);
-    for (const item of lootItems) {
-      const loot = {
-        id: ctx.genId(),
-        item,
-        x: target.x + (Math.random() * 2 - 1),
-        y: 0,
-        z: target.z + (Math.random() * 2 - 1),
-        timer: 0,
-      };
-      ctx.state.loot.push(loot);
-    }
-    ctx.renderer.spawnParticles(ParticleType.GOLD, target.x, target.y + 0.5, target.z, 5, ctx.state.particles);
-
-    // Guaranteed extra boss loot
-    if (target.isBoss) {
-      const isRiftGuardian = target.bossName?.includes('Rift Guardian');
-      const minRarity = isRiftGuardian ? ItemRarity.LEGENDARY : ItemRarity.RARE;
-      for (let i = 0; i < 2; i++) {
-        const bossItem = ctx.pickRandomItemOfRarity(minRarity);
-        if (bossItem) {
-          const bossLoot = {
-            id: ctx.genId(),
-            item: { ...bossItem, id: ctx.genId(), level: target.level },
-            x: target.x + (Math.random() * 4 - 2),
-            y: 0,
-            z: target.z + (Math.random() * 4 - 2),
-            timer: 0,
-          };
-          ctx.state.loot.push(bossLoot);
-        }
-      }
-    }
-
-    // Pet XP and drops
-    ctx.grantPetXp(Math.floor(target.xpReward * 0.5));
-    ctx.rollPetDrop(target.isBoss);
-    ctx.rollMaterialDrop(target);
-
-    // Greater Rift tracking
-    if (ctx.state.greaterRift.state !== GreaterRiftState.NOT_ACTIVE) {
-      if (target.bossName?.startsWith('Rift Guardian')) {
-        ctx.onRiftGuardianKill();
-      } else {
-        ctx.onRiftEnemyKill();
-      }
-    }
-
-    // Greater Rift keystone drop from bosses
-    if (target.isBoss && Math.random() < GREATER_RIFT_CONFIG.keystoneDropChance) {
-      ctx.state.greaterRift.keystones++;
-      ctx.addFloatingText(target.x, target.y + 3, target.z, '+1 Rift Keystone!', '#00ffff');
-    }
+    // Let killEnemy handle all rewards, loot, quest tracking, achievements, etc.
+    ctx.killEnemy(target);
   } else {
     // Stagger
     if (!target.isBoss && Math.random() < 0.3) {

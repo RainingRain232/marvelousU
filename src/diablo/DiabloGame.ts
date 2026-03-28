@@ -1040,7 +1040,7 @@ export class DiabloGame {
     this._hudState.fullmapVisible = false;
     if (this._hudRefs) this._hudRefs.fullmapCanvas.style.display = "none";
 
-    const weathers = [Weather.NORMAL, Weather.CLEAR, Weather.STORMY];
+    const weathers = [Weather.NORMAL, Weather.CLEAR, Weather.STORMY, Weather.FOGGY];
     this._state.weather = this._state.preferredWeather === 'RANDOM'
       ? weathers[Math.floor(Math.random() * weathers.length)]
       : this._state.preferredWeather as Weather;
@@ -2525,6 +2525,12 @@ export class DiabloGame {
     for (const loot of this._state.loot) {
       loot.timer += dt;
 
+      // Expire after 60 seconds
+      if (loot.timer > 60) {
+        toRemove.add(loot.id);
+        continue;
+      }
+
       // Loot filter: hide filtered items (legacy filter)
       const minRarityIdx = this._lootFilterLevel === LootFilterLevel.HIDE_COMMON ? 1 :
         this._lootFilterLevel === LootFilterLevel.RARE_PLUS ? 2 :
@@ -2533,11 +2539,6 @@ export class DiabloGame {
 
       // Custom loot filter check
       if (!this._shouldShowLoot(loot.item)) continue;
-
-      // Expire after 60 seconds
-      if (loot.timer > 60) {
-        toRemove.add(loot.id);
-      }
     }
 
     this._state.loot = this._state.loot.filter((l) => !toRemove.has(l.id));
@@ -2548,6 +2549,9 @@ export class DiabloGame {
   // ──────────────────────────────────────────────────────────────
   private _updateSpawning(dt: number): void {
     if (this._state.currentMap === DiabloMapId.CAMELOT) return;
+
+    const killTarget = MAP_KILL_TARGET[this._state.currentMap] || 0;
+    if (killTarget > 0 && this._state.killCount >= killTarget) return;
 
     const mapCfg = MAP_CONFIGS[this._state.currentMap];
     const spawnInterval = (mapCfg as any).spawnInterval || 4;
@@ -2599,7 +2603,9 @@ export class DiabloGame {
 
     // Restore speed if no longer frozen
     if (!p.statusEffects.some((e) => e.effect === StatusEffect.FROZEN)) {
-      if (this._statsDirty) { this._recalculatePlayerStats(); this._statsDirty = false; }
+      this._statsDirty = true;
+      this._recalculatePlayerStats();
+      this._statsDirty = false;
     }
 
     // Enemy effects
@@ -5121,6 +5127,7 @@ export class DiabloGame {
       for (let i = phases.length - 1; i >= 0; i--) {
         if (hpPct <= phases[i].hpThreshold) {
           targetPhase = i;
+          break;
         }
       }
 
@@ -5304,7 +5311,7 @@ export class DiabloGame {
             const wz = enemy.z + Math.cos(wallAngle) * wallDist;
             const distToWall = Math.sqrt((p.x - wx) ** 2 + (p.z - wz) ** 2);
             if (distToWall < 2) {
-              p.hp -= 20 * dt;
+              p.hp -= 20;
               if (!p.statusEffects.some(e => e.effect === StatusEffect.BURNING)) {
                 p.statusEffects.push({ effect: StatusEffect.BURNING, duration: 3, source: 'fire_wall' });
               }
@@ -5355,8 +5362,8 @@ export class DiabloGame {
             const beamAngle = Math.atan2(beamDx, beamDz);
             const angleDiff = Math.abs(beamAngle - enemy.angle);
             if (angleDiff < 0.3 || angleDiff > Math.PI * 2 - 0.3) {
-              p.hp -= 40 * dt;
-              this._addFloatingText(p.x, p.y + 2, p.z, `-${Math.round(40 * dt)}`, '#ff0000');
+              p.hp -= 40;
+              this._addFloatingText(p.x, p.y + 2, p.z, `-40`, '#ff0000');
               if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); }
             }
           }

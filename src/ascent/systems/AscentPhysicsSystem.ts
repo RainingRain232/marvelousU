@@ -23,7 +23,6 @@ function rectsOverlap(
 export function updatePhysics(state: AscentState, dt: number): void {
   if (state.phase !== AscentPhase.PLAYING) return;
 
-  state.time += dt;
   const { player } = state;
 
   // --- Timers ---------------------------------------------------------
@@ -68,7 +67,7 @@ export function updatePhysics(state: AscentState, dt: number): void {
   }
 
   // --- Moving platforms -----------------------------------------------
-  updateMovingPlatforms(state);
+  updateMovingPlatforms(state, dt);
 
   // --- Platform collision (only when falling) -------------------------
   player.grounded = false;
@@ -82,22 +81,9 @@ export function updatePhysics(state: AscentState, dt: number): void {
     }
   }
 
-  // --- Track highest point & floor ------------------------------------
+  // --- Track highest point (floor/score handled by game loop) ---------
   if (player.y < player.highestY) {
     player.highestY = player.y;
-  }
-  const newFloor = Math.floor(-player.highestY / (B.PLATFORM_SPACING_Y * 10));
-  if (newFloor > player.floor) {
-    player.score += (newFloor - player.floor) * B.SCORE_PER_FLOOR;
-    player.floor = newFloor;
-    state.floor = newFloor;
-  }
-
-  // --- Camera (only moves up, i.e. cameraY decreases) ----------------
-  const targetCameraY = player.highestY - 200; // keep player ~200px from top
-  if (targetCameraY < state.cameraY) {
-    // Smooth lerp
-    state.cameraY += (targetCameraY - state.cameraY) * Math.min(1, 5 * dt);
   }
 
   // --- Enemies --------------------------------------------------------
@@ -113,7 +99,8 @@ export function updatePhysics(state: AscentState, dt: number): void {
   if (state.bossActive && state.bossHp > 0) {
     // Boss attacks: spawn projectiles periodically
     // Use state.time for timing
-    if (Math.floor(state.time * 2) % 4 === 0 && state.projectiles.length < 8) {
+    if (state.time - state.lastBossShootTime >= 2.0 && state.projectiles.length < 8) {
+      state.lastBossShootTime = state.time;
       // Boss fires from top of screen at random x
       const bossX = 100 + Math.random() * (B.WORLD_WIDTH - 200);
       const bossY = state.cameraY + 50; // top of visible area
@@ -144,6 +131,11 @@ export function updatePhysics(state: AscentState, dt: number): void {
     }
   }
 
+  // --- Update pickup bob phase ----------------------------------------
+  for (const pk of state.pickups) {
+    if (!pk.collected) pk.bobPhase += dt * 3;
+  }
+
   // --- Player-pickup collision ----------------------------------------
   checkPickupCollisions(state);
 
@@ -151,10 +143,7 @@ export function updatePhysics(state: AscentState, dt: number): void {
   if (player.y > state.cameraY + 800) {
     player.hp = 0;
   }
-  if (player.hp <= 0) {
-    state.phase = AscentPhase.DEAD;
-    state.deathCount += 1;
-  }
+  // Death phase transition is handled by the game loop (_die())
 }
 
 // ---------------------------------------------------------------------------
@@ -215,7 +204,7 @@ function handlePlatformLand(state: AscentState, plat: Platform): void {
 // Moving platforms
 // ---------------------------------------------------------------------------
 
-function updateMovingPlatforms(state: AscentState): void {
+function updateMovingPlatforms(state: AscentState, dt: number): void {
   for (const plat of state.platforms) {
     if (!plat.active) continue;
 
@@ -225,7 +214,7 @@ function updateMovingPlatforms(state: AscentState): void {
 
     // Crumble countdown
     if (plat.type === PlatformType.CRUMBLING && plat.crumbleTimer > 0) {
-      plat.crumbleTimer -= 1 / 60; // approximate; caller should pass dt but we use time-based
+      plat.crumbleTimer -= dt;
       if (plat.crumbleTimer <= 0) {
         plat.active = false;
       }

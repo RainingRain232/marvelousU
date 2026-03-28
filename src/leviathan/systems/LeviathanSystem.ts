@@ -221,7 +221,7 @@ export function updatePlayer(state: LeviathanState, dt: number): void {
     const deeper = p.depthLevel > state.lastDepthLevel;
     addNotification(state, `${deeper ? "DESCENDING" : "ASCENDING"} — ${zoneName}`, deeper ? 0x4488cc : 0x44ccaa);
     state.lastDepthLevel = p.depthLevel;
-    flashScreen(state, deeper ? "#224466" : "#22664466", 0.2, 0.3);
+    flashScreen(state, deeper ? "#224466" : "#226644", 0.2, 0.3);
   }
 
   // Altar proximity check (for upgrades)
@@ -415,60 +415,60 @@ export function updatePlayer(state: LeviathanState, dt: number): void {
           }
         }
       }
+    }
+  }
 
-      // Escape timer countdown
-      if (state.escaping && state.escapeTimer > 0) {
-        state.escapeTimer -= dt;
-        // Boss chases during escape
-        if (state.bossId) {
-          const boss = state.enemies.get(state.bossId);
-          if (boss && boss.behavior !== "dead") {
-            const dir = normalize3({ x: p.pos.x - boss.pos.x, y: p.pos.y - boss.pos.y, z: p.pos.z - boss.pos.z });
-            boss.pos.x += dir.x * LEVIATHAN.ESCAPE_BOSS_CHASE_SPEED * dt;
-            boss.pos.y += dir.y * LEVIATHAN.ESCAPE_BOSS_CHASE_SPEED * dt;
-            boss.pos.z += dir.z * LEVIATHAN.ESCAPE_BOSS_CHASE_SPEED * dt;
-            boss.aggroed = true;
-          }
-        }
-        // Spawn poison clouds during escape (cathedral leaking)
-        if (state.tick % 120 === 0) {
-          state.poisonClouds.push({
-            pos: { x: p.pos.x + (Math.random() - 0.5) * 15, y: p.pos.y + (Math.random() - 0.5) * 8, z: p.pos.z + (Math.random() - 0.5) * 10 },
-            radius: LEVIATHAN.POISON_CLOUD_RADIUS,
-            damage: LEVIATHAN.POISON_CLOUD_DAMAGE,
-            timer: LEVIATHAN.POISON_CLOUD_DURATION,
-            vel: { x: (Math.random() - 0.5) * 0.5, y: 0.3, z: (Math.random() - 0.5) * 0.5 },
-          });
-        }
-        // Time's up — death
-        if (state.escapeTimer <= 0) {
-          p.hp = 0;
-          p.action = "dead";
-          state.deathSequenceTimer = LEVIATHAN.DEATH_SLOW_MO_DURATION;
-          addNotification(state, "THE CATHEDRAL COLLAPSED", 0xff2222);
-        }
-      }
-
-      // During escape: push enemies away from surface to prevent soft-lock
-      if (state.escaping) {
-        for (const enemy of state.enemies.values()) {
-          if (enemy.behavior === "dead") continue;
-          if (enemy.pos.y > -5) {
-            // Force enemies downward away from surface
-            enemy.vel.y -= 3 * dt;
-            enemy.pos.y -= 2 * dt;
-          }
-        }
-      }
-
-      // Victory when escaping and reaching surface
-      if (state.escaping && p.pos.y > -2) {
-        state.victory = true;
-        state.phase = "game_over";
-        addNotification(state, "YOU ESCAPED THE ABYSS!", 0xffdd00);
-        flashScreen(state, "#ffffff", 0.6, 0.5);
+  // Escape timer countdown (outside fragment loop)
+  if (state.escaping && state.escapeTimer > 0) {
+    state.escapeTimer -= dt;
+    // Boss chases during escape
+    if (state.bossId) {
+      const boss = state.enemies.get(state.bossId);
+      if (boss && boss.behavior !== "dead") {
+        const dir = normalize3({ x: p.pos.x - boss.pos.x, y: p.pos.y - boss.pos.y, z: p.pos.z - boss.pos.z });
+        boss.pos.x += dir.x * LEVIATHAN.ESCAPE_BOSS_CHASE_SPEED * dt;
+        boss.pos.y += dir.y * LEVIATHAN.ESCAPE_BOSS_CHASE_SPEED * dt;
+        boss.pos.z += dir.z * LEVIATHAN.ESCAPE_BOSS_CHASE_SPEED * dt;
+        boss.aggroed = true;
       }
     }
+    // Spawn poison clouds during escape (cathedral leaking)
+    if (state.tick % 120 === 0) {
+      state.poisonClouds.push({
+        pos: { x: p.pos.x + (Math.random() - 0.5) * 15, y: p.pos.y + (Math.random() - 0.5) * 8, z: p.pos.z + (Math.random() - 0.5) * 10 },
+        radius: LEVIATHAN.POISON_CLOUD_RADIUS,
+        damage: LEVIATHAN.POISON_CLOUD_DAMAGE,
+        timer: LEVIATHAN.POISON_CLOUD_DURATION,
+        vel: { x: (Math.random() - 0.5) * 0.5, y: 0.3, z: (Math.random() - 0.5) * 0.5 },
+      });
+    }
+    // Time's up — death
+    if (state.escapeTimer <= 0) {
+      p.hp = 0;
+      p.action = "dead";
+      state.deathSequenceTimer = LEVIATHAN.DEATH_SLOW_MO_DURATION;
+      addNotification(state, "THE CATHEDRAL COLLAPSED", 0xff2222);
+    }
+  }
+
+  // During escape: push enemies away from surface to prevent soft-lock
+  if (state.escaping) {
+    for (const enemy of state.enemies.values()) {
+      if (enemy.behavior === "dead") continue;
+      if (enemy.pos.y > -5) {
+        // Force enemies downward away from surface
+        enemy.vel.y -= 3 * dt;
+        enemy.pos.y -= 2 * dt;
+      }
+    }
+  }
+
+  // Victory when escaping and reaching surface
+  if (state.escaping && p.pos.y > -2) {
+    state.victory = true;
+    state.phase = "game_over";
+    addNotification(state, "YOU ESCAPED THE ABYSS!", 0xffdd00);
+    flashScreen(state, "#ffffff", 0.6, 0.5);
   }
 
   // Swimming bubbles

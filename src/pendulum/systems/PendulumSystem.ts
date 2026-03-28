@@ -841,8 +841,11 @@ function _updateEnemySpecials(state: PendulumState, enemy: Enemy, dt: number, di
       }
       if (enemy.chargeTimer > 0) {
         enemy.chargeTimer -= dt;
-        enemy.pos.x += enemy.chargeDir.x * PENDULUM.SPRING_KNIGHT_CHARGE_SPEED * dt * enemy.timeSlowFactor;
-        enemy.pos.z += enemy.chargeDir.z * PENDULUM.SPRING_KNIGHT_CHARGE_SPEED * dt * enemy.timeSlowFactor;
+        // Only move during actual charge, not during telegraph
+        if (enemy.chargeTimer <= PENDULUM.SPRING_KNIGHT_CHARGE_DURATION) {
+          enemy.pos.x += enemy.chargeDir.x * PENDULUM.SPRING_KNIGHT_CHARGE_SPEED * dt * enemy.timeSlowFactor;
+          enemy.pos.z += enemy.chargeDir.z * PENDULUM.SPRING_KNIGHT_CHARGE_SPEED * dt * enemy.timeSlowFactor;
+        }
         enemy.behavior = "charging";
       }
       break;
@@ -952,15 +955,28 @@ function _updateChronovore(state: PendulumState, enemy: Enemy, dt: number, distT
     state.pendingBossRoar = true;
   }
 
-  // Slam attack
-  if (enemy.slamCD <= 0 && distToTarget < PENDULUM.CHRONOVORE_SLAM_RADIUS) {
-    enemy.slamCD = PENDULUM.CHRONOVORE_SLAM_CD;
-    if (distXZ(enemy.pos, state.player.pos) < PENDULUM.CHRONOVORE_SLAM_RADIUS) {
-      _damagePlayer(state, PENDULUM.CHRONOVORE_SLAM_DAMAGE);
+  // Slam attack — telegraph delay then damage
+  if (enemy.slamDelayTimer > 0) {
+    enemy.slamDelayTimer -= dt * enemy.timeSlowFactor;
+    if (enemy.slamDelayTimer <= 0) {
+      if (enemy.behavior !== "dead") {
+        if (distXZ(enemy.pos, state.player.pos) < PENDULUM.CHRONOVORE_SLAM_RADIUS) {
+          _damagePlayer(state, PENDULUM.CHRONOVORE_SLAM_DAMAGE);
+        }
+        state.pendingSlam = { x: enemy.pos.x, z: enemy.pos.z };
+        addScreenShake(state, 12, 0.3);
+        spawnParticleRing(state, enemy.pos, PENDULUM.CHRONOVORE_SLAM_RADIUS, 24, "impact", 0xff6644, 6, 0.8);
+      }
     }
-    state.pendingSlam = { x: enemy.pos.x, z: enemy.pos.z };
-    addScreenShake(state, 12, 0.3);
-    spawnParticleRing(state, enemy.pos, PENDULUM.CHRONOVORE_SLAM_RADIUS, 24, "impact", 0xff6644, 6, 0.8);
+  } else if (enemy.slamCD <= 0 && distToTarget < PENDULUM.CHRONOVORE_SLAM_RADIUS) {
+    enemy.slamCD = PENDULUM.CHRONOVORE_SLAM_CD;
+    enemy.slamDelayTimer = PENDULUM.CHRONOVORE_SLAM_TELEGRAPH;
+    state.telegraphs.push({
+      pos: { ...enemy.pos },
+      radius: PENDULUM.CHRONOVORE_SLAM_RADIUS,
+      timer: PENDULUM.CHRONOVORE_SLAM_TELEGRAPH,
+      color: 0xff4422,
+    });
   }
 
   // Spawn minions
@@ -1273,13 +1289,15 @@ export function updateProjectiles(state: PendulumState, dt: number): void {
     const proj = state.projectiles[i];
     proj.life -= dt;
 
-    // Time slow zones affect enemy projectiles
+    // Time slow zones and Time Stop affect enemy projectiles
     if (proj.owner === "enemy") {
-      let slowFactor = 1;
-      for (const zone of state.timeSlowZones) {
-        if (distXZ(proj.pos, zone.pos) < zone.radius) {
-          slowFactor = zone.factor;
-          break;
+      let slowFactor = state.timeStopActive ? 0 : 1;
+      if (!state.timeStopActive) {
+        for (const zone of state.timeSlowZones) {
+          if (distXZ(proj.pos, zone.pos) < zone.radius) {
+            slowFactor = zone.factor;
+            break;
+          }
         }
       }
       proj.pos.x += proj.vel.x * dt * slowFactor;
@@ -1915,7 +1933,7 @@ export function applyBuff(state: PendulumState, buffId: BuffId): void {
     name: def.name,
     description: def.description,
     duration: def.duration,
-    remaining: def.duration === -1 ? -1 : def.duration * 60, // waves
+    remaining: def.duration === -1 ? -1 : def.duration,
   });
 
   // Permanent stat buffs

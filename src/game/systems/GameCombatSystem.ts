@@ -90,7 +90,7 @@ export const GameCombatSystem = {
 
     const target = targets[0];
     const isCrit = Math.random() < p.critChance;
-    const baseDmg = p.attack + (p.equippedWeapon?.attackBonus ?? 0);
+    const baseDmg = p.attack;
     let damage = Math.max(1, baseDmg - target.def.defense * 0.5);
     if (isCrit) damage = Math.floor(damage * 2);
 
@@ -1099,10 +1099,10 @@ export const GameCombatSystem = {
 
 function inFacingCone(facing: Direction, dx: number, dy: number): boolean {
   switch (facing) {
-    case Direction.UP:    return dy < 0 || Math.abs(dx) > Math.abs(dy);
-    case Direction.DOWN:  return dy > 0 || Math.abs(dx) > Math.abs(dy);
-    case Direction.LEFT:  return dx < 0 || Math.abs(dy) > Math.abs(dx);
-    case Direction.RIGHT: return dx > 0 || Math.abs(dy) > Math.abs(dx);
+    case Direction.UP:    return dy < 0 && Math.abs(dx) <= Math.abs(dy);
+    case Direction.DOWN:  return dy > 0 && Math.abs(dx) <= Math.abs(dy);
+    case Direction.LEFT:  return dx < 0 && Math.abs(dy) <= Math.abs(dx);
+    case Direction.RIGHT: return dx > 0 && Math.abs(dy) <= Math.abs(dx);
   }
   return true;
 }
@@ -1202,7 +1202,7 @@ function killEnemy(state: GrailGameState, enemy: EnemyInstance): void {
   }
 }
 
-function gainXP(state: GrailGameState, amount: number): void {
+export function gainXP(state: GrailGameState, amount: number): void {
   const p = state.player;
   if (p.equippedRelic?.specialEffect === "xp_boost") amount = Math.floor(amount * 1.3);
   p.xp += amount;
@@ -1307,7 +1307,7 @@ function enemyDamagePlayer(state: GrailGameState, enemy: EnemyInstance, dmgMulti
   if (p.statusEffects.find((e) => e.id === "invulnerable")) return;
   // Dash i-frames: invulnerable while dashing
   if (state.dashTimer > 0) return;
-  const def = p.defense + (p.equippedArmor?.defenseBonus ?? 0) + (p.equippedRelic?.defenseBonus ?? 0);
+  const def = p.defense;
   let baseDmg = enemy.def.attack;
   if (enemy.rallyDamageBuff > 0) baseDmg = Math.floor(baseDmg * (1 + enemy.rallyDamageBuff));
   if (enemy.bossEnraged) baseDmg = Math.floor(baseDmg * 2);
@@ -1523,10 +1523,6 @@ function updateMageAI(state: GrailGameState, enemy: EnemyInstance, dt: number, d
   else if (dist > 8 * TS) moveEnemy(state, enemy, p.x, p.y, dt, 0.7);
 
   if (enemy.aiAbilityCooldown <= 0 && dist < 10 * TS) {
-    if (!p.statusEffects.find(e => e.id === "invulnerable")) {
-      const dmg = Math.max(3, enemy.def.attack * 0.5);
-      p.hp -= dmg; _onPlayerHit?.(dmg);
-    }
     fireProjectile(state, enemy, Math.max(2, enemy.def.attack * 0.3), enemy.def.color, 150, 10 * TS);
     enemy.aiAbilityCooldown = 3 + Math.random();
   }
@@ -1978,7 +1974,7 @@ function updateProjectiles(state: GrailGameState, dt: number): void {
     const pd = Math.sqrt((pr.x - p.x) ** 2 + (pr.y - p.y) ** 2);
     if (pd < TS * 0.5) {
       if (!p.statusEffects.find(e => e.id === "invulnerable") && state.dashTimer <= 0 && pr.damage > 0) {
-        const d = p.defense + (p.equippedArmor?.defenseBonus ?? 0) + (p.equippedRelic?.defenseBonus ?? 0);
+        const d = p.defense;
         p.hp -= Math.max(1, pr.damage - d * 0.3);
         _onPlayerHit?.(Math.max(1, pr.damage - d * 0.3));
       }

@@ -199,6 +199,8 @@ interface Racer {
   airborne: boolean;
   airVelocityY: number;
   inPit: boolean;
+  wallHitCooldown: number;
+  collisionCooldown: number;
   // stat tracking
   topSpeed: number;
   powerUpsUsed: number;
@@ -976,6 +978,8 @@ export class ChariotGame {
   private _fadeCallback: (() => void) | null = null;
   private _finalLapActive = false;
   private _brakingVisual = false;
+  private _finishTimeout: ReturnType<typeof setTimeout> | null = null;
+  private _resultsTimeout: ReturnType<typeof setTimeout> | null = null;
   private _lastPlayerPlacement = 0;
   private _posFlashTimer = 0;
   private _pickupFlashTimer = 0;
@@ -1615,9 +1619,11 @@ export class ChariotGame {
       }
     }
 
-    // boost vignette
-    const boosting = p.boostTimer > 0 || p.driftBoostTimer > 0 || p.whipTimer > 0;
-    this._hudBoostVignette.style.opacity = boosting ? "1" : "0";
+    // boost vignette (don't override final lap tint)
+    if (!this._finalLapActive) {
+      const boosting = p.boostTimer > 0 || p.driftBoostTimer > 0 || p.whipTimer > 0;
+      this._hudBoostVignette.style.opacity = boosting ? "1" : "0";
+    }
 
     // damage bar
     const hpPct = Math.max(0, (DAMAGE_MAX - p.damage) / DAMAGE_MAX * 100);
@@ -1865,6 +1871,9 @@ export class ChariotGame {
     this._finishCamSweep = false;
     this._finalLapActive = false;
     this._brakingVisual = false;
+    // Clear pending timeouts from previous race
+    if (this._finishTimeout) { clearTimeout(this._finishTimeout); this._finishTimeout = null; }
+    if (this._resultsTimeout) { clearTimeout(this._resultsTimeout); this._resultsTimeout = null; }
     this._lastPlayerPlacement = 0;
     this._posFlashTimer = 0;
     this._pickupFlashTimer = 0;
@@ -2519,6 +2528,7 @@ export class ChariotGame {
         shieldTimer: 0, shieldMesh, boostTimer: 0, slowTimer: 0,
         whipTimer: 0, whipCooldown: 0, slipstreaming: false, damage: 0,
         airborne: false, airVelocityY: 0, inPit: false,
+        wallHitCooldown: 0, collisionCooldown: 0,
         topSpeed: 0, powerUpsUsed: 0,
         powerUp: null, isPlayer, name, color, placement: i + 1, nameTag,
         aiSteerNoise: (rng() - 0.5) * 0.3,
@@ -2737,7 +2747,8 @@ export class ChariotGame {
         this._finishCamSweep = true;
         this._finishCamAngle = this._player.angle;
         // delay results until slow-mo ends
-        setTimeout(() => {
+        this._finishTimeout = setTimeout(() => {
+          this._finishTimeout = null;
           this._timeScale = 1.0;
           this._finishCamSweep = false;
           this._showResults();
@@ -2851,6 +2862,8 @@ export class ChariotGame {
     if (racer.driftBoostTimer > 0) { maxSpd += DRIFT_BOOST_SPEED; racer.driftBoostTimer -= dt; }
     if (racer.whipTimer > 0) { maxSpd += WHIP_BOOST * 0.5; racer.whipTimer -= dt; }
     if (racer.slowTimer > 0) { maxSpd *= 0.5; racer.slowTimer -= dt; }
+    if (racer.wallHitCooldown > 0) racer.wallHitCooldown -= dt;
+    if (racer.collisionCooldown > 0) racer.collisionCooldown -= dt;
 
     // damage speed penalty
     const dmgPenalty = 1 - (racer.damage / DAMAGE_MAX) * DAMAGE_SPEED_PENALTY;
@@ -2879,7 +2892,11 @@ export class ChariotGame {
         // Push racer inward (not just to edge — slightly inside to prevent sticking)
         racer.pos.copy(pt.pos).add(pt.right.clone().multiplyScalar(Math.sign(lateral) * (hw - 0.5)));
         racer.speed *= 0.7;
-        racer.damage = Math.min(DAMAGE_MAX, racer.damage + WALL_DAMAGE);
+        // Only apply wall damage once per impact (cooldown-based)
+        if (racer.wallHitCooldown <= 0) {
+          racer.damage = Math.min(DAMAGE_MAX, racer.damage + WALL_DAMAGE);
+          racer.wallHitCooldown = 0.5; // 500ms cooldown between wall damage ticks
+        }
         // Deflect angle away from wall so racers don't keep grinding against it
         const wallNormalAngle = Math.atan2(pt.right.x, pt.right.z) * -Math.sign(lateral);
         const angleDiff = racer.angle - wallNormalAngle;
@@ -3002,10 +3019,13 @@ export class ChariotGame {
     const speedMult = personality === "speedster" ? 1.05 : personality === "defensive" ? 0.92 : 1.0;
     if (racer.speed < MAX_SPEED * racer.aiSpeedFactor * speedMult) racer.speed += ACCEL * 0.9 * dt;
 
-    // Rubber-banding: AI adjusts speed based on distance to player
+    // Rubber-banding: AI adjusts speed based on distance to player (lap-aware)
     const player = this._player;
     if (player && !player.finished) {
-      const distToPlayer = racer.trackProgress - player.trackProgress;
+      const totalTrackLen = this._track.totalLength || 1;
+      const aiTotal = (racer.lap || 0) * totalTrackLen + racer.trackProgress;
+      const playerTotal = (player.lap || 0) * totalTrackLen + player.trackProgress;
+      const distToPlayer = aiTotal - playerTotal;
       if (distToPlayer > 30) {
         // AI is far ahead → slow down slightly (let player catch up)
         racer.speed *= 0.995;
@@ -3079,7 +3099,7 @@ export class ChariotGame {
       racer.speed += WHIP_BOOST;
     }
     if (racer.whipCooldown > 0) racer.whipCooldown -= dt;
-    if (racer.whipTimer > 0) racer.whipTimer -= dt;
+    // whipTimer is already decremented in _updateRacerPhysics — don't double-decrement here
 
     // power-up usage by personality
     const puChance = personality === "tactical" ? 0.025 : personality === "aggressive" ? 0.015 : 0.01;
@@ -3247,8 +3267,15 @@ export class ChariotGame {
           const avgSpeed = (a.speed + b.speed) / 2;
           a.speed = a.speed * 0.7 + avgSpeed * 0.3;
           b.speed = b.speed * 0.7 + avgSpeed * 0.3;
-          a.damage = Math.min(DAMAGE_MAX, a.damage + COLLISION_DAMAGE);
-          b.damage = Math.min(DAMAGE_MAX, b.damage + COLLISION_DAMAGE);
+          // Only apply collision damage with cooldown to prevent per-frame stacking
+          if (a.collisionCooldown <= 0) {
+            a.damage = Math.min(DAMAGE_MAX, a.damage + COLLISION_DAMAGE);
+            a.collisionCooldown = 0.5;
+          }
+          if (b.collisionCooldown <= 0) {
+            b.damage = Math.min(DAMAGE_MAX, b.damage + COLLISION_DAMAGE);
+            b.collisionCooldown = 0.5;
+          }
           const mid = a.pos.clone().add(b.pos).multiplyScalar(0.5);
           this._spawnSparks(mid, 4);
           if (a.isPlayer || b.isPlayer) {
@@ -3596,7 +3623,8 @@ export class ChariotGame {
       }
     }
 
-    setTimeout(() => {
+    this._resultsTimeout = setTimeout(() => {
+      this._resultsTimeout = null;
       this._phase = "results";
 
       const sorted = [...this._racers].sort((a, b) => {
@@ -4728,10 +4756,17 @@ export class ChariotGame {
       }
     }
 
-    // slowly fade all marks
-    for (const mark of this._skidMarks) {
+    // slowly fade all marks and remove fully faded ones
+    for (let i = this._skidMarks.length - 1; i >= 0; i--) {
+      const mark = this._skidMarks[i];
       const mat = mark.material as THREE.MeshBasicMaterial;
       mat.opacity = Math.max(0, mat.opacity - dt * 0.03);
+      if (mat.opacity <= 0) {
+        this._scene.remove(mark);
+        mark.geometry.dispose();
+        mat.dispose();
+        this._skidMarks.splice(i, 1);
+      }
     }
   }
 
@@ -4808,9 +4843,13 @@ export class ChariotGame {
     } else if (!braking && this._brakingVisual) {
       this._brakingVisual = false;
       const bl = p.mesh.getObjectByName("brakeLight");
-      const bm = p.mesh.getObjectByName("brakeLightMesh");
+      const bm = p.mesh.getObjectByName("brakeLightMesh") as THREE.Mesh | undefined;
       if (bl) p.mesh.remove(bl);
-      if (bm) p.mesh.remove(bm);
+      if (bm) {
+        p.mesh.remove(bm);
+        bm.geometry.dispose();
+        (bm.material as THREE.Material).dispose();
+      }
     }
   }
 

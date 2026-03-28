@@ -35,7 +35,7 @@ export function generatePlatforms(state: AscentState, upToY: number): void {
     const rowY = highestGeneratedY;
 
     // --- Boss row check ---------------------------------------------------
-    const floor = Math.floor(-rowY / (B.PLATFORM_SPACING_Y * 10));
+    const floor = Math.floor(-rowY / B.PLATFORM_SPACING_Y);
     if (floor > 0 && floor % B.BOSS_FLOOR_INTERVAL === 0 && !state.bossActive) {
       spawnBossRow(state, rowY, floor);
       continue; // boss row has no extra enemies / pickups

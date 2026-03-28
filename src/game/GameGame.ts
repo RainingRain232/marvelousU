@@ -29,7 +29,7 @@ import {
 import type { GrailGameState } from "./state/GameState";
 
 import { generateFloor, revealAround } from "./systems/GameDungeonGenerator";
-import { GameCombatSystem, recalcStats } from "./systems/GameCombatSystem";
+import { GameCombatSystem, recalcStats, gainXP } from "./systems/GameCombatSystem";
 import {
   craft, getAvailableRecipes,
   canEnchant, enchantItem, getApplicableEnchantments,
@@ -684,8 +684,12 @@ export class GameGame {
 
     // Status effect ticks
     for (let i = p.statusEffects.length - 1; i >= 0; i--) {
-      p.statusEffects[i].turnsRemaining -= dt;
-      if (p.statusEffects[i].turnsRemaining <= 0) {
+      const eff = p.statusEffects[i];
+      if (eff.id === "poison" || eff.id === "burn") {
+        p.hp -= eff.value * dt;
+      }
+      eff.turnsRemaining -= dt;
+      if (eff.turnsRemaining <= 0) {
         p.statusEffects.splice(i, 1);
       }
     }
@@ -1159,7 +1163,7 @@ export class GameGame {
 
     // XP bonus
     const xpBonus = 15 * puzzle.difficulty;
-    state.player.xp += xpBonus;
+    gainXP(state, xpBonus);
   }
 
   // -------------------------------------------------------------------------

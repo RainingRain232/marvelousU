@@ -369,8 +369,8 @@ export class GrandGame {
       const y = TRACK_Y_BASE + Math.sin(t * layout.freq[0]) * layout.ya + Math.cos(t * layout.freq[1]) * layout.yb;
       // facing angle = tangent of track
       const nextT = ((i + 1) / TRACK_SEGMENTS) * Math.PI * 2;
-      const nx = Math.cos(nextT) * TRACK_RADIUS + Math.sin(nextT * 2) * 12;
-      const nz = Math.sin(nextT) * TRACK_RADIUS + Math.cos(nextT * 3) * 8;
+      const nx = Math.cos(nextT) * layout.r + Math.sin(nextT * layout.freq[0]) * layout.a;
+      const nz = Math.sin(nextT) * layout.r + Math.cos(nextT * layout.freq[1]) * layout.b;
       const angle = Math.atan2(nz - z, nx - x);
       this._trackPoints.push({ x, y, z, angle });
     }
@@ -393,7 +393,10 @@ export class GrandGame {
     const x = lerp(a.x, b.x, frac);
     const y = lerp(a.y, b.y, frac);
     const z = lerp(a.z, b.z, frac);
-    const angle = lerp(a.angle, b.angle, frac);
+    let angleDiff = b.angle - a.angle;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    const angle = a.angle + angleDiff * frac;
     // offset laterally perpendicular to track direction
     const perpX = -Math.sin(angle);
     const perpZ = Math.cos(angle);
@@ -425,7 +428,7 @@ export class GrandGame {
 
     this._scene = new THREE.Scene();
     this._scene.background = new THREE.Color(0x1a2a4a);
-    this._scene.fog = new THREE.FogExp2(0x2244668, 0.004);
+    this._scene.fog = new THREE.FogExp2(0x224466, 0.004);
 
     this._camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 300);
 

@@ -124,39 +124,37 @@ export class PendulumGame {
   }
 
   private _registerInput(): void {
-    const state = this._state;
-
     this._onKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      state.keys.add(key);
+      this._state.keys.add(key);
       if (key === "escape") {
         if (document.pointerLockElement) document.exitPointerLock();
-        if (state.phase === "playing" || state.phase === "intermission") {
-          state.paused = !state.paused;
+        if (this._state.phase === "playing" || this._state.phase === "intermission") {
+          this._state.paused = !this._state.paused;
         }
       }
     };
-    this._onKeyUp = (e: KeyboardEvent) => { state.keys.delete(e.key.toLowerCase()); };
+    this._onKeyUp = (e: KeyboardEvent) => { this._state.keys.delete(e.key.toLowerCase()); };
     this._onMouseMove = (e: MouseEvent) => {
-      state.mouseX = e.clientX; state.mouseY = e.clientY;
-      if (state.pointerLocked) { state.mouseDX += e.movementX; state.mouseDY += e.movementY; }
+      this._state.mouseX = e.clientX; this._state.mouseY = e.clientY;
+      if (this._state.pointerLocked) { this._state.mouseDX += e.movementX; this._state.mouseDY += e.movementY; }
     };
     this._onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) state.mouseDown = true;
-      if (e.button === 2) state.rightMouseDown = true;
+      if (e.button === 0) this._state.mouseDown = true;
+      if (e.button === 2) this._state.rightMouseDown = true;
     };
     this._onMouseUp = (e: MouseEvent) => {
-      if (e.button === 0) state.mouseDown = false;
-      if (e.button === 2) state.rightMouseDown = false;
+      if (e.button === 0) this._state.mouseDown = false;
+      if (e.button === 2) this._state.rightMouseDown = false;
     };
     this._onContextMenu = (e: Event) => e.preventDefault();
     this._onClick = () => {
-      if (state.phase === "playing") {
+      if (this._state.phase === "playing") {
         this._renderer.canvas.requestPointerLock();
       }
     };
     this._onPointerLockChange = () => {
-      state.pointerLocked = document.pointerLockElement === this._renderer.canvas;
+      this._state.pointerLocked = document.pointerLockElement === this._renderer.canvas;
     };
 
     window.addEventListener("keydown", this._onKeyDown);

@@ -126,6 +126,7 @@ export interface AscentState {
   bossMaxHp: number;
   highScore: number;
   deathCount: number;
+  lastBossShootTime: number;
 }
 
 export interface AscentMeta {

@@ -527,13 +527,13 @@ export function tickEnvSpellEntity(
 
     switch (def.specialEffect) {
       case "freeze_on_touch":
-        if (p.team !== entity.team) {
+        if (p.team !== entity.team && entity.tickAccum >= 1.0) {
           effects.push({ type: "freeze", targetId: p.id, value: 0, duration: 1.5 });
         }
         break;
       case "dot_fire":
-        if (p.team !== entity.team && entity.tickAccum >= 0.5) {
-          effects.push({ type: "damage", targetId: p.id, value: def.damagePerSecond * 0.5 });
+        if (p.team !== entity.team && entity.tickAccum >= 1.0) {
+          effects.push({ type: "damage", targetId: p.id, value: def.damagePerSecond * 1.0 });
         }
         break;
       case "stun_on_pass":
