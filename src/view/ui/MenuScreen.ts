@@ -608,6 +608,9 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.EPSILON, label: "EPSILON", desc: "3D arcane arena survival — cast elemental spells from a floating platform to destroy waves of ethereal geometric entities", skipSetup: true, tag: "3D" },
   { mode: GameMode.GRAND, label: "GRAND", desc: "3D medieval chariot grand prix — race armored war chariots around a floating sky track, collect power-ups, and battle for the Grail Cup", skipSetup: true, tag: "3D" },
   { mode: GameMode.RAMPART, label: "RAMPART", desc: "3D castle tower defense — place archer towers, catapults, mage towers & more to defend your castle against 25 waves of medieval invaders", skipSetup: true, tag: "3D" },
+  { mode: GameMode.GARGOYLE, label: "GARGOYLE", desc: "3D cathedral guardian — fly as a gargoyle, defend the cathedral from demons through the night, turn to stone at dawn & position wisely", skipSetup: true, tag: "3D" },
+  { mode: GameMode.SWORD_OF_AVALON, label: "SWORD OF AVALON", desc: "3D action RPG — seek the legendary blade in a vast open world, battle mythic creatures, master combat arts & forge your destiny", skipSetup: true, tag: "3D" },
+  { mode: GameMode.DEPTHS, label: "DEPTHS", desc: "3D deep-sea descent — dive into the abyss, fight pressure-adapted horrors, manage oxygen & discover ancient ruins on the ocean floor", skipSetup: true, tag: "3D" },
 ];
 
 // ---------------------------------------------------------------------------

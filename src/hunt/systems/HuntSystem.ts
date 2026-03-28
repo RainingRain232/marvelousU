@@ -70,13 +70,34 @@ export function shootArrow(state: HuntState): void {
   }
 }
 
+/** Startle nearby rabbits when an arrow lands at (ax, ay) */
+function startleNearbyPrey(state: HuntState, ax: number, ay: number): void {
+  const STARTLE_RADIUS = 100;
+  for (const prey of state.prey) {
+    if (!prey.alive || prey.startled) continue;
+    const dx = prey.x - ax, dy = prey.y - ay;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < STARTLE_RADIUS) {
+      prey.startled = true;
+      prey.startledTimer = HuntConfig.STARTLED_DURATION;
+      // Flee in a random direction (not necessarily away from arrow)
+      if (prey.type === "rabbit") {
+        prey.angle = Math.random() * Math.PI * 2;
+      } else {
+        prey.angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.8;
+      }
+    }
+  }
+}
+
 export function updateHunt(state: HuntState, dt: number): void {
   state.elapsedTime += dt;
 
-  // Wind changes
+  // Wind changes — stronger wind in later rounds
   state.windTimer -= dt;
   if (state.windTimer <= 0) {
-    state.wind = (Math.random() - 0.5) * 2;
+    const windStrength = 1 + state.round * 0.75; // round 0: 1x, round 1: 1.75x, round 2: 2.5x
+    state.wind = (Math.random() - 0.5) * 2 * windStrength;
     state.windTimer = 4 + Math.random() * 4;
   }
 
@@ -103,11 +124,14 @@ export function updateHunt(state: HuntState, dt: number): void {
     }
   }
 
+  // Round-based speed multiplier for prey
+  const preySpeedMult = 1 + state.round * 0.25; // round 0: 1x, round 1: 1.25x, round 2: 1.5x
+
   // Move prey — with unique behaviors per type
   for (const prey of state.prey) {
     if (!prey.alive) continue;
     const def = PREY[prey.type];
-    let speed = prey.startled ? def.fleeSpeed : prey.speed;
+    let speed = (prey.startled ? def.fleeSpeed : prey.speed) * preySpeedMult;
 
     // Unique behaviors
     if (prey.type === "rabbit" && !prey.startled) {
@@ -122,10 +146,19 @@ export function updateHunt(state: HuntState, dt: number): void {
         prey.angle += (herdAngle - prey.angle) * 0.02; // gentle pull toward herd
       }
       prey.turnTimer -= dt;
-      if (prey.turnTimer <= 0) { prey.angle += (Math.random() - 0.5) * 0.8; prey.turnTimer = 2 + Math.random() * 3; }
+      if (prey.turnTimer <= 0) {
+        // Deer stop and look around periodically (brief pause with direction change)
+        prey.angle += (Math.random() - 0.5) * 1.8; // look around with wider angle
+        speed = 0; // momentary stop while looking
+        prey.turnTimer = 1.5 + Math.random() * 2;
+      }
+    } else if (prey.type === "deer" && prey.startled) {
+      // Deer flee faster than base when startled
+      speed = def.fleeSpeed * 1.4 * preySpeedMult;
     } else if (prey.type === "boar" && prey.startled) {
-      // Charging: when startled, boars charge IN a straight line (don't zigzag)
-      speed = def.fleeSpeed * 1.3;
+      // Boars charge TOWARD the player when startled instead of running away
+      speed = def.fleeSpeed * 1.5 * preySpeedMult;
+      prey.angle = Math.atan2(state.playerY - prey.y, state.playerX - prey.x);
     } else {
       // Default wander
       prey.turnTimer -= dt;
@@ -189,8 +222,9 @@ export function updateHunt(state: HuntState, dt: number): void {
     const arrow = state.arrows[i];
     arrow.x += arrow.vx * dt;
     arrow.y += arrow.vy * dt;
-    // Wind drift
-    arrow.x += state.wind * 30 * dt;
+    // Wind drift — apply as acceleration so it accumulates over flight time
+    const windForce = state.wind * 80; // stronger base wind force
+    arrow.vx += windForce * dt;
     arrow.life -= dt;
 
     // Tree collision check
@@ -204,10 +238,12 @@ export function updateHunt(state: HuntState, dt: number): void {
         break;
       }
     }
-    if (hitTree) { state.arrows.splice(i, 1); state.misses++; state.streak = 0; continue; }
+    if (hitTree) { startleNearbyPrey(state, arrow.x, arrow.y); state.arrows.splice(i, 1); state.misses++; state.streak = 0; continue; }
 
     // Out of bounds or expired
     if (arrow.life <= 0 || arrow.x < -20 || arrow.x > HuntConfig.FIELD_WIDTH + 20 || arrow.y < -20 || arrow.y > HuntConfig.FIELD_HEIGHT + 20) {
+      // Arrow landing startles nearby prey
+      if (arrow.life <= 0) startleNearbyPrey(state, arrow.x, arrow.y);
       state.misses++;
       state.streak = 0;
       state.score += HuntConfig.MISS_PENALTY;
@@ -238,10 +274,39 @@ export function updateHunt(state: HuntState, dt: number): void {
           for (let pi = 0; pi < 6; pi++) {
             state.particles.push({ x: prey.x, y: prey.y, vx: (Math.random() - 0.5) * 60, vy: -30 - Math.random() * 30, life: 0.4, maxLife: 0.4, color: def.color, size: 2 + Math.random() * 2 });
           }
+          // Impact burst particles (hit feedback)
+          for (let pi = 0; pi < 10; pi++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = 40 + Math.random() * 60;
+            state.particles.push({
+              x: arrow.x, y: arrow.y,
+              vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 25,
+              life: 0.35, maxLife: 0.35,
+              color: 0xff4444, size: 1.5 + Math.random() * 2,
+            });
+          }
+          // Startle nearby prey on kill too
+          startleNearbyPrey(state, prey.x, prey.y);
         } else {
           prey.startled = true;
           prey.startledTimer = HuntConfig.STARTLED_DURATION;
-          prey.angle = Math.atan2(prey.y - state.playerY, prey.x - state.playerX);
+          // Boars charge toward player when hit, others flee away
+          if (prey.type === "boar") {
+            prey.angle = Math.atan2(state.playerY - prey.y, state.playerX - prey.x);
+          } else {
+            prey.angle = Math.atan2(prey.y - state.playerY, prey.x - state.playerX);
+          }
+          // Hit feedback particles (non-lethal impact burst)
+          for (let pi = 0; pi < 8; pi++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = 30 + Math.random() * 50;
+            state.particles.push({
+              x: arrow.x, y: arrow.y,
+              vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 20,
+              life: 0.3, maxLife: 0.3,
+              color: 0xcc2222, size: 1.5 + Math.random() * 1.5,
+            });
+          }
         }
         state.arrows.splice(i, 1);
         break;

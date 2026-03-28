@@ -61,7 +61,32 @@ export interface RaceState {
 const AI_NAMES = ["Sir Galahad", "Lady Morgana", "Baron Hector", "Dame Elspeth", "Lord Bors", "Squire Tam"];
 
 export function createRaceState(trackIndex: number, horseIndex: number, gold: number): RaceState {
-  const track = TRACKS[Math.min(trackIndex, TRACKS.length - 1)];
+  const baseTrack = TRACKS[Math.min(trackIndex, TRACKS.length - 1)];
+  // Deep-copy the track so we can add extra obstacles for difficulty scaling
+  const track: TrackDef = {
+    ...baseTrack,
+    waypoints: baseTrack.waypoints.map(w => ({ ...w })),
+    obstacles: baseTrack.obstacles.map(o => ({ ...o })),
+  };
+
+  // Difficulty scaling: add extra obstacles on harder tracks
+  const extraObs = trackIndex * RaceConfig.EXTRA_OBSTACLES_PER_TRACK;
+  const wp = track.waypoints;
+  for (let i = 0; i < extraObs; i++) {
+    const wpIdx = Math.floor(Math.random() * wp.length);
+    const a = wp[wpIdx], b = wp[(wpIdx + 1) % wp.length];
+    const t = 0.2 + Math.random() * 0.6;
+    const offset = (Math.random() - 0.5) * track.width * 0.6;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const nx = -dy / dist, ny = dx / dist;
+    track.obstacles.push({
+      x: a.x + dx * t + nx * offset,
+      y: a.y + dy * t + ny * offset,
+      r: 10 + Math.random() * 5,
+    });
+  }
+
   const playerHorse = HORSES[Math.min(horseIndex, HORSES.length - 1)];
   const start = track.waypoints[0];
 
@@ -75,7 +100,8 @@ export function createRaceState(trackIndex: number, horseIndex: number, gold: nu
     aiTargetSpeed: 0, aiSteerNoise: 0,
   });
 
-  // AI racers
+  // AI racers — scale speed with track difficulty
+  const aiSpeedScale = 1 + trackIndex * RaceConfig.AI_SPEED_SCALE_PER_TRACK;
   for (let i = 0; i < RaceConfig.AI_COUNT; i++) {
     const aiHorse = HORSES[Math.floor(Math.random() * HORSES.length)];
     racers.push({
@@ -83,7 +109,7 @@ export function createRaceState(trackIndex: number, horseIndex: number, gold: nu
       x: start.x, y: start.y - 15 - i * 12, speed: 0, angle: 0,
       stamina: aiHorse.stamina, waypointIndex: 0, lap: 0,
       finished: false, finishTime: 0, isPlayer: false, galloping: false,
-      aiTargetSpeed: aiHorse.maxSpeed * (0.7 + Math.random() * 0.25),
+      aiTargetSpeed: aiHorse.maxSpeed * (0.7 + Math.random() * 0.25) * aiSpeedScale,
       aiSteerNoise: (Math.random() - 0.5) * 0.3,
     });
   }

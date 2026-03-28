@@ -216,6 +216,17 @@ export class HuntGame {
         r: 12 + Math.random() * 10,
       });
     }
+    // Scale difficulty: fewer ammo pickups in later rounds
+    const ammoCount = Math.max(1, 4 - this._state.round); // round 1: 3, round 2: 2
+    this._state.ammoPickups = [];
+    for (let i = 0; i < ammoCount; i++) {
+      this._state.ammoPickups.push({
+        x: 40 + Math.random() * (HuntConfig.FIELD_WIDTH - 80),
+        y: 40 + Math.random() * (HuntConfig.FIELD_HEIGHT - 120),
+        collected: false,
+      });
+    }
+
     this._state.announcements.push({ text: `Round ${this._state.round + 1}!`, color: 0xffaa44, timer: 2 });
     this._state.log.push(`Round ${this._state.round + 1} begins.`);
 

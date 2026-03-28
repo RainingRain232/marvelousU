@@ -2929,6 +2929,7 @@ export class DiabloRenderer {
 
       if (m.life <= 0) {
         this._ambientParticleGroup.remove(m.mesh);
+        (m.mesh.material as THREE.Material).dispose();
         this._ambientMotes.splice(i, 1);
       }
     }
@@ -7057,8 +7058,7 @@ export class DiabloRenderer {
 
     this._dyingAnims.clear();
     this._lootSpawnTimes.clear();
-    this._waterMeshes = [];
-    this._waterOriginalY.clear();
+    // _waterMeshes cleaned up below with proper disposal
     if (this._waterMesh) {
       this._disposeObject3D(this._waterMesh);
       this._scene.remove(this._waterMesh);
@@ -7122,6 +7122,47 @@ export class DiabloRenderer {
       this._scene.remove(g.mesh);
     }
     this._dodgeGhosts = [];
+
+    // Clean up destroying props
+    for (const dp of this._destroyingProps) {
+      this._disposeObject3D(dp.mesh);
+      this._scene.remove(dp.mesh);
+    }
+    this._destroyingProps = [];
+
+    // Clean up rain system
+    for (const drop of this._rainDrops) {
+      this._scene.remove(drop);
+      if (drop.material) (drop.material as THREE.Material).dispose();
+      if (drop.geometry) drop.geometry.dispose();
+    }
+    this._rainDrops = [];
+    for (const splash of this._rainSplashes) {
+      this._scene.remove(splash);
+      if (splash.material) (splash.material as THREE.Material).dispose();
+      if (splash.geometry) splash.geometry.dispose();
+    }
+    this._rainSplashes = [];
+    this._rainSplashTimers = [];
+
+    // Clean up ambient motes
+    for (const mote of this._ambientMotes) {
+      this._scene.remove(mote);
+      if (mote.material) (mote.material as THREE.Material).dispose();
+    }
+    this._ambientMotes = [];
+
+    // Clean up water meshes
+    for (const wm of this._waterMeshes) {
+      this._disposeObject3D(wm);
+      this._scene.remove(wm);
+    }
+    this._waterMeshes = [];
+    this._waterOriginalY.clear();
+
+    // Clean up enemy material cache and HP tracking
+    this._enemyMaterials.clear();
+    this._lastEnemyHp.clear();
 
     if (this._bloomComposer) {
       this._bloomComposer.renderTarget1.dispose();

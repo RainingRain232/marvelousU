@@ -2350,6 +2350,19 @@ export class DepthsRenderer {
     this._godRays = [];
     this._godRayMats = [];
 
+    // Dispose all remaining Three.js resources before clearing
+    this._scene.traverse((obj) => {
+      if ((obj as any).geometry) (obj as any).geometry.dispose();
+      if ((obj as any).material) {
+        const mat = (obj as any).material;
+        if (Array.isArray(mat)) {
+          for (const m of mat) { if (m.map) m.map.dispose(); m.dispose(); }
+        } else {
+          if (mat.map) mat.map.dispose();
+          mat.dispose();
+        }
+      }
+    });
     this._scene.clear();
     if (this._renderTarget) this._renderTarget.dispose();
     if (this._postMaterial) this._postMaterial.dispose();

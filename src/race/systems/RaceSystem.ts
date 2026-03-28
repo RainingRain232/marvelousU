@@ -44,12 +44,18 @@ export function updateRace(state: RaceState, dt: number): void {
     const distToWP = Math.sqrt(dx * dx + dy * dy);
     const targetAngle = Math.atan2(dy, dx);
 
+    // Weather & terrain modifiers
+    const weatherGrip = RaceConfig.WEATHER_GRIP[track.weather] ?? 1;
+    const weatherSpeed = RaceConfig.WEATHER_SPEED[track.weather] ?? 1;
+    const weatherStaminaDrain = RaceConfig.WEATHER_STAMINA_DRAIN[track.weather] ?? 1;
+    const terrainAccel = RaceConfig.TERRAIN_ACCEL[track.terrain] ?? 1;
+
     // Steering
     let angleDiff = targetAngle - racer.angle;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-    const turnRate = 3.0 * racer.horse.handling;
+    const turnRate = 3.0 * racer.horse.handling * weatherGrip;
     if (racer.isPlayer) {
       // Player steering: auto-steer + manual override
       if (state.playerSteerInput !== 0) {
@@ -72,23 +78,87 @@ export function updateRace(state: RaceState, dt: number): void {
         ? racer.horse.maxSpeed * RaceConfig.SPRINT_SPEED_MULT
         : racer.horse.maxSpeed * 0.7;
     } else {
-      // AI speed variation
+      // AI speed variation — strategic galloping
       targetSpeed = racer.aiTargetSpeed;
-      if (racer.stamina > racer.horse.stamina * 0.5 && Math.random() < 0.01) {
-        targetSpeed = racer.horse.maxSpeed * RaceConfig.SPRINT_SPEED_MULT * 0.9;
+      // AI sprints when stamina is high and on straights (low turn angle)
+      const onStraight = Math.abs(angleDiff) < 0.3;
+      if (racer.stamina > racer.horse.stamina * 0.4 && onStraight && Math.random() < 0.03) {
+        racer.galloping = true;
+      }
+      if (racer.galloping) {
+        if (racer.stamina <= racer.horse.stamina * 0.15 || !onStraight) {
+          racer.galloping = false;
+        } else {
+          targetSpeed = racer.horse.maxSpeed * RaceConfig.SPRINT_SPEED_MULT * 0.9;
+          racer.stamina -= RaceConfig.GALLOP_STAMINA_COST * weatherStaminaDrain * dt * 0.8;
+          if (racer.stamina <= 0) { racer.stamina = 0; racer.galloping = false; }
+        }
+      }
+      // AI catches up if far behind leader
+      const leaderProgress = Math.max(...state.racers.filter(r => !r.finished).map(r => r.lap * wpCount + r.waypointIndex));
+      const myProgress = racer.lap * wpCount + racer.waypointIndex;
+      if (leaderProgress - myProgress > 3 && racer.stamina > racer.horse.stamina * 0.3) {
+        targetSpeed *= 1.1; // rubber-band catch-up
       }
     }
 
-    // Acceleration
-    if (racer.speed < targetSpeed) {
-      racer.speed = Math.min(targetSpeed, racer.speed + racer.horse.acceleration * dt);
-    } else {
-      racer.speed = Math.max(targetSpeed * 0.5, racer.speed - racer.horse.acceleration * 0.5 * dt);
+    // Stamina exhaustion: dramatically reduce speed when stamina is depleted
+    if (racer.stamina <= 0) {
+      targetSpeed *= RaceConfig.EXHAUSTION_SPEED_MULT;
+    } else if (racer.stamina < RaceConfig.EXHAUSTION_THRESHOLD) {
+      // Gradual slowdown as stamina approaches 0
+      const exhaustionLerp = racer.stamina / RaceConfig.EXHAUSTION_THRESHOLD;
+      targetSpeed *= RaceConfig.EXHAUSTION_SPEED_MULT + (1 - RaceConfig.EXHAUSTION_SPEED_MULT) * exhaustionLerp;
     }
 
-    // Stamina
+    // Drafting / slipstream: speed boost when close behind another racer
+    if (racer.isPlayer) {
+      let drafting = false;
+      for (const other of state.racers) {
+        if (other === racer || other.finished) continue;
+        const ddx = other.x - racer.x, ddy = other.y - racer.y;
+        const ddist = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (ddist < RaceConfig.DRAFT_DISTANCE && ddist > 5) {
+          // Check if racer is behind the other (facing roughly the same direction toward them)
+          const angleToOther = Math.atan2(ddy, ddx);
+          let angleDelta = angleToOther - racer.angle;
+          while (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+          while (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+          if (Math.abs(angleDelta) < RaceConfig.DRAFT_ANGLE_TOLERANCE) {
+            drafting = true;
+            break;
+          }
+        }
+      }
+      if (drafting) {
+        targetSpeed *= (1 + RaceConfig.DRAFT_SPEED_BONUS);
+        // Visual indicator: show draft particles
+        if (Math.random() < 0.4) {
+          state.particles.push({
+            x: racer.x - Math.cos(racer.angle) * 6 + (Math.random() - 0.5) * 6,
+            y: racer.y - Math.sin(racer.angle) * 6 + (Math.random() - 0.5) * 6,
+            vx: -Math.cos(racer.angle) * 30 + (Math.random() - 0.5) * 10,
+            vy: -Math.sin(racer.angle) * 30 + (Math.random() - 0.5) * 10,
+            life: 0.25, maxLife: 0.25, color: 0x88ccff, size: 2,
+          });
+        }
+      }
+    }
+
+    // Apply weather speed cap
+    targetSpeed *= weatherSpeed;
+
+    // Acceleration (terrain affects)
+    const accel = racer.horse.acceleration * terrainAccel;
+    if (racer.speed < targetSpeed) {
+      racer.speed = Math.min(targetSpeed, racer.speed + accel * dt);
+    } else {
+      racer.speed = Math.max(targetSpeed * 0.5, racer.speed - accel * 0.5 * dt);
+    }
+
+    // Stamina (weather affects drain rate)
     if (racer.isPlayer && racer.galloping) {
-      racer.stamina -= RaceConfig.GALLOP_STAMINA_COST * dt;
+      racer.stamina -= RaceConfig.GALLOP_STAMINA_COST * weatherStaminaDrain * dt;
       if (racer.stamina <= 0) { racer.stamina = 0; racer.galloping = false; }
     } else {
       racer.stamina = Math.min(racer.horse.stamina, racer.stamina + racer.horse.staminaRegen * dt);
@@ -98,13 +168,30 @@ export function updateRace(state: RaceState, dt: number): void {
     racer.x += Math.cos(racer.angle) * racer.speed * dt;
     racer.y += Math.sin(racer.angle) * racer.speed * dt;
 
-    // Dust particles when galloping
-    if (racer.speed > racer.horse.maxSpeed * 0.8 && Math.random() < 0.3) {
-      state.particles.push({
-        x: racer.x - Math.cos(racer.angle) * 8, y: racer.y - Math.sin(racer.angle) * 8,
-        vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20,
-        life: 0.3, maxLife: 0.3, color: 0xaa9977, size: 2,
-      });
+    // Dust particles when any racer is galloping fast
+    const dustThreshold = racer.horse.maxSpeed * RaceConfig.DUST_SPEED_THRESHOLD;
+    if (racer.speed > dustThreshold) {
+      // More particles at higher speeds
+      const speedRatio = (racer.speed - dustThreshold) / (racer.horse.maxSpeed * RaceConfig.SPRINT_SPEED_MULT - dustThreshold);
+      const spawnChance = RaceConfig.DUST_SPAWN_RATE * Math.min(1, speedRatio + 0.3);
+      if (Math.random() < spawnChance) {
+        const backX = racer.x - Math.cos(racer.angle) * 10;
+        const backY = racer.y - Math.sin(racer.angle) * 10;
+        // Spawn 1-3 dust particles depending on speed
+        const count = racer.speed > racer.horse.maxSpeed ? 2 + Math.floor(Math.random() * 2) : 1;
+        for (let di = 0; di < count; di++) {
+          state.particles.push({
+            x: backX + (Math.random() - 0.5) * 6,
+            y: backY + (Math.random() - 0.5) * 6,
+            vx: -Math.cos(racer.angle) * 15 + (Math.random() - 0.5) * 25,
+            vy: -Math.sin(racer.angle) * 15 + (Math.random() - 0.5) * 25,
+            life: 0.5 + Math.random() * 0.3,
+            maxLife: 0.8,
+            color: 0xaa9977,
+            size: 2 + Math.random() * 2,
+          });
+        }
+      }
     }
 
     // Obstacle collision (shield protects player)
@@ -115,6 +202,21 @@ export function updateRace(state: RaceState, dt: number): void {
           // Shield absorbs obstacle hit
         } else {
           racer.speed *= RaceConfig.OBSTACLE_SLOWDOWN;
+          // Obstacle hit drains stamina
+          racer.stamina = Math.max(0, racer.stamina - RaceConfig.OBSTACLE_STAMINA_LOSS);
+          if (racer.isPlayer && racer.stamina <= 0) {
+            racer.galloping = false;
+          }
+        }
+        // Impact particles
+        for (let pi = 0; pi < 4; pi++) {
+          state.particles.push({
+            x: obs.x + (Math.random() - 0.5) * obs.r,
+            y: obs.y + (Math.random() - 0.5) * obs.r,
+            vx: (Math.random() - 0.5) * 50,
+            vy: (Math.random() - 0.5) * 50,
+            life: 0.4, maxLife: 0.4, color: 0x556644, size: 3,
+          });
         }
         const dist = Math.sqrt(odx * odx + ody * ody);
         if (dist > 0) { racer.x += (odx / dist) * 3; racer.y += (ody / dist) * 3; }
@@ -190,6 +292,25 @@ export function updateRace(state: RaceState, dt: number): void {
     // Bounds
     racer.x = Math.max(5, Math.min(RaceConfig.FIELD_WIDTH - 5, racer.x));
     racer.y = Math.max(5, Math.min(RaceConfig.FIELD_HEIGHT - 5, racer.y));
+  }
+
+  // Weather particles
+  if (track.weather === "rain" && Math.random() < 0.6) {
+    state.particles.push({
+      x: Math.random() * RaceConfig.FIELD_WIDTH, y: Math.random() * RaceConfig.FIELD_HEIGHT,
+      vx: -20, vy: 80, life: 0.3, maxLife: 0.3, color: 0x6688aa, size: 1,
+    });
+  }
+  if (track.weather === "mud") {
+    const player = state.racers.find(r => r.isPlayer);
+    if (player && player.speed > 50 && Math.random() < 0.4) {
+      state.particles.push({
+        x: player.x + (Math.random() - 0.5) * 12,
+        y: player.y + (Math.random() - 0.5) * 12,
+        vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30,
+        life: 0.4, maxLife: 0.4, color: 0x665533, size: 3,
+      });
+    }
   }
 
   // Check if all finished

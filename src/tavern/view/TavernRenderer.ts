@@ -108,12 +108,18 @@ export class TavernRenderer {
     // Suit power legend (small, bottom of table)
     this._addText("\u2694+50%win  \u{1F6E1}-30%loss  \u{1F451}+25%win  \u{1F3C6}+5g", cx, sh * 0.73, { fontSize: 7, fill: 0x556655 }, true);
 
-    // Announcements
-    for (const ann of state.announcements) {
+    // Announcements — stacked with offset so multiple are visible
+    const annBaseY = sh * 0.47;
+    for (let ai = 0; ai < state.announcements.length; ai++) {
+      const ann = state.announcements[ai];
       const alpha = Math.min(1, ann.timer / 1.5);
-      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize: 24, fill: ann.color, fontWeight: "bold", letterSpacing: 2 }) });
+      // Card deal flashes are smaller, game results are larger
+      const isCardFlash = ann.timer <= 1.2 && !ann.text.includes("!") && !ann.text.includes("PUSH") && !ann.text.includes("LOSS");
+      const fontSize = isCardFlash ? 14 : 24;
+      const yOff = isCardFlash ? -30 - ai * 16 : ai * 28;
+      const t = new Text({ text: ann.text, style: new TextStyle({ fontFamily: FONT, fontSize, fill: ann.color, fontWeight: "bold", letterSpacing: isCardFlash ? 1 : 2 }) });
       t.alpha = alpha; t.anchor.set(0.5, 0.5);
-      t.position.set(cx, sh * 0.47);
+      t.position.set(cx, annBaseY + yOff);
       this._uiContainer.addChild(t);
     }
 

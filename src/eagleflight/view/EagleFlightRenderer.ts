@@ -7889,6 +7889,26 @@ export class EagleFlightRenderer {
   // ---------------------------------------------------------------------------
 
   destroy(): void {
+    // Dispose all Three.js resources in the scene
+    this._scene.traverse((obj) => {
+      if ((obj as any).geometry) (obj as any).geometry.dispose();
+      if ((obj as any).material) {
+        const mat = (obj as any).material;
+        if (Array.isArray(mat)) {
+          for (const m of mat) { if (m.map) m.map.dispose(); m.dispose(); }
+        } else {
+          if (mat.map) mat.map.dispose();
+          mat.dispose();
+        }
+      }
+    });
+    this._scene.clear();
+
+    if (this._composer) {
+      this._composer.renderTarget1.dispose();
+      this._composer.renderTarget2.dispose();
+    }
+
     this._renderer.dispose();
     if (this._canvas.parentElement) {
       this._canvas.parentElement.removeChild(this._canvas);

@@ -4,7 +4,7 @@
 
 import type { TavernState } from "../state/TavernState";
 import { TavernPhase, drawCard } from "../state/TavernState";
-import { cardScore, TavernConfig } from "../config/TavernConfig";
+import { cardScore, TavernConfig, VALUE_NAMES, SUIT_SYMBOLS } from "../config/TavernConfig";
 
 // ---------------------------------------------------------------------------
 // Suit powers (checked at end of round)
@@ -19,33 +19,40 @@ function checkSuitPowers(state: TavernState, result: string): { bonusGold: numbe
   const suitCounts: Record<string, number> = {};
   for (const c of hand) { suitCounts[c.suit] = (suitCounts[c.suit] ?? 0) + 1; }
 
-  // Swords: if majority suit in winning hand, +50% payout
-  if (result === "win" || result === "blackjack") {
-    if ((suitCounts["swords"] ?? 0) >= 2) {
-      const bonus = Math.floor(state.currentBet * 0.5);
-      bonusGold += bonus;
-      texts.push(`\u2694 Swords Fury: +${bonus}g`);
-    }
-  }
+  const swordsCount = suitCounts["swords"] ?? 0;
+  const shieldsCount = suitCounts["shields"] ?? 0;
+  const crownsCount = suitCounts["crowns"] ?? 0;
+  const chalicesCount = suitCounts["chalices"] ?? 0;
 
-  // Shields: if you have 2+ shields and lose, refund 30% of bet
-  if (result === "lose" && (suitCounts["shields"] ?? 0) >= 2) {
-    const refund = Math.floor(state.currentBet * 0.3);
-    bonusGold += refund;
-    texts.push(`\u{1F6E1} Shield Guard: saved ${refund}g`);
-  }
-
-  // Crowns: any crown card in a winning hand gives +25% bonus
-  if ((result === "win" || result === "blackjack") && (suitCounts["crowns"] ?? 0) >= 1) {
-    const bonus = Math.floor(state.currentBet * 0.25);
+  // Swords (Spades): +50% winnings on a winning hand, scaled by count
+  if ((result === "win" || result === "blackjack") && swordsCount >= 1) {
+    const multiplier = 0.5 * swordsCount;
+    const bonus = Math.floor(state.currentBet * multiplier);
     bonusGold += bonus;
-    texts.push(`\u{1F451} Crown's Favor: +${bonus}g`);
+    texts.push(`\u2694 Swords Fury (x${swordsCount}): +${bonus}g`);
   }
 
-  // Chalices: if hand has 2+ chalices, gain +5 gold flat (healing)
-  if ((suitCounts["chalices"] ?? 0) >= 2) {
-    bonusGold += 5;
-    texts.push(`\u{1F3C6} Chalice Blessing: +5g`);
+  // Shields (Clubs): -30% loss reduction on a losing hand, scaled by count
+  if (result === "lose" && shieldsCount >= 1) {
+    const multiplier = Math.min(0.3 * shieldsCount, 0.9); // cap at 90% refund
+    const refund = Math.floor(state.currentBet * multiplier);
+    bonusGold += refund;
+    texts.push(`\u{1F6E1} Shield Guard (x${shieldsCount}): saved ${refund}g`);
+  }
+
+  // Crowns (Hearts): +25% winnings on a winning hand, scaled by count
+  if ((result === "win" || result === "blackjack") && crownsCount >= 1) {
+    const multiplier = 0.25 * crownsCount;
+    const bonus = Math.floor(state.currentBet * multiplier);
+    bonusGold += bonus;
+    texts.push(`\u{1F451} Crown's Favor (x${crownsCount}): +${bonus}g`);
+  }
+
+  // Chalices (Diamonds): +5 gold flat bonus on any win, per chalice card
+  if ((result === "win" || result === "blackjack") && chalicesCount >= 1) {
+    const bonus = 5 * chalicesCount;
+    bonusGold += bonus;
+    texts.push(`\u{1F3C6} Chalice Blessing (x${chalicesCount}): +${bonus}g`);
   }
 
   return { bonusGold, bonusText: texts };
@@ -132,6 +139,18 @@ export function placeBet(state: TavernState, amount: number): boolean {
   state.phase = TavernPhase.PLAYER_TURN;
   state.log.push(`Round ${state.round}: Bet ${amount}g.`);
 
+  // Card deal flash — show what was dealt
+  const c1 = state.playerHand[0], c2 = state.playerHand[1];
+  const dealerUp = state.dealerHand[0];
+  state.announcements.push({
+    text: `${SUIT_SYMBOLS[c1.suit]}${VALUE_NAMES[c1.value]} ${SUIT_SYMBOLS[c2.suit]}${VALUE_NAMES[c2.value]}`,
+    color: 0xeeddcc, timer: 1.2,
+  });
+  state.announcements.push({
+    text: `Dealer shows ${SUIT_SYMBOLS[dealerUp.suit]}${VALUE_NAMES[dealerUp.value]}`,
+    color: 0xccaa88, timer: 1.2,
+  });
+
   // Reset round state
   state.insuranceBet = 0;
   state.splitHand = null;
@@ -155,8 +174,15 @@ export function placeBet(state: TavernState, amount: number): boolean {
 
 export function playerHit(state: TavernState): void {
   if (state.phase !== TavernPhase.PLAYER_TURN) return;
-  state.playerHand.push(drawCard(state));
+  const newCard = drawCard(state);
+  state.playerHand.push(newCard);
   const score = cardScore(state.playerHand);
+
+  // Card flip flash
+  state.announcements.push({
+    text: `${SUIT_SYMBOLS[newCard.suit]}${VALUE_NAMES[newCard.value]}`,
+    color: 0xeeddcc, timer: 0.8,
+  });
 
   if (score > 21) {
     state.log.push("Bust!");
@@ -178,7 +204,13 @@ export function playerDoubleDown(state: TavernState): void {
   if (state.playerHand.length !== 2) return;
   if (state.gold < state.currentBet * 2) return;
   state.currentBet *= 2;
-  state.playerHand.push(drawCard(state));
+  const ddCard = drawCard(state);
+  state.playerHand.push(ddCard);
+  // Card flip flash for double down
+  state.announcements.push({
+    text: `${SUIT_SYMBOLS[ddCard.suit]}${VALUE_NAMES[ddCard.value]} (DOUBLE)`,
+    color: 0xff8844, timer: 1.0,
+  });
   const score = cardScore(state.playerHand);
   if (score > 21) {
     state.log.push("Double down — Bust!");
@@ -225,34 +257,61 @@ export function playerSplit(state: TavernState): void {
   state.log.push("Split hand!");
 }
 
-/** Generate opponent tell based on their hidden card */
+/** Generate opponent tell based on their hidden card — more frequent and meaningful */
 function generateTell(state: TavernState): void {
   const hiddenCard = state.dealerHand[1]; // face-down card
+  const visibleCard = state.dealerHand[0];
   if (!hiddenCard) { state.opponentTell = ""; return; }
-  const score = hiddenCard.value >= 10 ? 10 : hiddenCard.value;
-  // Aggressive opponents give fewer tells
-  if (Math.random() < state.opponent.aggression * 0.7) {
-    state.opponentTell = `${state.opponent.name} reveals nothing.`;
+
+  const hiddenVal = hiddenCard.value >= 10 ? 10 : hiddenCard.value === 1 ? 11 : hiddenCard.value;
+  const visibleVal = visibleCard.value >= 10 ? 10 : visibleCard.value === 1 ? 11 : visibleCard.value;
+  const dealerTotal = hiddenVal + visibleVal;
+  const name = state.opponent.name;
+
+  // Higher-tier opponents are harder to read — but still give tells most of the time
+  // Tier 0: always shows a tell, Tier 1: 85%, Tier 2: 70%, Tier 3: 55%
+  const tellChance = 1.0 - state.opponent.tier * 0.15;
+  if (Math.random() > tellChance) {
+    state.opponentTell = `${name} has a perfect poker face.`;
     return;
   }
-  if (score >= 8) {
+
+  // Tells are based on the dealer's TOTAL (visible + hidden), hinting at bust likelihood
+  if (dealerTotal >= 20) {
+    // Very strong hand — dealer is cocky
     const hints = [
-      `${state.opponent.name} looks confident.`,
-      `${state.opponent.name} drums fingers impatiently.`,
-      `${state.opponent.name} leans forward eagerly.`,
+      `${name} grins smugly and stacks their coins.`,
+      `${name} barely glances at their cards — supremely confident.`,
+      `${name} yawns, seemingly bored. Very strong hand likely.`,
+      `${name} is already counting your gold.`,
     ];
     state.opponentTell = hints[Math.floor(Math.random() * hints.length)];
-  } else if (score >= 5) {
+  } else if (dealerTotal >= 17) {
+    // Solid hand — dealer is comfortable
     const hints = [
-      `${state.opponent.name} seems calm.`,
-      `${state.opponent.name} sips their drink casually.`,
+      `${name} nods approvingly at their cards.`,
+      `${name} leans back comfortably. Looks like a solid hand.`,
+      `${name} places coins neatly — no worries there.`,
+      `${name} hums a tune. Seems satisfied.`,
+    ];
+    state.opponentTell = hints[Math.floor(Math.random() * hints.length)];
+  } else if (dealerTotal >= 13) {
+    // Risky hand — could go either way
+    const hints = [
+      `${name} chews their lip thoughtfully.`,
+      `${name} glances at the deck nervously.`,
+      `${name} taps the table — seems uncertain.`,
+      `${name} adjusts their collar. A middling hand, perhaps?`,
     ];
     state.opponentTell = hints[Math.floor(Math.random() * hints.length)];
   } else {
+    // Weak hand — high bust chance when they draw
     const hints = [
-      `${state.opponent.name} shifts uncomfortably.`,
-      `${state.opponent.name} avoids eye contact.`,
-      `${state.opponent.name} fidgets with their coins.`,
+      `${name} looks visibly nervous and avoids eye contact.`,
+      `${name} fidgets with their coins anxiously.`,
+      `${name} gulps and reaches for their drink. Weak hand likely.`,
+      `${name} shifts uncomfortably. They'll need to draw more cards.`,
+      `${name} mutters a prayer under their breath.`,
     ];
     state.opponentTell = hints[Math.floor(Math.random() * hints.length)];
   }
@@ -262,8 +321,35 @@ function revealAndResolve(state: TavernState): void {
   for (const card of state.dealerHand) card.faceUp = true;
   state.phase = TavernPhase.DEALER_TURN;
 
-  const aggThreshold = TavernConfig.DEALER_STAND - Math.floor(state.opponent.aggression * 3);
-  while (cardScore(state.dealerHand) < aggThreshold) {
+  // Opponent difficulty scaling:
+  // Early opponents (low tier) play recklessly — hit on soft 17s, sometimes hit too high
+  // Later opponents play optimal basic strategy
+  const tier = state.opponent.tier;
+  const dealerPlay = () => {
+    const score = cardScore(state.dealerHand);
+    const hasAce = state.dealerHand.some(c => c.value === 1);
+    const softTotal = hasAce && score <= 21 && score - 10 > 0;
+
+    if (tier === 0) {
+      // Tier 0 (Pip, Marta): Reckless — hits on 17, sometimes hits on 18
+      if (score < 17) return true;
+      if (score === 17 && softTotal) return true; // hit soft 17
+      if (score === 17 && Math.random() < 0.3) return true; // sometimes recklessly hit hard 17
+      if (score === 18 && Math.random() < 0.1) return true; // rarely hit 18
+      return false;
+    } else if (tier === 1) {
+      // Tier 1 (Aldric, Elena): Moderate — hits soft 17, otherwise standard
+      if (score < 17) return true;
+      if (score === 17 && softTotal) return true;
+      return false;
+    } else {
+      // Tier 2+ (Gareth, Morgan, Arthur): Optimal — stand on all 17+, always hit below 17
+      if (score < 17) return true;
+      return false;
+    }
+  };
+
+  while (dealerPlay()) {
     state.dealerHand.push(drawCard(state));
   }
 

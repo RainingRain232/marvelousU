@@ -9,6 +9,7 @@ import { audioManager } from "@audio/AudioManager";
 import { createRaceState, RacePhase } from "./state/RaceState";
 import type { RaceState } from "./state/RaceState";
 import { HORSES, TRACKS, RaceConfig } from "./config/RaceConfig";
+import type { TrackDef } from "./config/RaceConfig";
 import { updateRace } from "./systems/RaceSystem";
 import { RaceRenderer } from "./view/RaceRenderer";
 
@@ -25,6 +26,9 @@ export class RaceGame {
   private _resultShown = false;
   private _pauseMenu: Container | null = null;
   private _paused = false;
+  private _championship = false;
+  private _champTrackIdx = 0;
+  private _champPoints = 0;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -70,7 +74,9 @@ export class RaceGame {
       btn.on("pointerdown", () => { this._showBetScreen(idx); viewManager.removeFromLayer("ui", c); c.destroy({ children: true }); });
       c.addChild(btn);
       addText(trk.name, this._sw / 2, y + 4, { fontSize: 11, fill: 0xccbbaa, fontWeight: "bold" }, true);
-      addText(`${trk.laps} laps | ${trk.obstacles.length} obstacles`, this._sw / 2, y + 18, { fontSize: 8, fill: 0x889988 }, true);
+      const totalObs = trk.obstacles.length + idx * RaceConfig.EXTRA_OBSTACLES_PER_TRACK;
+      const diffLabel = idx === 0 ? "Easy" : idx === 1 ? "Medium" : "Hard";
+      addText(`${trk.laps} laps | ~${totalObs} obstacles | ${diffLabel}`, this._sw / 2, y + 18, { fontSize: 8, fill: 0x889988 }, true);
       y += 40;
     }
 
@@ -97,8 +103,22 @@ export class RaceGame {
       y += 38;
     }
 
-    // Back button
+    // Championship button
     y += 10;
+    const champBtn = new Graphics();
+    champBtn.roundRect(this._sw / 2 - 120, y, 240, 30, 5).fill({ color: 0x1a1008, alpha: 0.8 });
+    champBtn.roundRect(this._sw / 2 - 120, y, 240, 30, 5).stroke({ color: 0xffd700, width: 1.5, alpha: 0.6 });
+    champBtn.eventMode = "static"; champBtn.cursor = "pointer";
+    champBtn.on("pointerdown", () => {
+      this._championship = true; this._champTrackIdx = 0; this._champPoints = 0;
+      viewManager.removeFromLayer("ui", c); c.destroy({ children: true });
+      this._showBetScreen(0);
+    });
+    c.addChild(champBtn);
+    addText("\u{1F3C6} CHAMPIONSHIP (All Tracks)", this._sw / 2, y + 7, { fontSize: 10, fill: 0xffd700, fontWeight: "bold" }, true);
+    y += 38;
+
+    // Back button
     const backBtn = new Graphics();
     backBtn.roundRect(this._sw / 2 - 45, y, 90, 26, 4).fill({ color: 0x0a0a0a, alpha: 0.6 });
     backBtn.roundRect(this._sw / 2 - 45, y, 90, 26, 4).stroke({ color: 0x555555, width: 1 });
@@ -321,17 +341,41 @@ export class RaceGame {
     }
     y += 10;
 
-    addText(`Gold: ${this._gold}g`, this._sw / 2, y, { fontSize: 14, fill: 0xffd700, fontWeight: "bold" }, true);
-    y += 25;
+    // Weather info
+    const weatherLabel = this._state.track.weather === "clear" ? "" : ` (${this._state.track.weather.toUpperCase()})`;
+    addText(`Gold: ${this._gold}g${weatherLabel}`, this._sw / 2, y, { fontSize: 14, fill: 0xffd700, fontWeight: "bold" }, true);
+    y += 8;
+
+    // Championship progress
+    if (this._championship) {
+      const pts = (RaceConfig.CHAMPIONSHIP_POINTS as readonly number[])[playerPlace - 1] ?? 1;
+      this._champPoints += pts;
+      addText(`Championship: Track ${this._champTrackIdx + 1}/${TRACKS.length} | Points: ${this._champPoints} (+${pts})`, this._sw / 2, y + 8, { fontSize: 10, fill: 0xffcc44 }, true);
+      y += 20;
+    }
+    y += 17;
 
     // Buttons
+    const nextLabel = this._championship && this._champTrackIdx < TRACKS.length - 1 ? "NEXT TRACK" : "RACE AGAIN";
     const retryBtn = new Graphics();
     retryBtn.roundRect(this._sw / 2 - 60, y, 120, 34, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
     retryBtn.roundRect(this._sw / 2 - 60, y, 120, 34, 5).stroke({ color: accent, width: 2, alpha: 0.5 });
     retryBtn.eventMode = "static"; retryBtn.cursor = "pointer";
-    retryBtn.on("pointerdown", () => { viewManager.removeFromLayer("ui", c); viewManager.removeFromLayer("ui", this._renderer.container); c.destroy({ children: true }); this._renderer.destroy(); this._showTrackSelect(); });
+    retryBtn.on("pointerdown", () => {
+      viewManager.removeFromLayer("ui", c); viewManager.removeFromLayer("ui", this._renderer.container);
+      c.destroy({ children: true }); this._renderer.destroy();
+      if (this._championship && this._champTrackIdx < TRACKS.length - 1) {
+        this._champTrackIdx++;
+        this._showBetScreen(this._champTrackIdx);
+      } else if (this._championship) {
+        this._championship = false;
+        this._showChampionshipResults();
+      } else {
+        this._showTrackSelect();
+      }
+    });
     c.addChild(retryBtn);
-    addText("RACE AGAIN", this._sw / 2, y + 9, { fontSize: 11, fill: accent, fontWeight: "bold" }, true);
+    addText(nextLabel, this._sw / 2, y + 9, { fontSize: 11, fill: accent, fontWeight: "bold" }, true);
 
     y += 44;
     const menuBtn = new Graphics();
@@ -341,6 +385,37 @@ export class RaceGame {
     menuBtn.on("pointerdown", () => { viewManager.removeFromLayer("ui", c); c.destroy({ children: true }); this.destroy(); window.dispatchEvent(new Event("raceExit")); });
     c.addChild(menuBtn);
     addText("MENU", this._sw / 2, y + 5, { fontSize: 9, fill: 0x888888 }, true);
+
+    viewManager.addToLayer("ui", c);
+  }
+
+  private _showChampionshipResults(): void {
+    const c = new Container();
+    const ov = new Graphics();
+    ov.rect(0, 0, this._sw, this._sh).fill({ color: 0x000000, alpha: 0.92 });
+    ov.eventMode = "static"; c.addChild(ov);
+
+    const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
+      const t = new Text({ text: str, style: new TextStyle({ fontFamily: "Georgia, serif", ...opts } as any) });
+      if (center) t.anchor.set(0.5, 0); t.position.set(x, y); c.addChild(t);
+    };
+
+    addText("\u{1F3C6} CHAMPIONSHIP COMPLETE \u{1F3C6}", this._sw / 2, this._sh * 0.2, { fontSize: 22, fill: 0xffd700, fontWeight: "bold", letterSpacing: 3 }, true);
+    addText(`Total Points: ${this._champPoints}`, this._sw / 2, this._sh * 0.3, { fontSize: 16, fill: 0xffcc44, fontWeight: "bold" }, true);
+    addText(`Gold: ${this._gold}g`, this._sw / 2, this._sh * 0.36, { fontSize: 14, fill: 0xffd700 }, true);
+
+    const maxPts = TRACKS.length * ((RaceConfig.CHAMPIONSHIP_POINTS as readonly number[])[0] ?? 10);
+    const grade = this._champPoints >= maxPts * 0.9 ? "S" : this._champPoints >= maxPts * 0.7 ? "A" : this._champPoints >= maxPts * 0.5 ? "B" : "C";
+    const gradeColor = grade === "S" ? 0xffd700 : grade === "A" ? 0x44cc44 : grade === "B" ? 0x4488cc : 0xaaaaaa;
+    addText(`Grade: ${grade}`, this._sw / 2, this._sh * 0.43, { fontSize: 28, fill: gradeColor, fontWeight: "bold" }, true);
+
+    const menuBtn = new Graphics();
+    menuBtn.roundRect(this._sw / 2 - 60, this._sh * 0.6, 120, 34, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
+    menuBtn.roundRect(this._sw / 2 - 60, this._sh * 0.6, 120, 34, 5).stroke({ color: 0xffd700, width: 2, alpha: 0.5 });
+    menuBtn.eventMode = "static"; menuBtn.cursor = "pointer";
+    menuBtn.on("pointerdown", () => { viewManager.removeFromLayer("ui", c); c.destroy({ children: true }); this._showTrackSelect(); });
+    c.addChild(menuBtn);
+    addText("CONTINUE", this._sw / 2, this._sh * 0.6 + 9, { fontSize: 11, fill: 0xffd700, fontWeight: "bold" }, true);
 
     viewManager.addToLayer("ui", c);
   }
