@@ -30,7 +30,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       const gear = new THREE.Group();
       const gearR = 0.8 + Math.random() * 2.5;
       const toothCount = 8 + Math.floor(Math.random() * 8);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(gearR, gearR * 0.15, 6, toothCount), i % 2 === 0 ? bronzeMat : brassMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(gearR, gearR * 0.15, 12, toothCount), i % 2 === 0 ? bronzeMat : brassMat);
       gear.add(ring);
       for (let t = 0; t < toothCount; t++) {
         const angle = (t / toothCount) * Math.PI * 2;
@@ -1465,7 +1465,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
       // End tassels
       for (const ez of [-cLen / 2, cLen / 2]) {
         for (let t = 0; t < 5; t++) {
-          const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.1, 6), carpetTrimMat);
+          const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.1, 12), carpetTrimMat);
           tassel.position.set(-cW / 2 + 0.15 + t * (cW / 5), -0.05, ez);
           carpet.add(tassel);
         }
@@ -2242,7 +2242,7 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
         rodArray.add(tip);
         // Cross braces between rods
         if (r < rodCount - 1) {
-          const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 6), metalMat);
+          const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.4, 12), metalMat);
           brace.rotation.z = Math.PI / 2;
           brace.position.set((r - rodCount / 2 + 0.5) * 0.4, rH * 0.6, 0);
           rodArray.add(brace);
@@ -2388,7 +2388,7 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
       const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), snowMat);
       skull.scale.set(1, 0.8, 1.2); skullGrp.add(skull);
       for (const side of [-1, 1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 6), snowMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.3, 12), snowMat);
         horn.position.set(side * 0.12, 0.08, -0.05);
         horn.rotation.z = side * 0.6; horn.rotation.x = -0.3;
         skullGrp.add(horn);
@@ -2429,13 +2429,13 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
       const linkCount = 4 + Math.floor(Math.random() * 4);
       const broken = Math.random() < 0.4;
       for (let l = 0; l < linkCount; l++) {
-        const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.02, 6, 8), chainMat);
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.02, 12, 8), chainMat);
         link.position.set(0, -l * 0.12, 0.1);
         link.rotation.x = l % 2 === 0 ? 0 : Math.PI / 2;
         anchorGrp.add(link);
       }
       if (broken) {
-        const dangle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 6, 8), chainMat);
+        const dangle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.015, 12, 8), chainMat);
         dangle.position.set(0.05, -linkCount * 0.12 - 0.15, 0.1);
         dangle.rotation.z = 0.5; anchorGrp.add(dangle);
       }
@@ -2984,7 +2984,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       mpGlow.position.z = 0.01; mirrorPortal.add(mpGlow);
       // Ripple effect (concentric circles)
       for (let r = 1; r <= 3; r++) {
-        const ripple = new THREE.Mesh(new THREE.TorusGeometry(mpR * r * 0.25, 0.008, 6, 32), new THREE.MeshStandardMaterial({ color: 0x6644aa, emissive: 0x4422aa, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 }));
+        const ripple = new THREE.Mesh(new THREE.TorusGeometry(mpR * r * 0.25, 0.008, 12, 32), new THREE.MeshStandardMaterial({ color: 0x6644aa, emissive: 0x4422aa, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 }));
         ripple.position.z = 0.005; mirrorPortal.add(ripple);
       }
       mirrorPortal.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.65);
@@ -3057,11 +3057,11 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), shadowCloneMat);
       head.position.y = 1.45; clone.add(head);
       for (const ax of [-0.25, 0.25]) {
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 6), shadowCloneMat);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 12), shadowCloneMat);
         arm.position.set(ax, 0.9, 0); arm.rotation.z = ax > 0 ? -0.15 : 0.15; clone.add(arm);
       }
       for (const lx of [-0.1, 0.1]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 6), shadowCloneMat);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 12), shadowCloneMat);
         leg.position.set(lx, 0.35, 0); clone.add(leg);
       }
       for (const [ey, eh] of [[1.0, 0.62], [1.45, 0.26]] as [number, number][]) {
@@ -3081,7 +3081,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       let ty = 0;
       for (let s = 0; s < 4 + Math.floor(Math.random() * 3); s++) {
         const segH = 1.2 + Math.random() * 1.0;
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.08 - s * 0.008, 0.12 - s * 0.008, segH, 6), nightBarkMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.08 - s * 0.008, 0.12 - s * 0.008, segH, 12), nightBarkMat);
         seg.position.y = ty + segH / 2;
         seg.rotation.x = (Math.random() - 0.5) * 0.4;
         seg.rotation.z = (Math.random() - 0.5) * 0.4;
@@ -3089,12 +3089,12 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       }
       for (let b = 0; b < 4 + Math.floor(Math.random() * 3); b++) {
         const branchLen = 0.8 + Math.random() * 1.2;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.04, branchLen, 5), nightBarkMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.04, branchLen, 10), nightBarkMat);
         branch.position.set((Math.random() - 0.5) * 0.5, ty * (0.5 + Math.random() * 0.4), (Math.random() - 0.5) * 0.5);
         branch.rotation.z = (Math.random() - 0.5) * 1.5;
         branch.rotation.x = (Math.random() - 0.5) * 0.8;
         tree.add(branch);
-        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.15, 4), nightBarkMat);
+        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.15, 10), nightBarkMat);
         claw.position.copy(branch.position);
         claw.position.y += branchLen * 0.4;
         claw.rotation.z = branch.rotation.z + 0.3;
@@ -3122,9 +3122,9 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
     // ── Trapped soul lanterns (8) ──
     for (let i = 0; i < 8; i++) {
       const lantern = new THREE.Group();
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3, 6), darkPurpleMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3, 12), darkPurpleMat);
       post.position.y = 1.5; lantern.add(post);
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 4), blackMat);
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 10), blackMat);
       chain.position.set(0, 3.3, 0); lantern.add(chain);
       const glass = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12),
         new THREE.MeshStandardMaterial({ color: 0x553388, roughness: 0.1, transparent: true, opacity: 0.3 }));
@@ -3147,9 +3147,9 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       const altarSkull = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), voidMat);
       altarSkull.position.set(0, 0.95, 0); altar.add(altarSkull);
       for (const [cx, cz] of [[-0.6, -0.4], [0.6, -0.4], [-0.6, 0.4], [0.6, 0.4]] as [number, number][]) {
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 6), darkPurpleMat);
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 12), darkPurpleMat);
         candle.position.set(cx, 0.95, cz); altar.add(candle);
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), purpleMat);
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), purpleMat);
         flame.position.set(cx, 1.15, cz); altar.add(flame);
       }
       for (let r = 0; r < 6; r++) {
@@ -3201,7 +3201,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
         stoneRing.add(stone);
       }
       for (let p = 0; p < 3; p++) {
-        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6),
+        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0x8866cc, emissive: 0x6644aa, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 }));
         particle.position.set((Math.random() - 0.5) * ringR, 0.5 + Math.random() * 1.5, (Math.random() - 0.5) * ringR);
         stoneRing.add(particle);
@@ -3792,7 +3792,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
         const t = s / (spiralTurns * 8);
         const sAngle = t * spiralTurns * Math.PI * 2;
         const sR = 0.05 + t * 0.3;
-        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.01 + t * 0.015, 6, 6), fossilMat);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.01 + t * 0.015, 12, 10), fossilMat);
         dot.position.set(Math.cos(sAngle) * sR, Math.sin(sAngle) * sR, 0);
         fossil.add(dot);
       }
@@ -3800,7 +3800,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
       for (let r = 0; r < 6; r++) {
         const rAngle = (r / 6) * Math.PI * 2;
         const ribLen = 0.15 + Math.random() * 0.1;
-        const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, ribLen, 4), fossilMat);
+        const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.005, ribLen, 10), fossilMat);
         rib.position.set(Math.cos(rAngle) * 0.15, Math.sin(rAngle) * 0.15, 0);
         rib.rotation.z = rAngle + Math.PI / 2; fossil.add(rib);
       }
@@ -3830,7 +3830,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
       // Ripple rings
       for (let r = 0; r < 2; r++) {
         const ripR = opR * (0.3 + r * 0.25);
-        const ripple = new THREE.Mesh(new THREE.TorusGeometry(ripR, 0.008, 6, 28), new THREE.MeshStandardMaterial({ color: 0x224422, transparent: true, opacity: 0.25 }));
+        const ripple = new THREE.Mesh(new THREE.TorusGeometry(ripR, 0.008, 12, 28), new THREE.MeshStandardMaterial({ color: 0x224422, transparent: true, opacity: 0.25 }));
         ripple.rotation.x = Math.PI / 2; ripple.position.y = 0.025; oozePool.add(ripple);
       }
       const oLight = new THREE.PointLight(0x225522, 0.3, 4);
@@ -3893,7 +3893,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
       // Veins radiating from iris
       for (let v = 0; v < 6; v++) {
         const va = Math.random() * Math.PI * 2;
-        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, emR * 0.35, 4), new THREE.MeshStandardMaterial({ color: 0xcc2200, roughness: 0.5 }));
+        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, emR * 0.35, 10), new THREE.MeshStandardMaterial({ color: 0xcc2200, roughness: 0.5 }));
         vein.position.set(Math.cos(va) * emR * 0.55, Math.sin(va) * emR * 0.55, 0.005);
         vein.rotation.z = va + Math.PI / 2; eyeMotif.add(vein);
       }

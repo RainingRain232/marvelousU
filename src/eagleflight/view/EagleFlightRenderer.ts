@@ -1173,7 +1173,7 @@ export class EagleFlightRenderer {
     ];
     for (const co of cornerOffsets) {
       // Tower body (high poly)
-      const tGeo = new THREE.CylinderGeometry(4, 4.5, 22, 32, 4);
+      const tGeo = new THREE.CylinderGeometry(4, 4.5, 22, 32, 10);
       const tower = new THREE.Mesh(tGeo, stoneMat);
       tower.position.set(co.x, 14, co.z);
       tower.castShadow = true;
@@ -6928,7 +6928,7 @@ export class EagleFlightRenderer {
         transparent: true,
         opacity: 0.9,
       });
-      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 4, 3), sparkMat);
+      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 16, 12), sparkMat);
       spark.position.set(
         p.position.x + (Math.random() - 0.5) * 4,
         p.position.y + Math.random() * 3,
@@ -7160,7 +7160,7 @@ export class EagleFlightRenderer {
         transparent: true,
         opacity: 0.8,
       });
-      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 4, 3), sparkMat);
+      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 16, 12), sparkMat);
       // Position behind the eagle (trail of magic)
       spark.position.set(
         p.position.x + (Math.random() - 0.5) * 2,
@@ -7375,7 +7375,7 @@ export class EagleFlightRenderer {
         opacity: 0.3,
         depthWrite: false,
       });
-      const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 5, 4), smokeMat);
+      const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 12, 10), smokeMat);
       // Place near castle chimney area (or tavern) in world coords
       const sources = [
         { x: 45 - 3, z: 10 - 2 + 30 },  // tavern chimney approx
@@ -7466,7 +7466,7 @@ export class EagleFlightRenderer {
           color: fwColor, emissive: fwColor, emissiveIntensity: 0.6,
           transparent: true, opacity: 1.0,
         });
-        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 3), fwMat);
+        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), fwMat);
         particle.position.set(p.position.x, p.position.y + 5, p.position.z);
         this._scene.add(particle);
         const angle = Math.random() * Math.PI * 2;
@@ -7624,7 +7624,7 @@ export class EagleFlightRenderer {
             transparent: true,
             opacity: 0.9,
           });
-          const spark = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.15, 5, 4), sparkMat);
+          const spark = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.15, 12, 10), sparkMat);
           spark.position.set(cp.position.x, cp.position.y, cp.position.z);
           this._scene.add(spark);
           this._collectParticles.push({
@@ -7670,7 +7670,7 @@ export class EagleFlightRenderer {
         opacity: 0.25,
         depthWrite: false,
       });
-      const dust = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 4, 3), dustMat);
+      const dust = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 16, 12), dustMat);
       dust.position.set(
         p.position.x + (Math.random() - 0.5) * 4,
         0.5 + Math.random() * 1,
@@ -7688,7 +7688,7 @@ export class EagleFlightRenderer {
         opacity: 0.4,
         depthWrite: false,
       });
-      const spray = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.2, 4, 3), sprayMat);
+      const spray = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.2, 16, 12), sprayMat);
       spray.position.set(
         p.position.x + (Math.random() - 0.5) * 3,
         0.3 + Math.random() * 0.5,

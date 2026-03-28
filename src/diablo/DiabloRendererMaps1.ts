@@ -245,7 +245,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         nestGrp.add(nestBase);
         // Twigs in nest
         for (let tw = 0; tw < 4; tw++) {
-          const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.12, 6),
+          const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.12, 12),
             new THREE.MeshStandardMaterial({ color: 0x5a3a1e, roughness: 0.95 }));
           twig.rotation.z = Math.random() * Math.PI;
           twig.rotation.y = Math.random() * Math.PI;
@@ -536,7 +536,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         const reedZ = sz + (Math.random() - 0.5) * 1.0;
         const reedH = 0.15 + Math.random() * 0.2;
         const reedStem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.005, 0.008, reedH, 6),
+          new THREE.CylinderGeometry(0.005, 0.008, reedH, 12),
           new THREE.MeshStandardMaterial({ color: 0x446633, roughness: 0.85 }));
         reedStem.position.set(reedX, getTerrainHeight(sx, sz) + reedH / 2, reedZ);
         reedStem.rotation.z = (Math.random() - 0.5) * 0.15;
@@ -758,7 +758,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       campfire.add(cookingPot);
       // Pot handle
       const potHandle = new THREE.Mesh(
-        new THREE.TorusGeometry(0.06, 0.006, 6, 12, Math.PI),
+        new THREE.TorusGeometry(0.06, 0.006, 12, 12, Math.PI),
         tripodMat);
       potHandle.position.y = 0.38;
       campfire.add(potHandle);
@@ -801,7 +801,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       // Tiny bee-like dots near entrance
       for (let bee = 0; bee < 4; bee++) {
         const beeDot = new THREE.Mesh(
-          new THREE.SphereGeometry(0.008, 6, 6),
+          new THREE.SphereGeometry(0.008, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0xddaa00, roughness: 0.6, emissive: 0x443300, emissiveIntensity: 0.2 }));
         beeDot.position.set(
           (Math.random() - 0.5) * 0.15,
@@ -888,7 +888,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         }
       } else {
         // Small plant: sphere top + cone stem
-        const pStem = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 6),
+        const pStem = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 12),
           new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 0.9 }));
         pStem.position.y = 0.05;
         vegGrp.add(pStem);
@@ -1459,7 +1459,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
             const fbColor = fbColors[fb % fbColors.length];
             // Flower stem
             const flowerStem = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.003, 0.004, 0.06, 6),
+              new THREE.CylinderGeometry(0.003, 0.004, 0.06, 12),
               new THREE.MeshStandardMaterial({ color: 0x44aa33, roughness: 0.8 }));
             flowerStem.position.set(flowerCenterX, flowerCenterY - 0.02, flowerCenterZ);
             building.add(flowerStem);
@@ -1691,7 +1691,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
         building.add(balconyFloor);
         const railMat = new THREE.MeshStandardMaterial({ color: 0xaabbcc, metalness: 0.4, roughness: 0.3 });
         for (let rp = -2; rp <= 2; rp++) {
-          const railPost = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), railMat);
+          const railPost = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 12), railMat);
           const rpOffset = rp * 0.18;
           railPost.position.set(
             Math.cos(balconyAngle) * (balconyOutR + 0.14) + Math.cos(balconyAngle + Math.PI / 2) * rpOffset,
@@ -1700,7 +1700,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
           );
           building.add(railPost);
         }
-        const railBar = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.8, 6), railMat);
+        const railBar = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.8, 12), railMat);
         railBar.position.set(
           Math.cos(balconyAngle) * (balconyOutR + 0.14),
           bh * 0.55 + 0.24,
@@ -1739,7 +1739,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       }
       // Horizontal timber band midway
       const timberHorizBand = new THREE.Mesh(
-        new THREE.TorusGeometry(br * 1.01, 0.02, 6, 28),
+        new THREE.TorusGeometry(br * 1.01, 0.02, 12, 28),
         timberFrameMat);
       timberHorizBand.rotation.x = Math.PI / 2;
       timberHorizBand.position.y = bh * 0.5;
@@ -1751,7 +1751,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
         const lnAngle = doorAngle + Math.PI * 0.5 + lni * Math.PI;
         const lnOutR = br * 1.3 + 0.1;
         const chain = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.005, 0.005, 0.35, 4),
+          new THREE.CylinderGeometry(0.005, 0.005, 0.35, 10),
           new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.3 }),
         );
         chain.position.set(Math.cos(lnAngle) * lnOutR, bh - 0.18, Math.sin(lnAngle) * lnOutR);
@@ -1775,7 +1775,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
         const vineSegments = 5 + Math.floor(Math.random() * 4);
         for (let vs = 0; vs < vineSegments; vs++) {
           const vineSeg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.012, 0.015, 0.4, 5),
+            new THREE.CylinderGeometry(0.012, 0.015, 0.4, 10),
             vineWallMat,
           );
           vineSeg.position.set(
@@ -1786,7 +1786,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
           vineSeg.rotation.z = (Math.random() - 0.5) * 0.15;
           building.add(vineSeg);
           if (vs % 2 === 0) {
-            const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), vineLeafMat);
+            const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), vineLeafMat);
             leaf.position.set(
               Math.cos(vineAngle + vs * 0.04) * (br + 0.08) + (Math.random() - 0.5) * 0.04,
               0.2 + vs * 0.38 + 0.1,
@@ -1937,7 +1937,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
             mctx.envGroup.add(veg);
             // Small stem on top
             const vegStemlet = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.003, 0.003, 0.02, 4),
+              new THREE.CylinderGeometry(0.003, 0.003, 0.02, 10),
               new THREE.MeshStandardMaterial({ color: 0x33aa22, roughness: 0.8 }));
             vegStemlet.position.set(vegX, gardenTerrainY + 0.08, vegZ);
             mctx.envGroup.add(vegStemlet);
@@ -2388,7 +2388,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
         const ivAng = Math.random() * Math.PI;
         const ivX = Math.cos(ivAng) * 1.2;
         const ivY = 3.5 - Math.sin(ivAng) * 1.2;
-        const ivyBlob = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 6, 5),
+        const ivyBlob = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 12, 10),
           Math.random() > 0.5 ? ivyLeafMat : ivyLeafMatLight);
         ivyBlob.position.set(ivX, ivY, (Math.random() - 0.5) * 0.2);
         archGroup.add(ivyBlob);
@@ -2430,7 +2430,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       // Weathering color variation patches on arch
       for (let wp = 0; wp < 4; wp++) {
         const wpAng = Math.random() * Math.PI;
-        const weatherPatch = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4),
+        const weatherPatch = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.95 }));
         weatherPatch.position.set(Math.cos(wpAng) * 1.2, 3.5 - Math.sin(wpAng) * 1.2, (Math.random() - 0.5) * 0.15);
         weatherPatch.scale.set(1.5, 0.5, 1);
@@ -2977,7 +2977,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
         }
         // Pointed ears
         for (const necroEarSide of [-1, 1]) {
-          const necroEar = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.04, 6), gargoyleMat);
+          const necroEar = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.04, 12), gargoyleMat);
           necroEar.position.set(gargX + necroEarSide * 0.07, gargY + 0.17, 0.37);
           necroEar.rotation.z = necroEarSide * 0.7;
           wallGrp.add(necroEar);
@@ -3013,7 +3013,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
         // Clawed feet
         for (const necroFootSide of [-1, 1]) {
           for (let necroClawIdx = 0; necroClawIdx < 3; necroClawIdx++) {
-            const necroClaw = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.03, 6), gargoyleMat);
+            const necroClaw = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.03, 12), gargoyleMat);
             necroClaw.position.set(gargX + necroFootSide * 0.04 + (necroClawIdx - 1) * 0.012, gargY - 0.11, 0.36 + necroClawIdx * 0.005);
             necroClaw.rotation.x = Math.PI;
             wallGrp.add(necroClaw);
@@ -3254,7 +3254,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       // Rib-cage arcs near bones
       if (Math.random() > 0.5) {
         for (let rb = 0; rb < 3; rb++) {
-          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 6, 10, Math.PI * 0.7),
+          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 12, 10, Math.PI * 0.7),
             new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.9 }));
           rib.position.set((Math.random() - 0.5) * 0.3, 0.04, (Math.random() - 0.5) * 0.3);
           rib.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
@@ -3314,7 +3314,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       }
       // Handles on sides
       for (const necro_handleSide of [-1, 1]) {
-        const necro_handle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 6, 10, Math.PI), necro_coffinHandleMat);
+        const necro_handle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 12, 10, Math.PI), necro_coffinHandleMat);
         necro_handle.position.set(necro_handleSide * 0.42, 0.25, 0);
         necro_handle.rotation.y = Math.PI / 2;
         necro_handle.rotation.z = Math.PI / 2;
@@ -3499,13 +3499,13 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
         const head = new THREE.Mesh(headGeo, ratMat);
         head.position.set(rOffX, 0.05, rOffZ + 0.09);
         ratSingleGroup.add(head);
-        const snoutGeo = new THREE.ConeGeometry(0.016, 0.035, 6);
+        const snoutGeo = new THREE.ConeGeometry(0.016, 0.035, 12);
         const snout = new THREE.Mesh(snoutGeo, ratMat);
         snout.rotation.x = Math.PI / 2;
         snout.position.set(rOffX, 0.048, rOffZ + 0.126);
         ratSingleGroup.add(snout);
         // Tiny ears
-        const earGeo = new THREE.SphereGeometry(0.012, 6, 5);
+        const earGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const earL = new THREE.Mesh(earGeo, ratMat);
         earL.position.set(rOffX - 0.022, 0.075, rOffZ + 0.068);
         ratSingleGroup.add(earL);
@@ -3513,7 +3513,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
         earR.position.set(rOffX + 0.022, 0.075, rOffZ + 0.068);
         ratSingleGroup.add(earR);
         // Long thin tail (tapered cylinder, slightly offset for curve illusion)
-        const tailGeo = new THREE.CylinderGeometry(0.004, 0.009, 0.12, 5);
+        const tailGeo = new THREE.CylinderGeometry(0.004, 0.009, 0.12, 10);
         const tail = new THREE.Mesh(tailGeo, ratMat);
         tail.rotation.x = Math.PI / 2;
         tail.rotation.z = (Math.random() - 0.5) * 0.4;
@@ -3521,7 +3521,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
         ratSingleGroup.add(tail);
         // 4 tiny leg nubs
         const legPositions = [[-0.03, -0.05], [0.03, -0.05], [-0.03, 0.04], [0.03, 0.04]];
-        const legGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.028, 5);
+        const legGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.028, 10);
         for (const [lx, lz] of legPositions) {
           const leg = new THREE.Mesh(legGeo, ratMat);
           leg.position.set(rOffX + lx, 0.006, rOffZ + lz);
@@ -3587,7 +3587,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       if (Math.random() < 0.5) {
         const handAngle = Math.random() * Math.PI * 2;
         const handDist = bpRadius * 0.7;
-        const palmGeo = new THREE.SphereGeometry(0.045, 6, 5);
+        const palmGeo = new THREE.SphereGeometry(0.045, 12, 10);
         const palmMat = new THREE.MeshStandardMaterial({ color: 0x770000, transparent: true, opacity: 0.8, roughness: 0.95 });
         const palm = new THREE.Mesh(palmGeo, palmMat);
         palm.scale.set(1, 0.15, 1);
@@ -3595,7 +3595,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
         bpGroup.add(palm);
         for (let fi = 0; fi < 5; fi++) {
           const fingerAngle = handAngle + (fi - 2) * 0.22;
-          const fingerGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.06, 5);
+          const fingerGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.06, 10);
           const finger = new THREE.Mesh(fingerGeo, palmMat);
           finger.rotation.x = Math.PI / 2;
           finger.rotation.z = fingerAngle;
@@ -3627,7 +3627,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       jaw.rotation.x = 0.2;
       skelGroup.add(jaw);
       // Eye socket indentations (dark small spheres)
-      const eyeGeo = new THREE.SphereGeometry(0.022, 6, 5);
+      const eyeGeo = new THREE.SphereGeometry(0.022, 12, 10);
       const eyeL = new THREE.Mesh(eyeGeo, skelMatDark);
       eyeL.position.set(-0.038, 0.11, 0.082);
       skelGroup.add(eyeL);
@@ -3635,7 +3635,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       eyeR.position.set(0.038, 0.11, 0.082);
       skelGroup.add(eyeR);
       // Nose hole (tiny dark sphere)
-      const noseGeo = new THREE.SphereGeometry(0.012, 5, 4);
+      const noseGeo = new THREE.SphereGeometry(0.012, 12, 10);
       const nose = new THREE.Mesh(noseGeo, skelMatDark);
       nose.position.set(0, 0.087, 0.094);
       skelGroup.add(nose);
@@ -3655,7 +3655,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       skelGroup.add(pelvis);
       // Ribs (angled slightly for realism)
       for (let rb = 0; rb < 4; rb++) {
-        const ribGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.28 - rb * 0.02, 6);
+        const ribGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.28 - rb * 0.02, 12);
         const rib = new THREE.Mesh(ribGeo, skelMat);
         rib.position.set(0.14, 0.04 - rb * 0.046, -0.06 - rb * 0.04);
         rib.rotation.z = Math.PI / 2;
@@ -3728,7 +3728,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       // Cobweb string threads - thin cylinders between points
       for (let ct = 0; ct < 4; ct++) {
         const threadLen = 1.5 + Math.random() * 2.0;
-        const thread = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, threadLen, 4),
+        const thread = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, threadLen, 10),
           new THREE.MeshStandardMaterial({ color: 0xdddddd, transparent: true, opacity: 0.12, roughness: 0.5 }));
         thread.position.set((Math.random() - 0.5) * 1.5, 2.5 + Math.random() * 1.5, (Math.random() - 0.5) * 0.5);
         thread.rotation.z = (Math.random() - 0.5) * 1.0;
@@ -3832,7 +3832,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       // Handles on sarcophagus sides
       const necro_sarcHandleMat = new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.5, roughness: 0.4 });
       for (const necro_sarcHandleSide of [-1, 1]) {
-        const necro_sarcHandle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 6, 10, Math.PI), necro_sarcHandleMat);
+        const necro_sarcHandle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 12, 10, Math.PI), necro_sarcHandleMat);
         necro_sarcHandle.position.set(necro_sarcHandleSide * 0.53, 0.3, 0);
         necro_sarcHandle.rotation.y = Math.PI / 2;
         necro_sarcHandle.rotation.z = Math.PI / 2;
@@ -4235,7 +4235,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       // Moss/lichen in crevices
       for (let ml = 0; ml < 4 + Math.floor(Math.random() * 3); ml++) {
         const lichenSize = 0.04 + Math.random() * 0.08;
-        const lichen = new THREE.Mesh(new THREE.SphereGeometry(lichenSize, 6, 5), statMossMat);
+        const lichen = new THREE.Mesh(new THREE.SphereGeometry(lichenSize, 12, 10), statMossMat);
         lichen.position.set(
           (Math.random() - 0.5) * 0.3,
           0.6 + Math.random() * 0.8,

@@ -206,6 +206,8 @@ export class PendulumRenderer {
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this._renderer.toneMappingExposure = 1.0;
     this._canvas = this._renderer.domElement;
     this._canvas.style.cssText = "position:fixed;top:0;left:0;z-index:5;";
 
@@ -217,7 +219,7 @@ export class PendulumRenderer {
 
     // Reusable geo (shared across all dynamic entities)
     this._boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    this._sphereGeo = new THREE.SphereGeometry(0.5, 8, 6);
+    this._sphereGeo = new THREE.SphereGeometry(0.5, 16, 12);
     this._ringGeo = new THREE.RingGeometry(0.7, 1.0, 20);
     this._cylThinGeo = new THREE.CylinderGeometry(1, 1, 0.3, 16, 1, true);
     this._circleGeo = new THREE.CircleGeometry(1, 20);
@@ -487,7 +489,7 @@ export class PendulumRenderer {
   private _buildClockworkSparks(): void {
     // Floating golden sparks — like fireflies but mechanical
     const count = 80;
-    const sparkGeo = new THREE.SphereGeometry(0.08, 4, 3);
+    const sparkGeo = new THREE.SphereGeometry(0.08, 16, 12);
     const sparkMat = new THREE.MeshBasicMaterial({
       color: 0xffcc44, transparent: true, opacity: 0.8,
     });
@@ -535,7 +537,7 @@ export class PendulumRenderer {
     });
     for (let i = 0; i < 4; i++) {
       const angle = (i / 4) * Math.PI * 2;
-      const vent = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 6), ventMat);
+      const vent = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 12), ventMat);
       vent.position.set(Math.cos(angle) * 5, 0.5, Math.sin(angle) * 5);
       vent.rotation.x = Math.PI; // upside down cone = vent nozzle
       this._scene.add(vent);
@@ -706,7 +708,7 @@ export class PendulumRenderer {
       const angle = (i / 8) * Math.PI * 2 + 0.3;
       const r = 25 + (i % 3) * 15;
       const gearSize = 2 + Math.random() * 3;
-      const decal = new THREE.Mesh(new THREE.TorusGeometry(gearSize, 0.3, 4, 8 + i % 4), decalMat);
+      const decal = new THREE.Mesh(new THREE.TorusGeometry(gearSize, 0.3, 10, 8 + i % 4), decalMat);
       decal.rotation.x = -Math.PI / 2;
       decal.position.set(Math.cos(angle) * r, 0.04, Math.sin(angle) * r);
       this._scene.add(decal);
@@ -757,7 +759,7 @@ export class PendulumRenderer {
 
     // Mid-section ornamental band
     const bandMat = new THREE.MeshStandardMaterial({ color: 0x667755, metalness: 0.6, roughness: 0.4 });
-    const band = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.3, 6, 16), bandMat);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(3.8, 0.3, 12, 16), bandMat);
     band.position.y = 18;
     band.rotation.x = Math.PI / 2;
     this._towerGroup.add(band);
@@ -771,7 +773,7 @@ export class PendulumRenderer {
 
     // Finial (spire on top)
     const finialMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.9, roughness: 0.2 });
-    const finial = new THREE.Mesh(new THREE.ConeGeometry(0.3, 4, 6), finialMat);
+    const finial = new THREE.Mesh(new THREE.ConeGeometry(0.3, 4, 12), finialMat);
     finial.position.y = 42;
     this._towerGroup.add(finial);
 
@@ -796,7 +798,7 @@ export class PendulumRenderer {
     // Exposed internal gears (visible through arched openings)
     const gearMat = new THREE.MeshStandardMaterial({ color: 0xaa8844, metalness: 0.7, roughness: 0.3 });
     for (let g = 0; g < 3; g++) {
-      const gearMesh = new THREE.Mesh(new THREE.TorusGeometry(1.0 + g * 0.3, 0.15, 4, 10), gearMat);
+      const gearMesh = new THREE.Mesh(new THREE.TorusGeometry(1.0 + g * 0.3, 0.15, 10, 10), gearMat);
       const gAngle = (g / 3) * Math.PI * 2;
       gearMesh.position.set(Math.cos(gAngle) * 2, 14 + g * 3, Math.sin(gAngle) * 2);
       gearMesh.rotation.x = Math.PI / 2 + g * 0.4;
@@ -842,7 +844,7 @@ export class PendulumRenderer {
     this._towerGroup.add(this._minuteHandMesh);
 
     // Center dot
-    const centerDot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), faceRimMat);
+    const centerDot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), faceRimMat);
     centerDot.position.set(0, 24, 3.85);
     this._towerGroup.add(centerDot);
 
@@ -862,7 +864,7 @@ export class PendulumRenderer {
 
     // Pendulum arm
     const armMat = new THREE.MeshStandardMaterial({ color: COL.PENDULUM_ARM, metalness: 0.5, roughness: 0.5 });
-    this._pendulumArm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 15, 6), armMat);
+    this._pendulumArm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 15, 12), armMat);
     this._pendulumArm.position.y = 7.5;
     this._towerGroup.add(this._pendulumArm);
 
@@ -874,7 +876,7 @@ export class PendulumRenderer {
 
     // Inner gear inside bob
     const innerGearMat = new THREE.MeshStandardMaterial({ color: 0xddbb55, metalness: 0.9, roughness: 0.1, emissive: 0xffcc44, emissiveIntensity: 0.6 });
-    this._pendulumInnerGear = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.1, 4, 10), innerGearMat);
+    this._pendulumInnerGear = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.1, 10, 10), innerGearMat);
     this._pendulumInnerGear.position.y = 0;
     this._towerGroup.add(this._pendulumInnerGear);
 
@@ -937,7 +939,7 @@ export class PendulumRenderer {
 
     // Shoulder pauldrons
     const pauldronMat = new THREE.MeshStandardMaterial({ color: 0x667788, metalness: 0.6, roughness: 0.4 });
-    const pauldronL = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4), pauldronMat);
+    const pauldronL = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), pauldronMat);
     pauldronL.position.set(-0.55, 1.7, 0);
     pauldronL.scale.set(1, 0.6, 1);
     const pauldronR = pauldronL.clone();
@@ -965,7 +967,7 @@ export class PendulumRenderer {
 
     // Shield emblem (gear shape on shield face)
     const emblemMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.8, roughness: 0.2, emissive: 0xccaa44, emissiveIntensity: 0.3 });
-    const emblem = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 4, 6), emblemMat);
+    const emblem = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 10, 6), emblemMat);
     emblem.position.set(-0.75, 1.3, -0.2);
     emblem.rotation.y = Math.PI / 2;
     emblem.visible = false;
@@ -1002,13 +1004,13 @@ export class PendulumRenderer {
 
       // Ornate hexagonal base
       const baseMat = new THREE.MeshStandardMaterial({ color: 0x443333, roughness: 0.7, metalness: 0.3 });
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, 1.0, 6), baseMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, 1.0, 12), baseMat);
       base.position.y = 0.5;
       base.castShadow = true;
       group.add(base);
 
       // Base ring decoration
-      const baseRing = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.12, 4, 12), new THREE.MeshStandardMaterial({ color: 0x556655, metalness: 0.6, roughness: 0.4 }));
+      const baseRing = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.12, 10, 12), new THREE.MeshStandardMaterial({ color: 0x556655, metalness: 0.6, roughness: 0.4 }));
       baseRing.position.y = 1.0;
       baseRing.rotation.x = Math.PI / 2;
       group.add(baseRing);
@@ -1023,7 +1025,7 @@ export class PendulumRenderer {
       // Column ring bands (3 decorative rings)
       const bandMat = new THREE.MeshStandardMaterial({ color: 0x667766, metalness: 0.6, roughness: 0.4 });
       for (let b = 0; b < 3; b++) {
-        const band = new THREE.Mesh(new THREE.TorusGeometry(1.15 - b * 0.05, 0.08, 4, 8), bandMat);
+        const band = new THREE.Mesh(new THREE.TorusGeometry(1.15 - b * 0.05, 0.08, 10, 8), bandMat);
         band.position.y = 2.5 + b * 2;
         band.rotation.x = Math.PI / 2;
         group.add(band);
@@ -1041,14 +1043,14 @@ export class PendulumRenderer {
 
       // Spinning gear around crystal
       const gearMat = new THREE.MeshStandardMaterial({ color: COL.PILLAR_GEAR, metalness: 0.7, roughness: 0.3 });
-      const gear = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.2, 4, 12), gearMat);
+      const gear = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.2, 10, 12), gearMat);
       gear.position.y = 9.5;
       gear.rotation.x = Math.PI / 2;
       group.add(gear);
       this._pillarGears.push(gear);
 
       // Second gear (perpendicular)
-      const gear2 = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.15, 4, 10), gearMat);
+      const gear2 = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.15, 10, 10), gearMat);
       gear2.position.y = 9.5;
       group.add(gear2);
       // Store ref for animation (we'll use the pillarGears array length)
@@ -1097,18 +1099,18 @@ export class PendulumRenderer {
       let mesh: THREE.Mesh;
       switch (debris.type) {
         case "gear":
-          mesh = new THREE.Mesh(new THREE.TorusGeometry(debris.radius, 0.15, 4, 8), mat);
+          mesh = new THREE.Mesh(new THREE.TorusGeometry(debris.radius, 0.15, 10, 8), mat);
           mesh.rotation.x = Math.PI / 2 + Math.random() * 0.3;
           break;
         case "spring":
-          mesh = new THREE.Mesh(new THREE.CylinderGeometry(debris.radius * 0.3, debris.radius * 0.3, debris.height, 6), mat);
+          mesh = new THREE.Mesh(new THREE.CylinderGeometry(debris.radius * 0.3, debris.radius * 0.3, debris.height, 12), mat);
           break;
         case "cog":
-          mesh = new THREE.Mesh(new THREE.CylinderGeometry(debris.radius, debris.radius, 0.3, 6), mat);
+          mesh = new THREE.Mesh(new THREE.CylinderGeometry(debris.radius, debris.radius, 0.3, 12), mat);
           mesh.rotation.x = Math.random() * 0.5;
           break;
         default:
-          mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, debris.height, 4), mat);
+          mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, debris.height, 10), mat);
           mesh.rotation.z = Math.random() * 0.8;
           break;
       }
@@ -1873,12 +1875,12 @@ export class PendulumRenderer {
         switch (enemy.type) {
           case "gear_drone": {
             // Small flying gear with wings
-            const core = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.12, 4, 8), mat);
+            const core = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.12, 10, 8), mat);
             core.rotation.x = Math.PI / 2;
             core.position.y = 2;
             core.castShadow = true;
             group.add(core);
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 4), eyeMat);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), eyeMat);
             eye.position.set(0, 2, 0.3);
             group.add(eye);
             break;
@@ -1890,17 +1892,17 @@ export class PendulumRenderer {
             body.position.y = 1.5;
             body.castShadow = true;
             group.add(body);
-            const helm = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 6), mat);
+            const helm = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 12), mat);
             helm.position.y = 2.5;
             group.add(helm);
             // Spring legs
             const springMat = new THREE.MeshStandardMaterial({ color: 0x889988, metalness: 0.6, roughness: 0.4 });
-            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.0, 4), springMat);
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.0, 10), springMat);
             legL.position.set(-0.25, 0.5, 0);
             const legR = legL.clone();
             legR.position.x = 0.25;
             group.add(legL, legR);
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4), eyeMat);
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), eyeMat);
             eyeL.position.set(-0.12, 2.3, 0.25);
             const eyeR = eyeL.clone(); eyeR.position.x = 0.12;
             group.add(eyeL, eyeR);
@@ -1922,7 +1924,7 @@ export class PendulumRenderer {
             const bow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.1), bowMat);
             bow.position.set(0.6, 1.3, 0.3);
             group.add(bow);
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 4), eyeMat);
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), eyeMat);
             eyeL.position.set(-0.1, 2.05, 0.2);
             const eyeR = eyeL.clone(); eyeR.position.x = 0.1;
             group.add(eyeL, eyeR);
@@ -1946,7 +1948,7 @@ export class PendulumRenderer {
             fistL.position.set(-1.5, 1.2, 0);
             const fistR = fistL.clone(); fistR.position.x = 1.5;
             group.add(fistL, fistR);
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 4), eyeMat);
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), eyeMat);
             eyeL.position.set(-0.3, 3.6, 0.4);
             const eyeR = eyeL.clone(); eyeR.position.x = 0.3;
             group.add(eyeL, eyeR);
@@ -1963,7 +1965,7 @@ export class PendulumRenderer {
             const legMat = new THREE.MeshStandardMaterial({ color: 0x665566, metalness: 0.5, roughness: 0.5 });
             for (let l = 0; l < 4; l++) {
               const angle = (l / 4) * Math.PI - Math.PI / 4;
-              const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 3), legMat);
+              const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 8), legMat);
               leg.position.set(Math.cos(angle) * 0.5, 0.3, Math.sin(angle) * 0.5);
               leg.rotation.z = angle > 0 ? 0.5 : -0.5;
               group.add(leg);
@@ -1972,7 +1974,7 @@ export class PendulumRenderer {
               legR.rotation.z *= -1;
               group.add(legR);
             }
-            const eyes = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4), eyeMat);
+            const eyes = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), eyeMat);
             eyes.position.set(0, 0.6, 0.4);
             group.add(eyes);
             break;
@@ -1996,7 +1998,7 @@ export class PendulumRenderer {
             // Multiple arms
             const armMat = new THREE.MeshStandardMaterial({ color: 0x993344, metalness: 0.5, roughness: 0.5 });
             for (let a = 0; a < 3; a++) {
-              const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 2.5, 4), armMat);
+              const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 2.5, 10), armMat);
               arm.position.set(-2, 3.5 - a * 0.8, 0);
               arm.rotation.z = 0.8;
               group.add(arm);
@@ -2006,7 +2008,7 @@ export class PendulumRenderer {
               group.add(armR);
             }
             // Boss eye
-            const bossEye = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 6), eyeMat);
+            const bossEye = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), eyeMat);
             bossEye.position.set(0, 5.7, 0.8);
             group.add(bossEye);
             // Boss glow
@@ -2407,34 +2409,34 @@ export class PendulumRenderer {
         group = new THREE.Group();
         // Base — hexagonal platform
         const baseMat = new THREE.MeshStandardMaterial({ color: 0x445555, metalness: 0.5, roughness: 0.5 });
-        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.5, 6), baseMat);
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.5, 12), baseMat);
         base.position.y = 0.25;
         base.castShadow = true;
         group.add(base);
 
         // Central column
         const colMat = new THREE.MeshStandardMaterial({ color: 0x556666, metalness: 0.6, roughness: 0.4 });
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.8, 6), colMat);
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.8, 12), colMat);
         col.position.y = 0.9;
         group.add(col);
 
         // Rotating turret head (dome)
         const domeMat = new THREE.MeshStandardMaterial({ color: 0x44aacc, metalness: 0.5, roughness: 0.4, emissive: 0x44aacc, emissiveIntensity: 0.3 });
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), domeMat);
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), domeMat);
         dome.position.y = 1.5;
         dome.scale.y = 0.6;
         group.add(dome);
 
         // Barrel
         const barrelMat = new THREE.MeshStandardMaterial({ color: 0x778888, metalness: 0.7, roughness: 0.3 });
-        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8, 6), barrelMat);
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8, 12), barrelMat);
         barrel.rotation.x = Math.PI / 2;
         barrel.position.set(0, 1.5, 0.7);
         group.add(barrel);
 
         // Muzzle tip (glows on fire)
         const muzzleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, emissive: 0xccaa44, emissiveIntensity: 0 });
-        const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.15, 4, 4), muzzleMat);
+        const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), muzzleMat);
         muzzle.position.set(0, 1.5, 1.6);
         group.add(muzzle);
 

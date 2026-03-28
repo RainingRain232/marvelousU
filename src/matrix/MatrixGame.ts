@@ -476,7 +476,7 @@ export class MatrixGame {
     const guard = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.1),
       new THREE.MeshStandardMaterial({ color: 0x00aa44, metalness: 0.8, roughness: 0.2 }));
     swordGroup.add(guard);
-    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 6),
+    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 12),
       new THREE.MeshStandardMaterial({ color: 0x224422, roughness: 0.7 }));
     hilt.position.y = -0.25; swordGroup.add(hilt);
     swordGroup.position.set(0, 1.5, 0); swordGroup.name = "titleSword";
@@ -608,7 +608,7 @@ export class MatrixGame {
 
       // glowing top
       const top = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15, 6, 4),
+        new THREE.SphereGeometry(0.15, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 2.0, toneMapped: false })
       );
       top.position.set(x, 5.2, z);
@@ -697,7 +697,7 @@ export class MatrixGame {
 
     // shoulders
     for (const sx of [-0.35, 0.35]) {
-      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), darkMat);
+      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), darkMat);
       shoulder.position.set(sx, 1.35, 0); this._playerMesh.add(shoulder);
       // green accent strip on shoulder
       const strip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.1), accentMat);
@@ -706,13 +706,13 @@ export class MatrixGame {
 
     // arms
     for (const sx of [-0.38, 0.38]) {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.6, 6), darkMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.6, 12), darkMat);
       arm.position.set(sx, 1.0, 0); arm.castShadow = true; this._playerMesh.add(arm);
     }
 
     // legs
     for (const sx of [-0.12, 0.12]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.7, 6), darkMat);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.7, 12), darkMat);
       leg.position.set(sx, 0.25, 0); leg.castShadow = true; this._playerMesh.add(leg);
       // boot
       const boot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.15), darkMat);
@@ -720,7 +720,7 @@ export class MatrixGame {
     }
 
     // head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), darkMat);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), darkMat);
     head.position.y = 1.55; head.castShadow = true; this._playerMesh.add(head);
 
     // visor glow (wider, more prominent)
@@ -990,7 +990,7 @@ export class MatrixGame {
     // spawn ghost trail at current position
     for (let gi = 0; gi < 3; gi++) {
       const ghost = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.3, 0.35, 1.4, 6),
+        new THREE.CylinderGeometry(0.3, 0.35, 1.4, 12),
         new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.3 - gi * 0.08, wireframe: true })
       );
       ghost.position.copy(this._playerPos);
@@ -1182,14 +1182,14 @@ export class MatrixGame {
 
       // body
       const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(bodyW, bodyW + 0.05, bodyH, 6),
+        new THREE.CylinderGeometry(bodyW, bodyW + 0.05, bodyH, 12),
         new THREE.MeshStandardMaterial({ color: bodyColor, emissive: bodyColor, emissiveIntensity: 0.3 })
       );
       body.position.y = bodyH / 2; group.add(body);
 
       // head
       const head = new THREE.Mesh(
-        new THREE.SphereGeometry(eType === "axe" ? 0.22 : 0.18, 6, 4),
+        new THREE.SphereGeometry(eType === "axe" ? 0.22 : 0.18, 12, 10),
         new THREE.MeshStandardMaterial({ color: bodyColor, emissive: bodyColor, emissiveIntensity: 0.4 })
       );
       head.position.y = bodyH + 0.15; group.add(head);
@@ -1198,25 +1198,25 @@ export class MatrixGame {
       const eyeMat = new THREE.MeshStandardMaterial({ color: eyeColor, emissive: eyeColor, emissiveIntensity: 3.0, toneMapped: false });
       if (eType === "axe") {
         for (const ex of [-0.07, 0.07]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 4, 4), eyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), eyeMat);
           eye.position.set(ex, bodyH + 0.15, -0.16); group.add(eye);
         }
       } else {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), eyeMat);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), eyeMat);
         eye.position.set(0, bodyH + 0.15, -0.15); group.add(eye);
       }
 
       // weapon visual
       if (eType === "arrow") {
         // bow: thin curve
-        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 6, 12, Math.PI),
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 12, 12, Math.PI),
           new THREE.MeshStandardMaterial({ color: 0x663300, roughness: 0.7 }));
         bow.position.set(-0.35, bodyH * 0.6, -0.1); bow.rotation.z = Math.PI / 2;
         group.add(bow);
       } else if (eType === "fireball") {
         // glowing hands
         for (const sx of [-0.25, 0.25]) {
-          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4),
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10),
             new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff4400, emissiveIntensity: 1.5, toneMapped: false }));
           hand.position.set(sx, bodyH * 0.5, -0.2); group.add(hand);
         }
@@ -1225,7 +1225,7 @@ export class MatrixGame {
         const axeHead = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 0.06),
           new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 }));
         axeHead.position.set(0.35, bodyH * 0.6, -0.1); group.add(axeHead);
-        const axeHaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4),
+        const axeHaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 10),
           new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }));
         axeHaft.position.set(0.35, bodyH * 0.4, -0.1); group.add(axeHaft);
       }
@@ -1352,10 +1352,10 @@ export class MatrixGame {
     let geo: THREE.BufferGeometry;
     let mat: THREE.MeshStandardMaterial;
     if (type === "arrow") {
-      geo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 4);
+      geo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 10);
       mat = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff8800, emissiveIntensity: 1.0, toneMapped: false });
     } else if (type === "fireball") {
-      geo = new THREE.SphereGeometry(0.2, 6, 4);
+      geo = new THREE.SphereGeometry(0.2, 12, 10);
       mat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff4400, emissiveIntensity: 2.0, toneMapped: false });
     } else {
       geo = new THREE.BoxGeometry(0.3, 0.3, 0.1);

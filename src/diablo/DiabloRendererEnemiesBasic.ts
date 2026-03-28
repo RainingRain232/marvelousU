@@ -213,7 +213,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
             const toeBump = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), bodyMat);
             toeBump.position.set(toe * 0.028, -0.43, 0.07);
             wolfLegGroup.add(toeBump);
-            const wolfClaw = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.025, 6), wolfClawMat);
+            const wolfClaw = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.025, 12), wolfClawMat);
             wolfClaw.position.set(toe * 0.028, -0.445, 0.1);
             wolfClaw.rotation.x = Math.PI / 2;
             wolfLegGroup.add(wolfClaw);
@@ -279,7 +279,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
           const sx = (Math.random() - 0.5) * 0.1;
           const sy = 1.42 + Math.random() * 0.04;
           const sz = 0.13 + Math.random() * 0.02;
-          const stubble = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 4), bStubbleMat);
+          const stubble = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 10), bStubbleMat);
           stubble.position.set(sx, sy, sz);
           group.add(stubble);
         }
@@ -378,7 +378,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
           bLegGroup.add(bBootTop);
           // Boot laces (small cylinders)
           for (let lc = 0; lc < 3; lc++) {
-            const lace = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.095, 6), bWrapMat);
+            const lace = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.095, 12), bWrapMat);
             lace.position.set(0, -0.74 + lc * 0.022, 0.093);
             lace.rotation.z = Math.PI / 2;
             bLegGroup.add(lace);
@@ -1368,7 +1368,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
           handMesh.position.y = -0.52;
           armGroup.add(handMesh);
           for (let fn = 0; fn < 4; fn++) {
-            const fingerGeo = new THREE.ConeGeometry(0.01, 0.06, 6);
+            const fingerGeo = new THREE.ConeGeometry(0.01, 0.06, 12);
             const finger = new THREE.Mesh(fingerGeo, skinMat);
             finger.position.set(-0.03 + fn * 0.02, -0.585, 0.015);
             finger.rotation.x = 0.3;
@@ -2436,7 +2436,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
         // Sparse hair strands (thin cylinders hanging from scalp)
         for (let hs = 0; hs < 5; hs++) {
           const hairSkinMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 });
-          const hairStrandGeo = new THREE.CylinderGeometry(0.004, 0.003, 0.1 + hs * 0.02, 6);
+          const hairStrandGeo = new THREE.CylinderGeometry(0.004, 0.003, 0.1 + hs * 0.02, 12);
           const hairStrand = new THREE.Mesh(hairStrandGeo, hairSkinMat);
           hairStrand.position.set(-0.08 + hs * 0.03, 1.5, -0.1);
           hairStrand.rotation.x = 0.4 + hs * 0.1;
@@ -2490,7 +2490,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
           group.add(wMesh);
           // Every other wound has green drip
           if (wi % 2 === 0) {
-            const dripGeo = new THREE.CylinderGeometry(0.006, 0.003, 0.09, 6);
+            const dripGeo = new THREE.CylinderGeometry(0.006, 0.003, 0.09, 12);
             const drip = new THREE.Mesh(dripGeo, greenDripMat);
             drip.position.set(wp.x, wp.y - 0.065, wp.z);
             group.add(drip);
@@ -2518,7 +2518,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
           leftArmGroup.add(lForearm);
           // Left hand with 3 bent finger cylinders
           for (let fn = 0; fn < 3; fn++) {
-            const lFingerGeo = new THREE.CylinderGeometry(0.012, 0.009, 0.07, 6);
+            const lFingerGeo = new THREE.CylinderGeometry(0.012, 0.009, 0.07, 12);
             const lFinger = new THREE.Mesh(lFingerGeo, zombieSkin);
             lFinger.position.set(-0.025 + fn * 0.025, -0.61, 0.03);
             lFinger.rotation.x = 0.5;
@@ -2549,7 +2549,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
           }
           // Right hand with 3 grasping finger cylinders
           for (let fn = 0; fn < 3; fn++) {
-            const rFingerGeo = new THREE.CylinderGeometry(0.012, 0.009, 0.07, 6);
+            const rFingerGeo = new THREE.CylinderGeometry(0.012, 0.009, 0.07, 12);
             const rFinger = new THREE.Mesh(rFingerGeo, zombieSkin);
             rFinger.position.set(-0.025 + fn * 0.025, -0.62, 0.04);
             rFinger.rotation.x = 0.6;
@@ -3009,7 +3009,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
 
         // Crack detail lines across the largest body sphere
         for (let cr = 0; cr < 4; cr++) {
-          const crLineGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.45 + cr * 0.08, 6);
+          const crLineGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.45 + cr * 0.08, 12);
           const crLine = new THREE.Mesh(crLineGeo, boneCrackMat);
           crLine.position.set(
             (cr % 2 === 0 ? 0.2 : -0.25) + cr * 0.07,
@@ -3048,7 +3048,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
 
         // Teeth on jaw (small cones)
         for (let t = 0; t < 5; t++) {
-          const toothGeo = new THREE.ConeGeometry(0.028, 0.09, 6);
+          const toothGeo = new THREE.ConeGeometry(0.028, 0.09, 12);
           const tooth = new THREE.Mesh(toothGeo, boneMat);
           tooth.position.set(-0.12 + t * 0.06, 2.67, 0.22);
           tooth.rotation.x = Math.PI * 0.1; // slight forward lean
@@ -3057,7 +3057,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
 
         // Cranial suture lines across top of skull
         for (let sl = 0; sl < 3; sl++) {
-          const sutureGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.28 - sl * 0.04, 6);
+          const sutureGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.28 - sl * 0.04, 12);
           const suture = new THREE.Mesh(sutureGeo, boneCrackMat);
           suture.position.set(-0.06 + sl * 0.06, 3.22 - sl * 0.06, sl * 0.05);
           suture.rotation.z = Math.PI * 0.5 + sl * 0.3;
@@ -3405,7 +3405,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
 
           // Skeletal hand with 4 thin finger bones
           for (let fn = 0; fn < 4; fn++) {
-            const fBoneGeo = new THREE.CylinderGeometry(0.008, 0.006, 0.08, 6);
+            const fBoneGeo = new THREE.CylinderGeometry(0.008, 0.006, 0.08, 12);
             const fBone = new THREE.Mesh(fBoneGeo, wraithFadeMat);
             fBone.position.set(-0.03 + fn * 0.02, -0.74, 0.02);
             fBone.rotation.x = 0.5;
@@ -3459,7 +3459,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
           );
           wraithHover.add(soul);
           // Tiny trail behind each soul orb
-          const sTrailGeo = new THREE.CylinderGeometry(0.005, 0.002, 0.1, 6);
+          const sTrailGeo = new THREE.CylinderGeometry(0.005, 0.002, 0.1, 12);
           const sTrail = new THREE.Mesh(sTrailGeo, eyeHaloMat);
           sTrail.position.set(
             Math.cos(soAngle) * (soRadius + 0.07),
@@ -3649,7 +3649,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
 
         // Saliva drips from 4 teeth
         for (let sd = 0; sd < 4; sd++) {
-          const mSalivaGeo = new THREE.CylinderGeometry(0.007, 0.003, 0.07, 6);
+          const mSalivaGeo = new THREE.CylinderGeometry(0.007, 0.003, 0.07, 12);
           const mSaliva = new THREE.Mesh(mSalivaGeo, mSalivaMat);
           mSaliva.position.set(-0.25 + sd * 0.17, -0.1, 0.62);
           mimicJaw.add(mSaliva);
@@ -3733,7 +3733,7 @@ export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THR
               const mToeBump = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), mChestMat);
               mToeBump.position.set(mToeX, 0.025, mToeZ);
               group.add(mToeBump);
-              const mClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 6), mClawMat);
+              const mClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 12), mClawMat);
               mClaw.position.set(mToeX, 0.01, mToeZ + lz * 0.03);
               mClaw.rotation.x = (Math.PI / 2) * lz;
               group.add(mClaw);

@@ -602,7 +602,7 @@ export class GrandGame {
     for (let i = 0; i < TRACK_SEGMENTS; i += 8) {
       const p = this._trackPoints[i];
       const pillar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.4, 0.6, 20, 6),
+        new THREE.CylinderGeometry(0.4, 0.6, 20, 12),
         new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8, metalness: 0.2 })
       );
       pillar.position.set(p.x, p.y - 10, p.z);
@@ -685,7 +685,7 @@ export class GrandGame {
     for (const side of [-1, 1]) {
       const wheelGroup = new THREE.Group();
       // outer rim
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.04, 6, 16), rimMat);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.04, 12, 16), rimMat);
       wheelGroup.add(rim);
       // hub
       const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8), wheelMat);
@@ -704,18 +704,18 @@ export class GrandGame {
       g.add(wheelGroup);
     }
     // axle
-    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 6),
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 12),
       new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.5, metalness: 0.4 }));
     axle.rotation.z = Math.PI / 2;
     axle.position.set(0, 0.25, -0.4);
     g.add(axle);
     // rider (simple knight)
-    const rider = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.7, 6),
+    const rider = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.7, 12),
       new THREE.MeshStandardMaterial({ color: r.color, roughness: 0.4, metalness: 0.6 }));
     rider.position.set(0, 0.95, -0.2);
     g.add(rider);
     // helmet
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 4),
+    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10),
       new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.8 }));
     helm.position.set(0, 1.35, -0.2);
     g.add(helm);
@@ -761,14 +761,14 @@ export class GrandGame {
     flag.position.set(0.4, 1.5, -0.5);
     g.add(flag);
     // flag pole
-    const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 4),
+    const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 10),
       new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 }));
     flagPole.position.set(0.4, 1.0, -0.5);
     g.add(flagPole);
 
     // player arrow
     if (r.isPlayer) {
-      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 4),
+      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 10),
         new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffaa00, emissiveIntensity: 0.8 }));
       arrow.position.y = 1.8; arrow.rotation.x = Math.PI;
       g.add(arrow);
@@ -810,12 +810,12 @@ export class GrandGame {
         const tx = p.x + perpX * side * (TRACK_WIDTH / 2 + 0.8);
         const tz = p.z + perpZ * side * (TRACK_WIDTH / 2 + 0.8);
         // torch pole
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.5, 4),
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.5, 10),
           new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }));
         pole.position.set(tx, p.y + 0.75, tz);
         this._scene.add(pole);
         // flame
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 3),
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2, roughness: 1 }));
         flame.position.set(tx, p.y + 1.6, tz);
         this._scene.add(flame);
@@ -839,7 +839,7 @@ export class GrandGame {
       const bx = p.x + perpX * side * (TRACK_WIDTH / 2 + 1.2);
       const bz = p.z + perpZ * side * (TRACK_WIDTH / 2 + 1.2);
       // pole
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 4),
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 10),
         new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 }));
       pole.position.set(bx, p.y + 1.25, bz);
       this._scene.add(pole);
@@ -859,7 +859,7 @@ export class GrandGame {
       const segIdx = (10 + Math.floor((i / OBSTACLE_COUNT) * TRACK_SEGMENTS)) % TRACK_SEGMENTS;
       const lateral = (Math.random() - 0.5) * 1.6;
       const pos = this._getTrackPosWorld(segIdx, lateral);
-      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.8, 6),
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.8, 12),
         new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8, metalness: 0.1 }));
       mesh.position.set(pos.x, pos.y + 0.4, pos.z);
       mesh.castShadow = true;
@@ -913,11 +913,11 @@ export class GrandGame {
       this._scene.add(grass);
       // occasional tree on island
       if (Math.random() > 0.5) {
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.5, 5),
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.5, 10),
           new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }));
         trunk.position.set(island.position.x, island.position.y + ih / 2 + 0.85, island.position.z);
         this._scene.add(trunk);
-        const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.8, 6, 4),
+        const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 0.9 }));
         canopy.position.set(island.position.x, island.position.y + ih / 2 + 2, island.position.z);
         this._scene.add(canopy);
@@ -975,7 +975,7 @@ export class GrandGame {
       this._scene.add(crowd);
       this._crowdMeshes.push(crowd);
       // head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 3),
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0xccaa88, roughness: 0.8 }));
       head.position.set(cx, sp.y + 0.8, cz);
       this._scene.add(head);
@@ -1023,7 +1023,7 @@ export class GrandGame {
   private _buildBirds(): void {
     const birdMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
     for (let bi = 0; bi < 6; bi++) {
-      const birdGroup = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 3), birdMat);
+      const birdGroup = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 8), birdMat);
       birdGroup.rotation.x = Math.PI / 2;
       const angle = Math.random() * Math.PI * 2;
       const radius = 30 + Math.random() * 50;
@@ -1103,7 +1103,7 @@ export class GrandGame {
       const meshes: THREE.Mesh[] = [];
       // two vertical posts
       for (const side of [-1, 1]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3, 6),
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3, 12),
           new THREE.MeshStandardMaterial({ color: 0x4488cc, roughness: 0.3, metalness: 0.6, emissive: 0x2266aa, emissiveIntensity: 0.4 }));
         post.position.set(p.x + perpX * side * (TRACK_WIDTH / 2 + 0.3), p.y + 1.5, p.z + perpZ * side * (TRACK_WIDTH / 2 + 0.3));
         this._scene.add(post);
@@ -1474,7 +1474,7 @@ export class GrandGame {
         target.stunTimer = 60; target.speed *= 0.3; this._playSound("bolt");
         // spawn bolt projectile visual
         const pw = this._getTrackPosWorld(p.trackPos, p.lateralOffset);
-        const boltMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 4),
+        const boltMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 2, transparent: true, opacity: 0.8 }));
         boltMesh.position.set(pw.x, pw.y + 0.8, pw.z);
         this._scene.add(boltMesh);
@@ -1492,7 +1492,7 @@ export class GrandGame {
       this._oilPuddles.push({ segIdx: Math.floor(p.trackPos - 2 + TRACK_SEGMENTS) % TRACK_SEGMENTS, lateral: p.lateralOffset, mesh: puddle, life: 600 });
       this._playSound("hit");
     } else if (p.powerUp === PowerUpKind.MISSILE) {
-      const mMesh = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 5),
+      const mMesh = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 10),
         new THREE.MeshStandardMaterial({ color: 0xff4466, emissive: 0xff2244, emissiveIntensity: 1.5 }));
       mMesh.rotation.x = Math.PI / 2;
       const pw2 = this._getTrackPosWorld(p.trackPos, p.lateralOffset);

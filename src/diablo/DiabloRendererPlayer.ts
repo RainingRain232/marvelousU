@@ -83,7 +83,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
 
     // Ears
     for (let side = -1; side <= 1; side += 2) {
-      const earGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const earGeo = new THREE.SphereGeometry(0.03, 16, 12);
       const ear = new THREE.Mesh(earGeo, skinMat);
       ear.position.set(side * 0.17, 1.6, 0.0);
       ear.scale.set(0.5, 1, 0.8);
@@ -288,7 +288,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
 
     // Spine ridge
     for (let sp = 0; sp < 4; sp++) {
-      const spineGeo = new THREE.SphereGeometry(0.012, 8, 6);
+      const spineGeo = new THREE.SphereGeometry(0.012, 16, 12);
       const spine = new THREE.Mesh(spineGeo, torsoMat);
       spine.position.set(0, 1.35 - sp * 0.08, -0.14);
       ctx.playerGroup.add(spine);
@@ -297,7 +297,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
     // Abdominal definition (subtle)
     for (let row = 0; row < 3; row++) {
       for (let side = -1; side <= 1; side += 2) {
-        const abGeo = new THREE.SphereGeometry(0.035, 10, 8);
+        const abGeo = new THREE.SphereGeometry(0.035, 16, 12);
         const ab = new THREE.Mesh(abGeo, torsoMat);
         ab.position.set(side * 0.04, 1.12 - row * 0.06, 0.13);
         ab.scale.set(1, 0.7, 0.4);
@@ -321,7 +321,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
     buckle.position.set(0, 0.92, 0.18);
     ctx.playerGroup.add(buckle);
     // Buckle gem
-    const buckleGemGeo = new THREE.SphereGeometry(0.015, 10, 8);
+    const buckleGemGeo = new THREE.SphereGeometry(0.015, 16, 12);
     const buckleGemMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, emissive: 0x441111, roughness: 0.2 });
     const buckleGem = new THREE.Mesh(buckleGemGeo, buckleGemMat);
     buckleGem.position.set(0, 0.92, 0.2);
@@ -463,14 +463,14 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
       armGroup.add(fore);
 
       // Forearm muscle bulk
-      const foreMusGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const foreMusGeo = new THREE.SphereGeometry(0.03, 16, 12);
       const foreMus = new THREE.Mesh(foreMusGeo, skinMat);
       foreMus.position.set(0, -0.38, 0.015);
       foreMus.scale.set(0.8, 1.4, 0.7);
       armGroup.add(foreMus);
 
       // Wrist
-      const wristGeo = new THREE.SphereGeometry(0.03, 10, 8);
+      const wristGeo = new THREE.SphereGeometry(0.03, 16, 12);
       const wrist = new THREE.Mesh(wristGeo, skinMat);
       wrist.position.y = -0.6;
       armGroup.add(wrist);
@@ -642,7 +642,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         leftArmGroup.add(shield);
 
         // Shield boss (center sphere)
-        const bossGeo = new THREE.SphereGeometry(0.06, 8, 6);
+        const bossGeo = new THREE.SphereGeometry(0.06, 16, 12);
         const bossMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.8, roughness: 0.2 });
         const shieldBoss = new THREE.Mesh(bossGeo, bossMat);
         shieldBoss.position.set(0, -0.4, 0.13);
@@ -652,7 +652,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         const rivetMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.9, roughness: 0.1 });
         for (let ri = 0; ri < 4; ri++) {
           const riAngle = (ri / 4) * Math.PI * 2;
-          const rivetGeo = new THREE.SphereGeometry(0.02, 8, 6);
+          const rivetGeo = new THREE.SphereGeometry(0.02, 16, 12);
           const rivet = new THREE.Mesh(rivetGeo, rivetMat);
           rivet.position.set(Math.cos(riAngle) * 0.2, -0.4 + Math.sin(riAngle) * 0.2, 0.12);
           leftArmGroup.add(rivet);
@@ -1024,7 +1024,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         // Golden shield on left arm — rounded kite shape
         const shieldMat = new THREE.MeshStandardMaterial({ color: 0xddcc55, metalness: 0.8, roughness: 0.2, emissive: 0x554400, emissiveIntensity: 0.2 });
         // Shield body (rounded box)
-        const shieldBody = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.35, 6, 1), shieldMat);
+        const shieldBody = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.35, 12, 1), shieldMat);
         shieldBody.position.set(0.02, -0.15, 0.08);
         shieldBody.rotation.x = Math.PI / 2;
         shieldBody.rotation.z = Math.PI / 6;
@@ -1049,7 +1049,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         // Rivets around shield
         for (let r = 0; r < 6; r++) {
           const ra = (r / 6) * Math.PI * 2;
-          const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), palGoldMat);
+          const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.008, 16, 12), palGoldMat);
           rivet.position.set(0.02, -0.15 + Math.sin(ra) * 0.11, 0.08 + Math.cos(ra) * 0.11);
           result.leftArmGroup!.add(rivet);
         }
@@ -1137,7 +1137,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
           bone.rotation.z = boneAngle;
           ctx.playerGroup.add(bone);
           // Joint knobs on each bone end
-          const knob = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), necBoneMat);
+          const knob = new THREE.Mesh(new THREE.SphereGeometry(0.009, 16, 12), necBoneMat);
           knob.position.set(
             Math.sin(boneAngle) * 0.19 + Math.cos(boneAngle) * 0.02,
             1.4 + 0.02, Math.cos(boneAngle) * 0.15 + 0.05
@@ -1151,7 +1151,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         ctx.playerGroup.add(pendant);
         // Pendant eye sockets
         for (const sx of [-0.008, 0.008]) {
-          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.005, 8, 6), necGlowMat);
+          const socket = new THREE.Mesh(new THREE.SphereGeometry(0.005, 16, 12), necGlowMat);
           socket.position.set(sx, 1.375, 0.22);
           ctx.playerGroup.add(socket);
         }
@@ -1227,7 +1227,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         result.weaponArmGroup.add(orbInner);
         // Spectral wisps rising from orb
         for (let w = 0; w < 3; w++) {
-          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), new THREE.MeshStandardMaterial({
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 12), new THREE.MeshStandardMaterial({
             color: 0x66ff66, emissive: 0x44ff44, emissiveIntensity: 2.0, transparent: true, opacity: 0.35
           }));
           const wa = (w / 3) * Math.PI * 2;
@@ -1356,7 +1356,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
           ctx.playerGroup.add(shinGuard);
           // Straps on shin guards
           for (let s = 0; s < 2; s++) {
-            const shinStrap = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.005, 6, 16), assLeatherMat);
+            const shinStrap = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.005, 12, 16), assLeatherMat);
             shinStrap.position.set(side * 0.12, 0.4 + s * 0.1, 0.02);
             shinStrap.rotation.x = Math.PI / 2;
             ctx.playerGroup.add(shinStrap);
@@ -1375,7 +1375,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         bladeEdge.position.set(0, -0.28, 0);
         result.weaponArmGroup.add(bladeEdge);
         // Poison drip on blade
-        const drip = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), assPoisonMat);
+        const drip = new THREE.Mesh(new THREE.SphereGeometry(0.008, 16, 12), assPoisonMat);
         drip.position.set(0, -0.46, 0.01);
         drip.scale.set(0.8, 1.5, 0.8);
         result.weaponArmGroup.add(drip);
@@ -1385,7 +1385,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
         result.weaponArmGroup.add(daggerHilt);
         // Grip wraps
         for (let g = 0; g < 3; g++) {
-          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.003, 6, 12), assHiltMat);
+          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.003, 12, 12), assHiltMat);
           wrap.position.set(0, -0.07 - g * 0.03, 0);
           wrap.rotation.x = Math.PI / 2;
           result.weaponArmGroup.add(wrap);

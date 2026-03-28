@@ -549,7 +549,7 @@ export class EpsilonGame {
 
     // inner arcane ring
     const innerRing = new THREE.Mesh(
-      new THREE.TorusGeometry(PLATFORM_RADIUS * 0.6, 0.04, 6, 48),
+      new THREE.TorusGeometry(PLATFORM_RADIUS * 0.6, 0.04, 12, 48),
       new THREE.MeshBasicMaterial({ color: 0x8866dd, transparent: true, opacity: 0.3 })
     );
     innerRing.rotation.x = Math.PI / 2; innerRing.position.y = 0.02;
@@ -558,7 +558,7 @@ export class EpsilonGame {
 
     // second inner ring (rotating opposite direction)
     const innerRing2 = new THREE.Mesh(
-      new THREE.TorusGeometry(PLATFORM_RADIUS * 0.35, 0.03, 6, 36),
+      new THREE.TorusGeometry(PLATFORM_RADIUS * 0.35, 0.03, 12, 36),
       new THREE.MeshBasicMaterial({ color: 0xaa88ff, transparent: true, opacity: 0.2 })
     );
     innerRing2.rotation.x = Math.PI / 2; innerRing2.position.y = 0.025;
@@ -653,7 +653,7 @@ export class EpsilonGame {
 
     // muzzle flash (hidden sphere at staff tip)
     this._muzzleFlash = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2, 8, 6),
+      new THREE.SphereGeometry(0.2, 16, 12),
       new THREE.MeshBasicMaterial({ color: 0xff4422, transparent: true, opacity: 0, depthWrite: false })
     );
     this._scene.add(this._muzzleFlash);
@@ -680,7 +680,7 @@ export class EpsilonGame {
     for (let vi = 0; vi < 4; vi++) {
       const vr = 2 + vi * 2.5;
       const vortex = new THREE.Mesh(
-        new THREE.TorusGeometry(vr, 0.06, 6, 32),
+        new THREE.TorusGeometry(vr, 0.06, 12, 32),
         new THREE.MeshBasicMaterial({ color: 0x3311aa, transparent: true, opacity: 0.08 + vi * 0.02, side: THREE.DoubleSide, depthWrite: false })
       );
       vortex.rotation.x = Math.PI / 2;
@@ -707,13 +707,13 @@ export class EpsilonGame {
       const angle = (p / 6) * Math.PI * 2;
       const px = Math.cos(angle) * (PLATFORM_RADIUS - 0.3);
       const pz = Math.sin(angle) * (PLATFORM_RADIUS - 0.3);
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.0, 6),
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.0, 12),
         new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.7, metalness: 0.3 }));
       pillar.position.set(px, 1.0, pz);
       pillar.castShadow = true;
       this._scene.add(pillar);
       // glowing orb on top
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6),
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12),
         new THREE.MeshStandardMaterial({ color: 0x8866dd, emissive: 0x6644cc, emissiveIntensity: 1.5, roughness: 1, metalness: 0 }));
       orb.position.set(px, 2.2, pz);
       this._scene.add(orb);
@@ -737,7 +737,7 @@ export class EpsilonGame {
       const ta = (ti / 5) * Math.PI * 2 + Math.random();
       const tx = Math.cos(ta) * (PLATFORM_RADIUS + 3);
       const tz = Math.sin(ta) * (PLATFORM_RADIUS + 3);
-      const tentGeo = new THREE.CylinderGeometry(0.15, 0.4, 6, 6);
+      const tentGeo = new THREE.CylinderGeometry(0.15, 0.4, 6, 12);
       const tentMat = new THREE.MeshStandardMaterial({
         color: 0x220044, emissive: 0x330066, emissiveIntensity: 0.3,
         transparent: true, opacity: 0.5, roughness: 0.8, metalness: 0.2,
@@ -1236,13 +1236,13 @@ export class EpsilonGame {
     body.position.y = 0.6; body.castShadow = true;
     g.add(body);
     // head (hood)
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6),
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12),
       new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.9, metalness: 0 }));
     head.position.y = 1.35;
     g.add(head);
     // glowing eyes
     for (const sx of [-0.06, 0.06]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4),
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0x8866ff, emissive: 0x8866ff, emissiveIntensity: 2, roughness: 1 }));
       eye.position.set(sx, 1.38, 0.18);
       g.add(eye);
@@ -1251,26 +1251,26 @@ export class EpsilonGame {
     for (const side of [-1, 1]) {
       const armPivot = new THREE.Group();
       armPivot.position.set(side * 0.3, 0.95, 0);
-      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6),
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 12),
         new THREE.MeshStandardMaterial({ color: 0x221144, roughness: 0.85, metalness: 0.05 }));
       sleeve.position.y = -0.25;
       sleeve.rotation.z = side * 0.3;
       armPivot.add(sleeve);
       // hand sphere
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4),
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0x997788, roughness: 0.7, metalness: 0.1 }));
       hand.position.set(0, -0.52, 0);
       armPivot.add(hand);
       g.add(armPivot);
     }
     // robe hem detail (bottom fringe)
-    const hem = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.03, 4, 16),
+    const hem = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.03, 10, 16),
       new THREE.MeshStandardMaterial({ color: 0x331155, roughness: 0.9, metalness: 0, emissive: 0x220044, emissiveIntensity: 0.3 }));
     hem.rotation.x = Math.PI / 2;
     hem.position.y = 0.02;
     g.add(hem);
     // robe collar
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 4, 12),
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 10, 12),
       new THREE.MeshStandardMaterial({ color: 0x331155, roughness: 0.8, metalness: 0.1, emissive: 0x220044, emissiveIntensity: 0.2 }));
     collar.rotation.x = Math.PI / 2;
     collar.position.y = 1.22;
@@ -1278,7 +1278,7 @@ export class EpsilonGame {
 
     // staff
     const staff = new THREE.Group();
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.8, 6),
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.8, 12),
       new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.7, metalness: 0.1 }));
     pole.position.y = 0.9;
     staff.add(pole);
@@ -1448,7 +1448,7 @@ export class EpsilonGame {
     let geo: THREE.BufferGeometry;
     if (e.type === EnemyType.SEEKER) geo = new THREE.OctahedronGeometry(e.radius, 0);
     else if (e.type === EnemyType.ORBITER) geo = new THREE.TetrahedronGeometry(e.radius, 0);
-    else if (e.type === EnemyType.DASHER) geo = new THREE.ConeGeometry(e.radius, e.radius * 2, 5);
+    else if (e.type === EnemyType.DASHER) geo = new THREE.ConeGeometry(e.radius, e.radius * 2, 10);
     else if (e.type === EnemyType.TITAN) geo = new THREE.IcosahedronGeometry(e.radius, 1);
     else if (e.type === EnemyType.SPLITTER) geo = new THREE.DodecahedronGeometry(e.radius, 0);
     else geo = new THREE.IcosahedronGeometry(e.radius, 2); // boss — smooth sphere
@@ -1624,7 +1624,7 @@ export class EpsilonGame {
     // create/destroy orbit meshes to match upgrade count
     while (this._orbitSpellMeshes.length < p.orbitSpells) {
       const orb = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 6, 4),
+        new THREE.SphereGeometry(0.2, 12, 10),
         new THREE.MeshStandardMaterial({ color: ELEMENT_COLORS[p.element], emissive: ELEMENT_COLORS[p.element], emissiveIntensity: 1.5, transparent: true, opacity: 0.7 })
       );
       this._scene.add(orb);
@@ -1716,14 +1716,14 @@ export class EpsilonGame {
         element: p.element, life: SPELL_LIFETIME, mesh: null,
       };
       const color = ELEMENT_COLORS[p.element];
-      const geo = p.element === SpellElement.FIRE ? new THREE.SphereGeometry(SPELL_RADIUS, 6, 4)
+      const geo = p.element === SpellElement.FIRE ? new THREE.SphereGeometry(SPELL_RADIUS, 12, 10)
         : p.element === SpellElement.ICE ? new THREE.OctahedronGeometry(SPELL_RADIUS, 0)
         : new THREE.TetrahedronGeometry(SPELL_RADIUS, 0);
       const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2, roughness: 0.2, metalness: 0.3 });
       const spellMesh = new THREE.Mesh(geo, mat);
       // glow aura halo around projectile
       const auraMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.15, depthWrite: false });
-      const aura = new THREE.Mesh(new THREE.SphereGeometry(SPELL_RADIUS * 2.5, 6, 4), auraMat);
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(SPELL_RADIUS * 2.5, 12, 10), auraMat);
       spellMesh.add(aura);
       spell.mesh = spellMesh;
       spell.mesh.position.set(spell.x, spell.y, spell.z);
@@ -1821,7 +1821,7 @@ export class EpsilonGame {
   }
 
   private _spawnXpOrb(x: number, z: number, value: number): void {
-    const geo = new THREE.SphereGeometry(XP_ORB_RADIUS, 6, 4);
+    const geo = new THREE.SphereGeometry(XP_ORB_RADIUS, 12, 10);
     const mat = new THREE.MeshStandardMaterial({ color: 0xffd866, emissive: 0xffaa00, emissiveIntensity: 1.5, roughness: 0.3, metalness: 0.5 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, 0.5, z);
@@ -2727,7 +2727,7 @@ export class EpsilonGame {
     // dash afterimage ghosts
     if (p.dashTimer > 0 && this._frame % 3 === 0 && this._playerMesh) {
       const ghost = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.25, 0.4, 1.2, 6),
+        new THREE.CylinderGeometry(0.25, 0.4, 1.2, 12),
         new THREE.MeshBasicMaterial({ color: ELEMENT_COLORS[p.element], transparent: true, opacity: 0.3, depthWrite: false })
       );
       ghost.position.set(p.x, 0.6, p.z);

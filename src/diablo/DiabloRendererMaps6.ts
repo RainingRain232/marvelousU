@@ -1054,7 +1054,7 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
     }
     // Dust particles (tiny floating specks — shared geometry and material)
     const dustGlowMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, emissive: 0x886644, emissiveIntensity: 0.3 });
-    const dustGeo = new THREE.SphereGeometry(0.01, 6, 4);
+    const dustGeo = new THREE.SphereGeometry(0.01, 12, 10);
     for (let i = 0; i < 40; i++) {
       const dust = new THREE.Mesh(dustGeo, dustGlowMat);
       dust.position.set((Math.random()-0.5)*w*0.6, 0.5+Math.random()*4, (Math.random()-0.5)*d*0.6);

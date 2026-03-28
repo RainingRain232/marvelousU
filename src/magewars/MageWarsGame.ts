@@ -807,7 +807,7 @@ export class MageWarsGame {
 
       // Banner poles + flags
       for (const side of [-1, 1]) {
-        const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 5, 4);
+        const poleGeo = new THREE.CylinderGeometry(0.05, 0.05, 5, 10);
         const poleMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5 });
         const pole = new THREE.Mesh(poleGeo, poleMat);
         pole.position.set(side * 4.5, 2.5, 0);
@@ -827,14 +827,14 @@ export class MageWarsGame {
         group.add(torchLight);
 
         // Flame cone
-        const flameGeo = new THREE.ConeGeometry(0.12, 0.4, 6);
+        const flameGeo = new THREE.ConeGeometry(0.12, 0.4, 12);
         const flameMat = new THREE.MeshBasicMaterial({ color: 0xff8822, transparent: true, opacity: 0.8 });
         const flame = new THREE.Mesh(flameGeo, flameMat);
         flame.position.set(tx, 4.5, 0);
         group.add(flame);
 
         // Inner flame
-        const innerFlameGeo = new THREE.ConeGeometry(0.06, 0.25, 4);
+        const innerFlameGeo = new THREE.ConeGeometry(0.06, 0.25, 10);
         const innerFlameMat = new THREE.MeshBasicMaterial({ color: 0xffee44 });
         const innerFlame = new THREE.Mesh(innerFlameGeo, innerFlameMat);
         innerFlame.position.set(tx, 4.55, 0);
@@ -842,7 +842,7 @@ export class MageWarsGame {
 
         // Ember particles (small spheres above)
         for (let ei = 0; ei < 3; ei++) {
-          const emberGeo = new THREE.SphereGeometry(0.015, 4, 4);
+          const emberGeo = new THREE.SphereGeometry(0.015, 12, 10);
           const emberMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.6 });
           const ember = new THREE.Mesh(emberGeo, emberMat);
           ember.position.set(tx + (Math.random() - 0.5) * 0.15, 4.7 + Math.random() * 0.3, (Math.random() - 0.5) * 0.15);
@@ -878,7 +878,7 @@ export class MageWarsGame {
       }
 
       // Pillar top ornaments (small spheres)
-      const ornGeo = new THREE.SphereGeometry(0.15, 6, 6);
+      const ornGeo = new THREE.SphereGeometry(0.15, 12, 10);
       const ornMat = new THREE.MeshStandardMaterial({ color: teamColors[team], roughness: 0.3, metalness: 0.6 });
       const ornL = new THREE.Mesh(ornGeo, ornMat);
       ornL.position.set(-3, 4.2, 0);
@@ -991,7 +991,7 @@ export class MageWarsGame {
       tree.add(trunk);
 
       // Bark rings
-      const barkRingGeo = new THREE.TorusGeometry(0.22, 0.03, 4, 8);
+      const barkRingGeo = new THREE.TorusGeometry(0.22, 0.03, 10, 8);
       for (let br = 0; br < 3; br++) {
         const ring = new THREE.Mesh(barkRingGeo, trunkDarkMat);
         ring.position.y = 0.5 + br * 0.7;
@@ -1000,7 +1000,7 @@ export class MageWarsGame {
       }
 
       // Exposed roots
-      const rootGeo = new THREE.CylinderGeometry(0.04, 0.08, 0.8, 5);
+      const rootGeo = new THREE.CylinderGeometry(0.04, 0.08, 0.8, 10);
       for (let r = 0; r < 3; r++) {
         const rootAngle = (r / 3) * Math.PI * 2 + rng() * 0.8;
         const root = new THREE.Mesh(rootGeo, trunkDarkMat);
@@ -1030,7 +1030,7 @@ export class MageWarsGame {
       tree.add(leaves2);
 
       // Top cone
-      const leafGeo3 = new THREE.ConeGeometry(0.8, 1.5, 6);
+      const leafGeo3 = new THREE.ConeGeometry(0.8, 1.5, 12);
       const leaves3 = new THREE.Mesh(leafGeo3, leafMat);
       leaves3.position.y = 5.3;
       leaves3.castShadow = true;
@@ -1098,7 +1098,7 @@ export class MageWarsGame {
       const puffCount = 2 + Math.floor(rng() * 3);
       for (let p = 0; p < puffCount; p++) {
         const pSize = 0.3 + rng() * 0.4;
-        const puffGeo = new THREE.SphereGeometry(pSize, 6, 5);
+        const puffGeo = new THREE.SphereGeometry(pSize, 12, 10);
         const bushColor = rng() > 0.5 ? mapDef.treeColor : brightenColor(mapDef.treeColor, 1.15);
         const puffMat = new THREE.MeshStandardMaterial({ color: bushColor, roughness: 0.85 });
         const puff = new THREE.Mesh(puffGeo, puffMat);
@@ -1242,13 +1242,13 @@ export class MageWarsGame {
         const fx = (rng() - 0.5) * 2 * half;
         const fz = (rng() - 0.5) * 2 * half;
         const fh = getTerrainHeight(fx, fz, mapDef);
-        const stemGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.2, 4);
+        const stemGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.2, 10);
         const stemMat = new THREE.MeshStandardMaterial({ color: 0x33aa22 });
         const stem = new THREE.Mesh(stemGeo, stemMat);
         stem.position.set(fx, fh + 0.1, fz);
         this._propGroup.add(stem);
 
-        const petalGeo = new THREE.SphereGeometry(0.04, 4, 4);
+        const petalGeo = new THREE.SphereGeometry(0.04, 12, 10);
         const petalMat = new THREE.MeshStandardMaterial({ color: flowerColors[Math.floor(rng() * flowerColors.length)] });
         const petal = new THREE.Mesh(petalGeo, petalMat);
         petal.position.set(fx, fh + 0.22, fz);
@@ -1260,7 +1260,7 @@ export class MageWarsGame {
         const mx = (rng() - 0.5) * 2 * half;
         const mz = (rng() - 0.5) * 2 * half;
         const mh = getTerrainHeight(mx, mz, mapDef);
-        const stalkGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 6);
+        const stalkGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 12);
         const stalkMat = new THREE.MeshStandardMaterial({ color: 0xddccaa });
         const stalk = new THREE.Mesh(stalkGeo, stalkMat);
         stalk.position.set(mx, mh + 0.075, mz);
@@ -1303,7 +1303,7 @@ export class MageWarsGame {
           const stem = new THREE.Mesh(stemGeo, stemMat);
           stem.position.set(fx, fh + 0.08, fz);
           this._propGroup.add(stem);
-          const petalGeo = new THREE.SphereGeometry(0.03 + rng() * 0.02, 4, 4);
+          const petalGeo = new THREE.SphereGeometry(0.03 + rng() * 0.02, 12, 10);
           const petalMat = new THREE.MeshStandardMaterial({ color: wildColors[Math.floor(rng() * wildColors.length)] });
           const petal = new THREE.Mesh(petalGeo, petalMat);
           petal.position.set(fx, fh + 0.18 + rng() * 0.05, fz);
@@ -1455,13 +1455,13 @@ export class MageWarsGame {
         const sh = getTerrainHeight(sx, sz, mapDef);
         const statGroup = new THREE.Group();
         // Body
-        const bodyGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.2, 6);
+        const bodyGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.2, 12);
         const statMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8 });
         const body = new THREE.Mesh(bodyGeo, statMat);
         body.position.y = 0.3;
         statGroup.add(body);
         // Head (detached, nearby)
-        const headGeo2 = new THREE.SphereGeometry(0.2, 6, 6);
+        const headGeo2 = new THREE.SphereGeometry(0.2, 12, 10);
         const headM = new THREE.Mesh(headGeo2, statMat);
         headM.position.set(0.5, 0.15, 0.3);
         statGroup.add(headM);
@@ -1520,7 +1520,7 @@ export class MageWarsGame {
           const mmx = mx + Math.cos(a) * radius;
           const mmz = mz + Math.sin(a) * radius;
           const mmh = getTerrainHeight(mmx, mmz, mapDef);
-          const stalkGeo = new THREE.CylinderGeometry(0.02, 0.03, 0.12, 4);
+          const stalkGeo = new THREE.CylinderGeometry(0.02, 0.03, 0.12, 10);
           const stalkMat = new THREE.MeshStandardMaterial({ color: 0xddccaa });
           const stalk = new THREE.Mesh(stalkGeo, stalkMat);
           stalk.position.set(mmx, mmh + 0.06, mmz);
@@ -1571,7 +1571,7 @@ export class MageWarsGame {
         const skz = (rng() - 0.5) * 2 * half;
         const skh = getTerrainHeight(skx, skz, mapDef);
         const skMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.9 });
-        const ribGeo = new THREE.TorusGeometry(0.1, 0.02, 4, 6, Math.PI);
+        const ribGeo = new THREE.TorusGeometry(0.1, 0.02, 10, 6, Math.PI);
         for (let r = 0; r < 3; r++) {
           const rib = new THREE.Mesh(ribGeo, skMat);
           rib.position.set(skx, skh + 0.1 + r * 0.06, skz);
@@ -1619,7 +1619,7 @@ export class MageWarsGame {
         const dx2 = (rng() - 0.5) * 2 * half;
         const dz2 = (rng() - 0.5) * 2 * half;
         const dh = getTerrainHeight(dx2, dz2, mapDef);
-        const driftGeo = new THREE.SphereGeometry(0.5 + rng() * 1, 6, 4);
+        const driftGeo = new THREE.SphereGeometry(0.5 + rng() * 1, 12, 10);
         const driftMat = new THREE.MeshStandardMaterial({ color: 0xe8f0ff, roughness: 0.95 });
         const drift = new THREE.Mesh(driftGeo, driftMat);
         drift.position.set(dx2, dh + 0.1, dz2);
@@ -1655,7 +1655,7 @@ export class MageWarsGame {
         cactG.add(stem);
         // Arms
         if (rng() > 0.4) {
-          const armGeo2 = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 5);
+          const armGeo2 = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 10);
           const arm = new THREE.Mesh(armGeo2, cactMat);
           arm.position.set(0.12, 0.5, 0);
           arm.rotation.z = -Math.PI / 3;
@@ -1669,7 +1669,7 @@ export class MageWarsGame {
         const tx = (rng() - 0.5) * 2 * half;
         const tz = (rng() - 0.5) * 2 * half;
         const th = getTerrainHeight(tx, tz, mapDef);
-        const tentGeo = new THREE.ConeGeometry(1.2, 1.8, 6);
+        const tentGeo = new THREE.ConeGeometry(1.2, 1.8, 12);
         const tentMat = new THREE.MeshStandardMaterial({ color: 0xcc9944, roughness: 0.85, side: THREE.DoubleSide });
         const tent = new THREE.Mesh(tentGeo, tentMat);
         tent.position.set(tx, th + 0.9, tz);
@@ -1690,7 +1690,7 @@ export class MageWarsGame {
         const pz = Math.sin(pa) * 6;
         const ph = getTerrainHeight(px, pz, mapDef);
         const palmG = new THREE.Group();
-        const trunkG = new THREE.CylinderGeometry(0.08, 0.12, 3, 6);
+        const trunkG = new THREE.CylinderGeometry(0.08, 0.12, 3, 12);
         const trunkM = new THREE.MeshStandardMaterial({ color: 0x6a5530, roughness: 0.9 });
         const trunk = new THREE.Mesh(trunkG, trunkM);
         trunk.position.y = 1.5;
@@ -1742,7 +1742,7 @@ export class MageWarsGame {
         base.castShadow = true;
         cryptG.add(base);
         // Roof
-        const roofGeo = new THREE.ConeGeometry(1.5, 0.8, 4);
+        const roofGeo = new THREE.ConeGeometry(1.5, 0.8, 10);
         const roof = new THREE.Mesh(roofGeo, cryptMat);
         roof.position.y = 1.9;
         roof.rotation.y = Math.PI / 4;
@@ -1762,7 +1762,7 @@ export class MageWarsGame {
         const lx = (rng() - 0.5) * 2 * half;
         const lz = (rng() - 0.5) * 2 * half;
         const lh = getTerrainHeight(lx, lz, mapDef);
-        const lanternGeo = new THREE.SphereGeometry(0.08, 6, 6);
+        const lanternGeo = new THREE.SphereGeometry(0.08, 12, 10);
         const lanternMat = new THREE.MeshBasicMaterial({ color: 0x44ff88, transparent: true, opacity: 0.6 });
         const lantern = new THREE.Mesh(lanternGeo, lanternMat);
         lantern.position.set(lx, lh + 1.5 + rng() * 1, lz);
@@ -1790,7 +1790,7 @@ export class MageWarsGame {
         this._propGroup.add(fRock);
         // Small vegetation on top
         if (rng() > 0.5) {
-          const grassGeo = new THREE.ConeGeometry(fSize * 0.3, fSize * 0.4, 6);
+          const grassGeo = new THREE.ConeGeometry(fSize * 0.3, fSize * 0.4, 12);
           const grassM = new THREE.MeshStandardMaterial({ color: mapDef.treeColor, roughness: 0.8 });
           const grass = new THREE.Mesh(grassGeo, grassM);
           grass.position.set(fx, fy + fSize * 0.4, fz);
@@ -1846,7 +1846,7 @@ export class MageWarsGame {
         const gmz = (rng() - 0.5) * 2 * half;
         const gmh = getTerrainHeight(gmx, gmz, mapDef);
         const mushG = new THREE.Group();
-        const mushStalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.2, 5), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
+        const mushStalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.2, 10), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
         mushStalk.position.y = 0.1;
         mushG.add(mushStalk);
         const mushCap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.5),
@@ -1872,7 +1872,7 @@ export class MageWarsGame {
         const numCrystals = 3 + Math.floor(rng() * 4);
         for (let ci = 0; ci < numCrystals; ci++) {
           const cH = 0.3 + rng() * 0.8;
-          const cGeo = new THREE.CylinderGeometry(0.03, 0.08, cH, 6);
+          const cGeo = new THREE.CylinderGeometry(0.03, 0.08, cH, 12);
           const cMat = new THREE.MeshBasicMaterial({ color: 0xaa44ff, transparent: true, opacity: 0.5 });
           const crystal = new THREE.Mesh(cGeo, cMat);
           crystal.position.set((rng() - 0.5) * 0.3, cH * 0.5, (rng() - 0.5) * 0.3);
@@ -1973,7 +1973,7 @@ export class MageWarsGame {
         const petalColor = flowerColors2[Math.floor(rng() * flowerColors2.length)];
         for (let pi = 0; pi < 6; pi++) {
           const pa2 = (pi / 6) * Math.PI * 2;
-          const petalGeo2 = new THREE.SphereGeometry(0.15 + rng() * 0.1, 6, 4);
+          const petalGeo2 = new THREE.SphereGeometry(0.15 + rng() * 0.1, 12, 10);
           const petalMat2 = new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.6 });
           const petal2 = new THREE.Mesh(petalGeo2, petalMat2);
           petal2.position.set(Math.cos(pa2) * 0.2, 1.6, Math.sin(pa2) * 0.2);
@@ -1981,7 +1981,7 @@ export class MageWarsGame {
           flowerG.add(petal2);
         }
         // Center
-        const centerGeo = new THREE.SphereGeometry(0.08, 6, 6);
+        const centerGeo = new THREE.SphereGeometry(0.08, 12, 10);
         const centerMat = new THREE.MeshStandardMaterial({ color: 0xffee44, roughness: 0.5 });
         const center = new THREE.Mesh(centerGeo, centerMat);
         center.position.y = 1.6;
@@ -2007,7 +2007,7 @@ export class MageWarsGame {
         water2.position.y = 0.48;
         fnG.add(water2);
         // Center spout
-        const spoutGeo = new THREE.CylinderGeometry(0.05, 0.08, 1, 6);
+        const spoutGeo = new THREE.CylinderGeometry(0.05, 0.08, 1, 12);
         const spoutMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4 });
         const spout = new THREE.Mesh(spoutGeo, spoutMat);
         spout.position.y = 0.75;
@@ -2026,11 +2026,11 @@ export class MageWarsGame {
         const ped = new THREE.Mesh(pedGeo, statMat2);
         ped.position.y = 0.2;
         statG2.add(ped);
-        const bodyGeo2 = new THREE.CylinderGeometry(0.15, 0.2, 1, 6);
+        const bodyGeo2 = new THREE.CylinderGeometry(0.15, 0.2, 1, 12);
         const body2 = new THREE.Mesh(bodyGeo2, statMat2);
         body2.position.y = 0.9;
         statG2.add(body2);
-        const headGeo3 = new THREE.SphereGeometry(0.12, 6, 6);
+        const headGeo3 = new THREE.SphereGeometry(0.12, 12, 10);
         const head3 = new THREE.Mesh(headGeo3, statMat2);
         head3.position.y = 1.5;
         statG2.add(head3);
@@ -2042,7 +2042,7 @@ export class MageWarsGame {
         const frx = (rng() - 0.5) * 2 * half;
         const frz = (rng() - 0.5) * 2 * half;
         const frh = getTerrainHeight(frx, frz, mapDef);
-        const frGeo = new THREE.TorusGeometry(1 + rng() * 0.5, 0.03, 4, 24);
+        const frGeo = new THREE.TorusGeometry(1 + rng() * 0.5, 0.03, 10, 24);
         const frMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.3 });
         const fr = new THREE.Mesh(frGeo, frMat);
         fr.position.set(frx, frh + 0.02, frz);
@@ -2062,7 +2062,7 @@ export class MageWarsGame {
 
           if (animalDef.type === "bird") {
             // Simple bird: body + two wing triangles
-            const bBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+            const bBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), new THREE.MeshStandardMaterial({ color: 0x444444 }));
             animalG.add(bBody);
             for (const ws of [-1, 1]) {
               const wingGeo = new THREE.BufferGeometry();
@@ -2075,36 +2075,36 @@ export class MageWarsGame {
             }
             animalG.position.set(ax, ah + 5 + rng() * 15, az);
           } else if (animalDef.type === "deer") {
-            const dBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), new THREE.MeshStandardMaterial({ color: 0x8a6633 }));
+            const dBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), new THREE.MeshStandardMaterial({ color: 0x8a6633 }));
             dBody.scale.set(1, 0.8, 1.5);
             animalG.add(dBody);
-            const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), new THREE.MeshStandardMaterial({ color: 0x8a6633 }));
+            const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshStandardMaterial({ color: 0x8a6633 }));
             dHead.position.set(0, 0.06, -0.18);
             animalG.add(dHead);
             for (const lx of [-0.06, 0.06, -0.06, 0.06]) {
-              const legGeo2 = new THREE.CylinderGeometry(0.015, 0.02, 0.15, 4);
+              const legGeo2 = new THREE.CylinderGeometry(0.015, 0.02, 0.15, 10);
               const legM = new THREE.Mesh(legGeo2, new THREE.MeshStandardMaterial({ color: 0x7a5522 }));
               legM.position.set(lx, -0.12, lx > 0 ? -0.08 : 0.06);
               animalG.add(legM);
             }
             animalG.position.set(ax, ah + 0.15, az);
           } else if (animalDef.type === "wolf") {
-            const wBody = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), new THREE.MeshStandardMaterial({ color: 0x555566 }));
+            const wBody = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), new THREE.MeshStandardMaterial({ color: 0x555566 }));
             wBody.scale.set(1, 0.8, 1.5);
             animalG.add(wBody);
-            const wHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), new THREE.MeshStandardMaterial({ color: 0x555566 }));
+            const wHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshStandardMaterial({ color: 0x555566 }));
             wHead.position.set(0, 0.04, -0.16);
             animalG.add(wHead);
             // Ears
             for (const ex of [-0.03, 0.03]) {
-              const earGeo2 = new THREE.ConeGeometry(0.015, 0.04, 3);
+              const earGeo2 = new THREE.ConeGeometry(0.015, 0.04, 8);
               const earM = new THREE.Mesh(earGeo2, new THREE.MeshStandardMaterial({ color: 0x555566 }));
               earM.position.set(ex, 0.1, -0.14);
               animalG.add(earM);
             }
             animalG.position.set(ax, ah + 0.12, az);
           } else if (animalDef.type === "butterfly") {
-            const bfBody = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.03, 3), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            const bfBody = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.03, 8), new THREE.MeshStandardMaterial({ color: 0x222222 }));
             bfBody.rotation.x = Math.PI / 2;
             animalG.add(bfBody);
             const bfColors = [0xff44aa, 0x44aaff, 0xffaa44, 0xaa44ff, 0x44ffaa];
@@ -2119,7 +2119,7 @@ export class MageWarsGame {
             }
             animalG.position.set(ax, ah + 0.5 + rng() * 2, az);
           } else if (animalDef.type === "bat") {
-            const batBody = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 4), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            const batBody = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 10), new THREE.MeshStandardMaterial({ color: 0x222222 }));
             animalG.add(batBody);
             for (const ws of [-1, 1]) {
               const bwGeo = new THREE.BufferGeometry();
@@ -2132,25 +2132,25 @@ export class MageWarsGame {
             }
             animalG.position.set(ax, ah + 3 + rng() * 8, az);
           } else if (animalDef.type === "crab") {
-            const crabBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), new THREE.MeshStandardMaterial({ color: 0xcc5533 }));
+            const crabBody = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), new THREE.MeshStandardMaterial({ color: 0xcc5533 }));
             crabBody.scale.set(1.3, 0.5, 1);
             animalG.add(crabBody);
             // Claws
             for (const cs of [-1, 1]) {
-              const clawGeo = new THREE.SphereGeometry(0.02, 4, 4);
+              const clawGeo = new THREE.SphereGeometry(0.02, 12, 10);
               const claw = new THREE.Mesh(clawGeo, new THREE.MeshStandardMaterial({ color: 0xcc5533 }));
               claw.position.set(cs * 0.06, 0, -0.03);
               animalG.add(claw);
             }
             animalG.position.set(ax, ah + 0.03, az);
           } else if (animalDef.type === "firefly") {
-            const ffGeo = new THREE.SphereGeometry(0.015, 4, 4);
+            const ffGeo = new THREE.SphereGeometry(0.015, 12, 10);
             const ffMat = new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.6 });
             const ff = new THREE.Mesh(ffGeo, ffMat);
             animalG.add(ff);
             animalG.position.set(ax, ah + 0.5 + rng() * 3, az);
           } else if (animalDef.type === "fish") {
-            const fishBody = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), new THREE.MeshStandardMaterial({ color: 0x4488aa }));
+            const fishBody = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), new THREE.MeshStandardMaterial({ color: 0x4488aa }));
             fishBody.scale.set(0.7, 0.6, 1.5);
             animalG.add(fishBody);
             const tailGeo = new THREE.BufferGeometry();
@@ -2182,7 +2182,7 @@ export class MageWarsGame {
         if (mapDef.id === "enchanted_forest") {
         color = 0xaaff66;
       }
-      const geo = new THREE.SphereGeometry(0.03, 4, 4);
+      const geo = new THREE.SphereGeometry(0.03, 12, 10);
       const mat = new THREE.MeshBasicMaterial({ color });
       const mesh = new THREE.Mesh(geo, mat);
       const px = (Math.random() - 0.5) * 2 * half;
@@ -2214,7 +2214,7 @@ export class MageWarsGame {
     const accentMat = new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.4, metalness: 0.5 });
 
     // --- LEGS (under the robe) ---
-    const legGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.45, 6);
+    const legGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.45, 12);
     for (const lx of [-0.12, 0.12]) {
       const leg = new THREE.Mesh(legGeo, robeDarkMat);
       leg.position.set(lx, 0.22, 0);
@@ -2223,9 +2223,9 @@ export class MageWarsGame {
     }
 
     // Boots with detail
-    const bootGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.2, 6);
+    const bootGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.2, 12);
     const bootMat = new THREE.MeshStandardMaterial({ color: darkenColor(cls.robeColor, 0.35), roughness: 0.8, metalness: 0.1 });
-    const bootTopGeo = new THREE.TorusGeometry(0.1, 0.015, 4, 8);
+    const bootTopGeo = new THREE.TorusGeometry(0.1, 0.015, 10, 8);
     const bootTopMat = new THREE.MeshStandardMaterial({ color: darkenColor(cls.robeColor, 0.5), roughness: 0.7 });
     for (const bx of [-0.12, 0.12]) {
       const boot = new THREE.Mesh(bootGeo, bootMat);
@@ -2254,7 +2254,7 @@ export class MageWarsGame {
     innerSkirt.position.y = 0.38;
     group.add(innerSkirt);
     // Skirt hem trim
-    const hemGeo = new THREE.TorusGeometry(0.47, 0.02, 4, 16);
+    const hemGeo = new THREE.TorusGeometry(0.47, 0.02, 10, 16);
     const hemMat = new THREE.MeshStandardMaterial({ color: cls.accentColor, roughness: 0.5, metalness: 0.3 });
     const hem = new THREE.Mesh(hemGeo, hemMat);
     hem.position.y = 0.11;
@@ -2280,7 +2280,7 @@ export class MageWarsGame {
       group.add(seam);
     }
     // Collar
-    const collarGeo = new THREE.TorusGeometry(0.25, 0.035, 6, 12, Math.PI * 1.5);
+    const collarGeo = new THREE.TorusGeometry(0.25, 0.035, 12, 12, Math.PI * 1.5);
     const collar = new THREE.Mesh(collarGeo, accentMat);
     collar.position.set(0, 1.32, -0.05);
     collar.rotation.x = Math.PI / 2;
@@ -2301,7 +2301,7 @@ export class MageWarsGame {
     group.add(fringe);
 
     // --- BELT with runic gems ---
-    const beltGeo = new THREE.TorusGeometry(0.31, 0.035, 6, 14);
+    const beltGeo = new THREE.TorusGeometry(0.31, 0.035, 12, 14);
     const beltMesh = new THREE.Mesh(beltGeo, new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.4, metalness: 0.5 }));
     beltMesh.position.y = 0.65;
     beltMesh.rotation.x = Math.PI / 2;
@@ -2322,7 +2322,7 @@ export class MageWarsGame {
     }
 
     // --- NECK ---
-    const neckGeo = new THREE.CylinderGeometry(0.09, 0.12, 0.15, 6);
+    const neckGeo = new THREE.CylinderGeometry(0.09, 0.12, 0.15, 12);
     const neck = new THREE.Mesh(neckGeo, skinMat);
     neck.position.y = 1.4;
     group.add(neck);
@@ -2336,7 +2336,7 @@ export class MageWarsGame {
     group.add(head);
 
     // Cheeks (subtle, warm toned)
-    const cheekGeo = new THREE.SphereGeometry(0.05, 6, 4);
+    const cheekGeo = new THREE.SphereGeometry(0.05, 12, 10);
     const cheekMat = new THREE.MeshStandardMaterial({ color: 0xe8b090, roughness: 0.7 });
     for (const cx of [-0.12, 0.12]) {
       const cheek = new THREE.Mesh(cheekGeo, cheekMat);
@@ -2345,7 +2345,7 @@ export class MageWarsGame {
     }
 
     // Nose
-    const noseGeo = new THREE.ConeGeometry(0.025, 0.06, 4);
+    const noseGeo = new THREE.ConeGeometry(0.025, 0.06, 10);
     const nose = new THREE.Mesh(noseGeo, skinMat);
     nose.position.set(0, 1.59, -0.2);
     nose.rotation.x = -Math.PI / 2;
@@ -2354,7 +2354,7 @@ export class MageWarsGame {
     // --- EYES (detailed: white, iris, pupil, highlight) ---
     const eyeWhiteGeo = new THREE.SphereGeometry(0.04, 8, 8);
     const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.3 });
-    const eyeIrisGeo = new THREE.SphereGeometry(0.025, 6, 6);
+    const eyeIrisGeo = new THREE.SphereGeometry(0.025, 12, 10);
     // Class-specific eye color
     const eyeColors: Record<string, number> = {
       battlemage: 0x3366aa, pyromancer: 0xcc4400, cryomancer: 0x44aadd,
@@ -2363,9 +2363,9 @@ export class MageWarsGame {
     };
     const irisColor = eyeColors[player.classId] || 0x446688;
     const eyeIrisMat = new THREE.MeshStandardMaterial({ color: irisColor, roughness: 0.3 });
-    const eyePupilGeo = new THREE.SphereGeometry(0.012, 4, 4);
+    const eyePupilGeo = new THREE.SphereGeometry(0.012, 12, 10);
     const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-    const eyeHighGeo = new THREE.SphereGeometry(0.006, 4, 4);
+    const eyeHighGeo = new THREE.SphereGeometry(0.006, 12, 10);
     const eyeHighMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     for (const ex of [-0.075, 0.075]) {
       const eyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
@@ -2400,13 +2400,13 @@ export class MageWarsGame {
     group.add(mouth);
 
     // Chin
-    const chinGeo = new THREE.SphereGeometry(0.04, 6, 4);
+    const chinGeo = new THREE.SphereGeometry(0.04, 12, 10);
     const chin = new THREE.Mesh(chinGeo, skinMat);
     chin.position.set(0, 1.51, -0.16);
     group.add(chin);
 
     // Ears
-    const earGeo = new THREE.SphereGeometry(0.04, 6, 4);
+    const earGeo = new THREE.SphereGeometry(0.04, 12, 10);
     for (const ex of [-0.2, 0.2]) {
       const ear = new THREE.Mesh(earGeo, skinMat);
       ear.position.set(ex, 1.6, -0.02);
@@ -2427,7 +2427,7 @@ export class MageWarsGame {
       group.add(pad);
       // Shoulder spike/gem per class
       if (cls.id === "battlemage" || cls.id === "warlock") {
-        const spikeGeo = new THREE.ConeGeometry(0.03, 0.1, 4);
+        const spikeGeo = new THREE.ConeGeometry(0.03, 0.1, 10);
         const spike = new THREE.Mesh(spikeGeo, accentMat);
         spike.position.set(side * 0.44, 1.42, 0);
         group.add(spike);
@@ -2439,9 +2439,9 @@ export class MageWarsGame {
     }
 
     // --- ARMS (with forearm detail, animated via name) ---
-    const upperArmGeo = new THREE.CylinderGeometry(0.06, 0.065, 0.35, 6);
-    const foreArmGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 6);
-    const elbowGeo = new THREE.SphereGeometry(0.055, 6, 4);
+    const upperArmGeo = new THREE.CylinderGeometry(0.06, 0.065, 0.35, 12);
+    const foreArmGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.3, 12);
+    const elbowGeo = new THREE.SphereGeometry(0.055, 12, 10);
 
     // Left arm
     const leftUpperArm = new THREE.Mesh(upperArmGeo, robeMat);
@@ -2458,7 +2458,7 @@ export class MageWarsGame {
     leftForeArm.name = "leftForeArm";
     group.add(leftForeArm);
     // Forearm bracer
-    const bracerGeo = new THREE.CylinderGeometry(0.065, 0.07, 0.1, 6);
+    const bracerGeo = new THREE.CylinderGeometry(0.065, 0.07, 0.1, 12);
     const leftBracer = new THREE.Mesh(bracerGeo, accentMat);
     leftBracer.position.set(-0.48, 0.83, -0.1);
     group.add(leftBracer);
@@ -2483,7 +2483,7 @@ export class MageWarsGame {
     group.add(rightBracer);
 
     // --- HANDS (with fingers) ---
-    const handGeo = new THREE.SphereGeometry(0.045, 6, 6);
+    const handGeo = new THREE.SphereGeometry(0.045, 12, 10);
     const leftHand = new THREE.Mesh(handGeo, skinMat);
     leftHand.position.set(-0.48, 0.72, -0.15);
     group.add(leftHand);
@@ -2491,7 +2491,7 @@ export class MageWarsGame {
     rightHand.position.set(0.48, 0.72, -0.42);
     group.add(rightHand);
     // Finger detail (small cylinders grouped on hands)
-    const fingerGeo = new THREE.CylinderGeometry(0.01, 0.008, 0.05, 4);
+    const fingerGeo = new THREE.CylinderGeometry(0.01, 0.008, 0.05, 10);
     for (let fi = 0; fi < 4; fi++) {
       const angle = ((fi - 1.5) / 4) * 0.3;
       const lf = new THREE.Mesh(fingerGeo, skinMat);
@@ -2506,13 +2506,13 @@ export class MageWarsGame {
     const wandGroup = new THREE.Group();
     wandGroup.name = "wandGroup";
     // Wand shaft
-    const wandShaftGeo = new THREE.CylinderGeometry(0.02, 0.028, 0.65, 6);
+    const wandShaftGeo = new THREE.CylinderGeometry(0.02, 0.028, 0.65, 12);
     const wandShaftMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.5 });
     const wandShaft = new THREE.Mesh(wandShaftGeo, wandShaftMat);
     wandShaft.position.y = 0;
     wandGroup.add(wandShaft);
     // Grip rings
-    const wGripGeo = new THREE.TorusGeometry(0.032, 0.006, 4, 8);
+    const wGripGeo = new THREE.TorusGeometry(0.032, 0.006, 10, 8);
     const wGripMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.3 });
     for (let gi = 0; gi < 3; gi++) {
       const grip = new THREE.Mesh(wGripGeo, wGripMat);
@@ -2533,14 +2533,14 @@ export class MageWarsGame {
     tip.name = "wandTip";
     wandGroup.add(tip);
     // Outer glow ring around tip
-    const tipRingGeo = new THREE.TorusGeometry(0.09, 0.008, 4, 12);
+    const tipRingGeo = new THREE.TorusGeometry(0.09, 0.008, 10, 12);
     const tipRingMat = new THREE.MeshBasicMaterial({ color: activeWand.projectileColor, transparent: true, opacity: 0.3 });
     const tipRing = new THREE.Mesh(tipRingGeo, tipRingMat);
     tipRing.position.y = 0.35;
     tipRing.name = "wandTipRing";
     wandGroup.add(tipRing);
     // Prongs around tip
-    const prongGeo = new THREE.ConeGeometry(0.008, 0.06, 4);
+    const prongGeo = new THREE.ConeGeometry(0.008, 0.06, 10);
     const prongMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.2, metalness: 0.7 });
     for (let pi = 0; pi < 3; pi++) {
       const pAngle = (pi / 3) * Math.PI * 2;
@@ -2558,7 +2558,7 @@ export class MageWarsGame {
     this._addClassSpecificVisuals(group, cls, player);
 
     // --- TEAM GLOW RING at feet ---
-    const glowRingGeo = new THREE.TorusGeometry(0.5, 0.025, 4, 20);
+    const glowRingGeo = new THREE.TorusGeometry(0.5, 0.025, 10, 20);
     const glowRingMat = new THREE.MeshBasicMaterial({ color: teamColor, transparent: true, opacity: 0.5 });
     const glowRing = new THREE.Mesh(glowRingGeo, glowRingMat);
     glowRing.rotation.x = Math.PI / 2;
@@ -2599,7 +2599,7 @@ export class MageWarsGame {
     if (cls.id === "pyromancer") {
       // Orbiting embers (small spheres that will be animated)
       for (let i = 0; i < 4; i++) {
-        const emberGeo = new THREE.SphereGeometry(0.02, 4, 4);
+        const emberGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const emberMat = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff6600 : 0xff2200, transparent: true, opacity: 0.8 });
         const ember = new THREE.Mesh(emberGeo, emberMat);
         ember.name = `pyroEmber_${i}`;
@@ -2621,7 +2621,7 @@ export class MageWarsGame {
     // Stormcaller: lightning sparks jumping
     if (cls.id === "stormcaller") {
       for (let i = 0; i < 3; i++) {
-        const sparkGeo = new THREE.SphereGeometry(0.015, 4, 4);
+        const sparkGeo = new THREE.SphereGeometry(0.015, 12, 10);
         const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffff44, transparent: true, opacity: 0.7 });
         const spark = new THREE.Mesh(sparkGeo, sparkMat);
         spark.name = `stormSpark_${i}`;
@@ -2632,7 +2632,7 @@ export class MageWarsGame {
     // Shadowmancer: dark mist swirling at feet
     if (cls.id === "shadowmancer") {
       for (let i = 0; i < 5; i++) {
-        const mistGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 4, 4);
+        const mistGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 12, 10);
         const mistMat = new THREE.MeshBasicMaterial({ color: 0x220044, transparent: true, opacity: 0.3 });
         const mist = new THREE.Mesh(mistGeo, mistMat);
         mist.name = `shadowMist_${i}`;
@@ -2643,7 +2643,7 @@ export class MageWarsGame {
     // Druid: vine wrappings on arms, leaf particles
     if (cls.id === "druid") {
       // Vines on left arm
-      const vineGeo = new THREE.TorusGeometry(0.08, 0.01, 4, 8, Math.PI * 1.5);
+      const vineGeo = new THREE.TorusGeometry(0.08, 0.01, 10, 8, Math.PI * 1.5);
       const vineMat = new THREE.MeshStandardMaterial({ color: 0x338822, roughness: 0.8 });
       for (let vi = 0; vi < 3; vi++) {
         const vine = new THREE.Mesh(vineGeo, vineMat);
@@ -2664,7 +2664,7 @@ export class MageWarsGame {
     // Warlock: dark aura, soul orbs
     if (cls.id === "warlock") {
       for (let i = 0; i < 3; i++) {
-        const orbGeo = new THREE.SphereGeometry(0.02, 4, 4);
+        const orbGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const orbMat = new THREE.MeshBasicMaterial({ color: 0xcc2244, transparent: true, opacity: 0.6 });
         const orb = new THREE.Mesh(orbGeo, orbMat);
         orb.name = `warlockOrb_${i}`;
@@ -2676,7 +2676,7 @@ export class MageWarsGame {
     if (cls.id === "archmage") {
       // Arcane orbiting rune rings
       for (let i = 0; i < 2; i++) {
-        const ringGeo = new THREE.TorusGeometry(0.3 + i * 0.15, 0.008, 4, 16);
+        const ringGeo = new THREE.TorusGeometry(0.3 + i * 0.15, 0.008, 10, 16);
         const ringMat = new THREE.MeshBasicMaterial({ color: 0xddaaff, transparent: true, opacity: 0.2 });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.name = `archmageRing_${i}`;
@@ -2711,12 +2711,12 @@ export class MageWarsGame {
         break;
       }
       case "crown": {
-        const crownGeo = new THREE.TorusGeometry(0.22, 0.04, 6, 8);
+        const crownGeo = new THREE.TorusGeometry(0.22, 0.04, 12, 8);
         const crown = new THREE.Mesh(crownGeo, accentMat);
         crown.position.y = 1.82;
         crown.rotation.x = Math.PI / 2;
         group.add(crown);
-        const spikeGeo = new THREE.ConeGeometry(0.03, 0.15, 4);
+        const spikeGeo = new THREE.ConeGeometry(0.03, 0.15, 10);
         for (let i = 0; i < 5; i++) {
           const angle = (i / 5) * Math.PI * 2;
           const spike = new THREE.Mesh(spikeGeo, accentMat);
@@ -2726,7 +2726,7 @@ export class MageWarsGame {
         break;
       }
       case "circlet": {
-        const circletGeo = new THREE.TorusGeometry(0.24, 0.025, 6, 12);
+        const circletGeo = new THREE.TorusGeometry(0.24, 0.025, 12, 12);
         const circlet = new THREE.Mesh(circletGeo, accentMat);
         circlet.position.y = 1.78;
         circlet.rotation.x = Math.PI / 2;
@@ -2745,7 +2745,7 @@ export class MageWarsGame {
         skull.position.y = 1.65;
         skull.scale.set(1, 1.1, 1);
         group.add(skull);
-        const eyeGeo = new THREE.SphereGeometry(0.04, 6, 6);
+        const eyeGeo = new THREE.SphereGeometry(0.04, 12, 10);
         const eyeMat = new THREE.MeshBasicMaterial({ color: cls.accentColor });
         const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
         leftEye.position.set(-0.08, 1.68, -0.18);
@@ -2814,7 +2814,7 @@ export class MageWarsGame {
       // Shoulder / hip muscle bulges
       const muscleMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.92), roughness: 0.65 });
       for (const [mx, mz] of [[-1, -0.25], [1, -0.25], [-1, 0.2], [1, 0.2]]) {
-        const musc = new THREE.Mesh(new THREE.SphereGeometry(def.scaleX * 0.18, 6, 5), muscleMat);
+        const musc = new THREE.Mesh(new THREE.SphereGeometry(def.scaleX * 0.18, 12, 10), muscleMat);
         musc.scale.set(0.7, 0.9, 1.0);
         musc.position.set(mx * def.scaleX * 0.32, def.scaleY * 0.05, mz * def.scaleZ);
         group.add(musc);
@@ -2830,24 +2830,24 @@ export class MageWarsGame {
         headMesh.castShadow = true;
         group.add(headMesh);
         // Jaw / lower head
-        const jawGeo = new THREE.SphereGeometry(def.scaleX * 0.22, 6, 4);
+        const jawGeo = new THREE.SphereGeometry(def.scaleX * 0.22, 12, 10);
         const jaw = new THREE.Mesh(jawGeo, darkenColor(def.bodyColor, 0.9) as any === 0 ? bodyMat : new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 1.1), roughness: 0.7 }));
         jaw.scale.set(0.8, 0.5, 1.1);
         jaw.position.set(0, -def.scaleY * 0.08, -def.scaleZ * 0.52);
         group.add(jaw);
         // Large front horn
         const hornMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.5 });
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.9, 6), hornMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.9, 12), hornMat);
         horn.position.set(0, def.scaleY * 0.25, -def.scaleZ * 0.6);
         horn.rotation.x = -Math.PI / 4;
         group.add(horn);
         // Smaller second horn
-        const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.4, 6), hornMat);
+        const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.4, 12), hornMat);
         horn2.position.set(0, def.scaleY * 0.28, -def.scaleZ * 0.45);
         horn2.rotation.x = -Math.PI / 5;
         group.add(horn2);
         // Small rounded ears
-        const earGeo = new THREE.SphereGeometry(0.1, 5, 4);
+        const earGeo = new THREE.SphereGeometry(0.1, 12, 10);
         for (const ex of [-0.22, 0.22]) {
           const ear = new THREE.Mesh(earGeo, bodyMat);
           ear.scale.set(0.6, 1.0, 0.5);
@@ -2855,7 +2855,7 @@ export class MageWarsGame {
           group.add(ear);
         }
         // Wrinkled skin folds (ridges across body)
-        const foldGeo = new THREE.TorusGeometry(def.scaleX * 0.4, 0.04, 4, 12, Math.PI);
+        const foldGeo = new THREE.TorusGeometry(def.scaleX * 0.4, 0.04, 10, 12, Math.PI);
         const foldMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.85), roughness: 0.8 });
         for (let fi = 0; fi < 3; fi++) {
           const fold = new THREE.Mesh(foldGeo, foldMat);
@@ -2883,17 +2883,17 @@ export class MageWarsGame {
         const plateMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.accentColor, 0.8), roughness: 0.45, metalness: 0.5 });
         for (let pi = 0; pi < 6; pi++) {
           const angle = (pi / 6) * Math.PI * 2;
-          const plate = new THREE.Mesh(new THREE.CylinderGeometry(def.scaleX * 0.12, def.scaleX * 0.14, 0.04, 6), plateMat);
+          const plate = new THREE.Mesh(new THREE.CylinderGeometry(def.scaleX * 0.12, def.scaleX * 0.14, 0.04, 12), plateMat);
           plate.position.set(Math.sin(angle) * def.scaleX * 0.25, def.scaleY * 0.38, Math.cos(angle) * def.scaleZ * 0.2);
           plate.rotation.x = Math.PI / 2;
           group.add(plate);
         }
         // Central plate on top
-        const centerPlate = new THREE.Mesh(new THREE.CylinderGeometry(def.scaleX * 0.15, def.scaleX * 0.15, 0.05, 6), plateMat);
+        const centerPlate = new THREE.Mesh(new THREE.CylinderGeometry(def.scaleX * 0.15, def.scaleX * 0.15, 0.05, 12), plateMat);
         centerPlate.position.y = def.scaleY * 0.45;
         group.add(centerPlate);
         // Shell rim (ridge around shell edge)
-        const rimGeo = new THREE.TorusGeometry(def.scaleX * 0.48, 0.06, 4, 16);
+        const rimGeo = new THREE.TorusGeometry(def.scaleX * 0.48, 0.06, 10, 16);
         const rimMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.accentColor, 0.65), roughness: 0.5, metalness: 0.4 });
         const rim = new THREE.Mesh(rimGeo, rimMat);
         rim.rotation.x = Math.PI / 2;
@@ -2907,13 +2907,13 @@ export class MageWarsGame {
         headMesh.position.set(0, -def.scaleY * 0.05, -def.scaleZ * 0.5);
         group.add(headMesh);
         // Beak-like mouth
-        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 4), new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.4 }));
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 10), new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.4 }));
         beak.position.set(0, -def.scaleY * 0.1, -def.scaleZ * 0.6);
         beak.rotation.x = -Math.PI / 2;
         group.add(beak);
         // Wrinkled neck skin folds
         for (let ni = 0; ni < 2; ni++) {
-          const neckFold = new THREE.Mesh(new THREE.TorusGeometry(def.scaleX * 0.16, 0.025, 4, 8), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.85), roughness: 0.8 }));
+          const neckFold = new THREE.Mesh(new THREE.TorusGeometry(def.scaleX * 0.16, 0.025, 10, 8), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.85), roughness: 0.8 }));
           neckFold.rotation.y = Math.PI / 2;
           neckFold.position.set(0, -def.scaleY * 0.04, -def.scaleZ * 0.42 - ni * 0.1);
           group.add(neckFold);
@@ -2928,7 +2928,7 @@ export class MageWarsGame {
         group.add(headMesh);
         // Snout / nose disc
         const snoutMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 1.2), roughness: 0.8 });
-        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), snoutMat);
+        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), snoutMat);
         snout.scale.set(1, 0.75, 1.1);
         snout.position.set(0, -def.scaleY * 0.02, -def.scaleZ * 0.62);
         group.add(snout);
@@ -2940,14 +2940,14 @@ export class MageWarsGame {
         // Large curved tusks
         const tuskMat = new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3, metalness: 0.2 });
         for (const [tx, rz] of [[-0.16, Math.PI / 6], [0.16, -Math.PI / 6]] as [number, number][]) {
-          const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.5, 6), tuskMat);
+          const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.5, 12), tuskMat);
           tusk.position.set(tx, -def.scaleY * 0.05, -def.scaleZ * 0.58);
           tusk.rotation.z = rz;
           tusk.rotation.x = -Math.PI / 3.5;
           group.add(tusk);
         }
         // Pointed ears sticking up
-        const earGeo = new THREE.ConeGeometry(0.08, 0.22, 4);
+        const earGeo = new THREE.ConeGeometry(0.08, 0.22, 10);
         for (const ex of [-0.2, 0.2]) {
           const ear = new THREE.Mesh(earGeo, bodyMat);
           ear.position.set(ex, def.scaleY * 0.3, -def.scaleZ * 0.33);
@@ -2958,12 +2958,12 @@ export class MageWarsGame {
         const bristleMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.5), roughness: 0.9 });
         for (let bi = 0; bi < 10; bi++) {
           const h = 0.12 + Math.sin(bi / 9 * Math.PI) * 0.1;
-          const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.025, h, 3), bristleMat);
+          const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.025, h, 8), bristleMat);
           bristle.position.set(0, def.scaleY * 0.42, -def.scaleZ * 0.35 + bi * def.scaleZ * 0.08);
           group.add(bristle);
         }
         // Muscular neck hump
-        const hump = new THREE.Mesh(new THREE.SphereGeometry(def.scaleX * 0.2, 6, 5), muscleMat);
+        const hump = new THREE.Mesh(new THREE.SphereGeometry(def.scaleX * 0.2, 12, 10), muscleMat);
         hump.scale.set(1.0, 0.8, 1.2);
         hump.position.set(0, def.scaleY * 0.25, -def.scaleZ * 0.25);
         group.add(hump);
@@ -2977,7 +2977,7 @@ export class MageWarsGame {
         headMesh.castShadow = true;
         group.add(headMesh);
         // Domed forehead
-        const foreheadGeo = new THREE.SphereGeometry(def.scaleX * 0.2, 6, 5);
+        const foreheadGeo = new THREE.SphereGeometry(def.scaleX * 0.2, 12, 10);
         const forehead = new THREE.Mesh(foreheadGeo, bodyMat);
         forehead.position.set(0, def.scaleY * 0.3, -def.scaleZ * 0.42);
         forehead.scale.set(1, 0.8, 0.7);
@@ -2986,13 +2986,13 @@ export class MageWarsGame {
         const trunkMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 1.1), roughness: 0.7 });
         for (let ti = 0; ti < 6; ti++) {
           const radius = 0.12 - ti * 0.013;
-          const seg = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius + 0.01, 0.2, 6), trunkMat);
+          const seg = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius + 0.01, 0.2, 12), trunkMat);
           seg.position.set(0, def.scaleY * 0.08 - ti * 0.16, -def.scaleZ * 0.52 - ti * 0.05);
           seg.rotation.x = -Math.PI / 8 - ti * 0.12;
           group.add(seg);
         }
         // Trunk tip (curled)
-        const trunkTip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4), trunkMat);
+        const trunkTip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), trunkMat);
         trunkTip.position.set(0, def.scaleY * -0.8, -def.scaleZ * 0.72);
         group.add(trunkTip);
         // Large fan-shaped ears
@@ -3004,20 +3004,20 @@ export class MageWarsGame {
           ear.name = ex < 0 ? "leftEar" : "rightEar";
           group.add(ear);
           // Ear vein detail (inner line)
-          const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.01, def.scaleY * 0.3, 4), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.8), roughness: 0.7 }));
+          const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.01, def.scaleY * 0.3, 10), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.8), roughness: 0.7 }));
           vein.position.set(ex * def.scaleX * 0.39, def.scaleY * 0.15, -def.scaleZ * 0.32);
           group.add(vein);
         }
         // Curved ivory tusks
         const tuskMat = new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.3, metalness: 0.1 });
         for (const [tx, rz] of [[-0.22, Math.PI / 8], [0.22, -Math.PI / 8]] as [number, number][]) {
-          const tusk = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.08, 1.3, 6), tuskMat);
+          const tusk = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.08, 1.3, 12), tuskMat);
           tusk.position.set(tx, -def.scaleY * 0.15, -def.scaleZ * 0.5);
           tusk.rotation.z = rz;
           tusk.rotation.x = -Math.PI / 6;
           group.add(tusk);
           // Tusk tip
-          const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 5), tuskMat);
+          const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 10), tuskMat);
           tip.position.set(tx + rz * 0.6, -def.scaleY * 0.5, -def.scaleZ * 0.65);
           tip.rotation.x = -Math.PI / 4;
           tip.rotation.z = rz * 0.5;
@@ -3026,7 +3026,7 @@ export class MageWarsGame {
         // Wrinkled skin (torus rings)
         const wrinkleMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.85), roughness: 0.8 });
         for (let wi = 0; wi < 4; wi++) {
-          const wrinkle = new THREE.Mesh(new THREE.TorusGeometry(def.scaleX * 0.38, 0.03, 4, 12), wrinkleMat);
+          const wrinkle = new THREE.Mesh(new THREE.TorusGeometry(def.scaleX * 0.38, 0.03, 10, 12), wrinkleMat);
           wrinkle.rotation.y = Math.PI / 2;
           wrinkle.position.set(0, 0, -def.scaleZ * 0.15 + wi * def.scaleZ * 0.13);
           group.add(wrinkle);
@@ -3034,9 +3034,9 @@ export class MageWarsGame {
       }
 
       // Eyes with whites (all ground animals)
-      const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
+      const eyeGeo = new THREE.SphereGeometry(0.06, 12, 10);
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
-      const eyeWhiteGeo = new THREE.SphereGeometry(0.08, 6, 6);
+      const eyeWhiteGeo = new THREE.SphereGeometry(0.08, 12, 10);
       const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
       const eyeY = def.id === "iron_tortoise" ? -def.scaleY * 0.02 : def.scaleY * 0.18;
       const eyeZ = def.id === "iron_tortoise" ? -def.scaleZ * 0.52 : -def.scaleZ * 0.5;
@@ -3050,7 +3050,7 @@ export class MageWarsGame {
       }
 
       // Nostrils
-      const nostrilGeo = new THREE.SphereGeometry(0.04, 4, 4);
+      const nostrilGeo = new THREE.SphereGeometry(0.04, 12, 10);
       const nostrilMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
       const nostrilZ = def.id === "iron_tortoise" ? -def.scaleZ * 0.61 : def.id === "dire_boar" ? -def.scaleZ * 0.69 : -def.scaleZ * 0.65;
       const nostrilY = def.id === "iron_tortoise" ? -def.scaleY * 0.08 : def.scaleY * 0.02;
@@ -3062,10 +3062,10 @@ export class MageWarsGame {
 
       // 4 legs with joints, muscles, and hooves
       const legThick = def.id === "war_elephant" ? 0.22 : def.id === "iron_tortoise" ? 0.2 : 0.16;
-      const upperLegGeo = new THREE.CylinderGeometry(legThick * 0.85, legThick, def.scaleY * 0.32, 6);
-      const lowerLegGeo = new THREE.CylinderGeometry(legThick, legThick * 0.75, def.scaleY * 0.28, 6);
-      const jointGeo = new THREE.SphereGeometry(legThick * 1.05, 6, 4);
-      const hoofGeo = new THREE.CylinderGeometry(legThick * 1.1, legThick * 1.2, 0.08, 6);
+      const upperLegGeo = new THREE.CylinderGeometry(legThick * 0.85, legThick, def.scaleY * 0.32, 12);
+      const lowerLegGeo = new THREE.CylinderGeometry(legThick, legThick * 0.75, def.scaleY * 0.28, 12);
+      const jointGeo = new THREE.SphereGeometry(legThick * 1.05, 12, 10);
+      const hoofGeo = new THREE.CylinderGeometry(legThick * 1.1, legThick * 1.2, 0.08, 12);
       const hoofMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
       const offsets = [
         [-def.scaleX * 0.32, -def.scaleZ * 0.28],
@@ -3090,28 +3090,28 @@ export class MageWarsGame {
 
       // Tail (per-animal variation)
       if (def.id === "iron_tortoise") {
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 5), bodyMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 10), bodyMat);
         tail.position.set(0, -def.scaleY * 0.1, def.scaleZ * 0.5);
         tail.rotation.x = Math.PI / 4;
         group.add(tail);
       } else if (def.id === "war_elephant") {
         // Thin rope-like tail with tuft
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.9, 4), bodyMat);
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.9, 10), bodyMat);
         tail.position.set(0, -def.scaleY * 0.1, def.scaleZ * 0.48);
         tail.rotation.x = Math.PI / 4;
         group.add(tail);
-        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.5), roughness: 0.9 }));
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.5), roughness: 0.9 }));
         tuft.position.set(0, -def.scaleY * 0.4, def.scaleZ * 0.72);
         group.add(tuft);
       } else if (def.id === "dire_boar") {
         // Short curly tail
-        const tail = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.03, 4, 8, Math.PI * 1.5), bodyMat);
+        const tail = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.03, 10, 8, Math.PI * 1.5), bodyMat);
         tail.position.set(0, def.scaleY * 0.1, def.scaleZ * 0.48);
         tail.rotation.y = Math.PI / 2;
         group.add(tail);
       } else {
         // Rhino - medium tail
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.6, 6), accentMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.6, 12), accentMat);
         tail.position.set(0, def.scaleY * 0.05, def.scaleZ * 0.5);
         tail.rotation.x = Math.PI / 3;
         group.add(tail);
@@ -3142,7 +3142,7 @@ export class MageWarsGame {
       group.add(turret);
 
       // Turret rivet details
-      const rivetGeo = new THREE.SphereGeometry(0.025, 4, 4);
+      const rivetGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const rivetMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.3, metalness: 0.8 });
       for (const corner of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
         const rivet = new THREE.Mesh(rivetGeo, rivetMat);
@@ -3155,12 +3155,12 @@ export class MageWarsGame {
       }
 
       // Barrel with muzzle brake
-      const barrelGeo = new THREE.CylinderGeometry(0.1, 0.1, def.scaleZ * 0.5, 6);
+      const barrelGeo = new THREE.CylinderGeometry(0.1, 0.1, def.scaleZ * 0.5, 12);
       const barrel = new THREE.Mesh(barrelGeo, darkMat);
       barrel.position.set(0, def.scaleY * 0.6, -def.scaleZ * 0.4);
       barrel.rotation.x = Math.PI / 2;
       group.add(barrel);
-      const muzzleGeo = new THREE.CylinderGeometry(0.14, 0.12, 0.08, 6);
+      const muzzleGeo = new THREE.CylinderGeometry(0.14, 0.12, 0.08, 12);
       const muzzle = new THREE.Mesh(muzzleGeo, darkMat);
       muzzle.position.set(0, def.scaleY * 0.6, -def.scaleZ * 0.65);
       muzzle.rotation.x = Math.PI / 2;
@@ -3185,7 +3185,7 @@ export class MageWarsGame {
       // --- Per-animal head & features ---
       if (def.id === "drake") {
         // Neck segment
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, def.scaleZ * 0.2, 6), bodyMat);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, def.scaleZ * 0.2, 12), bodyMat);
         neck.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.4);
         neck.rotation.x = Math.PI / 2;
         group.add(neck);
@@ -3196,7 +3196,7 @@ export class MageWarsGame {
         headMesh.position.set(0, def.scaleY * 0.12, -def.scaleZ * 0.55);
         group.add(headMesh);
         // Lower jaw
-        const jaw = new THREE.Mesh(new THREE.SphereGeometry(def.scaleX * 0.18, 6, 4), bodyMat);
+        const jaw = new THREE.Mesh(new THREE.SphereGeometry(def.scaleX * 0.18, 12, 10), bodyMat);
         jaw.scale.set(0.7, 0.35, 1.2);
         jaw.position.set(0, -def.scaleY * 0.02, -def.scaleZ * 0.56);
         group.add(jaw);
@@ -3207,7 +3207,7 @@ export class MageWarsGame {
         // Backward-curving horns
         const hornMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.accentColor, 0.6), roughness: 0.4 });
         for (const hx of [-0.12, 0.12]) {
-          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.35, 5), hornMat);
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.35, 10), hornMat);
           horn.position.set(hx, def.scaleY * 0.25, -def.scaleZ * 0.42);
           horn.rotation.x = Math.PI / 4;
           horn.rotation.z = hx < 0 ? 0.15 : -0.15;
@@ -3217,29 +3217,29 @@ export class MageWarsGame {
         const spineMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.7), roughness: 0.6 });
         for (let si = 0; si < 7; si++) {
           const h = 0.1 + Math.sin(si / 6 * Math.PI) * 0.08;
-          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.035, h, 4), spineMat);
+          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.035, h, 10), spineMat);
           spine.position.set(0, def.scaleY * 0.36, -def.scaleZ * 0.3 + si * def.scaleZ * 0.1);
           group.add(spine);
         }
         // Clawed feet (hanging below)
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 });
         for (const [cx, cz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.15], [0.3, 0.15]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, def.scaleY * 0.3, 4), bodyMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, def.scaleY * 0.3, 10), bodyMat);
           leg.position.set(cx * def.scaleX, -def.scaleY * 0.35, cz * def.scaleZ);
           group.add(leg);
           for (let ci = 0; ci < 3; ci++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.12, 3), clawMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.12, 8), clawMat);
             claw.position.set(cx * def.scaleX + (ci - 1) * 0.04, -def.scaleY * 0.52, cz * def.scaleZ - 0.03);
             claw.rotation.x = -Math.PI / 6;
             group.add(claw);
           }
         }
         // Spiked tail
-        const tailBase = new THREE.Mesh(new THREE.ConeGeometry(0.15, def.scaleZ * 0.45, 6), accentMat);
+        const tailBase = new THREE.Mesh(new THREE.ConeGeometry(0.15, def.scaleZ * 0.45, 12), accentMat);
         tailBase.position.set(0, 0.05, def.scaleZ * 0.5);
         tailBase.rotation.x = Math.PI / 2;
         group.add(tailBase);
-        const tailSpike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 4), spineMat);
+        const tailSpike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 10), spineMat);
         tailSpike.position.set(0, 0.12, def.scaleZ * 0.72);
         group.add(tailSpike);
       } else if (def.id === "wyvern") {
@@ -3250,7 +3250,7 @@ export class MageWarsGame {
         headMesh.position.set(0, def.scaleY * 0.12, -def.scaleZ * 0.52);
         group.add(headMesh);
         // Pointed snout
-        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 5), accentMat);
+        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 10), accentMat);
         snout.position.set(0, def.scaleY * 0.08, -def.scaleZ * 0.68);
         snout.rotation.x = -Math.PI / 2;
         group.add(snout);
@@ -3261,29 +3261,29 @@ export class MageWarsGame {
         // Small legs with talons
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 });
         for (const [cx, cz] of [[-0.2, 0], [0.2, 0]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, def.scaleY * 0.25, 4), bodyMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, def.scaleY * 0.25, 10), bodyMat);
           leg.position.set(cx * def.scaleX, -def.scaleY * 0.3, cz * def.scaleZ);
           group.add(leg);
           for (let ci = 0; ci < 3; ci++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 3), clawMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 8), clawMat);
             claw.position.set(cx * def.scaleX + (ci - 1) * 0.035, -def.scaleY * 0.44, cz * def.scaleZ - 0.02);
             claw.rotation.x = -Math.PI / 6;
             group.add(claw);
           }
         }
         // Barbed tail
-        const tailBase = new THREE.Mesh(new THREE.ConeGeometry(0.12, def.scaleZ * 0.5, 6), accentMat);
+        const tailBase = new THREE.Mesh(new THREE.ConeGeometry(0.12, def.scaleZ * 0.5, 12), accentMat);
         tailBase.position.set(0, 0.05, def.scaleZ * 0.5);
         tailBase.rotation.x = Math.PI / 2;
         group.add(tailBase);
         // Tail barb (diamond-shaped)
-        const barb = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.15, 4), new THREE.MeshStandardMaterial({ color: darkenColor(def.accentColor, 0.7), roughness: 0.4 }));
+        const barb = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.15, 10), new THREE.MeshStandardMaterial({ color: darkenColor(def.accentColor, 0.7), roughness: 0.4 }));
         barb.position.set(0, 0.05, def.scaleZ * 0.75);
         barb.rotation.x = Math.PI / 2;
         group.add(barb);
         // Dorsal spine ridges
         for (let si = 0; si < 5; si++) {
-          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 3), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.7) }));
+          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 8), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.7) }));
           spine.position.set(0, def.scaleY * 0.36, -def.scaleZ * 0.2 + si * def.scaleZ * 0.12);
           group.add(spine);
         }
@@ -3302,7 +3302,7 @@ export class MageWarsGame {
         headMesh.position.set(0, def.scaleY * 0.1, -def.scaleZ * 0.38);
         group.add(headMesh);
         // Pug nose
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 5, 4), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 1.3), roughness: 0.8 }));
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 1.3), roughness: 0.8 }));
         nose.scale.set(1.2, 0.8, 0.7);
         nose.position.set(0, def.scaleY * 0.06, -def.scaleZ * 0.45);
         group.add(nose);
@@ -3310,12 +3310,12 @@ export class MageWarsGame {
         const earMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.accentColor, 1.1), roughness: 0.7, side: THREE.DoubleSide });
         for (const ex of [-1, 1]) {
           // Outer ear
-          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 4), earMat);
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 10), earMat);
           ear.position.set(ex * def.scaleX * 0.15, def.scaleY * 0.38, -def.scaleZ * 0.3);
           ear.rotation.z = ex * -0.2;
           group.add(ear);
           // Inner ear (pink)
-          const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.28, 4), new THREE.MeshStandardMaterial({ color: 0x664455, roughness: 0.7 }));
+          const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.28, 10), new THREE.MeshStandardMaterial({ color: 0x664455, roughness: 0.7 }));
           innerEar.position.set(ex * def.scaleX * 0.15, def.scaleY * 0.37, -def.scaleZ * 0.28);
           innerEar.rotation.z = ex * -0.2;
           group.add(innerEar);
@@ -3323,7 +3323,7 @@ export class MageWarsGame {
         // Tiny fangs
         const fangMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.3 });
         for (const fx of [-0.04, 0.04]) {
-          const fang = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 3), fangMat);
+          const fang = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.08, 8), fangMat);
           fang.position.set(fx, -def.scaleY * 0.05, -def.scaleZ * 0.42);
           fang.rotation.x = Math.PI;
           group.add(fang);
@@ -3331,20 +3331,20 @@ export class MageWarsGame {
         // Small clawed feet
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4 });
         for (const cx of [-0.15, 0.15]) {
-          const foot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), clawMat);
+          const foot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), clawMat);
           foot.position.set(cx * def.scaleX, -def.scaleY * 0.35, 0);
           group.add(foot);
         }
         // Short tail
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 5), bodyMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 10), bodyMat);
         tail.position.set(0, 0, def.scaleZ * 0.35);
         tail.rotation.x = Math.PI / 3;
         group.add(tail);
       }
 
       // Glowing eyes (all hover animals)
-      const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
-      const eyeWhiteGeo = new THREE.SphereGeometry(0.075, 6, 6);
+      const eyeGeo = new THREE.SphereGeometry(0.06, 12, 10);
+      const eyeWhiteGeo = new THREE.SphereGeometry(0.075, 12, 10);
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
       const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
       const hEyeY = def.id === "giant_bat" ? def.scaleY * 0.15 : def.scaleY * 0.2;
@@ -3374,7 +3374,7 @@ export class MageWarsGame {
         wingGroup.position.set(side * def.scaleX * 0.3, 0, 0);
 
         // Main wing bone (arm)
-        const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, wingSpan * 0.45, 4), boneMat);
+        const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, wingSpan * 0.45, 10), boneMat);
         armBone.position.set(side * wingSpan * 0.2, 0.02, -def.scaleZ * 0.05);
         armBone.rotation.z = side * Math.PI / 2;
         wingGroup.add(armBone);
@@ -3383,7 +3383,7 @@ export class MageWarsGame {
         for (let fi = 0; fi < fingerCount; fi++) {
           const angle = (-0.3 + fi * 0.6 / (fingerCount - 1));
           const boneLen = wingSpan * (0.3 + (fi === 1 ? 0.1 : 0));
-          const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.012, boneLen, 3), boneMat);
+          const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.012, boneLen, 8), boneMat);
           const bx = side * (wingSpan * 0.4 + Math.cos(angle) * boneLen * 0.3);
           const bz = -def.scaleZ * 0.15 + Math.sin(angle) * boneLen * 0.5 + fi * def.scaleZ * 0.12;
           bone.position.set(bx, 0.01, bz);
@@ -3430,7 +3430,7 @@ export class MageWarsGame {
         chest.position.y = -def.scaleY * 0.08;
         group.add(chest);
         // Thick muscular neck
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, def.scaleZ * 0.3, 6), bodyMat);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, def.scaleZ * 0.3, 12), bodyMat);
         neck.position.set(0, def.scaleY * 0.08, -def.scaleZ * 0.42);
         neck.rotation.x = Math.PI / 2.5;
         group.add(neck);
@@ -3441,19 +3441,19 @@ export class MageWarsGame {
         headMesh.castShadow = true;
         group.add(headMesh);
         // Lower jaw
-        const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 4), bodyMat);
+        const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), bodyMat);
         jaw.scale.set(0.75, 0.35, 1.3);
         jaw.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.63);
         group.add(jaw);
         // Snout
-        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.35, 5), accentMat);
+        const snout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.35, 10), accentMat);
         snout.position.set(0, def.scaleY * 0.15, -def.scaleZ * 0.82);
         snout.rotation.x = -Math.PI / 2;
         group.add(snout);
         // Multiple horns (2 large + 2 small)
         const hornMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.accentColor, 0.5), roughness: 0.4 });
         for (const [hx, hl, hz] of [[-0.15, 0.5, -0.5], [0.15, 0.5, -0.5], [-0.1, 0.25, -0.42], [0.1, 0.25, -0.42]] as [number, number, number][]) {
-          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, hl, 5), hornMat);
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, hl, 10), hornMat);
           horn.position.set(hx, def.scaleY * 0.35, def.scaleZ * hz);
           horn.rotation.x = Math.PI / 3.5;
           horn.rotation.z = hx < 0 ? 0.15 : -0.15;
@@ -3463,40 +3463,40 @@ export class MageWarsGame {
         const spineMat = new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.65), roughness: 0.6 });
         for (let si = 0; si < 10; si++) {
           const h = 0.12 + Math.sin(si / 9 * Math.PI) * 0.12;
-          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.04, h, 4), spineMat);
+          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.04, h, 10), spineMat);
           spine.position.set(0, def.scaleY * 0.4, -def.scaleZ * 0.3 + si * def.scaleZ * 0.08);
           group.add(spine);
         }
         // Four legs with claws
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4 });
         for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.25, 0.2], [0.25, 0.2]]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.07, def.scaleY * 0.35, 5), bodyMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.07, def.scaleY * 0.35, 10), bodyMat);
           leg.position.set(lx * def.scaleX, -def.scaleY * 0.38, lz * def.scaleZ);
           group.add(leg);
           for (let ci = 0; ci < 3; ci++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.15, 3), clawMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.15, 8), clawMat);
             claw.position.set(lx * def.scaleX + (ci - 1) * 0.05, -def.scaleY * 0.58, lz * def.scaleZ - 0.04);
             claw.rotation.x = -Math.PI / 5;
             group.add(claw);
           }
         }
         // Long spiked tail
-        const tailGeo = new THREE.ConeGeometry(0.2, def.scaleZ * 0.5, 6);
+        const tailGeo = new THREE.ConeGeometry(0.2, def.scaleZ * 0.5, 12);
         const tail = new THREE.Mesh(tailGeo, accentMat);
         tail.position.set(0, 0.1, def.scaleZ * 0.5);
         tail.rotation.x = Math.PI / 2;
         group.add(tail);
         // Tail spikes
         for (let ti = 0; ti < 3; ti++) {
-          const ts = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 3), spineMat);
+          const ts = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 8), spineMat);
           ts.position.set(0, 0.2, def.scaleZ * 0.5 + ti * 0.15);
           group.add(ts);
         }
         // Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.07, 6, 6);
+        const eyeGeo = new THREE.SphereGeometry(0.07, 12, 10);
         const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
         for (const ex of [-0.16, 0.16]) {
-          const ew = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+          const ew = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
           ew.position.set(ex, def.scaleY * 0.25, -def.scaleZ * 0.63);
           group.add(ew);
           const eye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -3505,15 +3505,15 @@ export class MageWarsGame {
         }
         // Nostrils with smoke hint
         for (const nx of [-0.06, 0.06]) {
-          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.035, 4, 4), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), new THREE.MeshStandardMaterial({ color: 0x222222 }));
           nostril.position.set(nx, def.scaleY * 0.12, -def.scaleZ * 0.85);
           group.add(nostril);
-          const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.3 }));
+          const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.3 }));
           smoke.position.set(nx, def.scaleY * 0.1, -def.scaleZ * 0.9);
           group.add(smoke);
         }
         // Fire trail
-        const trailGeo = new THREE.ConeGeometry(0.22, 1.2, 6);
+        const trailGeo = new THREE.ConeGeometry(0.22, 1.2, 12);
         const trailMat = new THREE.MeshBasicMaterial({ color: def.weaponProjectileColor, transparent: true, opacity: 0.4 });
         const trail = new THREE.Mesh(trailGeo, trailMat);
         trail.position.set(0, 0, def.scaleZ * 0.72);
@@ -3534,7 +3534,7 @@ export class MageWarsGame {
         breast.position.set(0, -def.scaleY * 0.05, -def.scaleZ * 0.08);
         group.add(breast);
         // Graceful curved neck
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.18, def.scaleZ * 0.25, 6), bodyMat);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.18, def.scaleZ * 0.25, 12), bodyMat);
         neck.position.set(0, def.scaleY * 0.12, -def.scaleZ * 0.38);
         neck.rotation.x = Math.PI / 2.8;
         group.add(neck);
@@ -3544,35 +3544,35 @@ export class MageWarsGame {
         headMesh.position.set(0, def.scaleY * 0.25, -def.scaleZ * 0.55);
         group.add(headMesh);
         // Hooked beak
-        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 4), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.4 }));
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 10), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.4 }));
         beak.position.set(0, def.scaleY * 0.2, -def.scaleZ * 0.67);
         beak.rotation.x = -Math.PI / 2.2;
         group.add(beak);
         // Head crest (flowing feathers backward)
         const crestMat = new THREE.MeshStandardMaterial({ color: def.accentColor, roughness: 0.5 });
         for (let ci = 0; ci < 5; ci++) {
-          const feather = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2 + ci * 0.05, 3), crestMat);
+          const feather = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2 + ci * 0.05, 8), crestMat);
           feather.position.set((ci - 2) * 0.03, def.scaleY * 0.35 - ci * 0.02, -def.scaleZ * 0.45 + ci * 0.04);
           feather.rotation.x = Math.PI / 3;
           group.add(feather);
         }
         // Eyes
         for (const ex of [-0.1, 0.1]) {
-          const ew = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+          const ew = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
           ew.position.set(ex, def.scaleY * 0.28, -def.scaleZ * 0.56);
           group.add(ew);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), new THREE.MeshBasicMaterial({ color: 0xff6600 }));
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff6600 }));
           eye.position.set(ex, def.scaleY * 0.28, -def.scaleZ * 0.59);
           group.add(eye);
         }
         // Talons
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.4 });
         for (const cx of [-0.2, 0.2]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, def.scaleY * 0.25, 4), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.5 }));
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, def.scaleY * 0.25, 10), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.5 }));
           leg.position.set(cx * def.scaleX, -def.scaleY * 0.3, 0);
           group.add(leg);
           for (let ci = 0; ci < 3; ci++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 3), clawMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 8), clawMat);
             claw.position.set(cx * def.scaleX + (ci - 1) * 0.03, -def.scaleY * 0.44, -0.02);
             claw.rotation.x = -Math.PI / 5;
             group.add(claw);
@@ -3582,7 +3582,7 @@ export class MageWarsGame {
         const tailColors = [0xff4400, 0xffaa00, 0xffcc00, 0xff6600, 0xff2200];
         for (let ti = 0; ti < 5; ti++) {
           const featherLen = def.scaleZ * (0.35 + ti * 0.08);
-          const feather = new THREE.Mesh(new THREE.ConeGeometry(0.04 + ti * 0.01, featherLen, 4), new THREE.MeshStandardMaterial({ color: tailColors[ti], roughness: 0.5, side: THREE.DoubleSide }));
+          const feather = new THREE.Mesh(new THREE.ConeGeometry(0.04 + ti * 0.01, featherLen, 10), new THREE.MeshStandardMaterial({ color: tailColors[ti], roughness: 0.5, side: THREE.DoubleSide }));
           feather.position.set((ti - 2) * 0.06, 0.05 + ti * 0.03, def.scaleZ * 0.42 + ti * 0.06);
           feather.rotation.x = Math.PI / 2.5 + ti * 0.05;
           group.add(feather);
@@ -3592,7 +3592,7 @@ export class MageWarsGame {
         aura.scale.set(def.scaleX * 0.55, def.scaleY * 0.5, def.scaleZ * 0.55);
         group.add(aura);
         // Fire trail
-        const trailGeo = new THREE.ConeGeometry(0.18, 1.0, 6);
+        const trailGeo = new THREE.ConeGeometry(0.18, 1.0, 12);
         const trailMat = new THREE.MeshBasicMaterial({ color: def.weaponProjectileColor, transparent: true, opacity: 0.35 });
         const trail = new THREE.Mesh(trailGeo, trailMat);
         trail.position.set(0, 0, def.scaleZ * 0.8);
@@ -3620,7 +3620,7 @@ export class MageWarsGame {
         chest.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.2);
         group.add(chest);
         // Muscular neck
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, def.scaleZ * 0.22, 6), featherMat);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, def.scaleZ * 0.22, 12), featherMat);
         neck.position.set(0, def.scaleY * 0.12, -def.scaleZ * 0.38);
         neck.rotation.x = Math.PI / 2.5;
         group.add(neck);
@@ -3631,17 +3631,17 @@ export class MageWarsGame {
         group.add(headMesh);
         // Sharp hooked beak
         const beakMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.4 });
-        const upperBeak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 4), beakMat);
+        const upperBeak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 10), beakMat);
         upperBeak.position.set(0, def.scaleY * 0.2, -def.scaleZ * 0.65);
         upperBeak.rotation.x = -Math.PI / 2.3;
         group.add(upperBeak);
-        const lowerBeak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), beakMat);
+        const lowerBeak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 10), beakMat);
         lowerBeak.position.set(0, def.scaleY * 0.12, -def.scaleZ * 0.6);
         lowerBeak.rotation.x = -Math.PI / 2;
         group.add(lowerBeak);
         // Head feather tufts (ear tufts)
         for (const ex of [-0.1, 0.1]) {
-          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 3), featherMat);
+          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 8), featherMat);
           tuft.position.set(ex, def.scaleY * 0.35, -def.scaleZ * 0.45);
           tuft.rotation.x = Math.PI / 5;
           tuft.rotation.z = ex < 0 ? 0.15 : -0.15;
@@ -3649,21 +3649,21 @@ export class MageWarsGame {
         }
         // Fierce eyes
         for (const ex of [-0.12, 0.12]) {
-          const ew = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 6), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+          const ew = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 10), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
           ew.position.set(ex, def.scaleY * 0.25, -def.scaleZ * 0.53);
           group.add(ew);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), new THREE.MeshBasicMaterial({ color: 0xff8800 }));
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff8800 }));
           eye.position.set(ex, def.scaleY * 0.25, -def.scaleZ * 0.56);
           group.add(eye);
         }
         // Front eagle talons
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.4 });
         for (const cx of [-0.25, 0.25]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, def.scaleY * 0.3, 5), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.5 }));
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, def.scaleY * 0.3, 10), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.5 }));
           leg.position.set(cx * def.scaleX, -def.scaleY * 0.35, -def.scaleZ * 0.15);
           group.add(leg);
           for (let ci = 0; ci < 3; ci++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.12, 3), clawMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.12, 8), clawMat);
             claw.position.set(cx * def.scaleX + (ci - 1) * 0.04, -def.scaleY * 0.52, -def.scaleZ * 0.15 - 0.03);
             claw.rotation.x = -Math.PI / 5;
             group.add(claw);
@@ -3671,24 +3671,24 @@ export class MageWarsGame {
         }
         // Rear lion paws
         for (const cx of [-0.22, 0.22]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, def.scaleY * 0.32, 5), bodyMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, def.scaleY * 0.32, 10), bodyMat);
           leg.position.set(cx * def.scaleX, -def.scaleY * 0.35, def.scaleZ * 0.2);
           group.add(leg);
-          const paw = new THREE.Mesh(new THREE.SphereGeometry(0.07, 5, 4), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.8), roughness: 0.6 }));
+          const paw = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.8), roughness: 0.6 }));
           paw.scale.set(1.2, 0.6, 1.3);
           paw.position.set(cx * def.scaleX, -def.scaleY * 0.52, def.scaleZ * 0.2);
           group.add(paw);
         }
         // Lion tail with tuft
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, def.scaleZ * 0.4, 4), bodyMat);
+        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.035, def.scaleZ * 0.4, 10), bodyMat);
         tail.position.set(0, def.scaleY * 0.05, def.scaleZ * 0.48);
         tail.rotation.x = Math.PI / 3;
         group.add(tail);
-        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.6), roughness: 0.8 }));
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), new THREE.MeshStandardMaterial({ color: darkenColor(def.bodyColor, 0.6), roughness: 0.8 }));
         tuft.position.set(0, def.scaleY * 0.2, def.scaleZ * 0.72);
         group.add(tuft);
         // Fire trail
-        const trailGeo = new THREE.ConeGeometry(0.18, 0.8, 6);
+        const trailGeo = new THREE.ConeGeometry(0.18, 0.8, 12);
         const trailMat = new THREE.MeshBasicMaterial({ color: def.weaponProjectileColor, transparent: true, opacity: 0.35 });
         const trail = new THREE.Mesh(trailGeo, trailMat);
         trail.position.set(0, 0, def.scaleZ * 0.65);
@@ -3713,7 +3713,7 @@ export class MageWarsGame {
         if (isFeathered) {
           // Feathered wings with layered flight feathers
           // Main wing bone
-          const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, wingSpan * 0.5, 4), boneMat);
+          const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, wingSpan * 0.5, 10), boneMat);
           armBone.position.set(side * wingSpan * 0.22, 0.02, 0);
           armBone.rotation.z = side * Math.PI / 2;
           wingGroup.add(armBone);
@@ -3766,7 +3766,7 @@ export class MageWarsGame {
           wingGroup.add(coverts);
         } else {
           // Dragon membrane wings with finger bones
-          const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, wingSpan * 0.5, 4), boneMat);
+          const armBone = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, wingSpan * 0.5, 10), boneMat);
           armBone.position.set(side * wingSpan * 0.22, 0.02, -def.scaleZ * 0.05);
           armBone.rotation.z = side * Math.PI / 2;
           wingGroup.add(armBone);
@@ -3775,7 +3775,7 @@ export class MageWarsGame {
           for (let fi = 0; fi < 4; fi++) {
             const angle = -0.25 + fi * 0.5 / 3;
             const boneLen = wingSpan * (0.35 + (fi === 1 ? 0.1 : 0));
-            const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.015, boneLen, 3), boneMat);
+            const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.015, boneLen, 8), boneMat);
             const bx = side * (wingSpan * 0.42 + Math.cos(angle) * boneLen * 0.25);
             const bz = -def.scaleZ * 0.15 + fi * def.scaleZ * 0.1;
             bone.position.set(bx, 0.01, bz);
@@ -3834,13 +3834,13 @@ export class MageWarsGame {
       const medallion = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.02, 8), trimMat);
       medallion.position.y = 0.04;
       group.add(medallion);
-      const innerMedal = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 6),
+      const innerMedal = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 12),
         new THREE.MeshBasicMaterial({ color: 0xffdd88, transparent: true, opacity: 0.6 }));
       innerMedal.position.y = 0.05;
       group.add(innerMedal);
       // Corner tassels
       for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-        const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.4, 4), trimMat);
+        const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.4, 10), trimMat);
         tassel.position.set(cx * def.scaleX * 0.48, -0.2, cz * def.scaleZ * 0.48);
         group.add(tassel);
       }
@@ -3880,7 +3880,7 @@ export class MageWarsGame {
       const railMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.5, transparent: true, opacity: 0.75 });
       for (const side of [-1, 1]) {
         for (let ri = 0; ri < 5; ri++) {
-          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, def.scaleY * 0.4, 4), railMat);
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, def.scaleY * 0.4, 10), railMat);
           post.position.set(side * def.scaleX * 0.32, def.scaleY * 0.3, -def.scaleZ * 0.35 + ri * def.scaleZ * 0.18);
           group.add(post);
         }
@@ -3890,7 +3890,7 @@ export class MageWarsGame {
       }
       // Main mast
       const mastMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.6, transparent: true, opacity: 0.8 });
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, def.scaleY * 1.5, 6), mastMat);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, def.scaleY * 1.5, 12), mastMat);
       mast.position.y = def.scaleY * 0.85;
       group.add(mast);
       // Ghostly sails
@@ -3902,13 +3902,13 @@ export class MageWarsGame {
       group.add(sail);
       // Bow figurehead - skull
       const skullMat = new THREE.MeshStandardMaterial({ color: 0xccddcc, roughness: 0.5, transparent: true, opacity: 0.9 });
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 6), skullMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), skullMat);
       skull.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.55);
       skull.scale.set(1, 0.85, 1.2);
       group.add(skull);
       // Skull eye glow
       for (const ex of [-0.08, 0.08]) {
-        const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4), new THREE.MeshBasicMaterial({ color: def.accentColor }));
+        const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshBasicMaterial({ color: def.accentColor }));
         eyeGlow.position.set(ex, def.scaleY * 0.08, -def.scaleZ * 0.6);
         group.add(eyeGlow);
       }
@@ -3921,7 +3921,7 @@ export class MageWarsGame {
       // Cannon ports
       for (const side of [-1, 1]) {
         for (let ci = 0; ci < 3; ci++) {
-          const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.4, 5), darkMat);
+          const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.4, 10), darkMat);
           cannon.position.set(side * def.scaleX * 0.36, def.scaleY * 0.05, -def.scaleZ * 0.2 + ci * def.scaleZ * 0.2);
           cannon.rotation.z = side * Math.PI / 2;
           group.add(cannon);
@@ -3959,7 +3959,7 @@ export class MageWarsGame {
       // Support ropes from crystal to basket
       const ropeMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.9 });
       for (const [rx, rz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, def.scaleY * 0.7, 3), ropeMat);
+        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, def.scaleY * 0.7, 8), ropeMat);
         rope.position.set(rx * def.scaleX * 0.2, def.scaleY * 0.4, rz * def.scaleZ * 0.25);
         rope.rotation.z = rx * 0.15;
         rope.rotation.x = rz * 0.1;
@@ -3967,17 +3967,17 @@ export class MageWarsGame {
       }
       // Ornate front lantern
       const lanternMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, roughness: 0.4, metalness: 0.5 });
-      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
       const lanternFrame = new THREE.Mesh(new THREE.OctahedronGeometry(0.15), lanternMat);
       lanternFrame.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.4);
       lantern.position.set(0, def.scaleY * 0.05, -def.scaleZ * 0.4);
       group.add(lanternFrame);
       group.add(lantern);
       // Small turret
-      const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.2, 6), accentMat);
+      const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.2, 12), accentMat);
       turret.position.set(0, def.scaleY * 0.1, -def.scaleZ * 0.28);
       group.add(turret);
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 4), darkMat);
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 10), darkMat);
       barrel.position.set(0, def.scaleY * 0.12, -def.scaleZ * 0.48);
       barrel.rotation.x = Math.PI / 2;
       group.add(barrel);
@@ -4008,14 +4008,14 @@ export class MageWarsGame {
     this._fpWand.add(handle);
 
     // Pommel gem
-    const pommelGeo = new THREE.SphereGeometry(0.012, 6, 6);
+    const pommelGeo = new THREE.SphereGeometry(0.012, 12, 10);
     const pommelMat = new THREE.MeshBasicMaterial({ color: 0xaa4444 });
     const pommel = new THREE.Mesh(pommelGeo, pommelMat);
     pommel.position.y = -0.12;
     this._fpWand.add(pommel);
 
     // Grip rings (3)
-    const gripGeo = new THREE.TorusGeometry(0.022, 0.004, 4, 8);
+    const gripGeo = new THREE.TorusGeometry(0.022, 0.004, 10, 8);
     const gripMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.3, metalness: 0.4 });
     for (let gi = 0; gi < 3; gi++) {
       const grip = new THREE.Mesh(gripGeo, gripMat);
@@ -4031,26 +4031,26 @@ export class MageWarsGame {
     this._fpWand.add(guard);
 
     // Shaft - twisted appearance with two segments
-    const shaftLowerGeo = new THREE.CylinderGeometry(0.013, 0.016, 0.1, 6);
+    const shaftLowerGeo = new THREE.CylinderGeometry(0.013, 0.016, 0.1, 12);
     const shaftMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.5 });
     const shaftLower = new THREE.Mesh(shaftLowerGeo, shaftMat);
     shaftLower.position.y = 0.06;
     this._fpWand.add(shaftLower);
 
     // Rune ring in middle of shaft
-    const runeRingGeo = new THREE.TorusGeometry(0.018, 0.003, 4, 8);
+    const runeRingGeo = new THREE.TorusGeometry(0.018, 0.003, 10, 8);
     const runeRingMat = new THREE.MeshBasicMaterial({ color: 0x6666cc, transparent: true, opacity: 0.7 });
     const runeRing = new THREE.Mesh(runeRingGeo, runeRingMat);
     runeRing.position.y = 0.11;
     this._fpWand.add(runeRing);
 
-    const shaftUpperGeo = new THREE.CylinderGeometry(0.01, 0.013, 0.08, 6);
+    const shaftUpperGeo = new THREE.CylinderGeometry(0.01, 0.013, 0.08, 12);
     const shaftUpper = new THREE.Mesh(shaftUpperGeo, shaftMat);
     shaftUpper.position.y = 0.15;
     this._fpWand.add(shaftUpper);
 
     // Crystal prongs around the tip (3 tiny cones angled outward)
-    const prongGeo = new THREE.ConeGeometry(0.004, 0.03, 4);
+    const prongGeo = new THREE.ConeGeometry(0.004, 0.03, 10);
     const prongMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.2, metalness: 0.7 });
     for (let pi = 0; pi < 3; pi++) {
       const angle = (pi / 3) * Math.PI * 2;
@@ -4069,7 +4069,7 @@ export class MageWarsGame {
     this._fpWand.add(this._fpWandTipMesh);
 
     // Outer glow ring around tip
-    const glowRingGeo = new THREE.TorusGeometry(0.028, 0.003, 4, 8);
+    const glowRingGeo = new THREE.TorusGeometry(0.028, 0.003, 10, 8);
     const glowRingMat = new THREE.MeshBasicMaterial({ color: 0x8888ff, transparent: true, opacity: 0.3 });
     const glowRing = new THREE.Mesh(glowRingGeo, glowRingMat);
     glowRing.position.y = 0.2;
@@ -4786,7 +4786,7 @@ export class MageWarsGame {
         ruinGeometries.push(bodyGeo);
         ruinMaterials.push(bodyMat);
         // Roof
-        const roofGeo = new THREE.ConeGeometry(bW * 0.8, 1.5, 4);
+        const roofGeo = new THREE.ConeGeometry(bW * 0.8, 1.5, 10);
         const roofMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.9 });
         const roof = new THREE.Mesh(roofGeo, roofMat);
         roof.position.set(0, bH + 0.75, 0);
@@ -4914,7 +4914,7 @@ export class MageWarsGame {
     glow.name = "artifactGlow";
     group.add(glow);
     // Rotating ring
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.03, 6, 16), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.03, 12, 16), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5 }));
     ring.name = "artifactRing";
     group.add(ring);
     // Label icon (small sprite-like indicator)
@@ -6256,14 +6256,14 @@ export class MageWarsGame {
       flagGroup.add(pedestal);
 
       // Main pole (ornate)
-      const poleGeo = new THREE.CylinderGeometry(0.05, 0.06, 3.5, 6);
+      const poleGeo = new THREE.CylinderGeometry(0.05, 0.06, 3.5, 12);
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.5, metalness: 0.4 });
       const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.y = 2.05;
       flagGroup.add(pole);
 
       // Pole rings
-      const pRingGeo = new THREE.TorusGeometry(0.07, 0.015, 4, 8);
+      const pRingGeo = new THREE.TorusGeometry(0.07, 0.015, 10, 8);
       const pRingMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.3, metalness: 0.6 });
       for (const ry of [0.6, 1.6, 2.6]) {
         const pRing = new THREE.Mesh(pRingGeo, pRingMat);
@@ -7088,7 +7088,7 @@ export class MageWarsGame {
     // Spark points: 3-4 small spheres at random offsets
     const sparkCount = 3 + Math.floor(Math.random() * 2);
     for (let i = 0; i < sparkCount; i++) {
-      const sparkGeo = new THREE.SphereGeometry(size * 0.15, 4, 4);
+      const sparkGeo = new THREE.SphereGeometry(size * 0.15, 12, 10);
       const sparkMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: color,
@@ -7147,7 +7147,7 @@ export class MageWarsGame {
       this._scene.add(projGroup);
 
       // Projectile trail
-      const trailGeo = new THREE.CylinderGeometry(wand.projectileSize * 0.3, wand.projectileSize * 0.5, 0.8, 4);
+      const trailGeo = new THREE.CylinderGeometry(wand.projectileSize * 0.3, wand.projectileSize * 0.5, 0.8, 10);
       const trailMat = new THREE.MeshBasicMaterial({ color: wand.projectileTrailColor, transparent: true, opacity: 0.6 });
       const trail = new THREE.Mesh(trailGeo, trailMat);
       trail.position.set(proj.x, proj.y, proj.z);
@@ -7168,7 +7168,7 @@ export class MageWarsGame {
       this._fpWandRecoil = 0.08;
     }
     const eyeH = p.crouching ? MW.CROUCH_EYE_HEIGHT : MW.EYE_HEIGHT;
-    const flashGeo = new THREE.SphereGeometry(0.15, 6, 6);
+    const flashGeo = new THREE.SphereGeometry(0.15, 12, 10);
     const flashMat = new THREE.MeshBasicMaterial({ color: wand.projectileColor, transparent: true, opacity: 0.8 });
     const flash = new THREE.Mesh(flashGeo, flashMat);
     flash.position.set(p.x + dx * 0.6, p.y + eyeH + dy * 0.6, p.z + dz * 0.6);
@@ -7203,7 +7203,7 @@ export class MageWarsGame {
     this._scene.add(projGroup);
 
     // Trail for vehicle projectile
-    const trailGeo = new THREE.CylinderGeometry(0.1, 0.2, 1.2, 4);
+    const trailGeo = new THREE.CylinderGeometry(0.1, 0.2, 1.2, 10);
     const trailMat = new THREE.MeshBasicMaterial({ color: def.weaponProjectileColor, transparent: true, opacity: 0.5 });
     const trail = new THREE.Mesh(trailGeo, trailMat);
     this._scene.add(trail);
@@ -7215,7 +7215,7 @@ export class MageWarsGame {
     this._projectileLights.set(proj.id, light);
 
     // Vehicle turret flash
-    const flashGeo = new THREE.SphereGeometry(0.25, 6, 6);
+    const flashGeo = new THREE.SphereGeometry(0.25, 12, 10);
     const flashMat = new THREE.MeshBasicMaterial({ color: def.weaponProjectileColor, transparent: true, opacity: 0.9 });
     const flash = new THREE.Mesh(flashGeo, flashMat);
     flash.position.set(proj.x, proj.y, proj.z);
@@ -7251,7 +7251,7 @@ export class MageWarsGame {
     proj.mesh = projGroup as any;
     this._scene.add(projGroup);
 
-    const trailGeo = new THREE.CylinderGeometry(def.secondaryProjectileSize * 0.3, def.secondaryProjectileSize * 0.6, 1.0, 4);
+    const trailGeo = new THREE.CylinderGeometry(def.secondaryProjectileSize * 0.3, def.secondaryProjectileSize * 0.6, 1.0, 10);
     const trailMat = new THREE.MeshBasicMaterial({ color: def.secondaryProjectileColor, transparent: true, opacity: 0.5 });
     const trail = new THREE.Mesh(trailGeo, trailMat);
     this._scene.add(trail);
@@ -7261,7 +7261,7 @@ export class MageWarsGame {
     this._scene.add(light);
     this._projectileLights.set(proj.id, light);
 
-    const flashGeo = new THREE.SphereGeometry(def.secondaryProjectileSize * 0.8, 6, 6);
+    const flashGeo = new THREE.SphereGeometry(def.secondaryProjectileSize * 0.8, 12, 10);
     const flashMat = new THREE.MeshBasicMaterial({ color: def.secondaryProjectileColor, transparent: true, opacity: 0.9 });
     const flash = new THREE.Mesh(flashGeo, flashMat);
     flash.position.set(proj.x, proj.y, proj.z);
@@ -7650,7 +7650,7 @@ export class MageWarsGame {
     const count = 35;
     for (let i = 0; i < count; i++) {
       const size = 0.03 + Math.random() * 0.05;
-      const geo = new THREE.SphereGeometry(size, 4, 4);
+      const geo = new THREE.SphereGeometry(size, 12, 10);
       const pColor = Math.random() > 0.3 ? color : brightenColor(color, 1.5);
       const mat = new THREE.MeshBasicMaterial({ color: pColor, transparent: true, opacity: 1.0 });
       const mesh = new THREE.Mesh(geo, mat);
@@ -7677,7 +7677,7 @@ export class MageWarsGame {
 
     // Rising soul wisps
     for (let i = 0; i < 6; i++) {
-      const wispGeo = new THREE.SphereGeometry(0.03, 4, 4);
+      const wispGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const wispMat = new THREE.MeshBasicMaterial({ color: 0xeeddff, transparent: true, opacity: 0.8 });
       const wisp = new THREE.Mesh(wispGeo, wispMat);
       wisp.position.set(x + (Math.random() - 0.5) * 0.5, y, z + (Math.random() - 0.5) * 0.5);
@@ -7712,7 +7712,7 @@ export class MageWarsGame {
     this._tempVFX.push({ mesh: sphere, timer: 0.6 });
 
     // Smoke ring
-    const smokeRingGeo = new THREE.TorusGeometry(1.5, 0.3, 6, 12);
+    const smokeRingGeo = new THREE.TorusGeometry(1.5, 0.3, 12, 12);
     const smokeRingMat = new THREE.MeshBasicMaterial({ color: 0x444444, transparent: true, opacity: 0.4 });
     const smokeRing = new THREE.Mesh(smokeRingGeo, smokeRingMat);
     smokeRing.position.set(x, y + 0.5, z);
@@ -7730,7 +7730,7 @@ export class MageWarsGame {
     const count = 55;
     for (let i = 0; i < count; i++) {
       const size = 0.04 + Math.random() * 0.08;
-      const geo = new THREE.SphereGeometry(size, 4, 4);
+      const geo = new THREE.SphereGeometry(size, 12, 10);
       const pColor = [0xff6600, 0xff3300, 0xff8800, 0xffaa00][Math.floor(Math.random() * 4)];
       const mat = new THREE.MeshBasicMaterial({ color: pColor, transparent: true, opacity: 1.0 });
       const mesh = new THREE.Mesh(geo, mat);
@@ -7749,7 +7749,7 @@ export class MageWarsGame {
 
     // Smoke particles (dark, slow-rising)
     for (let i = 0; i < 15; i++) {
-      const geo = new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 6, 6);
+      const geo = new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 12, 10);
       const mat = new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x + (Math.random() - 0.5) * 2, y, z + (Math.random() - 0.5) * 2);
@@ -7988,7 +7988,7 @@ export class MageWarsGame {
         // VFX: orange/red expanding ring of particles
         for (let i = 0; i < 30; i++) {
           const angle = (i / 30) * Math.PI * 2;
-          const geo = new THREE.SphereGeometry(0.06, 4, 4);
+          const geo = new THREE.SphereGeometry(0.06, 12, 10);
           const mat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff6600 : 0xff2200, transparent: true, opacity: 1.0 });
           const mesh = new THREE.Mesh(geo, mat);
           mesh.position.set(p.x, p.y + 1, p.z);
@@ -8010,7 +8010,7 @@ export class MageWarsGame {
             target.frozenTimer = 2;
             // VFX: blue snowflake particles
             for (let si = 0; si < 8; si++) {
-              const geo = new THREE.SphereGeometry(0.03, 4, 4);
+              const geo = new THREE.SphereGeometry(0.03, 12, 10);
               const mat = new THREE.MeshBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 1.0 });
               const mesh = new THREE.Mesh(geo, mat);
               mesh.position.set(target.x + (Math.random()-0.5)*0.8, target.y + Math.random()*1.5, target.z + (Math.random()-0.5)*0.8);
@@ -8078,7 +8078,7 @@ export class MageWarsGame {
         // VFX: purple mist particles swirling
         for (let si = 0; si < 15; si++) {
           const angle = (si / 15) * Math.PI * 2;
-          const geo = new THREE.SphereGeometry(0.05, 4, 4);
+          const geo = new THREE.SphereGeometry(0.05, 12, 10);
           const mat = new THREE.MeshBasicMaterial({ color: 0x8833aa, transparent: true, opacity: 0.7 });
           const mesh = new THREE.Mesh(geo, mat);
           mesh.position.set(p.x, p.y + 1, p.z);
@@ -8105,7 +8105,7 @@ export class MageWarsGame {
         }
         // VFX: green rising leaf particles
         for (let si = 0; si < 20; si++) {
-          const geo = new THREE.SphereGeometry(0.04, 4, 4);
+          const geo = new THREE.SphereGeometry(0.04, 12, 10);
           const mat = new THREE.MeshBasicMaterial({ color: 0x44cc22, transparent: true, opacity: 1.0 });
           const mesh = new THREE.Mesh(geo, mat);
           mesh.position.set(p.x + (Math.random()-0.5)*2, p.y, p.z + (Math.random()-0.5)*2);
@@ -8158,7 +8158,7 @@ export class MageWarsGame {
         // VFX: purple flash at origin and destination
         for (const pos of [[oldX, oldY + 1, oldZ], [p.x, p.y + 1, p.z]]) {
           for (let si = 0; si < 10; si++) {
-            const geo = new THREE.SphereGeometry(0.05, 4, 4);
+            const geo = new THREE.SphereGeometry(0.05, 12, 10);
             const mat = new THREE.MeshBasicMaterial({ color: 0xaa44ff, transparent: true, opacity: 1.0 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(pos[0], pos[1], pos[2]);
@@ -9095,7 +9095,7 @@ export class MageWarsGame {
     };
 
     // Create mesh
-    const geo = new THREE.SphereGeometry(spell.projectileSize, 6, 6);
+    const geo = new THREE.SphereGeometry(spell.projectileSize, 12, 10);
     const mat = new THREE.MeshBasicMaterial({ color: spell.projectileColor });
     proj.mesh = new THREE.Mesh(geo, mat);
     proj.mesh.position.set(proj.x, proj.y, proj.z);
@@ -9103,7 +9103,7 @@ export class MageWarsGame {
     this._projectiles.push(proj);
 
     // VFX: muzzle flash
-    const flashGeo = new THREE.SphereGeometry(spell.projectileSize * 2, 4, 4);
+    const flashGeo = new THREE.SphereGeometry(spell.projectileSize * 2, 12, 10);
     const flashMat = new THREE.MeshBasicMaterial({ color: spell.projectileColor, transparent: true, opacity: 0.8 });
     const flash = new THREE.Mesh(flashGeo, flashMat);
     flash.position.set(proj.x, proj.y, proj.z);
@@ -9280,7 +9280,7 @@ export class MageWarsGame {
                 color: 0xaa88ff, size: 0.08,
                 mesh: null, fromVehicle: false,
               };
-              const tGeo = new THREE.SphereGeometry(0.08, 4, 4);
+              const tGeo = new THREE.SphereGeometry(0.08, 12, 10);
               const tMat = new THREE.MeshBasicMaterial({ color: 0xaa88ff });
               tProj.mesh = new THREE.Mesh(tGeo, tMat);
               tProj.mesh.position.set(tProj.x, tProj.y, tProj.z);
@@ -9596,7 +9596,7 @@ export class MageWarsGame {
       // Breath VFX
       if (dragon.isBreathing && dragon.mesh) {
         const def = getDragonMountDef(dragon.dragonDefId);
-        const bGeo = new THREE.SphereGeometry(0.1, 4, 4);
+        const bGeo = new THREE.SphereGeometry(0.1, 12, 10);
         const bMat = new THREE.MeshBasicMaterial({ color: def.breathColor, transparent: true, opacity: 0.8 });
         const bMesh = new THREE.Mesh(bGeo, bMat);
         const fwdX = -Math.sin(dragon.yaw) * Math.cos(dragon.pitch);

@@ -503,7 +503,7 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.7, 8), metalDark);
       post.position.set(sx, 0.86, pz); g.add(post);
       // Gold cap on post
-      const postCap = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), goldMat);
+      const postCap = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), goldMat);
       postCap.position.set(sx, 1.22, pz); g.add(postCap);
     }
   }
@@ -549,14 +549,14 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
     hub.position.set(wx, wy, wz); hub.rotation.x = Math.PI / 2; g.add(hub);
     // 8 spokes
     for (let s = 0; s < 8; s++) {
-      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.025, 0.28, 6), rimMat);
+      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.025, 0.28, 12), rimMat);
       const a = (s / 8) * Math.PI * 2;
       spoke.position.set(wx, wy + Math.sin(a) * 0.18, wz + Math.cos(a) * 0.18);
       spoke.rotation.x = a;
       g.add(spoke);
     }
     // Decorative axle cap
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), goldMat);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), goldMat);
     cap.position.set(wx + (wx > 0 ? 0.12 : -0.12), wy, wz); g.add(cap);
     // Axle shaft
     const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8), metalDark);
@@ -596,7 +596,7 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
     chest.position.set(0, 0.78, -0.5); hg.add(chest);
 
     // Neck: tapered with more segments
-    const neckGeo = new THREE.CylinderGeometry(0.13, 0.22, 0.75, 12, 3);
+    const neckGeo = new THREE.CylinderGeometry(0.13, 0.22, 0.75, 12, 8);
     const neck = new THREE.Mesh(neckGeo, horseLightMat);
     neck.name = "neck"; neck.position.set(0, 1.05, -0.7); neck.rotation.x = -0.5; neck.castShadow = true; hg.add(neck);
 
@@ -606,18 +606,18 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
     const head = new THREE.Mesh(headGeo, horseLightMat);
     head.name = "head"; head.position.set(0, 1.28, -1.1); head.rotation.x = -0.15; head.castShadow = true; hg.add(head);
     // Snout/muzzle
-    const snoutGeo = new THREE.SphereGeometry(0.12, 10, 8);
+    const snoutGeo = new THREE.SphereGeometry(0.12, 16, 12);
     snoutGeo.scale(0.8, 0.6, 1.0);
     const snout = new THREE.Mesh(snoutGeo, new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 0.6 }));
     snout.position.set(0, 1.22, -1.35); hg.add(snout);
     // Nostrils
     for (const nx of [-0.05, 0.05]) {
-      const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+      const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 10), new THREE.MeshStandardMaterial({ color: 0x443322 }));
       nostril.position.set(nx, 1.2, -1.42); hg.add(nostril);
     }
     // Eyes
     for (const ex of [-0.1, 0.1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshStandardMaterial({ color: 0x221100, roughness: 0.2, metalness: 0.3 }));
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), new THREE.MeshStandardMaterial({ color: 0x221100, roughness: 0.2, metalness: 0.3 }));
       eye.position.set(ex, 1.32, -1.15); hg.add(eye);
     }
 
@@ -664,7 +664,7 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
       upperLeg.name = `leg_${li}`;
       upperLeg.position.set(lp[0], 0.35 + lp[1], lp[2]); upperLeg.castShadow = true; hg.add(upperLeg);
       // Knee joint
-      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), legMat);
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), legMat);
       knee.position.set(lp[0], 0.18 + lp[1], lp[2]); hg.add(knee);
       // Lower leg (thinner)
       const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.3, 8), legMat);
@@ -676,15 +676,15 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
 
     // Bridle/harness on head
     const bridleMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.6, metalness: 0.1 });
-    const noseband = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.012, 6, 16), bridleMat);
+    const noseband = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.012, 12, 16), bridleMat);
     noseband.position.set(0, 1.25, -1.2); noseband.rotation.y = Math.PI / 2; hg.add(noseband);
     // Bit ring
-    const bitRing = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 6, 12), metalMat);
+    const bitRing = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 12, 12), metalMat);
     bitRing.position.set(0.12, 1.2, -1.2); hg.add(bitRing);
 
     // Reins (to chariot)
     const reinMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.7 });
-    const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 2.2, 6), reinMat);
+    const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 2.2, 12), reinMat);
     rein.position.set(0, 0.92, 1.0); rein.rotation.x = Math.PI / 2; hg.add(rein);
 
     hg.position.set(h === 0 ? -0.7 : 0.7, 0, -3.2); g.add(hg);
@@ -715,7 +715,7 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
     shieldBack.position.set(sx, 0.85, 0); shieldBack.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; g.add(shieldBack);
     const shieldFace = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), teamMat);
     shieldFace.position.set(sx > 0 ? sx + 0.01 : sx - 0.01, 0.85, 0); shieldFace.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; g.add(shieldFace);
-    const shieldBoss = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), goldMat);
+    const shieldBoss = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), goldMat);
     shieldBoss.position.set(sx > 0 ? sx + 0.02 : sx - 0.02, 0.85, 0); g.add(shieldBoss);
     const shieldRim = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.22, 16), metalDark);
     shieldRim.position.set(sx > 0 ? sx + 0.015 : sx - 0.015, 0.85, 0); shieldRim.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; g.add(shieldRim);
@@ -724,14 +724,14 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
   // ── Lantern hooks on front posts ──
   for (const lx of [-0.8, 0.8]) {
     // Hook arm
-    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 6), metalDark);
+    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 12), metalDark);
     hook.position.set(lx, 1.25, -1.3); hook.rotation.z = lx > 0 ? -0.4 : 0.4; g.add(hook);
     // Lantern cage
     const lanternCage = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.12, 8, 1, true), metalDark);
     lanternCage.position.set(lx + (lx > 0 ? 0.08 : -0.08), 1.15, -1.3); g.add(lanternCage);
     // Lantern glow
     const lanternGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.035, 8, 6),
+      new THREE.SphereGeometry(0.035, 16, 12),
       new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xff8811, emissiveIntensity: 0.8 }),
     );
     lanternGlow.position.set(lx + (lx > 0 ? 0.08 : -0.08), 1.15, -1.3); g.add(lanternGlow);
@@ -762,7 +762,7 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
     const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), armorMat);
     pauldron.position.set(sx, 1.5, 0.3); pauldron.castShadow = true; g.add(pauldron);
     // Pauldron edge trim
-    const pauldronTrim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 6, 16, Math.PI), goldMat);
+    const pauldronTrim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 12, 16, Math.PI), goldMat);
     pauldronTrim.position.set(sx, 1.44, 0.3); pauldronTrim.rotation.x = Math.PI / 2; pauldronTrim.rotation.z = sx > 0 ? 0.3 : -0.3; g.add(pauldronTrim);
   }
 
@@ -772,7 +772,7 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
     const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8), chainmailMat);
     upperArm.position.set(sx, 1.3, 0.3); g.add(upperArm);
     // Elbow
-    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), armorMat);
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), armorMat);
     elbow.position.set(sx, 1.14, 0.3); g.add(elbow);
     // Forearm (reaching forward for reins)
     const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.35, 8), chainmailMat);
@@ -789,7 +789,7 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
     const greave = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8), armorMat);
     greave.position.set(sx, 0.42, 0.3); g.add(greave);
     // Knee cop
-    const kneeCop = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), goldMat);
+    const kneeCop = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), goldMat);
     kneeCop.position.set(sx, 0.57, 0.2); g.add(kneeCop);
   }
 
@@ -828,11 +828,11 @@ function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
   const cape = new THREE.Mesh(capeGeo, capeMat);
   cape.name = "cape"; cape.position.set(0, 1.25, 0.72); cape.rotation.x = 0.25; g.add(cape);
   // Cape clasp at neck
-  const capeClasp = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), goldMat);
+  const capeClasp = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), goldMat);
   capeClasp.position.set(0, 1.55, 0.5); g.add(capeClasp);
 
   // Whip arm
-  const whipArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 1.2, 6), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.7 }));
+  const whipArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 1.2, 12), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.7 }));
   whipArm.name = "whip"; whipArm.position.set(0.3, 1.5, -0.3); whipArm.rotation.x = Math.PI / 2; whipArm.visible = false; g.add(whipArm);
 
   return g;
@@ -2018,7 +2018,7 @@ export class ChariotGame {
           // tree
           const trunkH = 2 + rng() * 4;
           const trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.3, trunkH, 6),
+            new THREE.CylinderGeometry(0.15, 0.3, trunkH, 12),
             new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.9 })
           );
           trunk.position.copy(pos); trunk.position.y = trunkH / 2; trunk.castShadow = true;
@@ -2028,7 +2028,7 @@ export class ChariotGame {
           // use cone for forest, sphere otherwise
           const foliageGeo = def.specialScenery === "forest"
             ? new THREE.ConeGeometry(1.5 + rng(), 3 + rng() * 2, 6)
-            : new THREE.SphereGeometry(1.2 + rng() * 1.5, 8, 6);
+            : new THREE.SphereGeometry(1.2 + rng() * 1.5, 16, 12);
           const foliage = new THREE.Mesh(foliageGeo, new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.85 }));
           foliage.position.copy(pos); foliage.position.y = trunkH + 1; foliage.castShadow = true;
           this._scene.add(foliage); this._sceneryObjects.push(foliage);
@@ -2160,13 +2160,13 @@ export class ChariotGame {
         const xOff = (s - 2.5) * 0.45;
         // body (capsule-like: cylinder + sphere top)
         const body = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.1, 0.12, 0.5, 6),
+          new THREE.CylinderGeometry(0.1, 0.12, 0.5, 12),
           new THREE.MeshStandardMaterial({ color: specColors[s % specColors.length], roughness: 0.7 })
         );
         body.position.set(0, 0.25, 0); specGroup.add(body);
         // head
         const head = new THREE.Mesh(
-          new THREE.SphereGeometry(0.09, 6, 4),
+          new THREE.SphereGeometry(0.09, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0xddbb88, roughness: 0.6 })
         );
         head.position.set(0, 0.55, 0); specGroup.add(head);
@@ -2187,13 +2187,13 @@ export class ChariotGame {
         for (const side of [-1, 1]) {
           const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * (pt.width / 2 + 1.5)));
           const post = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.1, 0.1, 3, 6),
+            new THREE.CylinderGeometry(0.1, 0.1, 3, 12),
             new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 })
           );
           post.position.copy(pos); post.position.y = 1.5; this._scene.add(post);
           // flame
           const flame = new THREE.Mesh(
-            new THREE.SphereGeometry(0.3, 6, 4),
+            new THREE.SphereGeometry(0.3, 12, 10),
             new THREE.MeshStandardMaterial({ color: 0xff8833, emissive: 0xff6622, emissiveIntensity: 2.0, toneMapped: false })
           );
           flame.position.copy(pos); flame.position.y = 3.2; this._scene.add(flame);
@@ -2361,7 +2361,7 @@ export class ChariotGame {
         mesh.add(headlight.target);
         // headlight glow mesh
         const glowMesh = new THREE.Mesh(
-          new THREE.SphereGeometry(0.12, 6, 4),
+          new THREE.SphereGeometry(0.12, 12, 10),
           new THREE.MeshBasicMaterial({ color: 0xffeedd })
         );
         glowMesh.position.set(0, 1.5, -3.5);
@@ -3314,7 +3314,7 @@ export class ChariotGame {
 
   private _spawnDust(pos: THREE.Vector3): void {
     const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.15, 4, 4),
+      new THREE.SphereGeometry(0.15, 12, 10),
       new THREE.MeshBasicMaterial({ color: 0x887766, transparent: true, opacity: 0.4 })
     );
     mesh.position.copy(pos); mesh.position.y += 0.2; this._scene.add(mesh);
@@ -3328,7 +3328,7 @@ export class ChariotGame {
     for (let i = 0; i < count; i++) {
       const sparkColor = Math.random() > 0.3 ? 0xffaa44 : 0xffdd66;
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 4, 4),
+        new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 12, 10),
         new THREE.MeshStandardMaterial({ color: sparkColor, emissive: sparkColor, emissiveIntensity: 2.0, toneMapped: false })
       );
       mesh.position.copy(pos); this._scene.add(mesh);
@@ -3551,7 +3551,7 @@ export class ChariotGame {
       );
       const flameColor = Math.random() > 0.5 ? 0xff6600 : 0xffaa00;
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15 + Math.random() * 0.15, 4, 4),
+        new THREE.SphereGeometry(0.15 + Math.random() * 0.15, 12, 10),
         new THREE.MeshStandardMaterial({ color: flameColor, emissive: flameColor, emissiveIntensity: 1.5, transparent: true, opacity: 0.85, toneMapped: false })
       );
       mesh.position.copy(behind);
@@ -3573,7 +3573,7 @@ export class ChariotGame {
       const smokePos = p.pos.clone();
       smokePos.y += 0.1;
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2 + Math.random() * 0.2, 4, 4),
+        new THREE.SphereGeometry(0.2 + Math.random() * 0.2, 12, 10),
         new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3 })
       );
       mesh.position.copy(smokePos);
@@ -4117,7 +4117,7 @@ export class ChariotGame {
       // two poles with connecting beam
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x4488cc, emissive: 0x224466, emissiveIntensity: 0.4, toneMapped: false });
       for (const s of [-1, 1]) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4, 6), poleMat);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4, 12), poleMat);
         pole.position.copy(pt.pos).add(pt.right.clone().multiplyScalar(s * hw));
         pole.position.y = 2; pole.castShadow = true; this._scene.add(pole);
       }
@@ -4156,7 +4156,7 @@ export class ChariotGame {
       smokePos.z += (Math.random() - 0.5) * 0.8;
       const size = 0.15 + dmgPct * 0.2;
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(size, 4, 4),
+        new THREE.SphereGeometry(size, 12, 10),
         new THREE.MeshBasicMaterial({ color: dmgPct > 0.8 ? 0x222222 : 0x666666, transparent: true, opacity: 0.4 })
       );
       mesh.position.copy(smokePos);
@@ -4500,7 +4500,7 @@ export class ChariotGame {
         // grass tuft: thin tall triangle
         const h = 0.3 + rng() * 0.4;
         const blade = new THREE.Mesh(
-          new THREE.ConeGeometry(0.08, h, 3),
+          new THREE.ConeGeometry(0.08, h, 8),
           new THREE.MeshStandardMaterial({ color: grassColor.clone().offsetHSL(0, 0, (rng() - 0.5) * 0.08), roughness: 0.85 })
         );
         blade.position.copy(pos); blade.position.y = h / 2;
@@ -4611,7 +4611,7 @@ export class ChariotGame {
       brakeLight.position.set(0, 0.8, 1.4);
       p.mesh.add(brakeLight);
       const brakeMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 6, 4),
+        new THREE.SphereGeometry(0.12, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff2200, emissiveIntensity: 2.0, toneMapped: false })
       );
       brakeMesh.name = "brakeLightMesh";

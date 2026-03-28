@@ -30,7 +30,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       wall.rotation.y = Math.random() * Math.PI; wall.castShadow = !isGhost; mctx.scene.add(wall);
       // Clock gear embedded in some walls
       if (Math.random() > 0.6) {
-        const embeddedGear = new THREE.Mesh(new THREE.TorusGeometry(0.4 + Math.random() * 0.3, 0.05, 4, [6, 8, 10][Math.floor(Math.random() * 3)]), clockMat);
+        const embeddedGear = new THREE.Mesh(new THREE.TorusGeometry(0.4 + Math.random() * 0.3, 0.05, 10, [6, 8, 10][Math.floor(Math.random() * 3)]), clockMat);
         embeddedGear.position.set(wx, getTerrainHeight(wx, wz, 0.5) + 1 + Math.random() * 2, wz + 0.21);
         embeddedGear.rotation.y = wall.rotation.y; mctx.scene.add(embeddedGear);
       }
@@ -78,7 +78,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
 
     // Floating gears (more varied sizes)
     for (let i = 0; i < 20; i++) {
-      const gear = new THREE.Mesh(new THREE.TorusGeometry(0.2 + Math.random() * 0.6, 0.04 + Math.random() * 0.04, 4, [6, 8, 10, 12][i % 4]), clockMat);
+      const gear = new THREE.Mesh(new THREE.TorusGeometry(0.2 + Math.random() * 0.6, 0.04 + Math.random() * 0.04, 10, [6, 8, 10, 12][i % 4]), clockMat);
       gear.position.set((Math.random() - 0.5) * w * 0.7, 0.5 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
       gear.rotation.set(Math.random(), Math.random(), Math.random()); mctx.scene.add(gear);
     }
@@ -218,7 +218,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const plate = new THREE.Mesh(new THREE.CircleGeometry(0.4, 20), clockMat);
       mech.add(plate);
       for (let g = 0; g < 3; g++) {
-        const gear = new THREE.Mesh(new THREE.TorusGeometry(0.08 + g * 0.05, 0.015, 4, [6, 8, 10][g]), clockMat);
+        const gear = new THREE.Mesh(new THREE.TorusGeometry(0.08 + g * 0.05, 0.015, 10, [6, 8, 10][g]), clockMat);
         gear.position.set((Math.random()-0.5)*0.2, (Math.random()-0.5)*0.2, 0.02);
         gear.rotation.z = Math.random(); mech.add(gear);
       }
@@ -286,7 +286,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       hgNeck.position.y = 0.7; hgMon.add(hgNeck);
       // Sand particles (tiny sphere cluster in bottom cone area)
       for (let sp = 0; sp < 8; sp++) {
-        const hgSand = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 6), sandMat);
+        const hgSand = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 12), sandMat);
         hgSand.position.set((Math.random() - 0.5) * 0.15, 0.2 + Math.random() * 0.2, (Math.random() - 0.5) * 0.15);
         hgMon.add(hgSand);
       }
@@ -356,7 +356,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       // Crackling edge sparks (tiny bright spheres)
       for (let sp = 0; sp < 8; sp++) {
         const spA = (sp / 8) * Math.PI * 2;
-        const trSpark = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6),
+        const trSpark = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaccff, emissiveIntensity: 3.0 }));
         trSpark.position.set(Math.cos(spA) * 1.05, Math.sin(spA) * 1.05, 0.02); trPtl.add(trSpark);
       }
@@ -390,7 +390,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const ctMn = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.35, 0.015), handMat);
       ctMn.position.set(0, ctH * 0.75 + 0.17, 0.79); ctMn.rotation.z = Math.random() * Math.PI * 2; ctTwr.add(ctMn);
       // Peaked roof
-      const ctRoof = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.5, 4), wallMat);
+      const ctRoof = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.5, 10), wallMat);
       ctRoof.position.y = ctH + 0.75; ctRoof.rotation.y = Math.PI / 4; ctTwr.add(ctRoof);
       const ctx = (Math.random() - 0.5) * w * 0.4, ctz = (Math.random() - 0.5) * d * 0.4;
       ctTwr.position.set(ctx, getTerrainHeight(ctx, ctz, 0.5), ctz);
@@ -1015,13 +1015,13 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
         const vineCount = 2 + Math.floor(Math.random() * 3);
         for (let vi = 0; vi < vineCount; vi++) {
           const vineH = 0.3 + Math.random() * 0.5;
-          const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, vineH, 5), ivyMat);
+          const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, vineH, 10), ivyMat);
           vine.position.set((Math.random() - 0.5) * rw * 0.5, vineH / 2 + Math.random() * bh * 0.3, rd / 2 + 0.05);
           vine.rotation.z = (Math.random() - 0.5) * 0.3;
           buildGroup.add(vine);
           // Leaves
           for (let lfi = 0; lfi < 4; lfi++) {
-            const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), new THREE.MeshStandardMaterial({ color: 0x3a5028, roughness: 0.7 }));
+            const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), new THREE.MeshStandardMaterial({ color: 0x3a5028, roughness: 0.7 }));
             leaf.scale.set(1.5, 0.5, 1.0);
             leaf.position.set(vine.position.x + (Math.random() - 0.5) * 0.12, vine.position.y - vineH / 2 + lfi * vineH * 0.25, rd / 2 + 0.07);
             buildGroup.add(leaf);
@@ -1247,7 +1247,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       pole.castShadow = true;
       lampGroup.add(pole);
       // Decorative ring on pole
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 6, 12), lampMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 12, 12), lampMat);
       ring.rotation.x = Math.PI / 2;
       ring.position.y = 2.5;
       lampGroup.add(ring);
@@ -1260,11 +1260,11 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       const cageBot = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.02, 0.22), lampMat);
       cageBot.position.set(0.8, 3.15, 0);
       lampGroup.add(cageBot);
-      const cageTop = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.12, 6), lampMat);
+      const cageTop = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.12, 12), lampMat);
       cageTop.position.set(0.8, 3.45, 0);
       lampGroup.add(cageTop);
       for (let cb = 0; cb < 4; cb++) {
-        const cbar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.28, 6), lampMat);
+        const cbar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.28, 12), lampMat);
         const cba = (cb / 4) * Math.PI * 2;
         cbar.position.set(0.8 + Math.cos(cba) * 0.1, 3.3, Math.sin(cba) * 0.1);
         lampGroup.add(cbar);
@@ -1356,7 +1356,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
     towerGroup.add(towerBase2);
     // Stone band detail
     for (const ty of [2, 4, 6]) {
-      const tBand = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.06, 6, 28, Math.PI * 1.5), new THREE.MeshStandardMaterial({ color: 0x605548, roughness: 0.88 }));
+      const tBand = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.06, 12, 28, Math.PI * 1.5), new THREE.MeshStandardMaterial({ color: 0x605548, roughness: 0.88 }));
       tBand.rotation.x = Math.PI / 2;
       tBand.position.y = ty;
       towerGroup.add(tBand);
@@ -1429,7 +1429,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       dtGroup.add(trunk);
       // Bark rings
       for (let bk = 0; bk < 3; bk++) {
-        const barkRing = new THREE.Mesh(new THREE.TorusGeometry(0.1 + bk * 0.01, 0.015, 6, 10), deadTreeMat);
+        const barkRing = new THREE.Mesh(new THREE.TorusGeometry(0.1 + bk * 0.01, 0.015, 12, 10), deadTreeMat);
         barkRing.rotation.x = Math.PI / 2;
         barkRing.position.y = 0.5 + bk * (trunkH * 0.25);
         dtGroup.add(barkRing);
@@ -1437,7 +1437,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       // Exposed roots
       for (let rt = 0; rt < 3; rt++) {
         const rootAngle = rt * (Math.PI * 2 / 3) + Math.random() * 0.5;
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.6, 6), deadTreeMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.6, 12), deadTreeMat);
         root.position.set(Math.cos(rootAngle) * 0.25, 0.15, Math.sin(rootAngle) * 0.25);
         root.rotation.z = rootAngle + Math.PI / 2;
         root.rotation.x = 0.5;
@@ -1446,7 +1446,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       // Bare branches with sub-branches
       for (let br = 0; br < 4; br++) {
         const brLen = 0.6 + Math.random() * 1.5;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, brLen, 6), deadTreeMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.04, brLen, 12), deadTreeMat);
         const brAngle = Math.random() * Math.PI * 2;
         const brY = trunkH * (0.5 + Math.random() * 0.4);
         branch.position.set(Math.cos(brAngle) * 0.2, brY, Math.sin(brAngle) * 0.2);
@@ -1456,7 +1456,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
         // Sub-branch
         if (Math.random() > 0.4) {
           const subLen = 0.3 + Math.random() * 0.4;
-          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, subLen, 5), deadTreeMat);
+          const sub = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, subLen, 10), deadTreeMat);
           sub.position.set(Math.cos(brAngle) * 0.5, brY + brLen * 0.3, Math.sin(brAngle) * 0.5);
           sub.rotation.z = (Math.random() - 0.5) * 1.0;
           dtGroup.add(sub);
@@ -1464,7 +1464,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       }
       // Knot detail
       if (Math.random() > 0.5) {
-        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.95 }));
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.95 }));
         knot.position.set(0.1, trunkH * 0.4, 0);
         dtGroup.add(knot);
       }
@@ -1486,7 +1486,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
         barrelMesh.castShadow = true;
         barrelGroup.add(barrelMesh);
         for (const by of [0.12, 0.35, 0.58]) {
-          const band = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.012, 6, 20), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.6 }));
+          const band = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.012, 12, 20), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.6 }));
           band.rotation.x = Math.PI / 2;
           band.position.y = by;
           barrelGroup.add(band);
@@ -1514,7 +1514,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
         // Corner nails
         for (const nx of [-crateSize * 0.4, crateSize * 0.4]) {
           for (const ny of [crateSize * 0.2, crateSize * 0.8]) {
-            const nail = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.4 }));
+            const nail = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.4 }));
             nail.position.set(nx, ny, crateSize / 2 + 0.01);
             crateGroup.add(nail);
           }
@@ -1530,12 +1530,12 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
         platform.rotation.z = 0.4;
         cartGroup.add(platform);
         for (const [wx2, wz2] of [[-0.5, -0.35], [0.5, -0.35], [-0.5, 0.35], [0.5, 0.35]] as [number, number][]) {
-          const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 6, 16), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
+          const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 12, 16), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
           wheel.position.set(wx2, 0.15, wz2);
           cartGroup.add(wheel);
           // Spokes
           for (let sp = 0; sp < 4; sp++) {
-            const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.28, 4), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
+            const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.28, 10), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
             spoke.rotation.z = sp * (Math.PI / 4);
             spoke.position.set(wx2, 0.15, wz2);
             cartGroup.add(spoke);
@@ -1546,7 +1546,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
         mctx.envGroup.add(cartGroup);
       } else {
         // Sack
-        const sack = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 }));
+        const sack = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 }));
         sack.scale.set(1.0, 0.6, 0.8);
         sack.position.set(px, 0.12, pz);
         mctx.envGroup.add(sack);
@@ -1599,7 +1599,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       bPole.rotation.z = (Math.random() - 0.5) * 0.3;
       bannerGroup.add(bPole);
       // Pole tip (ornament)
-      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshStandardMaterial({ color: 0x888844, metalness: 0.4, roughness: 0.5 }));
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshStandardMaterial({ color: 0x888844, metalness: 0.4, roughness: 0.5 }));
       tip.position.y = 4;
       bannerGroup.add(tip);
       const clothMat = new THREE.MeshStandardMaterial({ color: bannerColors[bi % bannerColors.length], roughness: 0.8, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
@@ -1692,7 +1692,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       torchGroup.add(handle);
       // Flame glow
       if (Math.random() > 0.3) {
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshStandardMaterial({ color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 1.0 }));
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), new THREE.MeshStandardMaterial({ color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 1.0 }));
         flame.position.set(0.15, 3.05, 0);
         torchGroup.add(flame);
         const tLight = new THREE.PointLight(0xff6622, 0.5, 8);
@@ -1723,7 +1723,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       }
       // Pointed ears
       for (const es of [-1, 1]) {
-        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.05, 6), gargoyleStoneMat);
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.05, 12), gargoyleStoneMat);
         ear.position.set(es * 0.09, 0.18, 0.1);
         ear.rotation.z = es * 0.7;
         gg.add(ear);
@@ -1759,7 +1759,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       // Clawed feet (3 per side)
       for (const fs of [-1, 1]) {
         for (let ci2 = 0; ci2 < 3; ci2++) {
-          const claw = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.035, 6), gargoyleStoneMat);
+          const claw = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.035, 12), gargoyleStoneMat);
           claw.position.set(fs * 0.05 + (ci2 - 1) * 0.014, -0.15, 0.1 + ci2 * 0.006);
           claw.rotation.x = Math.PI;
           gg.add(claw);
@@ -1790,7 +1790,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       }
       // Smaller debris
       for (let sd = 0; sd < 5 + Math.floor(Math.random() * 4); sd++) {
-        const debris = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 8, 6), new THREE.MeshStandardMaterial({ color: 0x5a5548 + Math.floor(Math.random() * 0x101010), roughness: 1.0 }));
+        const debris = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 16, 12), new THREE.MeshStandardMaterial({ color: 0x5a5548 + Math.floor(Math.random() * 0x101010), roughness: 1.0 }));
         debris.position.set((Math.random() - 0.5) * 2, 0.03, (Math.random() - 0.5) * 1);
         ceg.add(debris);
       }
@@ -1842,14 +1842,14 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       }
       // Joint knobs
       for (let jk = 0; jk < 3 + Math.floor(Math.random() * 3); jk++) {
-        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 10, 8), boneMat2);
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 16, 12), boneMat2);
         knob.position.set((Math.random() - 0.5) * 0.5, 0.06, (Math.random() - 0.5) * 0.5);
         bp.add(knob);
       }
       // Rib cage arcs
       if (Math.random() > 0.4) {
         for (let rb2 = 0; rb2 < 3; rb2++) {
-          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 6, 10, Math.PI * 0.7), boneMat2);
+          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 12, 10, Math.PI * 0.7), boneMat2);
           rib.position.set(0, 0.04 + rb2 * 0.03, rb2 * 0.02);
           rib.rotation.y = Math.random() * 0.5;
           bp.add(rib);
@@ -1886,7 +1886,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
         chainGrp.add(link);
       }
       // Hook at bottom
-      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 6, 10, Math.PI * 1.5), ironMat2);
+      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 12, 10, Math.PI * 1.5), ironMat2);
       hook.position.y = -linkCount * 0.12 - 0.05;
       chainGrp.add(hook);
       chainGrp.position.set((Math.random() - 0.5) * w * 0.4, 3.5 + Math.random() * 2, (Math.random() - 0.5) * d * 0.4);
@@ -1959,7 +1959,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       }
       // Hanging chain above cage
       for (let cl2 = 0; cl2 < 3; cl2++) {
-        const link2 = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 6, 10), ironMat2);
+        const link2 = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.01, 12, 10), ironMat2);
         link2.position.y = cageH + 0.1 + cl2 * 0.08;
         link2.rotation.x = cl2 % 2 === 0 ? 0 : Math.PI / 2;
         cage.add(link2);
@@ -2015,7 +2015,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       }
       // Broken chain links
       for (let bcl = 0; bcl < 3; bcl++) {
-        const bLink = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 6, 8), ironMat2);
+        const bLink = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.008, 12, 8), ironMat2);
         bLink.position.set((Math.random() - 0.5) * 0.3, 0.08 + bcl * 0.06, (Math.random() - 0.5) * 0.3);
         bLink.rotation.x = bcl % 2 === 0 ? 0 : Math.PI / 2;
         chandGrp.add(bLink);
@@ -2173,7 +2173,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         stallGroup.add(pole);
       }
       // Cross bracing
-      const crossBrace = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2.0, 6), woodMat);
+      const crossBrace = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2.0, 12), woodMat);
       crossBrace.rotation.z = 0.9;
       crossBrace.position.set(0, 1.25, -0.6);
       stallGroup.add(crossBrace);
@@ -2184,7 +2184,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       stallGroup.add(canvas);
       // Scalloped valance trim
       for (let ei = 0; ei < 8; ei++) {
-        const scallop = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.15, 4), canvasMat);
+        const scallop = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.15, 10), canvasMat);
         scallop.position.set(-0.8 + ei * 0.25, 2.42, 0.8);
         scallop.rotation.x = Math.PI;
         stallGroup.add(scallop);
@@ -2205,7 +2205,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         bracket.position.set(cbx, 0.8, 0);
         stallGroup.add(bracket);
         // Metal ring on bracket
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 6, 10), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 12, 10), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
         ring.position.set(cbx, 0.9, 0.04);
         stallGroup.add(ring);
       }
@@ -2217,7 +2217,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         if (wr < 0.3) {
           wareMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff, roughness: 0.6 }));
         } else if (wr < 0.6) {
-          wareMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff, roughness: 0.5 }));
+          wareMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff, roughness: 0.5 }));
         } else {
           wareMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.15, 8), new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff, roughness: 0.6 }));
         }
@@ -2253,7 +2253,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       lionHead.position.set(Math.cos(lhAngle) * 1.82, 0.65, Math.sin(lhAngle) * 1.82);
       fountainGroup.add(lionHead);
       // Mane
-      const mane = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), fMat);
+      const mane = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), fMat);
       mane.scale.set(1, 0.7, 0.5);
       mane.position.set(Math.cos(lhAngle) * 1.92, 0.68, Math.sin(lhAngle) * 1.92);
       fountainGroup.add(mane);
@@ -2265,7 +2265,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
     fountainGroup.add(fCol);
     // Column bands
     for (const cby of [1.0, 2.0, 3.0]) {
-      const cBand = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 6, 12), fMat);
+      const cBand = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 12, 12), fMat);
       cBand.rotation.x = Math.PI / 2;
       cBand.position.y = cby;
       fountainGroup.add(cBand);
@@ -2279,7 +2279,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
     fGuard.position.y = 3.35;
     fountainGroup.add(fGuard);
     // Pommel
-    const fPommel = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), swordMat);
+    const fPommel = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), swordMat);
     fPommel.position.y = 3.25;
     fountainGroup.add(fPommel);
     // Water
@@ -2426,7 +2426,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         buildGroup.add(dPost);
       }
       // Door handle (torus ring)
-      const handle = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.006, 6, 10), new THREE.MeshStandardMaterial({ color: 0x888844, metalness: 0.5, roughness: 0.4 }));
+      const handle = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.006, 12, 10), new THREE.MeshStandardMaterial({ color: 0x888844, metalness: 0.5, roughness: 0.4 }));
       handle.position.set(0.18, 0.7, bd / 2 + 0.065);
       buildGroup.add(handle);
       // Keyhole
@@ -2468,7 +2468,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         if (Math.random() > 0.4) {
           const braceLen = Math.sqrt((bw * 0.3) ** 2 + (bh * 0.25) ** 2);
           for (const bsx of [-1, 1]) {
-            const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, braceLen, 6), beamMat);
+            const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, braceLen, 12), beamMat);
             brace.rotation.z = bsx > 0 ? Math.atan2(bh * 0.25, bw * 0.3) : -Math.atan2(bh * 0.25, bw * 0.3);
             brace.position.set(bsx * bw * 0.2, bh * 0.5, faceZ);
             buildGroup.add(brace);
@@ -2505,7 +2505,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         }
         // Smoke wisps
         for (let sm = 0; sm < 3; sm++) {
-          const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.1 + sm * 0.06, 8, 8), new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.15 - sm * 0.04, roughness: 1.0 }));
+          const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.1 + sm * 0.06, 16, 12), new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.15 - sm * 0.04, roughness: 1.0 }));
           smoke.position.set(bw * 0.25 + sm * 0.05, bh + roofH + 1.3 + sm * 0.3, -bd * 0.2);
           buildGroup.add(smoke);
         }
@@ -2526,15 +2526,15 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         for (let fi = 0; fi < 4; fi++) {
           const flowerColor = [0xff6688, 0xffaa44, 0xff4466, 0xaa66ff, 0xff88cc][Math.floor(Math.random() * 5)];
           // Stem
-          const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.12, 5), new THREE.MeshStandardMaterial({ color: 0x338822, roughness: 0.8 }));
+          const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.12, 10), new THREE.MeshStandardMaterial({ color: 0x338822, roughness: 0.8 }));
           stem.position.set(-0.18 + fi * 0.12, bh * 0.6 - 0.18, bd / 2 + 0.09);
           buildGroup.add(stem);
           // Flower head (multiple petals)
-          const pistil = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffff44, roughness: 0.5 }));
+          const pistil = new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffff44, roughness: 0.5 }));
           pistil.position.set(-0.18 + fi * 0.12, bh * 0.6 - 0.11, bd / 2 + 0.09);
           buildGroup.add(pistil);
           for (let pi2 = 0; pi2 < 4; pi2++) {
-            const petal = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 6), new THREE.MeshStandardMaterial({ color: flowerColor, emissive: flowerColor, emissiveIntensity: 0.15, roughness: 0.6 }));
+            const petal = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 10), new THREE.MeshStandardMaterial({ color: flowerColor, emissive: flowerColor, emissiveIntensity: 0.15, roughness: 0.6 }));
             const pAngle = pi2 * (Math.PI / 2);
             petal.scale.set(1.4, 0.5, 1.0);
             petal.position.set(-0.18 + fi * 0.12 + Math.cos(pAngle) * 0.02, bh * 0.6 - 0.11, bd / 2 + 0.09 + Math.sin(pAngle) * 0.02);
@@ -2546,7 +2546,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       // Hanging sign (some buildings)
       if (Math.random() > 0.7) {
         const signGroup = new THREE.Group();
-        const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4, roughness: 0.6 }));
+        const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 12), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4, roughness: 0.6 }));
         signPost.rotation.z = Math.PI / 2;
         signPost.position.set(0, bh * 0.45, bd / 2 + 0.15);
         signGroup.add(signPost);
@@ -2556,7 +2556,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         signGroup.add(signBoard);
         // Chain links
         for (let ch = 0; ch < 2; ch++) {
-          const chain = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.004, 4, 6), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
+          const chain = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.004, 10, 6), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
           chain.position.set(0.15 + ch * 0.2, bh * 0.45 - 0.06, bd / 2 + 0.15);
           chain.rotation.y = ch * (Math.PI / 2);
           signGroup.add(chain);
@@ -2572,12 +2572,12 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         buildGroup.add(balcFloor);
         // Railing posts
         for (let rp = 0; rp < 5; rp++) {
-          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 6), balcMat);
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 12), balcMat);
           post.position.set(-bw * 0.25 + rp * (bw * 0.6 / 4), bh * 0.7 + 0.22, bd / 2 + 0.38);
           buildGroup.add(post);
         }
         // Railing bar
-        const railBar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, bw * 0.6, 6), balcMat);
+        const railBar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, bw * 0.6, 12), balcMat);
         railBar.rotation.z = Math.PI / 2;
         railBar.position.set(0, bh * 0.7 + 0.42, bd / 2 + 0.38);
         buildGroup.add(railBar);
@@ -2699,7 +2699,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         mctx.envGroup.add(tSlit);
       }
       // Stone band at mid-height
-      const tBand = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.06, 6, 20), towerMat);
+      const tBand = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.06, 12, 20), towerMat);
       tBand.rotation.x = Math.PI / 2;
       tBand.position.set(tx, wallH, tz);
       mctx.envGroup.add(tBand);
@@ -2763,7 +2763,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       lampGroup.add(pole);
       // Decorative rings
       for (const ry of [1.5, 2.5]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 12), lampMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 12, 12), lampMat);
         ring.rotation.x = Math.PI / 2;
         ring.position.y = ry;
         lampGroup.add(ring);
@@ -2777,11 +2777,11 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       const cageBot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.015, 0.2), lampMat);
       cageBot.position.set(0.7, 3.15, 0);
       lampGroup.add(cageBot);
-      const cageTop = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.1, 6), lampMat);
+      const cageTop = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.1, 12), lampMat);
       cageTop.position.set(0.7, 3.42, 0);
       lampGroup.add(cageTop);
       for (let cb = 0; cb < 4; cb++) {
-        const cbar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.26, 6), lampMat);
+        const cbar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.26, 12), lampMat);
         const cba = (cb / 4) * Math.PI * 2;
         cbar.position.set(0.7 + Math.cos(cba) * 0.09, 3.28, Math.sin(cba) * 0.09);
         lampGroup.add(cbar);
@@ -2809,7 +2809,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         barrel.castShadow = true;
         mctx.envGroup.add(barrel);
         for (const by of [0.1, 0.33, 0.55]) {
-          const band = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.01, 6, 18), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.6 }));
+          const band = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.01, 12, 18), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.6 }));
           band.rotation.x = Math.PI / 2;
           band.position.set(px, by, pz);
           mctx.envGroup.add(band);
@@ -2832,13 +2832,13 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         mctx.envGroup.add(hay);
         // Straw wisps
         for (let sw = 0; sw < 3; sw++) {
-          const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.15, 4), new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.95 }));
+          const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.15, 10), new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.95 }));
           straw.position.set(px + (Math.random() - 0.5) * 0.3, 0.1, pz + (Math.random() - 0.5) * 0.3);
           straw.rotation.z = Math.random() * Math.PI;
           mctx.envGroup.add(straw);
         }
       } else if (r < 0.75) {
-        const sack = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 }));
+        const sack = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 }));
         sack.scale.set(1.0, 0.6, 0.8);
         sack.position.set(px, 0.12, pz);
         mctx.envGroup.add(sack);
@@ -2849,11 +2849,11 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
         platform.position.y = 0.4;
         cartGroup.add(platform);
         for (const [cwx, cwz] of [[-0.4, -0.3], [0.4, -0.3], [-0.4, 0.3], [0.4, 0.3]] as [number, number][]) {
-          const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.02, 6, 14), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
+          const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.02, 12, 14), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
           wheel.position.set(cwx, 0.14, cwz);
           cartGroup.add(wheel);
           for (let sp = 0; sp < 4; sp++) {
-            const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.25, 4), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
+            const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.25, 10), new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.8 }));
             spoke.rotation.z = sp * (Math.PI / 4);
             spoke.position.set(cwx, 0.14, cwz);
             cartGroup.add(spoke);
@@ -2864,7 +2864,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
           cartGroup.add(hub);
         }
         // Handle
-        const handle2 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 6), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
+        const handle2 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 12), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
         handle2.rotation.x = Math.PI / 4;
         handle2.position.set(0, 0.55, -0.5);
         cartGroup.add(handle2);
@@ -2883,7 +2883,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       const bPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 3.5, 8), new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }));
       bPole.position.y = 1.75;
       bannerGroup.add(bPole);
-      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshStandardMaterial({ color: 0x888844, metalness: 0.4, roughness: 0.5 }));
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), new THREE.MeshStandardMaterial({ color: 0x888844, metalness: 0.4, roughness: 0.5 }));
       tip.position.y = 3.5;
       bannerGroup.add(tip);
       const bColor = bannerColors[bni % bannerColors.length];
@@ -2919,7 +2919,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       treeGroup.add(trunk);
       // Bark rings
       for (let bk = 0; bk < 3; bk++) {
-        const bark = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 6, 10), treeMat);
+        const bark = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 12, 10), treeMat);
         bark.rotation.x = Math.PI / 2;
         bark.position.y = trunkH * (0.2 + bk * 0.25);
         treeGroup.add(bark);
@@ -2927,7 +2927,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       // Exposed roots
       for (let rt = 0; rt < 3; rt++) {
         const rootAngle = rt * (Math.PI * 2 / 3);
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.4, 5), treeMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.4, 10), treeMat);
         root.position.set(Math.cos(rootAngle) * 0.18, 0.1, Math.sin(rootAngle) * 0.18);
         root.rotation.z = rootAngle + Math.PI / 2;
         root.rotation.x = 0.4;
@@ -2944,7 +2944,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       for (let sc = 0; sc < 3; sc++) {
         const subR = crownR * (0.4 + Math.random() * 0.3);
         const subAngle = sc * (Math.PI * 2 / 3) + Math.random() * 0.5;
-        const sub = new THREE.Mesh(new THREE.SphereGeometry(subR, 10, 8), new THREE.MeshStandardMaterial({ color: leafColors[Math.floor(Math.random() * leafColors.length)], roughness: 0.7 }));
+        const sub = new THREE.Mesh(new THREE.SphereGeometry(subR, 16, 12), new THREE.MeshStandardMaterial({ color: leafColors[Math.floor(Math.random() * leafColors.length)], roughness: 0.7 }));
         sub.position.set(Math.cos(subAngle) * crownR * 0.6, trunkH + crownR * 0.4 + Math.random() * 0.3, Math.sin(subAngle) * crownR * 0.6);
         sub.castShadow = true;
         treeGroup.add(sub);
@@ -2997,11 +2997,11 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
     const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.12, 10), new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.8 }));
     bucket.position.set(0, 1.6, 0);
     wellGroup.add(bucket);
-    const bHandle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.005, 4, 8, Math.PI), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
+    const bHandle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.005, 10, 8, Math.PI), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
     bHandle.position.set(0, 1.68, 0);
     wellGroup.add(bHandle);
     // Rope
-    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.8, 5), new THREE.MeshStandardMaterial({ color: 0x8a7a5a, roughness: 0.9 }));
+    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.8, 10), new THREE.MeshStandardMaterial({ color: 0x8a7a5a, roughness: 0.9 }));
     rope.position.set(0, 2.0, 0);
     wellGroup.add(rope);
     // Moss on well base
@@ -3093,7 +3093,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       }
     }
     // Peaked roof
-    const ctRoof = new THREE.Mesh(new THREE.ConeGeometry(3, 3, 4), new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.7 }));
+    const ctRoof = new THREE.Mesh(new THREE.ConeGeometry(3, 3, 10), new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.7 }));
     ctRoof.position.y = 13.5;
     ctRoof.rotation.y = Math.PI / 4;
     ctRoof.castShadow = true;
@@ -3146,7 +3146,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
     bell.position.y = 11.5;
     bell.rotation.x = Math.PI;
     clockTower.add(bell);
-    const bellClapper = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), bellMat);
+    const bellClapper = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), bellMat);
     bellClapper.position.y = 11.1;
     clockTower.add(bellClapper);
     clockTower.position.set(20, 0, -20);
@@ -3264,16 +3264,16 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       const hlBody = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.15), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.4, transparent: true, opacity: 0.6 }));
       hlBody.position.y = -0.2;
       hlGrp.add(hlBody);
-      const hlGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffcc66, emissive: 0xffaa44, emissiveIntensity: 0.9 }));
+      const hlGlow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffcc66, emissive: 0xffaa44, emissiveIntensity: 0.9 }));
       hlGlow.position.y = -0.2;
       hlGrp.add(hlGlow);
       // Top cap
-      const hlCap = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.08, 6), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4, roughness: 0.5 }));
+      const hlCap = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4, roughness: 0.5 }));
       hlCap.position.y = -0.08;
       hlGrp.add(hlCap);
       // Chain links
       for (let hlc = 0; hlc < 2; hlc++) {
-        const hlLink = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 4, 8), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
+        const hlLink = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 10, 8), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 }));
         hlLink.position.y = -0.04 - hlc * 0.04;
         hlLink.rotation.x = hlc % 2 === 0 ? 0 : Math.PI / 2;
         hlGrp.add(hlLink);
@@ -3312,13 +3312,13 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       }
       // Back posts
       for (const bpx of [-0.5, 0.5]) {
-        const bPost = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 6), benchWood);
+        const bPost = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 12), benchWood);
         bPost.position.set(bpx, 0.65, -0.15);
         bench.add(bPost);
       }
       // Metal bolts
       for (const [mbx, mby] of [[-0.5, 0.45], [0.5, 0.45], [-0.5, 0.65], [0.5, 0.65]] as [number, number][]) {
-        const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.01, 6, 6), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.4 }));
+        const bolt = new THREE.Mesh(new THREE.SphereGeometry(0.01, 12, 10), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.4 }));
         bolt.position.set(mbx, mby, -0.16);
         bench.add(bolt);
       }
@@ -3334,7 +3334,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       pot.position.y = 0.1;
       potGrp.add(pot);
       // Pot rim
-      const potRim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.015, 6, 12), new THREE.MeshStandardMaterial({ color: 0xaa6633, roughness: 0.85 }));
+      const potRim = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.015, 12, 12), new THREE.MeshStandardMaterial({ color: 0xaa6633, roughness: 0.85 }));
       potRim.rotation.x = Math.PI / 2;
       potRim.position.y = 0.2;
       potGrp.add(potRim);
@@ -3344,12 +3344,12 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       soil.position.y = 0.19;
       potGrp.add(soil);
       // Small plant
-      const plantStem = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.15, 5), new THREE.MeshStandardMaterial({ color: 0x338822, roughness: 0.8 }));
+      const plantStem = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.15, 10), new THREE.MeshStandardMaterial({ color: 0x338822, roughness: 0.8 }));
       plantStem.position.y = 0.27;
       potGrp.add(plantStem);
       // Leaves
       for (let pl2 = 0; pl2 < 4; pl2++) {
-        const pLeaf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshStandardMaterial({ color: 0x44aa33, roughness: 0.7 }));
+        const pLeaf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshStandardMaterial({ color: 0x44aa33, roughness: 0.7 }));
         pLeaf.scale.set(1.5, 0.4, 1.0);
         const plAngle = pl2 * (Math.PI / 2) + Math.random() * 0.5;
         pLeaf.position.set(Math.cos(plAngle) * 0.05, 0.3 + pl2 * 0.02, Math.sin(plAngle) * 0.05);

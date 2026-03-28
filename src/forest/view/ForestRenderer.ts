@@ -280,7 +280,7 @@ export class ForestRenderer {
     this._scene.add(this._groundDetailMesh);
 
     // Seasonal flower patches (visible in spring)
-    const flowerGeo = new THREE.ConeGeometry(0.15, 0.3, 4);
+    const flowerGeo = new THREE.ConeGeometry(0.15, 0.3, 10);
     const flowerMat = new THREE.MeshBasicMaterial({ color: 0xff88aa, transparent: true, opacity: 0.9 });
     this._flowerMesh = new THREE.InstancedMesh(flowerGeo, flowerMat, 150);
     this._flowerMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -368,7 +368,7 @@ export class ForestRenderer {
       { x: -2, y: FOREST.GREAT_OAK_HEIGHT * 0.75, z: 4, r: 5 },
     ];
     for (const cp of canopyPositions) {
-      const sphere = new THREE.Mesh(new THREE.SphereGeometry(cp.r, 8, 6), canopyMat);
+      const sphere = new THREE.Mesh(new THREE.SphereGeometry(cp.r, 16, 12), canopyMat);
       sphere.position.set(cp.x, cp.y, cp.z);
       sphere.castShadow = true;
       this._greatOakGroup.add(sphere);
@@ -378,7 +378,7 @@ export class ForestRenderer {
     const rootMat = new THREE.MeshStandardMaterial({ color: 0x553318, roughness: 0.95 });
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
-      const rootGeo = new THREE.CylinderGeometry(0.4, 0.8, 6, 6);
+      const rootGeo = new THREE.CylinderGeometry(0.4, 0.8, 6, 12);
       const root = new THREE.Mesh(rootGeo, rootMat);
       root.position.set(Math.cos(angle) * 4, 1, Math.sin(angle) * 4);
       root.rotation.z = angle + Math.PI / 2;
@@ -429,7 +429,7 @@ export class ForestRenderer {
     for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * Math.PI * 2 + 0.3;
       const mushGroup = new THREE.Group();
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.3, 4), mushMat);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.3, 10), mushMat);
       stem.position.y = 0.15;
       mushGroup.add(stem);
       const cap = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2), mushCapMat);
@@ -483,7 +483,7 @@ export class ForestRenderer {
 
       // Central crystal/tree
       const crystal = new THREE.Mesh(
-        new THREE.ConeGeometry(0.6, 3, 6),
+        new THREE.ConeGeometry(0.6, 3, 12),
         new THREE.MeshStandardMaterial({ color: COL.GROVE_PURE, emissive: COL.GROVE_PURE, emissiveIntensity: 0.3 }),
       );
       crystal.position.y = 1.5;
@@ -519,7 +519,7 @@ export class ForestRenderer {
     // Legs
     const legMat = new THREE.MeshStandardMaterial({ color: 0x334433, roughness: 0.7 });
     for (let side = -1; side <= 1; side += 2) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 6), legMat);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.7, 12), legMat);
       leg.position.set(side * 0.15, 0.35, 0);
       leg.castShadow = true;
       this._playerGroup.add(leg);
@@ -545,7 +545,7 @@ export class ForestRenderer {
     // Shoulder pauldrons
     for (let side = -1; side <= 1; side += 2) {
       const pauldron = new THREE.Mesh(
-        new THREE.SphereGeometry(0.18, 6, 4),
+        new THREE.SphereGeometry(0.18, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0x556655, roughness: 0.4, metalness: 0.5 }),
       );
       pauldron.position.set(side * 0.4, 1.35, 0);
@@ -555,7 +555,7 @@ export class ForestRenderer {
 
     // Head
     const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.22, 8, 6),
+      new THREE.SphereGeometry(0.22, 16, 12),
       new THREE.MeshStandardMaterial({ color: 0x88aa88 }),
     );
     head.position.y = 1.7;
@@ -563,7 +563,7 @@ export class ForestRenderer {
 
     // Leaf crown
     const crownMat = new THREE.MeshStandardMaterial({ color: 0x44aa44, emissive: 0x226622, emissiveIntensity: 0.2 });
-    const crown = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 6, 8), crownMat);
+    const crown = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 12, 8), crownMat);
     crown.position.y = 1.85;
     crown.rotation.x = Math.PI / 2;
     this._playerGroup.add(crown);
@@ -579,7 +579,7 @@ export class ForestRenderer {
 
     // Staff
     const staffMat = new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.85 });
-    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 2.4, 6), staffMat);
+    const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 2.4, 12), staffMat);
     staff.position.set(0.5, 1.2, 0);
     staff.rotation.z = 0.15;
     this._playerGroup.add(staff);
@@ -603,7 +603,7 @@ export class ForestRenderer {
 
   private _buildInstancedMeshes(): void {
     // Particles
-    const particleGeo = new THREE.SphereGeometry(0.15, 4, 3);
+    const particleGeo = new THREE.SphereGeometry(0.15, 16, 12);
     const particleMat = new THREE.MeshBasicMaterial();
     this._particleMesh = new THREE.InstancedMesh(particleGeo, particleMat, 1000);
     this._particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -611,7 +611,7 @@ export class ForestRenderer {
     this._scene.add(this._particleMesh);
 
     // Essence orbs
-    const orbGeo = new THREE.SphereGeometry(0.25, 6, 4);
+    const orbGeo = new THREE.SphereGeometry(0.25, 12, 10);
     const orbMat = new THREE.MeshBasicMaterial({ color: COL.ESSENCE_GREEN, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
     this._essenceOrbMesh = new THREE.InstancedMesh(orbGeo, orbMat, 100);
     this._essenceOrbMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -619,7 +619,7 @@ export class ForestRenderer {
     this._scene.add(this._essenceOrbMesh);
 
     // Heal saps
-    const sapGeo = new THREE.SphereGeometry(0.3, 6, 4);
+    const sapGeo = new THREE.SphereGeometry(0.3, 12, 10);
     const sapMat = new THREE.MeshBasicMaterial({ color: COL.HEAL_SAP, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
     this._healSapMesh = new THREE.InstancedMesh(sapGeo, sapMat, 50);
     this._healSapMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -627,7 +627,7 @@ export class ForestRenderer {
     this._scene.add(this._healSapMesh);
 
     // Projectiles
-    const projGeo = new THREE.ConeGeometry(0.1, 0.6, 4);
+    const projGeo = new THREE.ConeGeometry(0.1, 0.6, 10);
     const projMat = new THREE.MeshBasicMaterial({ color: COL.THORN });
     this._projectileMesh = new THREE.InstancedMesh(projGeo, projMat, 200);
     this._projectileMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -840,7 +840,7 @@ export class ForestRenderer {
     this._scene.add(this._godRay);
 
     // Fireflies — instanced glowing dots
-    const ffGeo = new THREE.SphereGeometry(0.08, 4, 3);
+    const ffGeo = new THREE.SphereGeometry(0.08, 16, 12);
     const ffMat = new THREE.MeshBasicMaterial({ color: 0xccff88, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
     this._fireflyMesh = new THREE.InstancedMesh(ffGeo, ffMat, 60);
     this._fireflyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -1429,7 +1429,7 @@ export class ForestRenderer {
       // Trunk
       const trunkColor = tree.type === "birch" ? COL.TREE_BIRCH_TRUNK : COL.TREE_OAK_TRUNK;
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(tree.radius * 0.3, tree.radius * 0.5, tree.height * 0.6, 6),
+        new THREE.CylinderGeometry(tree.radius * 0.3, tree.radius * 0.5, tree.height * 0.6, 12),
         new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.95 }),
       );
       trunk.position.y = tree.height * 0.3;
@@ -1441,14 +1441,14 @@ export class ForestRenderer {
       const leafMat = new THREE.MeshStandardMaterial({ color: leafColor, roughness: 0.8 });
       let crown: THREE.Mesh;
       if (tree.type === "pine") {
-        crown = new THREE.Mesh(new THREE.ConeGeometry(tree.radius * 2, tree.height * 0.6, 6), leafMat);
+        crown = new THREE.Mesh(new THREE.ConeGeometry(tree.radius * 2, tree.height * 0.6, 12), leafMat);
         crown.position.y = tree.height * 0.6;
       } else if (tree.type === "willow") {
-        crown = new THREE.Mesh(new THREE.SphereGeometry(tree.radius * 2.5, 6, 5), leafMat);
+        crown = new THREE.Mesh(new THREE.SphereGeometry(tree.radius * 2.5, 12, 10), leafMat);
         crown.position.y = tree.height * 0.6;
         crown.scale.y = 1.3;
       } else {
-        crown = new THREE.Mesh(new THREE.SphereGeometry(tree.radius * 2, 6, 5), leafMat);
+        crown = new THREE.Mesh(new THREE.SphereGeometry(tree.radius * 2, 12, 10), leafMat);
         crown.position.y = tree.height * 0.65;
       }
       crown.castShadow = true;
@@ -1618,7 +1618,7 @@ export class ForestRenderer {
 
     // Eyes (two small glowing spheres)
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
-    const eyeGeo = new THREE.SphereGeometry(bodyR * 0.2, 4, 3);
+    const eyeGeo = new THREE.SphereGeometry(bodyR * 0.2, 16, 12);
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
     leftEye.position.set(-bodyR * 0.4, bodyH * 0.7, -bodyR * 0.6);
     group.add(leftEye);
@@ -1631,7 +1631,7 @@ export class ForestRenderer {
       // Arms with claws
       for (let side = -1; side <= 1; side += 2) {
         const arm = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.05, 0.08, 0.6, 4),
+          new THREE.CylinderGeometry(0.05, 0.08, 0.6, 10),
           mat,
         );
         arm.position.set(side * 0.35, bodyH * 0.45, -0.1);
@@ -1640,7 +1640,7 @@ export class ForestRenderer {
         group.add(arm);
         // Claw
         const claw = new THREE.Mesh(
-          new THREE.ConeGeometry(0.04, 0.2, 3),
+          new THREE.ConeGeometry(0.04, 0.2, 8),
           new THREE.MeshStandardMaterial({ color: 0x442244 }),
         );
         claw.position.set(side * 0.5, bodyH * 0.25, -0.2);
@@ -1650,7 +1650,7 @@ export class ForestRenderer {
       // Back spines
       for (let i = 0; i < 3; i++) {
         const spine = new THREE.Mesh(
-          new THREE.ConeGeometry(0.04, 0.25 + i * 0.05, 3),
+          new THREE.ConeGeometry(0.04, 0.25 + i * 0.05, 8),
           new THREE.MeshStandardMaterial({ color: 0x443355 }),
         );
         spine.position.set(0, bodyH * (0.5 + i * 0.12), 0.2);
@@ -1662,12 +1662,12 @@ export class ForestRenderer {
     // Rot archer: bow
     if (enemy.type === "rot_archer") {
       const bowMat = new THREE.MeshStandardMaterial({ color: 0x443322 });
-      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.03, 4, 8, Math.PI), bowMat);
+      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.03, 10, 8, Math.PI), bowMat);
       bow.position.set(-0.5, bodyH * 0.5, -0.2);
       bow.rotation.z = Math.PI / 2;
       group.add(bow);
       // Bowstring
-      const stringGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.8, 3);
+      const stringGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.8, 8);
       const string = new THREE.Mesh(stringGeo, new THREE.MeshBasicMaterial({ color: 0x888888 }));
       string.position.set(-0.5, bodyH * 0.5, -0.2);
       group.add(string);
@@ -1678,7 +1678,7 @@ export class ForestRenderer {
       // Antlers (taller, more dramatic)
       for (let side = -1; side <= 1; side += 2) {
         const antler = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04, 0.07, 1.2, 4),
+          new THREE.CylinderGeometry(0.04, 0.07, 1.2, 10),
           new THREE.MeshStandardMaterial({ color: 0x444466, emissive: 0x222244, emissiveIntensity: 0.1 }),
         );
         antler.position.set(side * 0.3, bodyH * 0.85, -0.15);
@@ -1687,7 +1687,7 @@ export class ForestRenderer {
         group.add(antler);
         // Antler branch
         const branch = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.04, 0.5, 3),
+          new THREE.CylinderGeometry(0.02, 0.04, 0.5, 8),
           new THREE.MeshStandardMaterial({ color: 0x444466 }),
         );
         branch.position.set(side * 0.45, bodyH * 0.9, -0.1);
@@ -1701,7 +1701,7 @@ export class ForestRenderer {
         { x: -0.2, z: 0.25 }, { x: 0.2, z: 0.25 },
       ];
       for (const lp of legPositions) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 4), legMat);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 10), legMat);
         leg.position.set(lp.x, 0.1, lp.z);
         group.add(leg);
       }
@@ -1727,7 +1727,7 @@ export class ForestRenderer {
         group.add(plate);
         // Moss on shoulders
         const moss = new THREE.Mesh(
-          new THREE.SphereGeometry(0.25, 4, 3),
+          new THREE.SphereGeometry(0.25, 16, 12),
           mossMat,
         );
         moss.position.set(side * 0.9, bodyH * 0.7, 0.1);
@@ -1736,7 +1736,7 @@ export class ForestRenderer {
       // Thick arms
       for (let side = -1; side <= 1; side += 2) {
         const arm = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.15, 0.2, 1.2, 5),
+          new THREE.CylinderGeometry(0.15, 0.2, 1.2, 10),
           mat,
         );
         arm.position.set(side * 0.7, bodyH * 0.3, -0.3);
@@ -1760,7 +1760,7 @@ export class ForestRenderer {
       for (let i = 0; i < 6; i++) {
         const angle = (i / 6) * Math.PI * 2;
         const tentacle = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.08, 0.2, 2.5, 4),
+          new THREE.CylinderGeometry(0.08, 0.2, 2.5, 10),
           mat,
         );
         tentacle.position.set(Math.cos(angle) * 1.4, 0.8, Math.sin(angle) * 1.4);
@@ -1773,7 +1773,7 @@ export class ForestRenderer {
         color: 0xff44ff, transparent: true, opacity: 0.5,
         blending: THREE.AdditiveBlending, depthWrite: false,
       });
-      const core = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), coreMat);
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), coreMat);
       core.position.y = bodyH * 0.5;
       core.userData.isCore = true;
       group.add(core);
@@ -1781,7 +1781,7 @@ export class ForestRenderer {
       for (let i = 0; i < 5; i++) {
         const angle = (i / 5) * Math.PI * 2;
         const thorn = new THREE.Mesh(
-          new THREE.ConeGeometry(0.08, 0.6, 4),
+          new THREE.ConeGeometry(0.08, 0.6, 10),
           new THREE.MeshStandardMaterial({ color: 0x442244 }),
         );
         thorn.position.set(Math.cos(angle) * 0.8, bodyH * 0.75, Math.sin(angle) * 0.8);
@@ -1807,7 +1807,7 @@ export class ForestRenderer {
       let mesh = this._wispMeshes.get(wisp.id);
       if (!mesh) {
         mesh = new THREE.Mesh(
-          new THREE.SphereGeometry(0.4, 8, 6),
+          new THREE.SphereGeometry(0.4, 16, 12),
           new THREE.MeshBasicMaterial({ color: COL.WISP_ALLY }),
         );
         const light = new THREE.PointLight(COL.WISP_ALLY, 0.8, 8);

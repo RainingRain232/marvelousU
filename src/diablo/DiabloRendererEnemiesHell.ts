@@ -164,7 +164,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Small claw toes
         for (const lx of [-1, 1]) {
           for (let t = 0; t < 2; t++) {
-            const fiToe = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 6), fiHornMat);
+            const fiToe = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 12), fiHornMat);
             fiToe.position.set(lx * 0.14 + (t - 0.5) * 0.03, 0.0, 0.06);
             fiToe.rotation.x = -0.5;
             group.add(fiToe);
@@ -310,7 +310,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           laGroup.add(fist);
           // Lava drip from left arm
           for (let d = 0; d < 3; d++) {
-            const drip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), magmaMat);
+            const drip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), magmaMat);
             drip.position.set(-0.35 - d * 0.02, -0.55 - d * 0.06, 0.02);
             drip.scale.y = 1.4;
             laGroup.add(drip);
@@ -335,7 +335,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           raGroup.add(fist);
           // Lava drip from right arm
           for (let d = 0; d < 3; d++) {
-            const drip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), magmaMat);
+            const drip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), magmaMat);
             drip.position.set(0.35 + d * 0.02, -0.55 - d * 0.06, 0.02);
             drip.scale.y = 1.4;
             raGroup.add(drip);
@@ -378,7 +378,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           vent.position.set(-0.1 + v * 0.05, 0.9 + (v % 2) * 0.08, -0.44);
           vent.rotation.x = -0.2;
           leHover.add(vent);
-          const ventGlow = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 6), lavaMat);
+          const ventGlow = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 12), lavaMat);
           ventGlow.position.set(-0.1 + v * 0.05, 0.97 + (v % 2) * 0.08, -0.44);
           ventGlow.rotation.x = -0.2;
           leHover.add(ventGlow);
@@ -472,7 +472,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Fire particles around helmet
         for (let fp = 0; fp < 6; fp++) {
           const ang = (fp / 6) * Math.PI * 2;
-          const flame = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.07, 6), brightFireMat);
+          const flame = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.07, 12), brightFireMat);
           flame.position.set(Math.cos(ang) * 0.15, 1.62, Math.sin(ang) * 0.13);
           flame.rotation.x = -0.3;
           flame.rotation.y = ang;
@@ -535,7 +535,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const shieldBoss = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), darkArmorMat);
           shieldBoss.position.set(-0.3, -0.6, 0.1);
           laGroup.add(shieldBoss);
-          const shieldEmblem = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.08, 6), fireMat);
+          const shieldEmblem = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.08, 12), fireMat);
           shieldEmblem.position.set(-0.3, -0.6, 0.14);
           shieldEmblem.rotation.x = Math.PI / 2;
           laGroup.add(shieldEmblem);
@@ -578,7 +578,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const crossguard = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.03), armorMat);
           crossguard.position.set(0.2, -0.96, 0);
           raGroup.add(crossguard);
-          const crossguardTips = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), darkArmorMat);
+          const crossguardTips = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), darkArmorMat);
           for (const cx of [-0.1, 0.1]) {
             const tip = crossguardTips.clone();
             tip.position.set(0.2 + cx, -0.96, 0);
@@ -598,7 +598,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           raGroup.add(bladeTip);
           // Flame wisps along blade
           for (let fw = 0; fw < 5; fw++) {
-            const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), brightFireMat);
+            const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), brightFireMat);
             wisp.position.set(0.2 + (fw % 2 === 0 ? 0.04 : -0.04), -1.05 - fw * 0.1, 0.02);
             wisp.scale.y = 1.6;
             raGroup.add(wisp);
@@ -760,7 +760,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
 
         // Nostril details
         for (const nx of [-0.055, 0.055]) {
-          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), serpScaleMat);
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.016, 16, 12), serpScaleMat);
           nostril.position.set(headPosX + nx, headPosY + 0.04, headPosZ + 0.27);
           msHover.add(nostril);
         }
@@ -816,7 +816,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           // Lava drool (thin emissive cylinders hanging from jaw)
           for (let d = 0; d < 3; d++) {
             const dx = (d / 2 - 0.5) * 0.12;
-            const drool = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.003, 0.06, 6), droolMat);
+            const drool = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.003, 0.06, 12), droolMat);
             drool.position.set(dx, -0.058, 0.1 + d * 0.02);
             jawGroup.add(drool);
           }
@@ -928,7 +928,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           [0, 1.7, -0.22, 0.28, 0.22, 0.18],
         ];
         for (const [ptx, pty, ptz, psx, psy, psz] of mcTorsoRockData) {
-          const plate = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), rockDarkMat);
+          const plate = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), rockDarkMat);
           plate.scale.set(psx / 0.3, psy / 0.3, psz / 0.3);
           plate.position.set(ptx, pty, ptz);
           group.add(plate);
@@ -959,14 +959,14 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
         group.add(mcHead);
         // Rocky brow ridges
         for (const bx of [-0.14, 0.14]) {
-          const brow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), rockDarkMat);
+          const brow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), rockDarkMat);
           brow.scale.set(1.2, 0.6, 0.8);
           brow.position.set(bx, 2.55, 0.26);
           group.add(brow);
         }
         // Head side rocks
         for (const hsx of [-0.28, 0.28]) {
-          const sideRock = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), rockDarkMat);
+          const sideRock = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 12), rockDarkMat);
           sideRock.position.set(hsx, 2.38, 0);
           group.add(sideRock);
         }
@@ -1121,7 +1121,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           ventGlow.position.set(vx, vy + 0.1, vz);
           group.add(ventGlow);
           for (let v = 0; v < 2; v++) {
-            const wisp = new THREE.Mesh(new THREE.ConeGeometry(0.015 - v * 0.004, 0.1, 6), lavaTransMat);
+            const wisp = new THREE.Mesh(new THREE.ConeGeometry(0.015 - v * 0.004, 0.1, 12), lavaTransMat);
             wisp.position.set(vx + (v - 0.5) * 0.06, vy + 0.18 + v * 0.08, vz);
             group.add(wisp);
           }
@@ -1133,7 +1133,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const dAng = mcDebrisAngles[d];
           const dR = 0.82 + (d % 2) * 0.12;
           const dY = 1.4 + (d % 3) * 0.22;
-          const debris = new THREE.Mesh(new THREE.SphereGeometry(0.065 + (d % 3) * 0.018, 8, 6), d % 2 === 0 ? rockMat : rockDarkMat);
+          const debris = new THREE.Mesh(new THREE.SphereGeometry(0.065 + (d % 3) * 0.018, 16, 12), d % 2 === 0 ? rockMat : rockDarkMat);
           debris.position.set(Math.cos(dAng) * dR, dY, Math.sin(dAng) * dR);
           group.add(debris);
           if (d % 2 === 0) {
@@ -1209,7 +1209,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
 
         // Spiny ridges along the back
         for (let sr = 0; sr < 6; sr++) {
-          const vsSpine = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08 + sr * 0.01, 6), voidChitinMat);
+          const vsSpine = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.08 + sr * 0.01, 12), voidChitinMat);
           vsSpine.position.set(0, 0.72 + sr * 0.06, -0.24 - sr * 0.01);
           vsSpine.rotation.x = -0.4 - sr * 0.05;
           group.add(vsSpine);
@@ -1245,7 +1245,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           vsTendril.rotation.x = 0.3 + Math.random() * 0.3;
           vsTendril.rotation.z = (Math.cos(tdAngle)) * 0.3;
           group.add(vsTendril);
-          const vsTendrilTip = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), voidEyeMat);
+          const vsTendrilTip = new THREE.Mesh(new THREE.SphereGeometry(0.014, 16, 12), voidEyeMat);
           vsTendrilTip.position.set(Math.cos(tdAngle) * tdR, 0.18 + Math.sin(tdAngle) * 0.04, Math.sin(tdAngle) * tdR * 0.6);
           group.add(vsTendrilTip);
         }
@@ -1284,7 +1284,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           vsThigh.position.y = -0.14;
           vsLegGroup.add(vsThigh);
           // Knee joint
-          const vsKnee = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), voidChitinMat);
+          const vsKnee = new THREE.Mesh(new THREE.SphereGeometry(0.052, 16, 12), voidChitinMat);
           vsKnee.position.y = -0.3;
           vsLegGroup.add(vsKnee);
           // Shin angled backwards (digitigrade)
@@ -1319,7 +1319,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           vsUpperArm.rotation.z = lx * 0.4;
           vsArmGroup.add(vsUpperArm);
           // Elbow joint
-          const vsElbow = new THREE.Mesh(new THREE.SphereGeometry(0.038, 10, 8), voidChitinMat);
+          const vsElbow = new THREE.Mesh(new THREE.SphereGeometry(0.038, 16, 12), voidChitinMat);
           vsElbow.position.set(lx * 0.06, -0.34, 0);
           vsArmGroup.add(vsElbow);
           // Forearm
@@ -1328,7 +1328,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           vsForearm.rotation.z = lx * 0.6;
           vsArmGroup.add(vsForearm);
           // Wrist
-          const vsWrist = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), voidChitinMat);
+          const vsWrist = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 12), voidChitinMat);
           vsWrist.position.set(lx * 0.16, -0.7, 0.04);
           vsArmGroup.add(vsWrist);
           // Claw fingers - 3 per hand
@@ -1337,7 +1337,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
             const vsFinger = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.008, 0.1, 8), voidMat);
             vsFinger.position.set(lx * 0.19 + cfSpread, -0.78, 0.04);
             vsArmGroup.add(vsFinger);
-            const vsClawTip = new THREE.Mesh(new THREE.ConeGeometry(0.013, 0.06, 6), voidChitinMat);
+            const vsClawTip = new THREE.Mesh(new THREE.ConeGeometry(0.013, 0.06, 12), voidChitinMat);
             vsClawTip.position.set(lx * 0.21 + cfSpread, -0.865, 0.04);
             vsClawTip.rotation.z = lx * 0.2;
             vsArmGroup.add(vsClawTip);
@@ -1361,7 +1361,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           vsTailSeg.rotation.x = td.rx;
           vsTailGroup.add(vsTailSeg);
           // Segment joint glow
-          const vsTailJoint = new THREE.Mesh(new THREE.SphereGeometry(td.r * 0.9, 8, 6), voidEnergyMat);
+          const vsTailJoint = new THREE.Mesh(new THREE.SphereGeometry(td.r * 0.9, 16, 12), voidEnergyMat);
           vsTailJoint.position.y = td.y - td.h / 2;
           vsTailGroup.add(vsTailJoint);
         }
@@ -1643,7 +1643,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           // Suction cups (4 small tori along tentacle)
           for (let sc = 0; sc < 4; sc++) {
             const scT = 0.08 + sc * 0.1;
-            const ahSuction = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.005, 6, 12), ahTentMat);
+            const ahSuction = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.005, 12, 12), ahTentMat);
             ahSuction.position.set(
               Math.cos(angle) * (tR + scT * 1.0),
               0.5 - sc * 0.15,
@@ -1659,7 +1659,7 @@ export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const ahOoze = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.012, 0.2, 8), ahOozeMat);
           ahOoze.position.set(Math.cos(oAng) * 0.22, 0.25, Math.sin(oAng) * 0.22);
           ahHover.add(ahOoze);
-          const ahOozeTip = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), ahCoreMat);
+          const ahOozeTip = new THREE.Mesh(new THREE.SphereGeometry(0.014, 16, 12), ahCoreMat);
           ahOozeTip.position.set(Math.cos(oAng) * 0.22, 0.13, Math.sin(oAng) * 0.22);
           ahHover.add(ahOozeTip);
         }

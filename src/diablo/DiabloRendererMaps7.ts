@@ -295,7 +295,7 @@ export function buildAstralVoid(mctx: MapBuildContext, w: number, d: number): vo
         new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.6 }));
       obPillar.position.y = obH / 2; obelisk.add(obPillar);
       // Pyramid top
-      const obTop = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 4),
+      const obTop = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 10),
         new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.6 }));
       obTop.position.y = obH + 0.3; obTop.rotation.y = Math.PI / 4; obelisk.add(obTop);
       // Glowing rune boxes
@@ -2051,7 +2051,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
           rbKnot.position.set(side, 0.3, rbEnd);
           ropeBridge.add(rbKnot);
           // Wrapped rope around knot
-          const rbKnotWrap = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 6, 8), rbKnotMat);
+          const rbKnotWrap = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 12, 8), rbKnotMat);
           rbKnotWrap.position.set(side, 0.3, rbEnd);
           rbKnotWrap.rotation.x = Math.PI / 2;
           ropeBridge.add(rbKnotWrap);
@@ -2061,7 +2061,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
       // Vertical rope supports connecting rail to deck
       for (let vs = 0; vs < Math.floor(bLen / 0.8); vs++) {
         for (const side of [-0.3, 0.3]) {
-          const rbVertSupport = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.3, 6), rbFrayedMat);
+          const rbVertSupport = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.3, 12), rbFrayedMat);
           rbVertSupport.position.set(side, 0.15, -bLen / 2 + vs * 0.8);
           ropeBridge.add(rbVertSupport);
         }
@@ -2109,7 +2109,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
         ropeRail.position.set(side, 0.35, 0); ropeRail.rotation.x = Math.PI / 2; ropeBridge2.add(ropeRail);
         // Vertical string supports with slight angle for swaying look
         for (let v = 0; v < Math.floor(bridgeLen / 0.6); v++) {
-          const support = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.35, 6), ropeMat2);
+          const support = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.35, 12), ropeMat2);
           support.position.set(side, 0.175, -bridgeLen / 2 + v * 0.6);
           support.rotation.z = (Math.random() - 0.5) * 0.1;
           support.rotation.x = (Math.random() - 0.5) * 0.05;
@@ -2188,15 +2188,15 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
       }
       // Rivet heads along top edges
       for (let rv = 0; rv < 5; rv++) {
-        const rivetF = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        const rivetF = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 10), rivetMat);
         rivetF.position.set(-0.22 + rv * 0.11, 0.52, -0.23); mineCart.add(rivetF);
-        const rivetB = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        const rivetB = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 10), rivetMat);
         rivetB.position.set(-0.22 + rv * 0.11, 0.52, 0.23); mineCart.add(rivetB);
       }
       for (let rv = 0; rv < 3; rv++) {
-        const rivetL = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        const rivetL = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 10), rivetMat);
         rivetL.position.set(-0.29, 0.52, -0.12 + rv * 0.12); mineCart.add(rivetL);
-        const rivetR = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), rivetMat);
+        const rivetR = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 10), rivetMat);
         rivetR.position.set(0.29, 0.52, -0.12 + rv * 0.12); mineCart.add(rivetR);
       }
       // Ore/rock chunks inside the cart (higher detail, some with mineral glint)
@@ -2210,7 +2210,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
         mineCart.add(oreChunk);
         // Mineral glint spot on some ore chunks
         if (Math.random() > 0.5) {
-          const mcGlint = new THREE.Mesh(new THREE.SphereGeometry(oreSize * 0.3, 6, 6),
+          const mcGlint = new THREE.Mesh(new THREE.SphereGeometry(oreSize * 0.3, 12, 10),
             new THREE.MeshStandardMaterial({ color: mcOreGlintColors[ore % 4], emissive: mcOreGlintColors[ore % 4], emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.2 }));
           mcGlint.position.copy(oreChunk.position);
           mcGlint.position.y += oreSize * 0.3;
@@ -2219,7 +2219,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
       }
       // Pickaxe leaning against cart
       if (Math.random() > 0.5) {
-        const mcPickHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.5, 6),
+        const mcPickHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.5, 12),
           new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }));
         mcPickHandle.position.set(0.32, 0.35, 0);
         mcPickHandle.rotation.z = 0.3;
@@ -2240,7 +2240,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
           new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff8822, emissiveIntensity: 0.5, transparent: true, opacity: 0.6 }));
         mcLanternGlass.position.set(0.15, 0.42, 0.3);
         mineCart.add(mcLanternGlass);
-        const mcLanternHook = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.003, 6, 8, Math.PI),
+        const mcLanternHook = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.003, 12, 8, Math.PI),
           new THREE.MeshStandardMaterial({ color: 0x555544, metalness: 0.5, roughness: 0.4 }));
         mcLanternHook.position.set(0.15, 0.455, 0.3);
         mineCart.add(mcLanternHook);
@@ -2251,7 +2251,7 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
       handleBar.rotation.z = Math.PI / 2; handleBar.position.set(0, 0.45, 0.3); mineCart.add(handleBar);
       // Handle supports
       for (const hsx of [-0.12, 0.12]) {
-        const hSupport = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.12, 6),
+        const hSupport = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.12, 12),
           new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.4 }));
         hSupport.position.set(hsx, 0.39, 0.28); mineCart.add(hSupport);
       }
@@ -3511,7 +3511,7 @@ export function buildIronWastes(mctx: MapBuildContext, w: number, d: number): vo
       const machine = new THREE.Group();
       const housing = new THREE.Mesh(new THREE.BoxGeometry(1.0 + Math.random(), 0.8 + Math.random() * 0.5, 0.6), rustMat);
       machine.add(housing);
-      const gear = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 4, 8), metalMat);
+      const gear = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 10, 8), metalMat);
       gear.position.set(0.3, 0.2, 0.31); machine.add(gear);
       const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 16), metalMat);
       piston.position.set(-0.3, 0, 0.35); piston.rotation.x = Math.PI / 2; machine.add(piston);
@@ -3614,12 +3614,12 @@ export function buildIronWastes(mctx: MapBuildContext, w: number, d: number): vo
         const wireH = 0.3 + row * 0.25;
         // Small torus rings (coils) along the wire
         for (let c = 0; c < Math.floor(wireLen * 1.5); c++) {
-          const coilRing = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.004, 6, 8), metalMat);
+          const coilRing = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.004, 12, 8), metalMat);
           coilRing.position.set(-wireLen / 2 + c * 0.65 + Math.random() * 0.3, wireH, 0);
           coilRing.rotation.y = Math.random() * Math.PI; barbedWire.add(coilRing);
           // Tiny cone barbs
           for (let bb = 0; bb < 2; bb++) {
-            const barb2 = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.02, 4), metalMat);
+            const barb2 = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.02, 10), metalMat);
             barb2.position.set(coilRing.position.x + (Math.random() - 0.5) * 0.04, wireH + (Math.random() - 0.5) * 0.03, (Math.random() - 0.5) * 0.03);
             barb2.rotation.z = Math.random() * Math.PI; barbedWire.add(barb2);
           }

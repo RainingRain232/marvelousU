@@ -122,13 +122,13 @@ export function buildBossHumanoidEnemy(
   g.add(dragonSkull);
 
   // Gold trim around breastplate edges
-  const trimGeoTop = new THREE.TorusGeometry(0.8 * sc, 0.02 * sc, 6, 24, Math.PI);
+  const trimGeoTop = new THREE.TorusGeometry(0.8 * sc, 0.02 * sc, 12, 24, Math.PI);
   const trimTop = m(trimGeoTop, trimM);
   pos(trimTop, 0, 2.0 * sc, 0.0);
   rot(trimTop, Math.PI / 2, 0, 0);
   g.add(trimTop);
 
-  const trimGeoBottom = new THREE.TorusGeometry(0.75 * sc, 0.02 * sc, 6, 24, Math.PI);
+  const trimGeoBottom = new THREE.TorusGeometry(0.75 * sc, 0.02 * sc, 12, 24, Math.PI);
   const trimBottom = m(trimGeoBottom, trimM);
   pos(trimBottom, 0, 1.2 * sc, 0.0);
   rot(trimBottom, Math.PI / 2, 0, Math.PI);
@@ -168,7 +168,7 @@ export function buildBossHumanoidEnemy(
     g.add(skullDec);
     // Eye sockets
     for (const ex of [-0.02, 0.02]) {
-      const skullEye = m(new THREE.SphereGeometry(0.015 * sc, 6, 6), glowEmissive);
+      const skullEye = m(new THREE.SphereGeometry(0.015 * sc, 12, 10), glowEmissive);
       pos(skullEye, (sx + ex) * sc, 0.82 * sc, 0.49 * sc);
       g.add(skullEye);
     }
@@ -177,7 +177,7 @@ export function buildBossHumanoidEnemy(
   // Hanging trophy chains from belt
   for (const cx of [-0.5, -0.25, 0.25, 0.5]) {
     for (let ci = 0; ci < 4; ci++) {
-      const chainLink = m(new THREE.TorusGeometry(0.025 * sc, 0.006 * sc, 6, 8), trimM);
+      const chainLink = m(new THREE.TorusGeometry(0.025 * sc, 0.006 * sc, 12, 8), trimM);
       pos(chainLink, cx * sc, (0.72 - ci * 0.06) * sc, 0.44 * sc);
       rot(chainLink, ci % 2 === 0 ? 0 : Math.PI / 2, 0, 0);
       g.add(chainLink);
@@ -192,7 +192,7 @@ export function buildBossHumanoidEnemy(
     rot(fauld, 0.2, angle, 0);
     g.add(fauld);
     // Spike on fauld
-    const fauldSpike = m(new THREE.ConeGeometry(0.02 * sc, 0.1 * sc, 6), trimM);
+    const fauldSpike = m(new THREE.ConeGeometry(0.02 * sc, 0.1 * sc, 12), trimM);
     pos(fauldSpike, Math.sin(angle) * 0.52 * sc, 0.5 * sc, Math.cos(angle) * 0.48 * sc);
     rot(fauldSpike, 0.3, angle, 0);
     g.add(fauldSpike);
@@ -204,7 +204,7 @@ export function buildBossHumanoidEnemy(
     pos(tasset, tx * sc, 0.55 * sc, 0.3 * sc);
     rot(tasset, 0.15, 0, 0);
     g.add(tasset);
-    const tassetSpike = m(new THREE.ConeGeometry(0.025 * sc, 0.12 * sc, 6), trimM);
+    const tassetSpike = m(new THREE.ConeGeometry(0.025 * sc, 0.12 * sc, 12), trimM);
     pos(tassetSpike, tx * sc, 0.42 * sc, 0.34 * sc);
     rot(tassetSpike, 0.15, 0, 0);
     g.add(tassetSpike);
@@ -242,7 +242,7 @@ export function buildBossHumanoidEnemy(
 
     // Hanging chain links from pauldron
     for (let ci = 0; ci < 6; ci++) {
-      const cLink = m(new THREE.TorusGeometry(0.02 * sc, 0.005 * sc, 6, 8), trimM);
+      const cLink = m(new THREE.TorusGeometry(0.02 * sc, 0.005 * sc, 12, 8), trimM);
       pos(cLink, side * 0.1 * sc, -0.35 * sc - ci * 0.05 * sc, 0.15 * sc);
       rot(cLink, ci % 2 === 0 ? 0 : Math.PI / 2, 0, 0);
       pauldronGroup.add(cLink);
@@ -254,7 +254,7 @@ export function buildBossHumanoidEnemy(
   // ── Shoulder fur mantle ──
   for (const side of [-1, 1]) {
     for (let fi = 0; fi < 8; fi++) {
-      const furCone = m(new THREE.ConeGeometry(0.04 * sc, 0.15 * sc, 6), furM);
+      const furCone = m(new THREE.ConeGeometry(0.04 * sc, 0.15 * sc, 12), furM);
       const angle = (fi / 8) * Math.PI - Math.PI / 2;
       pos(
         furCone,
@@ -347,7 +347,7 @@ export function buildBossHumanoidEnemy(
     for (let si = 0; si < 8; si++) {
       const angle = (si / 8) * Math.PI * 2;
       const spikeH = (0.2 + (si % 2 === 0 ? 0.1 : 0)) * sc;
-      const spike = m(new THREE.ConeGeometry(0.03 * sc, spikeH, 6), trimM);
+      const spike = m(new THREE.ConeGeometry(0.03 * sc, spikeH, 12), trimM);
       pos(
         spike,
         Math.sin(angle) * 0.28 * sc,
@@ -368,7 +368,7 @@ export function buildBossHumanoidEnemy(
     helmGroup.add(noseGuard);
 
     // Helm trim
-    const helmTrim = m(new THREE.TorusGeometry(0.31 * sc, 0.015 * sc, 6, 24), trimM);
+    const helmTrim = m(new THREE.TorusGeometry(0.31 * sc, 0.015 * sc, 12, 24), trimM);
     pos(helmTrim, 0, 0.0 * sc, 0);
     rot(helmTrim, Math.PI / 2, 0, 0);
     helmGroup.add(helmTrim);
@@ -402,12 +402,12 @@ export function buildBossHumanoidEnemy(
     armGroup.add(gauntlet);
 
     // Wrist blades (thin cones)
-    const wristBlade = m(new THREE.ConeGeometry(0.015 * sc, 0.2 * sc, 4), trimM);
+    const wristBlade = m(new THREE.ConeGeometry(0.015 * sc, 0.2 * sc, 10), trimM);
     pos(wristBlade, side * 0.08 * sc, -1.1 * sc, 0.1 * sc);
     rot(wristBlade, 0.5, 0, 0);
     armGroup.add(wristBlade);
 
-    const wristBlade2 = m(new THREE.ConeGeometry(0.012 * sc, 0.15 * sc, 4), trimM);
+    const wristBlade2 = m(new THREE.ConeGeometry(0.012 * sc, 0.15 * sc, 10), trimM);
     pos(wristBlade2, side * 0.06 * sc, -1.05 * sc, 0.12 * sc);
     rot(wristBlade2, 0.6, 0, 0);
     armGroup.add(wristBlade2);
@@ -421,25 +421,25 @@ export function buildBossHumanoidEnemy(
       const fingerLen = fi === 0 ? 0.06 : 0.09; // thumb shorter
 
       // Metacarpal
-      const meta = m(new THREE.CylinderGeometry(0.012 * sc, 0.01 * sc, fingerLen * sc, 6), skinM);
+      const meta = m(new THREE.CylinderGeometry(0.012 * sc, 0.01 * sc, fingerLen * sc, 12), skinM);
       pos(meta, fx, -fingerLen * 0.5 * sc, 0.04 * sc);
       handGroup.add(meta);
 
       // Proximal
-      const prox = m(new THREE.CylinderGeometry(0.01 * sc, 0.009 * sc, fingerLen * 0.7 * sc, 6), skinM);
+      const prox = m(new THREE.CylinderGeometry(0.01 * sc, 0.009 * sc, fingerLen * 0.7 * sc, 12), skinM);
       pos(prox, fx, -(fingerLen + fingerLen * 0.35) * sc, 0.06 * sc);
       rot(prox, 0.2, 0, 0);
       handGroup.add(prox);
 
       // Distal
-      const dist = m(new THREE.CylinderGeometry(0.009 * sc, 0.006 * sc, fingerLen * 0.5 * sc, 6), skinM);
+      const dist = m(new THREE.CylinderGeometry(0.009 * sc, 0.006 * sc, fingerLen * 0.5 * sc, 12), skinM);
       pos(dist, fx, -(fingerLen + fingerLen * 0.7) * sc, 0.08 * sc);
       rot(dist, 0.4, 0, 0);
       handGroup.add(dist);
 
       // Knuckle guard spike
       if (fi > 0) {
-        const knuckleSpike = m(new THREE.ConeGeometry(0.01 * sc, 0.04 * sc, 4), trimM);
+        const knuckleSpike = m(new THREE.ConeGeometry(0.01 * sc, 0.04 * sc, 10), trimM);
         pos(knuckleSpike, fx, -0.01 * sc, 0.06 * sc);
         handGroup.add(knuckleSpike);
       }
@@ -465,7 +465,7 @@ export function buildBossHumanoidEnemy(
     legGroup.add(knee);
 
     // Knee blade
-    const kneeBlade = m(new THREE.ConeGeometry(0.03 * sc, 0.15 * sc, 6), trimM);
+    const kneeBlade = m(new THREE.ConeGeometry(0.03 * sc, 0.15 * sc, 12), trimM);
     pos(kneeBlade, 0, 0.22 * sc, 0.16 * sc);
     rot(kneeBlade, -0.5, 0, 0);
     legGroup.add(kneeBlade);
@@ -477,19 +477,19 @@ export function buildBossHumanoidEnemy(
 
     // Greave spikes (3 along shin)
     for (let gi = 0; gi < 3; gi++) {
-      const greaveSpike = m(new THREE.ConeGeometry(0.02 * sc, 0.08 * sc, 5), trimM);
+      const greaveSpike = m(new THREE.ConeGeometry(0.02 * sc, 0.08 * sc, 10), trimM);
       pos(greaveSpike, 0, (0.05 - gi * 0.12) * sc, 0.13 * sc);
       rot(greaveSpike, -0.4, 0, 0);
       legGroup.add(greaveSpike);
     }
 
     // Greave trim
-    const greaveTrim = m(new THREE.TorusGeometry(0.14 * sc, 0.012 * sc, 6, 16), trimM);
+    const greaveTrim = m(new THREE.TorusGeometry(0.14 * sc, 0.012 * sc, 12, 16), trimM);
     pos(greaveTrim, 0, 0.18 * sc, 0);
     rot(greaveTrim, Math.PI / 2, 0, 0);
     legGroup.add(greaveTrim);
 
-    const greaveTrimLow = m(new THREE.TorusGeometry(0.12 * sc, 0.012 * sc, 6, 16), trimM);
+    const greaveTrimLow = m(new THREE.TorusGeometry(0.12 * sc, 0.012 * sc, 12, 16), trimM);
     pos(greaveTrimLow, 0, -0.28 * sc, 0);
     rot(greaveTrimLow, Math.PI / 2, 0, 0);
     legGroup.add(greaveTrimLow);
@@ -543,7 +543,7 @@ export function buildBossHumanoidEnemy(
   }
 
   // ── Back-mounted banner pole ──
-  const bannerPole = m(new THREE.CylinderGeometry(0.02 * sc, 0.02 * sc, 1.2 * sc, 6), trimM);
+  const bannerPole = m(new THREE.CylinderGeometry(0.02 * sc, 0.02 * sc, 1.2 * sc, 12), trimM);
   pos(bannerPole, 0.15 * sc, 2.4 * sc, -0.35 * sc);
   g.add(bannerPole);
 
@@ -797,7 +797,7 @@ export function buildSpectralEnemy(
     g.add(vertebra);
 
     // Spinous process (small bump on back of each vertebra)
-    const spinous = m(new THREE.ConeGeometry(0.015 * sc, 0.04 * sc, 4), boneMat);
+    const spinous = m(new THREE.ConeGeometry(0.015 * sc, 0.04 * sc, 10), boneMat);
     pos(spinous, 0, (1.7 - vi * 0.1) * sc, -0.1 * sc);
     rot(spinous, 0.5, 0, 0);
     g.add(spinous);
@@ -807,7 +807,7 @@ export function buildSpectralEnemy(
   for (let ri = 0; ri < 6; ri++) {
     for (const side of [-1, 1]) {
       const ribLen = (0.25 - ri * 0.02) * sc;
-      const ribCurve = new THREE.TorusGeometry(ribLen, 0.012 * sc, 6, 12, Math.PI * 0.7);
+      const ribCurve = new THREE.TorusGeometry(ribLen, 0.012 * sc, 12, 12, Math.PI * 0.7);
       const rib = m(ribCurve, boneMat);
       pos(rib, side * 0.03 * sc, (1.55 - ri * 0.08) * sc, 0.05 * sc);
       rot(rib, 0.3, side * 0.8, side * 0.3);
@@ -828,7 +828,7 @@ export function buildSpectralEnemy(
   g.add(pelvis);
 
   // Sacrum
-  const sacrum = m(new THREE.ConeGeometry(0.06 * sc, 0.1 * sc, 6), boneMat);
+  const sacrum = m(new THREE.ConeGeometry(0.06 * sc, 0.1 * sc, 12), boneMat);
   pos(sacrum, 0, 0.85 * sc, -0.05 * sc);
   rot(sacrum, Math.PI, 0, 0);
   g.add(sacrum);
@@ -862,7 +862,7 @@ export function buildSpectralEnemy(
   skullGroup.add(browRidge);
 
   // Nasal cavity (inverted cone)
-  const nasalCavity = m(new THREE.ConeGeometry(0.03 * sc, 0.06 * sc, 4), darkVoidMat);
+  const nasalCavity = m(new THREE.ConeGeometry(0.03 * sc, 0.06 * sc, 10), darkVoidMat);
   pos(nasalCavity, 0, -0.06 * sc, 0.2 * sc);
   rot(nasalCavity, Math.PI, 0, 0);
   skullGroup.add(nasalCavity);
@@ -885,7 +885,7 @@ export function buildSpectralEnemy(
     skullGroup.add(eyeGlow);
 
     // Eye trail wisp
-    const eyeTrail = m(new THREE.CylinderGeometry(0.01 * sc, 0.002 * sc, 0.12 * sc, 6), spectralGlowMat);
+    const eyeTrail = m(new THREE.CylinderGeometry(0.01 * sc, 0.002 * sc, 0.12 * sc, 12), spectralGlowMat);
     pos(eyeTrail, side * 0.08 * sc, 0.06 * sc, 0.17 * sc);
     skullGroup.add(eyeTrail);
   }
@@ -898,7 +898,7 @@ export function buildSpectralEnemy(
 
   // Jaw hinge details
   for (const side of [-1, 1]) {
-    const hinge = m(new THREE.SphereGeometry(0.02 * sc, 6, 6), boneMat);
+    const hinge = m(new THREE.SphereGeometry(0.02 * sc, 12, 10), boneMat);
     pos(hinge, side * 0.1 * sc, -0.1 * sc, 0.02 * sc);
     skullGroup.add(hinge);
   }
@@ -949,12 +949,12 @@ export function buildSpectralEnemy(
     handGroup.position.set(side * 0.5 * sc, 1.2 * sc, 0.15 * sc);
 
     // Wrist bones
-    const wristBone = m(new THREE.CylinderGeometry(0.025 * sc, 0.02 * sc, 0.08 * sc, 6), boneMat);
+    const wristBone = m(new THREE.CylinderGeometry(0.025 * sc, 0.02 * sc, 0.08 * sc, 12), boneMat);
     handGroup.add(wristBone);
 
     // Carpals (small cluster of bones)
     for (let ci = 0; ci < 3; ci++) {
-      const carpal = m(new THREE.SphereGeometry(0.015 * sc, 6, 6), boneMat);
+      const carpal = m(new THREE.SphereGeometry(0.015 * sc, 12, 10), boneMat);
       pos(carpal, (ci - 1) * 0.02 * sc, -0.05 * sc, 0);
       handGroup.add(carpal);
     }
@@ -968,7 +968,7 @@ export function buildSpectralEnemy(
 
       // Metacarpal
       const metacarpal = m(
-        new THREE.CylinderGeometry(0.008 * sc, 0.007 * sc, fingerLen * sc, 5),
+        new THREE.CylinderGeometry(0.008 * sc, 0.007 * sc, fingerLen * sc, 10),
         boneMat
       );
       pos(metacarpal, baseX, baseY - fingerLen * 0.5 * sc, 0);
@@ -983,7 +983,7 @@ export function buildSpectralEnemy(
 
       // Proximal phalanx
       const proximal = m(
-        new THREE.CylinderGeometry(0.007 * sc, 0.006 * sc, fingerLen * 0.8 * sc, 5),
+        new THREE.CylinderGeometry(0.007 * sc, 0.006 * sc, fingerLen * 0.8 * sc, 10),
         boneMat
       );
       pos(
@@ -1007,7 +1007,7 @@ export function buildSpectralEnemy(
 
       // Distal phalanx
       const distal = m(
-        new THREE.CylinderGeometry(0.006 * sc, 0.003 * sc, fingerLen * 0.6 * sc, 5),
+        new THREE.CylinderGeometry(0.006 * sc, 0.003 * sc, fingerLen * 0.6 * sc, 10),
         boneMat
       );
       pos(
@@ -1021,11 +1021,11 @@ export function buildSpectralEnemy(
     }
 
     // Forearm bones (radius/ulna)
-    const radius = m(new THREE.CylinderGeometry(0.015 * sc, 0.012 * sc, 0.4 * sc, 6), boneMat);
+    const radius = m(new THREE.CylinderGeometry(0.015 * sc, 0.012 * sc, 0.4 * sc, 12), boneMat);
     pos(radius, 0.02 * sc, 0.25 * sc, 0);
     handGroup.add(radius);
 
-    const ulna = m(new THREE.CylinderGeometry(0.013 * sc, 0.01 * sc, 0.4 * sc, 6), boneMat);
+    const ulna = m(new THREE.CylinderGeometry(0.013 * sc, 0.01 * sc, 0.4 * sc, 12), boneMat);
     pos(ulna, -0.02 * sc, 0.25 * sc, 0);
     handGroup.add(ulna);
 
@@ -1110,7 +1110,7 @@ export function buildSpectralEnemy(
       color: glow, emissive: glow, emissiveIntensity: 2.0,
       transparent: true, opacity: 0.35, roughness: 0.0, metalness: 0.0,
     });
-    const tail = m(new THREE.CylinderGeometry(wispSize * 0.5, 0.001 * sc, tailLen, 6), wispTailMat);
+    const tail = m(new THREE.CylinderGeometry(wispSize * 0.5, 0.001 * sc, tailLen, 12), wispTailMat);
     pos(
       tail,
       Math.sin(wispAngle) * (wispRadius - tailLen * 0.3),
@@ -1140,7 +1140,7 @@ export function buildSpectralEnemy(
   lanternGroup.position.set(-0.6 * sc, 1.0 * sc, 0.2 * sc);
 
   // Lantern handle (thin cylinder)
-  const lanternHandle = m(new THREE.CylinderGeometry(0.008 * sc, 0.008 * sc, 0.15 * sc, 6), chainMat);
+  const lanternHandle = m(new THREE.CylinderGeometry(0.008 * sc, 0.008 * sc, 0.15 * sc, 12), chainMat);
   pos(lanternHandle, 0, 0.1 * sc, 0);
   lanternGroup.add(lanternHandle);
 
@@ -1257,19 +1257,19 @@ export function buildSpectralEnemy(
   // ── Clavicle and shoulder bones ──
   for (const side of [-1, 1]) {
     // Clavicle
-    const clavicle = m(new THREE.CylinderGeometry(0.015 * sc, 0.012 * sc, 0.3 * sc, 6), boneMat);
+    const clavicle = m(new THREE.CylinderGeometry(0.015 * sc, 0.012 * sc, 0.3 * sc, 12), boneMat);
     pos(clavicle, side * 0.15 * sc, 1.72 * sc, 0.05 * sc);
     rot(clavicle, 0, 0, side * 0.8);
     g.add(clavicle);
 
     // Scapula (flat triangular bone)
-    const scapula = m(new THREE.ConeGeometry(0.08 * sc, 0.15 * sc, 3), boneMat);
+    const scapula = m(new THREE.ConeGeometry(0.08 * sc, 0.15 * sc, 8), boneMat);
     pos(scapula, side * 0.2 * sc, 1.55 * sc, -0.12 * sc);
     rot(scapula, 0.3, 0, side * 0.2);
     g.add(scapula);
 
     // Humerus (upper arm bone)
-    const humerus = m(new THREE.CylinderGeometry(0.018 * sc, 0.015 * sc, 0.35 * sc, 6), boneMat);
+    const humerus = m(new THREE.CylinderGeometry(0.018 * sc, 0.015 * sc, 0.35 * sc, 12), boneMat);
     pos(humerus, side * 0.4 * sc, 1.5 * sc, 0.05 * sc);
     rot(humerus, 0, 0, side * 0.3);
     g.add(humerus);

@@ -81,7 +81,7 @@ export function createEnemyMesh(type: EnemyType, scale: number): THREE.Group {
       // Corner flame markers (4 small emissive spheres)
       for (let fi = 0; fi < 4; fi++) {
         const fAngle = (fi / 4) * Math.PI * 2 + Math.PI / 4;
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 8, 6), new THREE.MeshStandardMaterial({
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 16, 12), new THREE.MeshStandardMaterial({
           color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 3.0,
         }));
         flame.position.set(Math.cos(fAngle) * r, 0.15, Math.sin(fAngle) * r);

@@ -206,7 +206,7 @@ export class TekkenArenaRenderer {
       const flagColors = [0xaa2222, 0x2244aa, 0x228844, 0xaa8822, 0x662288];
       const flagColor = flagColors[Math.floor(Math.random() * flagColors.length)];
       const flagPole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.005, 0.005, 0.4, 4),
+        new THREE.CylinderGeometry(0.005, 0.005, 0.4, 10),
         new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.7 }),
       );
       flagPole.position.set(sx + 0.1, sy + bodyH + 0.2, sz);
@@ -878,7 +878,7 @@ export class TekkenArenaRenderer {
         // Eyes (2 small spheres)
         for (const eyeOff of [-0.04, 0.04]) {
           const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.02, 5, 4),
+            new THREE.SphereGeometry(0.02, 12, 10),
             new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3 }),
           );
           eye.position.set(xBase + gargoyleDir * 0.44, gargoyleY + 0.03, zPos + eyeOff);
@@ -886,7 +886,7 @@ export class TekkenArenaRenderer {
         }
         // Snout
         const snout = new THREE.Mesh(
-          new THREE.SphereGeometry(0.05, 6, 4),
+          new THREE.SphereGeometry(0.05, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0x5a5040, roughness: 0.7, metalness: 0.1 }),
         );
         snout.position.set(xBase + gargoyleDir * 0.46, gargoyleY - 0.03, zPos);
@@ -917,7 +917,7 @@ export class TekkenArenaRenderer {
       for (let i = 1; i < barCount; i++) {
         const bz = zStart + i * barSpacing;
         const bar = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.015, 0.015, 3.8, 6),
+          new THREE.CylinderGeometry(0.015, 0.015, 3.8, 12),
           barMat.clone(),
         );
         bar.position.set(xBase, 1.9, bz);
@@ -927,7 +927,7 @@ export class TekkenArenaRenderer {
 
         // Spike top on each bar
         const spike = new THREE.Mesh(
-          new THREE.ConeGeometry(0.025, 0.1, 6),
+          new THREE.ConeGeometry(0.025, 0.1, 12),
           spikeMat,
         );
         spike.position.set(xBase, 3.85, bz);
@@ -938,7 +938,7 @@ export class TekkenArenaRenderer {
           const rustHeight = 0.3 + Math.random() * 0.5;
           const rustY = 0.5 + Math.random() * 2.5;
           const rustSleeve = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.02, 0.02, rustHeight, 6),
+            new THREE.CylinderGeometry(0.02, 0.02, rustHeight, 12),
             rustMat,
           );
           rustSleeve.position.set(xBase, rustY, bz);
@@ -949,7 +949,7 @@ export class TekkenArenaRenderer {
         if (i > 1 && i % 2 === 0) {
           const scrollZ = bz - barSpacing / 2;
           const scroll = new THREE.Mesh(
-            new THREE.TorusGeometry(0.06, 0.008, 6, 8, Math.PI),
+            new THREE.TorusGeometry(0.06, 0.008, 12, 8, Math.PI),
             barMat.clone(),
           );
           scroll.position.set(xBase, 1.2, scrollZ);
@@ -957,7 +957,7 @@ export class TekkenArenaRenderer {
           this._props.add(scroll);
 
           const scroll2 = new THREE.Mesh(
-            new THREE.TorusGeometry(0.06, 0.008, 6, 8, Math.PI),
+            new THREE.TorusGeometry(0.06, 0.008, 12, 8, Math.PI),
             barMat.clone(),
           );
           scroll2.position.set(xBase, 2.6, scrollZ);
@@ -1100,7 +1100,7 @@ export class TekkenArenaRenderer {
       // Stall posts
       for (const sp of [-0.55, 0.55]) {
         const stallPost = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.03, 0.03, 1.8, 4),
+          new THREE.CylinderGeometry(0.03, 0.03, 1.8, 10),
           woodDarkMat,
         );
         stallPost.position.set(stallX + sp, stallY + 0.9, stallZ + 0.35);
@@ -1132,7 +1132,7 @@ export class TekkenArenaRenderer {
 
       // Lantern glow
       const lanternGlow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03, 5, 4),
+        new THREE.SphereGeometry(0.03, 12, 10),
         new THREE.MeshStandardMaterial({
           color: 0xffcc44, emissive: 0xffaa00, emissiveIntensity: 2.0,
           transparent: true, opacity: 0.85,
@@ -1206,7 +1206,7 @@ export class TekkenArenaRenderer {
     for (let n = 0; n < 3; n++) {
       const nx = nbX - 0.8 + n * 0.8;
       const nobleBody = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.12, 0.55, 6),
+        new THREE.CylinderGeometry(0.1, 0.12, 0.55, 12),
         new THREE.MeshStandardMaterial({ color: 0x8a2020 + n * 0x001500, roughness: 0.5 }),
       );
       nobleBody.position.set(nx, nbY + 0.4, nbZ);
@@ -1214,7 +1214,7 @@ export class TekkenArenaRenderer {
       this._registerSpectator(nobleBody);
 
       const nobleHead = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08, 6, 5),
+        new THREE.SphereGeometry(0.08, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.6 }),
       );
       nobleHead.position.set(nx, nbY + 0.75, nbZ);
@@ -1241,7 +1241,7 @@ export class TekkenArenaRenderer {
         this._spectatorGroup.add(banner);
 
         const pole = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.015, 0.015, 2.2, 4),
+          new THREE.CylinderGeometry(0.015, 0.015, 2.2, 10),
           new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.7 }),
         );
         pole.position.set(
@@ -1321,7 +1321,7 @@ export class TekkenArenaRenderer {
 
     // Keep the thin rod as structural support
     const chain = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.008, 0.008, 3.0, 4),
+      new THREE.CylinderGeometry(0.008, 0.008, 3.0, 10),
       ironMat,
     );
     chain.position.set(0, chanY + 1.5, chanZ);
@@ -1346,7 +1346,7 @@ export class TekkenArenaRenderer {
     for (let a = 0; a < 4; a++) {
       const angle = (a / 4) * Math.PI * 2;
       const crossBar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.015, 0.015, 0.8, 4),
+        new THREE.CylinderGeometry(0.015, 0.015, 0.8, 10),
         ironMat,
       );
       crossBar.position.set(
@@ -1362,7 +1362,7 @@ export class TekkenArenaRenderer {
     for (let a = 0; a < 4; a++) {
       const angle = (a / 4) * Math.PI * 2 + Math.PI / 4;
       const supportChain = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.01, 0.01, 1.2, 4),
+        new THREE.CylinderGeometry(0.01, 0.01, 1.2, 10),
         ironMat,
       );
       const scx = 0.6 * Math.cos(angle);
@@ -1393,7 +1393,7 @@ export class TekkenArenaRenderer {
     for (let cp = 0; cp < 12; cp++) {
       const cpAngle = (cp / 12) * Math.PI * 2;
       const crystal = new THREE.Mesh(
-        new THREE.SphereGeometry(0.02, 6, 5),
+        new THREE.SphereGeometry(0.02, 12, 10),
         new THREE.MeshStandardMaterial({
           color: 0xaaddff,
           emissive: 0x6699cc,
@@ -1412,7 +1412,7 @@ export class TekkenArenaRenderer {
       this._props.add(crystal);
       // Thin wire holding crystal
       const wire = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.002, 0.002, 0.1, 3),
+        new THREE.CylinderGeometry(0.002, 0.002, 0.1, 8),
         ironMat,
       );
       wire.position.set(
@@ -1431,14 +1431,14 @@ export class TekkenArenaRenderer {
       const candleZ = chanZ + 0.8 * Math.sin(cAngle);
 
       const candle = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.015, 0.018, 0.15, 6),
+        new THREE.CylinderGeometry(0.015, 0.018, 0.15, 12),
         new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.9 }),
       );
       candle.position.set(candleX, chanY + 0.1, candleZ);
       this._props.add(candle);
 
       const candleFlame = new THREE.Mesh(
-        new THREE.SphereGeometry(0.025, 5, 4),
+        new THREE.SphereGeometry(0.025, 12, 10),
         new THREE.MeshStandardMaterial({
           color: 0xffcc44,
           emissive: 0xffaa00,
@@ -1673,7 +1673,7 @@ export class TekkenArenaRenderer {
 
     for (const m of mountainData) {
       const mountain = new THREE.Mesh(
-        new THREE.ConeGeometry(m.w / 2, m.h, 4),
+        new THREE.ConeGeometry(m.w / 2, m.h, 10),
         mountainMat,
       );
       mountain.position.set(m.x, m.h / 2 - 1, -35);
@@ -1987,7 +1987,7 @@ export class TekkenArenaRenderer {
     // Support legs
     for (const sx of [-0.5, 0.5]) {
       const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.06, chairY, 6),
+        new THREE.CylinderGeometry(0.06, 0.06, chairY, 12),
         ironMat,
       );
       leg.position.set(sx, chairY / 2, chairZ);
@@ -2004,7 +2004,7 @@ export class TekkenArenaRenderer {
 
     // Promoter figure
     const promoterBody = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.14, 0.6, 6),
+      new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12),
       new THREE.MeshStandardMaterial({ color: 0x4a1010, roughness: 0.5 }),
     );
     promoterBody.position.set(0, chairY + 0.45, chairZ);
@@ -2012,7 +2012,7 @@ export class TekkenArenaRenderer {
     this._registerSpectator(promoterBody);
 
     const promoterHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.09, 6, 5),
+      new THREE.SphereGeometry(0.09, 12, 10),
       new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.6 }),
     );
     promoterHead.position.set(0, chairY + 0.85, chairZ);
@@ -2091,7 +2091,7 @@ export class TekkenArenaRenderer {
 
       // Skull (sphere + jaw)
       const skull = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08, 6, 5),
+        new THREE.SphereGeometry(0.08, 12, 10),
         boneMat,
       );
       skull.position.set(
@@ -2105,7 +2105,7 @@ export class TekkenArenaRenderer {
       // Eye sockets (dark indentations)
       for (const ex of [-0.03, 0.03]) {
         const eye = new THREE.Mesh(
-          new THREE.SphereGeometry(0.02, 4, 3),
+          new THREE.SphereGeometry(0.02, 10, 8),
           new THREE.MeshBasicMaterial({ color: 0x080808 }),
         );
         eye.position.set(
@@ -2124,7 +2124,7 @@ export class TekkenArenaRenderer {
       const chainLen = 1.5 + Math.random() * 2.0;
 
       const chain = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.01, 0.01, chainLen, 4),
+        new THREE.CylinderGeometry(0.01, 0.01, chainLen, 10),
         ironMat,
       );
       chain.position.set(cx, 5.0 - chainLen / 2, cz);
@@ -2134,7 +2134,7 @@ export class TekkenArenaRenderer {
       const linkCount = Math.floor(chainLen / 0.15);
       for (let l = 0; l < linkCount; l++) {
         const link = new THREE.Mesh(
-          new THREE.TorusGeometry(0.025, 0.006, 4, 6),
+          new THREE.TorusGeometry(0.025, 0.006, 10, 6),
           ironMat,
         );
         link.position.set(cx, 5.0 - l * 0.15, cz);
@@ -2145,7 +2145,7 @@ export class TekkenArenaRenderer {
       // Hook or shackle at end
       if (Math.random() > 0.5) {
         const hook = new THREE.Mesh(
-          new THREE.TorusGeometry(0.04, 0.008, 4, 8, Math.PI),
+          new THREE.TorusGeometry(0.04, 0.008, 10, 8, Math.PI),
           ironMat,
         );
         hook.position.set(cx, 5.0 - chainLen, cz);
@@ -2536,7 +2536,7 @@ export class TekkenArenaRenderer {
 
         // Pointed arch top
         const archTop = new THREE.Mesh(
-          new THREE.ConeGeometry(0.6, 0.8, 3),
+          new THREE.ConeGeometry(0.6, 0.8, 8),
           new THREE.MeshStandardMaterial({ color: 0x3a3a30, roughness: 0.7 }),
         );
         archTop.position.set(wx, 5.2, wz);
@@ -2640,7 +2640,7 @@ export class TekkenArenaRenderer {
 
     // Throne top ornament (pointed crown shape)
     const crownTop = new THREE.Mesh(
-      new THREE.ConeGeometry(0.3, 0.5, 5),
+      new THREE.ConeGeometry(0.3, 0.5, 10),
       goldMat,
     );
     crownTop.position.set(throneX, throneY + 2.35, throneBackZ + 2.35);
@@ -2675,7 +2675,7 @@ export class TekkenArenaRenderer {
 
     // King/Queen figure on throne
     const royalBody = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.14, 0.65, 6),
+      new THREE.CylinderGeometry(0.12, 0.14, 0.65, 12),
       new THREE.MeshStandardMaterial({ color: 0x6a1010, roughness: 0.5 }),
     );
     royalBody.position.set(throneX, throneY + 0.55, throneBackZ + 2.0);
@@ -2683,7 +2683,7 @@ export class TekkenArenaRenderer {
     this._registerSpectator(royalBody);
 
     const royalHead = new THREE.Mesh(
-      new THREE.SphereGeometry(0.09, 6, 5),
+      new THREE.SphereGeometry(0.09, 12, 10),
       new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.6 }),
     );
     royalHead.position.set(throneX, throneY + 0.98, throneBackZ + 2.0);
@@ -2715,7 +2715,7 @@ export class TekkenArenaRenderer {
 
       // Chain
       const chain = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.012, 0.012, 2.5, 4),
+        new THREE.CylinderGeometry(0.012, 0.012, 2.5, 10),
         ironMat,
       );
       chain.position.set(cx, chanY + 1.25, cz);
@@ -2738,14 +2738,14 @@ export class TekkenArenaRenderer {
         const pz = cz + ringRadius * Math.sin(angle);
 
         const candle = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.012, 0.015, 0.12, 6),
+          new THREE.CylinderGeometry(0.012, 0.015, 0.12, 12),
           new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.9 }),
         );
         candle.position.set(px, chanY + 0.08, pz);
         this._props.add(candle);
 
         const flame = new THREE.Mesh(
-          new THREE.SphereGeometry(0.02, 5, 4),
+          new THREE.SphereGeometry(0.02, 12, 10),
           new THREE.MeshStandardMaterial({
             color: 0xffcc44,
             emissive: 0xffaa00,
@@ -2807,7 +2807,7 @@ export class TekkenArenaRenderer {
         // Spear
         const spearMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.7 });
         const spear = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.015, 0.015, 2.5, 4),
+          new THREE.CylinderGeometry(0.015, 0.015, 2.5, 10),
           spearMat,
         );
         spear.position.set(ax + side * 0.15, 1.25, az);
@@ -2815,7 +2815,7 @@ export class TekkenArenaRenderer {
 
         // Spear tip
         const tip = new THREE.Mesh(
-          new THREE.ConeGeometry(0.03, 0.15, 4),
+          new THREE.ConeGeometry(0.03, 0.15, 10),
           armorMat,
         );
         tip.position.set(ax + side * 0.15, 2.55, az);
@@ -2929,7 +2929,7 @@ export class TekkenArenaRenderer {
       this._props.add(swordGuard);
 
       // Axe
-      const axeShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 4), woodMat);
+      const axeShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 10), woodMat);
       axeShaft.position.set(rackX + 0.08, 0.9, rackZ + 0.04);
       this._props.add(axeShaft);
       const axeHead = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.015), metalMat);
@@ -2937,11 +2937,11 @@ export class TekkenArenaRenderer {
       this._props.add(axeHead);
 
       // Mace
-      const maceShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.55, 4), woodMat);
+      const maceShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.55, 10), woodMat);
       maceShaft.position.set(rackX, 0.85, rackZ + 0.04);
       maceShaft.rotation.z = -0.08;
       this._props.add(maceShaft);
-      const maceHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5), metalMat);
+      const maceHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), metalMat);
       maceHead.position.set(rackX - 0.04, 1.15, rackZ + 0.04);
       this._props.add(maceHead);
     }
@@ -2989,7 +2989,7 @@ export class TekkenArenaRenderer {
 
         // Gold trim on crest
         const crestRim = new THREE.Mesh(
-          new THREE.TorusGeometry(0.12, 0.008, 4, 6),
+          new THREE.TorusGeometry(0.12, 0.008, 10, 6),
           goldMat,
         );
         crestRim.position.set(crestX, crestY, crestZ + side * 0.005);
@@ -3019,7 +3019,7 @@ export class TekkenArenaRenderer {
 
       // Skull/trophy
       const skull = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 6, 5),
+        new THREE.SphereGeometry(0.06, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0xddd8c0, roughness: 0.6 }),
       );
       skull.position.set(trophyWallX - 0.1, shelfY + 0.08, trophyWallZ + ts * 0.3);
@@ -3027,7 +3027,7 @@ export class TekkenArenaRenderer {
 
       // Goblet/cup
       const goblet = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03, 0.02, 0.08, 6),
+        new THREE.CylinderGeometry(0.03, 0.02, 0.08, 12),
         new THREE.MeshStandardMaterial({ color: 0xc4a855, roughness: 0.3, metalness: 0.6 }),
       );
       goblet.position.set(trophyWallX + 0.1, shelfY + 0.06, trophyWallZ + ts * 0.3);
@@ -3450,7 +3450,7 @@ export class TekkenArenaRenderer {
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x666655, roughness: 0.85 });
     for (let i = 0; i < 8; i++) {
       const rock = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 6, 4),
+        new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 12, 10),
         rockMat,
       );
       rock.position.set(
@@ -3531,7 +3531,7 @@ export class TekkenArenaRenderer {
       transparent: true, opacity: 0.7,
     });
     for (const pos of [[-5, -4], [5, -4], [-3, -6], [3, -6]] as [number, number][]) {
-      const icicle = new THREE.Mesh(new THREE.ConeGeometry(0.2, 2.5, 6), iceMat);
+      const icicle = new THREE.Mesh(new THREE.ConeGeometry(0.2, 2.5, 12), iceMat);
       icicle.position.set(pos[0], 1.25, pos[1]);
       icicle.castShadow = true;
       this._props.add(icicle);
@@ -3761,9 +3761,9 @@ export class TekkenArenaRenderer {
       const z = -3 - i * 1.5;
       const x = (i % 2 === 0 ? -1 : 1) * (3 + Math.random());
       // Stall frame
-      const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 4), woodMat);
+      const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 10), woodMat);
       post1.position.set(x - 0.5, 1.25, z); this._props.add(post1);
-      const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 4), woodMat);
+      const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5, 10), woodMat);
       post2.position.set(x + 0.5, 1.25, z); this._props.add(post2);
       // Cloth canopy
       const canopyMat = new THREE.MeshStandardMaterial({
@@ -3778,7 +3778,7 @@ export class TekkenArenaRenderer {
     // Clay pots
     const clayMat = new THREE.MeshStandardMaterial({ color: 0xaa7744, roughness: 0.75 });
     for (let i = 0; i < 6; i++) {
-      const pot = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.08, 6, 5), clayMat);
+      const pot = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.08, 12, 10), clayMat);
       pot.position.set(-4 + Math.random() * 8, 0.1, -3 - Math.random() * 3);
       pot.scale.y = 1.2;
       this._props.add(pot);
@@ -3850,7 +3850,7 @@ export class TekkenArenaRenderer {
     const postMat = new THREE.MeshStandardMaterial({ color: 0x5a4020, roughness: 0.8 });
     for (const side of [-1, 1]) {
       for (let i = 0; i < 4; i++) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 6), postMat);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5, 12), postMat);
         post.position.set(side * (floorW / 2 + 0.3), 0.75, -3 + i * 2);
         post.castShadow = true;
         this._props.add(post);
@@ -3876,7 +3876,7 @@ export class TekkenArenaRenderer {
 
     // Ship mast in background
     const mastMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.75 });
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 8, 6), mastMat);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 8, 12), mastMat);
     mast.position.set(6, 4, -6);
     mast.castShadow = true;
     this._props.add(mast);
@@ -3960,7 +3960,7 @@ export class TekkenArenaRenderer {
     // Skull props
     const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 });
     for (let i = 0; i < 3; i++) {
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), boneMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), boneMat);
       skull.position.set(-2 + Math.random() * 4, 0.08, -4 - Math.random() * 2);
       skull.scale.set(1, 0.8, 1);
       this._props.add(skull);
@@ -4009,7 +4009,7 @@ export class TekkenArenaRenderer {
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x6a6a6a, roughness: 0.85 });
     for (let i = 0; i < 8; i++) {
       const rock = new THREE.Mesh(
-        new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 6, 4),
+        new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 12, 10),
         rockMat,
       );
       const angle = (i / 8) * Math.PI * 2;
@@ -4112,7 +4112,7 @@ export class TekkenArenaRenderer {
     // Dead trees
     const deadTreeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
     for (const [tx, tz] of [[-6, -4], [6, -4], [-7, -6], [7, -6]] as [number, number][]) {
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 3, 6), deadTreeMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 3, 12), deadTreeMat);
       trunk.position.set(tx, 1.5, tz);
       trunk.castShadow = true;
       this._props.add(trunk);

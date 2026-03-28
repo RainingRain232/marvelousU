@@ -173,14 +173,14 @@ export class HorseMesh {
     this._neckGroup.add(neckBaseMesh);
 
     // Throat latch – underside of upper neck near the head
-    const throatGeo = new THREE.SphereGeometry(1, 6, 5);
+    const throatGeo = new THREE.SphereGeometry(1, 12, 10);
     const throatMesh = new THREE.Mesh(throatGeo, bodyMat);
     throatMesh.scale.set(NECK_RADIUS * 0.65, NECK_RADIUS * 0.5, NECK_RADIUS * 0.7);
     throatMesh.position.set(0, NECK_LEN * 0.78, NECK_RADIUS * 0.35);
     this._neckGroup.add(throatMesh);
 
     // Crest – top-line ridge of the neck
-    const crestGeo = new THREE.SphereGeometry(1, 6, 5);
+    const crestGeo = new THREE.SphereGeometry(1, 12, 10);
     const crestMesh = new THREE.Mesh(crestGeo, bodyMat);
     crestMesh.scale.set(NECK_RADIUS * 0.35, NECK_LEN * 0.45, NECK_RADIUS * 0.3);
     crestMesh.position.set(0, NECK_LEN * 0.5, -NECK_RADIUS * 0.35);
@@ -223,7 +223,7 @@ export class HorseMesh {
     this._headGroup.add(muzzleMesh);
 
     // Lower jaw – subtle jaw mass
-    const jawGeo = new THREE.SphereGeometry(1, 6, 5);
+    const jawGeo = new THREE.SphereGeometry(1, 12, 10);
     const jawMesh = new THREE.Mesh(jawGeo, bodyMat);
     jawMesh.scale.set(HEAD_W * 0.72, HEAD_H * 0.45, HEAD_LEN * 0.5);
     jawMesh.position.set(0, -HEAD_H * 0.55, HEAD_LEN * 0.35);
@@ -231,7 +231,7 @@ export class HorseMesh {
 
     // Cheek bulges
     for (const side of [-1, 1]) {
-      const cheekGeo = new THREE.SphereGeometry(1, 6, 5);
+      const cheekGeo = new THREE.SphereGeometry(1, 12, 10);
       const cheekMesh = new THREE.Mesh(cheekGeo, bodyMat);
       cheekMesh.scale.set(HEAD_W * 0.35, HEAD_H * 0.5, HEAD_LEN * 0.28);
       cheekMesh.position.set(HEAD_W * 0.85 * side, -HEAD_H * 0.1, HEAD_LEN * 0.28);
@@ -249,7 +249,7 @@ export class HorseMesh {
     // Eyes – slightly larger, with a brow ridge
     for (const side of [-1, 1]) {
       // Brow ridge
-      const browGeo = new THREE.SphereGeometry(1, 5, 4);
+      const browGeo = new THREE.SphereGeometry(1, 12, 10);
       const browMesh = new THREE.Mesh(browGeo, bodyMat);
       browMesh.scale.set(0.03, 0.02, 0.04);
       browMesh.position.set(HEAD_W * 0.95 * side, HEAD_H * 0.5, HEAD_LEN * 0.3);
@@ -263,7 +263,7 @@ export class HorseMesh {
 
     // Ears – taller, more pointed
     for (const side of [-1, 1]) {
-      const earGeo = new THREE.ConeGeometry(0.022, 0.1, 5);
+      const earGeo = new THREE.ConeGeometry(0.022, 0.1, 10);
       const earMesh = new THREE.Mesh(earGeo, bodyMat);
       earMesh.position.set(HEAD_W * 0.5 * side, HEAD_H * 1.05 + 0.04, HEAD_LEN * 0.1);
       earMesh.rotation.z = side * 0.15;
@@ -308,7 +308,7 @@ export class HorseMesh {
 
       // Inner thigh muscle – fills remaining gap toward barrel
       const muscleBulge = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 6, 5),
+        new THREE.SphereGeometry(1, 12, 10),
         bodyMat
       );
       const mw = front ? LEG_RADIUS * 1.5 : LEG_RADIUS * 1.7;
@@ -400,7 +400,7 @@ export class HorseMesh {
 
     // Stirrups
     for (const side of [-1, 1]) {
-      const stirrupGeo = new THREE.TorusGeometry(0.03, 0.008, 4, 6);
+      const stirrupGeo = new THREE.TorusGeometry(0.03, 0.008, 10, 6);
       const stirrup = new THREE.Mesh(stirrupGeo, makeMat(0x888888, { metalness: 0.7 }));
       stirrup.position.set(BODY_RADIUS * 0.8 * side, bodyY - BODY_RADIUS * 0.2, 0.05);
       this._body.add(stirrup);
@@ -545,7 +545,7 @@ export class HorseMesh {
 
       // Eye guards – circular bosses around each eye
       for (const side of [-1, 1]) {
-        const guardGeo = new THREE.TorusGeometry(0.03, 0.01, 4, 6);
+        const guardGeo = new THREE.TorusGeometry(0.03, 0.01, 10, 6);
         const guard = new THREE.Mesh(guardGeo, armorMat(0xdddddd, 0.7));
         guard.position.set(HEAD_W * 0.95 * side, HEAD_H * 0.35, HEAD_LEN * 0.33);
         guard.rotation.y = Math.PI / 2;

@@ -761,7 +761,7 @@ export class TrebuchetGame {
 
     // Gate arch
     const archMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.6 });
-    const archGeo = new THREE.TorusGeometry(GATE_WIDTH / 2, 0.5, 6, 12, Math.PI);
+    const archGeo = new THREE.TorusGeometry(GATE_WIDTH / 2, 0.5, 12, 12, Math.PI);
     const arch = new THREE.Mesh(archGeo, archMat);
     arch.position.set(0, WALL_HEIGHT, WALL_Z + 0.5);
     arch.rotation.z = Math.PI;
@@ -814,13 +814,13 @@ export class TrebuchetGame {
     for (let tx = -FIELD_WIDTH / 2 + 5; tx <= FIELD_WIDTH / 2 - 5; tx += 8) {
       if (Math.abs(tx) < GATE_WIDTH / 2 + 1) continue;
       // Torch bracket
-      const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 4), torchWoodMat);
+      const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 10), torchWoodMat);
       bracket.position.set(tx, WALL_HEIGHT - 0.5, WALL_Z + 1.6);
       bracket.rotation.x = 0.3;
       this._scene.add(bracket);
       // Flame (emissive sphere)
       const flameMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2, transparent: true, opacity: 0.9 });
-      const flame = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 4), flameMat);
+      const flame = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), flameMat);
       flame.position.set(tx, WALL_HEIGHT + 0.1, WALL_Z + 1.85);
       this._scene.add(flame);
       // Point light
@@ -845,7 +845,7 @@ export class TrebuchetGame {
         // Snow cap
         const snowH = h * 0.25;
         const snowW = w * 0.35;
-        const snow = new THREE.Mesh(new THREE.ConeGeometry(snowW, snowH, 5), snowMat);
+        const snow = new THREE.Mesh(new THREE.ConeGeometry(snowW, snowH, 10), snowMat);
         snow.position.set(m.position.x, m.position.y + h / 2 - snowH / 2 + 0.5, m.position.z);
         this._scene.add(snow);
       }
@@ -864,7 +864,7 @@ export class TrebuchetGame {
       const tz = 5 + Math.random() * (FIELD_LENGTH + 5);
       const treeGroup = new THREE.Group();
       const trunkH = 2.5 + Math.random() * 2;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, trunkH, 5), trunkMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, trunkH, 10), trunkMat);
       trunk.position.y = trunkH / 2;
       trunk.castShadow = true;
       treeGroup.add(trunk);
@@ -873,7 +873,7 @@ export class TrebuchetGame {
       for (let l = 0; l < layers; l++) {
         const cr = 1.2 + Math.random() * 1.5 - l * 0.4;
         const ch = 2 + Math.random() * 2 - l * 0.5;
-        const canopy = new THREE.Mesh(new THREE.ConeGeometry(cr, ch, 6), leafMats[Math.floor(Math.random() * leafMats.length)]);
+        const canopy = new THREE.Mesh(new THREE.ConeGeometry(cr, ch, 12), leafMats[Math.floor(Math.random() * leafMats.length)]);
         canopy.position.y = trunkH + l * 1.2 + Math.random() * 0.5;
         canopy.castShadow = true;
         treeGroup.add(canopy);
@@ -888,7 +888,7 @@ export class TrebuchetGame {
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
     for (const xPos of [-14, -8, 8, 14]) {
       // Pole
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 5, 4), poleMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 5, 10), poleMat);
       pole.position.set(xPos, WALL_HEIGHT + 2.5, WALL_Z - 0.8);
       this._scene.add(pole);
       // Banner (wider, with Pendragon cross pattern via second mesh)
@@ -935,7 +935,7 @@ export class TrebuchetGame {
       flowerGroup.add(stem);
       // Petals (small sphere)
       const petal = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 5, 4),
+        new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 12, 10),
         new THREE.MeshStandardMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] }),
       );
       petal.position.y = 0.3 + Math.random() * 0.15;
@@ -969,11 +969,11 @@ export class TrebuchetGame {
       dBody.position.y = 0.25;
       defGroup.add(dBody);
       // Tiny head
-      const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 5, 4), defenderMat);
+      const dHead = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), defenderMat);
       dHead.position.y = 0.6;
       defGroup.add(dHead);
       // Spear
-      const dSpear = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.2, 3), defenderMat);
+      const dSpear = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.2, 8), defenderMat);
       dSpear.position.set(0.15, 0.6, 0);
       defGroup.add(dSpear);
       defGroup.position.set(dx, WALL_HEIGHT + 1.5, WALL_Z - 0.5);
@@ -1109,14 +1109,14 @@ export class TrebuchetGame {
     this._trebuchetGroup.add(cwWeight);
     // Chains connecting to arm
     for (const cx of [-0.35, 0.35]) {
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 4), metalMat);
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 10), metalMat);
       chain.position.set(cx, 4.0, -1.8);
       this._trebuchetGroup.add(chain);
     }
 
     // Sling ropes
     for (const rx of [-0.12, 0.12]) {
-      const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.5, 4), ropeMat);
+      const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.5, 10), ropeMat);
       rope.position.set(rx, 4.0, 5.5);
       rope.rotation.x = 0.4;
       this._trebuchetGroup.add(rope);
@@ -1139,15 +1139,15 @@ export class TrebuchetGame {
       for (const zSide of [-1, 1]) {
         const wheelGroup = new THREE.Group();
         // Rim
-        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.08, 6, 12), wheelRimMat);
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.08, 12, 12), wheelRimMat);
         wheelGroup.add(rim);
         // Hub
-        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.15, 6), metalMat);
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.15, 12), metalMat);
         hub.rotation.x = Math.PI / 2;
         wheelGroup.add(hub);
         // Spokes
         for (let s = 0; s < 6; s++) {
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 3), woodMat);
+          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45, 8), woodMat);
           spoke.rotation.z = (s * Math.PI) / 3;
           spoke.position.set(Math.cos((s * Math.PI) / 3) * 0.22, Math.sin((s * Math.PI) / 3) * 0.22, 0);
           wheelGroup.add(spoke);
@@ -1624,7 +1624,7 @@ export class TrebuchetGame {
     if (splashLvl > 0 && !this._trebuchetGroup.getObjectByName("slingBand")) {
       const bandMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.3 });
       for (let sb = 0; sb < Math.min(splashLvl, 3); sb++) {
-        const band = new THREE.Mesh(new THREE.TorusGeometry(0.38 + sb * 0.05, 0.03, 6, 12), bandMat);
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.38 + sb * 0.05, 0.03, 12, 12), bandMat);
         band.position.set(0, 3.2 + sb * 0.15, 6.8);
         band.name = sb === 0 ? "slingBand" : `slingBand${sb}`;
         this._trebuchetGroup.add(band);
@@ -1894,7 +1894,7 @@ export class TrebuchetGame {
     const def = AMMO_DEFS[this._currentAmmo];
     const s = this._currentAmmo === "chain_shot" ? 0.2 : 0.35;
     const mat = new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.6, roughness: 0.5 });
-    this._loadedAmmoMesh = new THREE.Mesh(new THREE.SphereGeometry(s, 8, 6), mat);
+    this._loadedAmmoMesh = new THREE.Mesh(new THREE.SphereGeometry(s, 16, 12), mat);
     this._loadedAmmoMesh.position.set(0, 3.4, 6.8);
     this._trebuchetGroup.add(this._loadedAmmoMesh);
   }
@@ -1973,7 +1973,7 @@ export class TrebuchetGame {
   private _spawnProjectile(pos: THREE.Vector3, vel: THREE.Vector3, ammo: AmmoType): void {
     const def = AMMO_DEFS[ammo];
     const size = ammo === "chain_shot" ? 0.25 : 0.45;
-    const geo = new THREE.SphereGeometry(size, 10, 8);
+    const geo = new THREE.SphereGeometry(size, 16, 12);
     const mat = new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: ammo === "fire_pot" ? 1.5 : ammo === "holy_water" ? 1.0 : 0.3, roughness: 0.4 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(pos);
@@ -1992,12 +1992,12 @@ export class TrebuchetGame {
     }
     // Chain shot: add second linked sphere
     if (ammo === "chain_shot") {
-      const link = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4), mat);
+      const link = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), mat);
       link.position.set(0, 0, 0.6);
       mesh.add(link);
       // Chain between them
       const chainMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5 });
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4), chainMat);
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 10), chainMat);
       chain.position.set(0, 0, 0.3);
       chain.rotation.x = Math.PI / 2;
       mesh.add(chain);
@@ -2125,7 +2125,7 @@ export class TrebuchetGame {
       group.add(body);
 
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(def.width * 0.3, 8, 6), skinMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(def.width * 0.3, 16, 12), skinMat);
       head.position.y = def.height * 0.78;
       head.castShadow = true;
       group.add(head);
@@ -2186,7 +2186,7 @@ export class TrebuchetGame {
         shieldGroup.add(shieldBody);
         // Shield boss (center metal knob)
         const boss = new THREE.Mesh(
-          new THREE.SphereGeometry(0.12, 6, 4),
+          new THREE.SphereGeometry(0.12, 12, 10),
           armorMat,
         );
         boss.position.z = -0.06;
@@ -2200,10 +2200,10 @@ export class TrebuchetGame {
         group.add(shieldGroup);
 
         // Spear in right hand
-        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 4), new THREE.MeshStandardMaterial({ color: 0x665522 }));
+        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 10), new THREE.MeshStandardMaterial({ color: 0x665522 }));
         spearShaft.position.set(def.width * 0.4, def.height * 0.6, 0);
         group.add(spearShaft);
-        const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 4), armorMat);
+        const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 10), armorMat);
         spearTip.position.set(def.width * 0.4, def.height * 0.6 + 1.1, 0);
         group.add(spearTip);
       }
@@ -2234,7 +2234,7 @@ export class TrebuchetGame {
         saddle.position.set(0, 1.2, 0);
         group.add(saddle);
         // Lance
-        const lance = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 3.5, 4), new THREE.MeshStandardMaterial({ color: 0x665522 }));
+        const lance = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 3.5, 10), new THREE.MeshStandardMaterial({ color: 0x665522 }));
         lance.position.set(0.4, 1.8, -0.5);
         lance.rotation.x = 0.3;
         group.add(lance);
@@ -2284,7 +2284,7 @@ export class TrebuchetGame {
           }
         }
         // War flag on top
-        const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3, 4), metalMat2);
+        const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3, 10), metalMat2);
         flagPole.position.set(0, def.height + 1.5, 0);
         group.add(flagPole);
         const flag = new THREE.Mesh(
@@ -2310,7 +2310,7 @@ export class TrebuchetGame {
         // Support poles
         for (const px of [-0.8, 0.8]) {
           for (const pz of [-2, 2]) {
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, def.height, 4), mat);
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, def.height, 10), mat);
             pole.position.set(px, def.height / 2, pz);
             group.add(pole);
           }
@@ -2325,7 +2325,7 @@ export class TrebuchetGame {
         group.add(ramPole);
         // Iron ram head
         const tip = new THREE.Mesh(
-          new THREE.ConeGeometry(0.35, 1.0, 6),
+          new THREE.ConeGeometry(0.35, 1.0, 12),
           metalMat2,
         );
         tip.rotation.x = -Math.PI / 2;
@@ -2333,7 +2333,7 @@ export class TrebuchetGame {
         group.add(tip);
         // Chains suspending ram
         for (const cz of [-1, 1]) {
-          const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, def.height - 1, 4), metalMat2);
+          const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, def.height - 1, 10), metalMat2);
           chain.position.set(0, def.height * 0.6, cz * 1.5);
           group.add(chain);
         }
@@ -2349,7 +2349,7 @@ export class TrebuchetGame {
         arm.rotation.x = -0.3;
         group.add(arm);
         // Bucket
-        const bucket = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 4), mat);
+        const bucket = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), mat);
         bucket.position.set(0, def.height + 0.5, -1.8);
         group.add(bucket);
         // Wheels
@@ -2454,7 +2454,7 @@ export class TrebuchetGame {
       pauldron.castShadow = true;
       group.add(pauldron);
       // Spike on pauldron
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.8, 5), armorMat);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.8, 10), armorMat);
       spike.position.set(sx * w * 0.5, h * 0.78, 0);
       spike.rotation.z = sx * -0.5;
       group.add(spike);
@@ -2512,7 +2512,7 @@ export class TrebuchetGame {
     // ── Head ──
     const headGroup = new THREE.Group();
     // Skull/helmet
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(w * 0.22, 10, 8), armorMat);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(w * 0.22, 16, 12), armorMat);
     headGroup.add(helmet);
     // Visor slit
     const visor = new THREE.Mesh(new THREE.BoxGeometry(w * 0.25, 0.08, w * 0.05), new THREE.MeshBasicMaterial({ color: 0x000000 }));
@@ -2521,7 +2521,7 @@ export class TrebuchetGame {
     // Glowing eyes behind visor
     const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: glowColor, emissiveIntensity: 3 });
     for (const ex of [-0.15, 0.15]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), eyeMat);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), eyeMat);
       eye.position.set(ex * w, -0.03, -w * 0.22);
       headGroup.add(eye);
     }
@@ -2535,12 +2535,12 @@ export class TrebuchetGame {
     // ── Horns/Crown ──
     const hornMat = new THREE.MeshStandardMaterial({ color: 0xddaa00, metalness: 0.9, roughness: 0.1 });
     for (const hx of [-1, 1]) {
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.8, 6), hornMat);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.8, 12), hornMat);
       horn.position.set(hx * w * 0.2, h * 0.9, 0);
       horn.rotation.z = hx * 0.35;
       group.add(horn);
       // Second smaller horn
-      const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.0, 5), hornMat);
+      const horn2 = new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.0, 10), hornMat);
       horn2.position.set(hx * w * 0.32, h * 0.85, -d * 0.1);
       horn2.rotation.z = hx * 0.5;
       group.add(horn2);
@@ -2691,7 +2691,7 @@ export class TrebuchetGame {
       coreGeo = new THREE.DodecahedronGeometry(0.8, 0);
     } else {
       // Boulder: rocky sphere
-      coreGeo = new THREE.SphereGeometry(1, 8, 6);
+      coreGeo = new THREE.SphereGeometry(1, 16, 12);
     }
     const sphereMat = new THREE.MeshBasicMaterial({
       color: def.color,
@@ -3524,7 +3524,7 @@ export class TrebuchetGame {
       }
       // Slowing mist cloud
       const mistMat = new THREE.MeshBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false });
-      const mist = new THREE.Mesh(new THREE.SphereGeometry(splashRadius * 0.6, 8, 6), mistMat);
+      const mist = new THREE.Mesh(new THREE.SphereGeometry(splashRadius * 0.6, 16, 12), mistMat);
       mist.position.copy(impactPos);
       mist.position.y = 0.5;
       this._addParticle(mist, 2.0, (el) => {
@@ -4555,7 +4555,7 @@ export class TrebuchetGame {
 
   private _enemyCatapultFire(enemy: EnemyState): void {
     const projMat = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.8 });
-    const proj = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 4), projMat);
+    const proj = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), projMat);
     proj.position.set(enemy.x, ENEMY_DEFS.catapult.height + 1, enemy.z);
     proj.castShadow = true;
     this._scene.add(proj);

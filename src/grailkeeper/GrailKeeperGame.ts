@@ -510,7 +510,7 @@ export class GrailKeeperGame {
       const r = ARENA_RADIUS * (0.3 + Math.random() * 0.4);
       const h = 3 + Math.random() * 8;
       const w = 1 + Math.random() * 3;
-      const rock = new THREE.Mesh(new THREE.ConeGeometry(w, h, 5), hangMat);
+      const rock = new THREE.Mesh(new THREE.ConeGeometry(w, h, 10), hangMat);
       rock.position.set(Math.cos(angle) * r, -h / 2 - 1, Math.sin(angle) * r);
       rock.rotation.x = Math.PI;
       this._islandMesh.add(rock);
@@ -552,13 +552,13 @@ export class GrailKeeperGame {
       const angle = Math.random() * Math.PI * 2;
       const r = 10 + Math.random() * 12;
       const tree = new THREE.Group();
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.35, 4, 5), treeMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.35, 4, 10), treeMat);
       trunk.position.y = 2;
       trunk.rotation.z = (Math.random() - 0.5) * 0.3;
       tree.add(trunk);
       // Bare branches
       for (let b = 0; b < 3; b++) {
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, 2, 3), treeMat);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, 2, 8), treeMat);
         branch.position.set(0, 3 + b * 0.5, 0);
         branch.rotation.z = (Math.random() - 0.5) * 1.2;
         branch.rotation.y = Math.random() * Math.PI;
@@ -601,7 +601,7 @@ export class GrailKeeperGame {
 
     // Island edge glow ring
     const edgeGlowMat = new THREE.MeshBasicMaterial({ color: 0x4422aa, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false });
-    const edgeGlow = new THREE.Mesh(new THREE.TorusGeometry(ARENA_RADIUS * 0.68, 0.3, 6, 32), edgeGlowMat);
+    const edgeGlow = new THREE.Mesh(new THREE.TorusGeometry(ARENA_RADIUS * 0.68, 0.3, 12, 32), edgeGlowMat);
     edgeGlow.rotation.x = Math.PI / 2;
     edgeGlow.position.y = 0.5;
     this._scene.add(edgeGlow);
@@ -658,7 +658,7 @@ export class GrailKeeperGame {
 
     // Rotating rune ring
     const grailRuneMat = new THREE.MeshBasicMaterial({ color: 0xaaccff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false });
-    const grailRune = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.06, 6, 24), grailRuneMat);
+    const grailRune = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.06, 12, 24), grailRuneMat);
     grailRune.name = "grailRune";
     grailRune.rotation.x = Math.PI / 2;
     this._grailMesh.add(grailRune);
@@ -667,7 +667,7 @@ export class GrailKeeperGame {
     const pillarLightMat = new THREE.MeshBasicMaterial({ color: 0xffeedd, transparent: true, opacity: 0.15, depthWrite: false });
     for (let lp = 0; lp < 4; lp++) {
       const lpAngle = (lp / 4) * Math.PI * 2;
-      const lightPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4, 4), pillarLightMat);
+      const lightPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4, 10), pillarLightMat);
       lightPillar.position.set(Math.cos(lpAngle) * 1.5, 2, Math.sin(lpAngle) * 1.5);
       // Tilt 30 degrees outward
       lightPillar.rotation.z = Math.cos(lpAngle) * (Math.PI / 6);
@@ -717,7 +717,7 @@ export class GrailKeeperGame {
     // Trailing wisps
     for (let i = 0; i < 5; i++) {
       const wispMat = new THREE.MeshBasicMaterial({ color: 0x4466aa, transparent: true, opacity: 0.15, depthWrite: false });
-      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.1 + i * 0.02, 4, 3), wispMat);
+      const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.1 + i * 0.02, 10, 8), wispMat);
       wisp.position.set(0, -0.2 - i * 0.15, 0.2 + i * 0.1);
       wisp.name = `wisp${i}`;
       this._playerMesh.add(wisp);
@@ -725,7 +725,7 @@ export class GrailKeeperGame {
 
     // Aura ring
     const playerAuraMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
-    const playerAura = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.08, 6, 16), playerAuraMat);
+    const playerAura = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.08, 12, 16), playerAuraMat);
     playerAura.name = "playerAura";
     playerAura.rotation.x = Math.PI / 2;
     this._playerMesh.add(playerAura);
@@ -1129,7 +1129,7 @@ export class GrailKeeperGame {
     const homingLvl = this._upgradeLevels["homing"] || 0;
     if (homingLvl > 0 && !existingEye) {
       const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, emissive: 0xffaa00, emissiveIntensity: 2, transparent: true, opacity: 0.9 });
-      const eyeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), eyeMat);
+      const eyeMesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), eyeMat);
       eyeMesh.name = "homingEye";
       this._playerMesh.add(eyeMesh);
     }
@@ -1143,7 +1143,7 @@ export class GrailKeeperGame {
       const armMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4466cc, emissiveIntensity: 1, transparent: true, opacity: 0.7 });
       for (let mi = 0; mi < multiLvl; mi++) {
         const armAngle = ((mi + 1) / (multiLvl + 1)) * Math.PI - Math.PI / 2;
-        const arm = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 4), armMat.clone());
+        const arm = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 10), armMat.clone());
         arm.name = `multiArm${mi}`;
         arm.position.set(Math.cos(armAngle) * 0.5, 0.5, Math.sin(armAngle) * 0.3);
         arm.rotation.z = armAngle;
@@ -1501,7 +1501,7 @@ export class GrailKeeperGame {
     for (let ns = 0; ns < 12; ns++) {
       const spikeAngle = (ns / 12) * Math.PI * 2;
       const spikeMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.7, depthWrite: false });
-      const spikeMesh = new THREE.Mesh(new THREE.ConeGeometry(0.1, 2, 4), spikeMat);
+      const spikeMesh = new THREE.Mesh(new THREE.ConeGeometry(0.1, 2, 10), spikeMat);
       spikeMesh.position.copy(this._playerPos);
       spikeMesh.rotation.z = Math.PI / 2;
       spikeMesh.rotation.y = spikeAngle;
@@ -1546,7 +1546,7 @@ export class GrailKeeperGame {
     const boltColor = charged ? 0xffeedd : 0x88ccff;
     const boltEmissive = charged ? 0xffcc44 : 0x4488ff;
     const boltMat = new THREE.MeshStandardMaterial({ color: boltColor, emissive: boltEmissive, emissiveIntensity: boltEmissiveIntensity, transparent: true, opacity: 0.9 });
-    const bolt = new THREE.Mesh(new THREE.SphereGeometry(boltRadius, 6, 4), boltMat);
+    const bolt = new THREE.Mesh(new THREE.SphereGeometry(boltRadius, 12, 10), boltMat);
     bolt.position.copy(this._playerPos);
     bolt.castShadow = true;
     this._scene.add(bolt);
@@ -1558,7 +1558,7 @@ export class GrailKeeperGame {
     // At max level, add a secondary orbiting particle around each bolt
     if (boltLevel >= 6) {
       const orbitMat = new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.8, depthWrite: false });
-      const orbitMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 3), orbitMat);
+      const orbitMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), orbitMat);
       bolt.add(orbitMesh);
       orbitMesh.name = "boltOrbit";
     }
@@ -1597,7 +1597,7 @@ export class GrailKeeperGame {
         extraDir.normalize();
 
         const eBoltMat = new THREE.MeshStandardMaterial({ color: boltColor, emissive: boltEmissive, emissiveIntensity: boltEmissiveIntensity * 0.8, transparent: true, opacity: 0.8 });
-        const eBolt = new THREE.Mesh(new THREE.SphereGeometry(boltRadius * 0.85, 6, 4), eBoltMat);
+        const eBolt = new THREE.Mesh(new THREE.SphereGeometry(boltRadius * 0.85, 12, 10), eBoltMat);
         eBolt.position.copy(this._playerPos);
         eBolt.castShadow = true;
         this._scene.add(eBolt);
@@ -1621,7 +1621,7 @@ export class GrailKeeperGame {
 
     // Muzzle flash
     const muzzleMat = new THREE.MeshBasicMaterial({ color: charged ? 0xffeedd : 0x88ccff, transparent: true, opacity: 0.8, depthWrite: false });
-    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(charged ? 0.5 : 0.3, 6, 4), muzzleMat);
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(charged ? 0.5 : 0.3, 12, 10), muzzleMat);
     muzzle.position.copy(this._playerPos);
     this._addParticle(muzzle, 0.1, (el) => {
       const progress = el / 0.1;
@@ -1641,7 +1641,7 @@ export class GrailKeeperGame {
 
     // Body
     if (def.canFly) {
-      const body = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.4, def.size, 6), mat);
+      const body = new THREE.Mesh(new THREE.ConeGeometry(def.size * 0.4, def.size, 12), mat);
       body.rotation.x = Math.PI / 2;
       body.castShadow = true;
       group.add(body);
@@ -1661,7 +1661,7 @@ export class GrailKeeperGame {
       // Eyes
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
       for (const ex of [-0.15, 0.15]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 3), eyeMat);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), eyeMat);
         eye.position.set(ex * def.size, def.size * 0.3, -def.size * 0.25);
         group.add(eye);
       }
@@ -1670,14 +1670,14 @@ export class GrailKeeperGame {
     // Enemy-type-specific details
     if (def.canFly && type === "wraith") {
       const wraithTorusMat = new THREE.MeshBasicMaterial({ color: 0x8844cc, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
-      const wraithTorus = new THREE.Mesh(new THREE.TorusGeometry(def.size * 0.6, 0.08, 6, 12), wraithTorusMat);
+      const wraithTorus = new THREE.Mesh(new THREE.TorusGeometry(def.size * 0.6, 0.08, 12, 12), wraithTorusMat);
       wraithTorus.rotation.x = Math.PI / 2;
       wraithTorus.name = "wraithSwirl";
       group.add(wraithTorus);
     } else if (type === "dark_knight") {
       const spikeMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.8, roughness: 0.3 });
       for (const sx of [-1, 1]) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 4), spikeMat);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 10), spikeMat);
         spike.position.set(sx * def.size * 0.35, def.size * 0.4, 0);
         group.add(spike);
       }
@@ -1687,20 +1687,20 @@ export class GrailKeeperGame {
       group.add(shield);
     } else if (type === "shadow_drake") {
       const tailMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.7 });
-      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, def.size * 1.2, 4), tailMat);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.15, def.size * 1.2, 10), tailMat);
       tail.position.set(0, 0, def.size * 0.5);
       tail.rotation.x = Math.PI / 2;
       group.add(tail);
       const spineMat = new THREE.MeshStandardMaterial({ color: 0x553355, roughness: 0.6 });
       for (let sr = 0; sr < 3; sr++) {
-        const spine = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 4), spineMat);
+        const spine = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 10), spineMat);
         spine.position.set(0, def.size * 0.25, -def.size * 0.2 + sr * def.size * 0.25);
         group.add(spine);
       }
     } else if (type === "gargoyle") {
       const hornMat = new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.6 });
       for (const hx of [-1, 1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 4), hornMat);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 10), hornMat);
         horn.position.set(hx * def.size * 0.2, def.size * 0.4, 0);
         horn.rotation.z = hx * 0.4;
         group.add(horn);
@@ -1712,7 +1712,7 @@ export class GrailKeeperGame {
       group.add(heraldGlow);
       // Crown mesh (small torus on top)
       const crownMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xcc8800, emissiveIntensity: 1.5, metalness: 0.8, roughness: 0.2 });
-      const crown = new THREE.Mesh(new THREE.TorusGeometry(def.size * 0.3, 0.06, 6, 12), crownMat);
+      const crown = new THREE.Mesh(new THREE.TorusGeometry(def.size * 0.3, 0.06, 12, 12), crownMat);
       crown.position.y = def.size * 0.5;
       crown.rotation.x = Math.PI / 2;
       crown.name = "heraldCrown";
@@ -1780,7 +1780,7 @@ export class GrailKeeperGame {
     // Horns/crown
     const hornMat = new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0x660000, emissiveIntensity: 1 });
     for (const hx of [-1, 0, 1]) {
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.3, 2, 5), hornMat);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.3, 2, 10), hornMat);
       horn.position.set(hx * bossDef.size * 0.3, bossDef.size * 0.5 + 0.5, 0);
       horn.rotation.z = hx * 0.3;
       group.add(horn);
@@ -1978,7 +1978,7 @@ export class GrailKeeperGame {
         // 20 Gold particle burst
         for (let gp = 0; gp < 20; gp++) {
           const gpMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.8, depthWrite: false });
-          const gpMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 4, 3), gpMat);
+          const gpMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), gpMat);
           gpMesh.position.copy(enemy.pos);
           const gpVel = new THREE.Vector3((Math.random() - 0.5) * 12, Math.random() * 10, (Math.random() - 0.5) * 12);
           this._addParticle(gpMesh, 1.2, (el, pdt) => {
@@ -2277,7 +2277,7 @@ export class GrailKeeperGame {
       // Synergy: "Rapid Fire" — bolts leave a brief damaging trail
       if (this._hasSynergy("rapid_fire") && Math.random() < dt * 10) {
         const trailDmgMat = new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.5, depthWrite: false });
-        const trailDmgMesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 4, 3), trailDmgMat);
+        const trailDmgMesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), trailDmgMat);
         trailDmgMesh.position.copy(bolt.mesh.position);
         const trailPos = bolt.mesh.position.clone();
         this._addParticle(trailDmgMesh, 0.5, (el) => {
@@ -2352,7 +2352,7 @@ export class GrailKeeperGame {
           // Spark particles
           for (let sp = 0; sp < 6; sp++) {
             const sMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.8, depthWrite: false });
-            const sMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 3), sMat);
+            const sMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), sMat);
             sMesh.position.copy(bolt.mesh.position);
             const sVel = new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
             this._addParticle(sMesh, 0.4, (el, pdt) => {
@@ -2370,7 +2370,7 @@ export class GrailKeeperGame {
           });
           // Shockwave ring
           const swMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false });
-          const swMesh = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 4, 12), swMat);
+          const swMesh = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 10, 12), swMat);
           swMesh.position.copy(bolt.mesh.position);
           swMesh.rotation.x = Math.PI / 2;
           this._addParticle(swMesh, 0.3, (el) => {
@@ -2544,7 +2544,7 @@ export class GrailKeeperGame {
           // Scatter holy particles briefly (burst of speed/chaos)
           for (let hp = 0; hp < 4; hp++) {
             const scatterMat = new THREE.MeshBasicMaterial({ color: 0xffeedd, transparent: true, opacity: 0.6, depthWrite: false });
-            const scatterMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 3), scatterMat);
+            const scatterMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), scatterMat);
             scatterMesh.position.set(
               (Math.random() - 0.5) * 2,
               GRAIL_Y + 1 + Math.random() * 2,
@@ -2569,7 +2569,7 @@ export class GrailKeeperGame {
         // Drain beam: spawn red orbs floating toward grail
         if (Math.random() < dt * 3) {
           const orbMat = new THREE.MeshBasicMaterial({ color: 0xff2222, transparent: true, opacity: 0.6, depthWrite: false });
-          const orbMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 3), orbMat);
+          const orbMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), orbMat);
           const startPos = enemy.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5));
           orbMesh.position.copy(startPos);
           const grailTarget = new THREE.Vector3(0, GRAIL_Y, 0);
@@ -2709,7 +2709,7 @@ export class GrailKeeperGame {
           const beamDist = beamDir.length();
           beamDir.normalize();
           const beamMidpoint = enemy.pos.clone().add(beamDir.clone().multiplyScalar(beamDist / 2));
-          const beamGeo = new THREE.CylinderGeometry(0.3, 0.3, beamDist, 6);
+          const beamGeo = new THREE.CylinderGeometry(0.3, 0.3, beamDist, 12);
           const beamMat = new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 0.7, depthWrite: false });
           const beamMesh = new THREE.Mesh(beamGeo, beamMat);
           beamMesh.position.copy(beamMidpoint);
@@ -2753,7 +2753,7 @@ export class GrailKeeperGame {
               const beamDist2 = beamDir2.length();
               beamDir2.normalize();
               const beamMidpoint2 = enemy.pos.clone().add(beamDir2.clone().multiplyScalar(beamDist2 / 2));
-              const beamGeo2 = new THREE.CylinderGeometry(0.3, 0.3, beamDist2, 6);
+              const beamGeo2 = new THREE.CylinderGeometry(0.3, 0.3, beamDist2, 12);
               const beamMat2 = new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 0.7, depthWrite: false });
               const beamMesh2 = new THREE.Mesh(beamGeo2, beamMat2);
               beamMesh2.position.copy(beamMidpoint2);
@@ -2803,7 +2803,7 @@ export class GrailKeeperGame {
         enemy.bossAbilityThreshold = 3 + Math.random() * 2; // randomize next threshold
         // Fire dark bolt toward grail
         const eBoltMat = new THREE.MeshStandardMaterial({ color: 0x6622aa, emissive: 0x440088, emissiveIntensity: 2, transparent: true, opacity: 0.9 });
-        const eBoltMesh = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 4), eBoltMat);
+        const eBoltMesh = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), eBoltMat);
         eBoltMesh.position.copy(enemy.pos);
         this._scene.add(eBoltMesh);
         const eBoltGlow = new THREE.PointLight(0x6622aa, 1.5, 6);
@@ -2966,7 +2966,7 @@ export class GrailKeeperGame {
       this._lastTrailTime = this._time;
       if (this._trailParticles.length < 10) {
         const trMat = new THREE.MeshBasicMaterial({ color: 0x4466cc, transparent: true, opacity: 0.35, depthWrite: false });
-        const trMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 3), trMat);
+        const trMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), trMat);
         trMesh.position.copy(this._playerPos);
         this._trailParticles.push(trMesh);
         this._addParticle(trMesh, 0.4, (el) => {

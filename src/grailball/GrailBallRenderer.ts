@@ -550,7 +550,7 @@ export class GrailBallRenderer {
       // Iron ring fixtures on wall
       for (let i = 0; i < 6; i++) {
         const rx = -wallLen / 2 + 8 + i * (wallLen - 16) / 5;
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 6, 8), ironFixtureMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.03, 12, 8), ironFixtureMat);
         ring.position.set(rx, wallH * 0.6, wallZ + zSign * (wallThick / 2 + 0.02));
         ring.lookAt(rx, wallH * 0.6, wallZ + zSign * (wallThick / 2 + 1));
         this._fieldGroup.add(ring);
@@ -726,7 +726,7 @@ export class GrailBallRenderer {
     for (let band = 1; band <= 3; band++) {
       const bandY = band * h / 4;
       const bandRing = new THREE.Mesh(
-        new THREE.TorusGeometry(r * (1.1 - band * 0.02) + 0.05, 0.06, 6, 16),
+        new THREE.TorusGeometry(r * (1.1 - band * 0.02) + 0.05, 0.06, 12, 16),
         warmStoneMat,
       );
       bandRing.position.set(x, bandY, z);
@@ -739,7 +739,7 @@ export class GrailBallRenderer {
       const rowY = row * 0.6 + 0.3;
       const rowR = r * 1.1 - (rowY / h) * (r * 0.1);
       const mortar = new THREE.Mesh(
-        new THREE.TorusGeometry(rowR + 0.01, 0.015, 4, 16),
+        new THREE.TorusGeometry(rowR + 0.01, 0.015, 10, 16),
         mortarMat,
       );
       mortar.position.set(x, rowY, z);
@@ -802,7 +802,7 @@ export class GrailBallRenderer {
 
     // Roof edge trim
     const roofEdge = new THREE.Mesh(
-      new THREE.TorusGeometry(r + 0.3, 0.06, 4, 12),
+      new THREE.TorusGeometry(r + 0.3, 0.06, 10, 12),
       new THREE.MeshPhysicalMaterial({ color: 0x6b1515, roughness: 0.7 }),
     );
     roofEdge.position.set(x, h + 1.2, z);
@@ -811,7 +811,7 @@ export class GrailBallRenderer {
 
     // Roof finial (spike at top)
     const finial = new THREE.Mesh(
-      new THREE.ConeGeometry(0.06, 0.4, 4),
+      new THREE.ConeGeometry(0.06, 0.4, 10),
       ironMat,
     );
     finial.position.set(x, h + 4.4, z);
@@ -819,7 +819,7 @@ export class GrailBallRenderer {
 
     // Flag pole (taller, with bracket)
     const flagPole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.05, 3, 6),
+      new THREE.CylinderGeometry(0.04, 0.05, 3, 12),
       new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 }),
     );
     flagPole.position.set(x, h + 5, z);
@@ -888,7 +888,7 @@ export class GrailBallRenderer {
       group.add(winGlow);
       // Arch above window
       const arch = new THREE.Mesh(
-        new THREE.TorusGeometry(0.18, 0.04, 4, 8, Math.PI),
+        new THREE.TorusGeometry(0.18, 0.04, 10, 8, Math.PI),
         warmStoneMat,
       );
       arch.position.set(winX, h * 0.35 + 0.25, winZ);
@@ -899,7 +899,7 @@ export class GrailBallRenderer {
     // Iron bands around tower (decorative)
     for (const bandY of [h * 0.2, h * 0.8]) {
       const band = new THREE.Mesh(
-        new THREE.TorusGeometry(r * (1.1 - (bandY / h) * 0.1) + 0.02, 0.03, 4, 16),
+        new THREE.TorusGeometry(r * (1.1 - (bandY / h) * 0.1) + 0.02, 0.03, 10, 16),
         ironMat,
       );
       band.position.set(x, bandY, z);
@@ -910,7 +910,7 @@ export class GrailBallRenderer {
         const ra = (ri / 6) * TAU;
         const rr = r * (1.1 - (bandY / h) * 0.1) + 0.04;
         const rivet = new THREE.Mesh(
-          new THREE.SphereGeometry(0.025, 4, 4),
+          new THREE.SphereGeometry(0.025, 12, 10),
           new THREE.MeshPhysicalMaterial({ color: 0x555555, metalness: 0.9, roughness: 0.2 }),
         );
         rivet.position.set(x + Math.cos(ra) * rr, bandY, z + Math.sin(ra) * rr);
@@ -1011,7 +1011,7 @@ export class GrailBallRenderer {
         color: new THREE.Color(clothColor).multiplyScalar(0.9), roughness: 0.7,
       });
       const leftShoulder = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08 * personScale, 5, 4),
+        new THREE.SphereGeometry(0.08 * personScale, 12, 10),
         shoulderMat,
       );
       leftShoulder.position.set(posX - 0.17 * personScale, y + 0.85 * personScale, posZ);
@@ -1025,7 +1025,7 @@ export class GrailBallRenderer {
       for (const side of [-1, 1]) {
         const armLen = 0.4 * personScale;
         const arm = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04 * personScale, 0.05 * personScale, armLen, 5),
+          new THREE.CylinderGeometry(0.04 * personScale, 0.05 * personScale, armLen, 10),
           clothMat,
         );
         arm.position.set(
@@ -1052,7 +1052,7 @@ export class GrailBallRenderer {
 
         // Hand
         const hand = new THREE.Mesh(
-          new THREE.SphereGeometry(0.035 * personScale, 4, 4),
+          new THREE.SphereGeometry(0.035 * personScale, 12, 10),
           skinMat,
         );
         const handY = armPose < 0.2
@@ -1070,7 +1070,7 @@ export class GrailBallRenderer {
 
       // Neck
       const neck = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.05 * personScale, 0.06 * personScale, 0.08, 5),
+        new THREE.CylinderGeometry(0.05 * personScale, 0.06 * personScale, 0.08, 10),
         skinMat,
       );
       neck.position.set(posX, y + 0.94 * personScale, posZ);
@@ -1078,7 +1078,7 @@ export class GrailBallRenderer {
 
       // Head (slightly oval)
       const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.13 * personScale, 8, 6),
+        new THREE.SphereGeometry(0.13 * personScale, 16, 12),
         skinMat,
       );
       head.scale.set(1, 1.1, 0.95); // slightly oval
@@ -1097,7 +1097,7 @@ export class GrailBallRenderer {
 
       // Nose
       const nose = new THREE.Mesh(
-        new THREE.ConeGeometry(0.02 * personScale, 0.04 * personScale, 4),
+        new THREE.ConeGeometry(0.02 * personScale, 0.04 * personScale, 10),
         skinMat,
       );
       nose.position.set(posX, y + 1.08 * personScale, posZ + 0.12 * personScale);
@@ -1132,7 +1132,7 @@ export class GrailBallRenderer {
         parent.add(cap);
       } else if (hatType === "pointy") {
         const pointy = new THREE.Mesh(
-          new THREE.ConeGeometry(0.12 * personScale, 0.3 * personScale, 5),
+          new THREE.ConeGeometry(0.12 * personScale, 0.3 * personScale, 10),
           new THREE.MeshStandardMaterial({
             color: hatColors[Math.floor(Math.random() * hatColors.length)],
             roughness: 0.7,
@@ -1152,7 +1152,7 @@ export class GrailBallRenderer {
         brim.position.set(posX, headTop - 0.02, posZ);
         parent.add(brim);
         const top = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.1 * personScale, 0.12 * personScale, 0.12, 6),
+          new THREE.CylinderGeometry(0.1 * personScale, 0.12 * personScale, 0.12, 12),
           brim.material,
         );
         top.position.set(posX, headTop + 0.04, posZ);
@@ -1172,7 +1172,7 @@ export class GrailBallRenderer {
       if (itemRoll < 0.08) {
         // Small banner/pennant
         const pole = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.015, 0.015, 0.8, 3),
+          new THREE.CylinderGeometry(0.015, 0.015, 0.8, 8),
           new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }),
         );
         pole.position.set(posX + 0.2, y + 1.1 * personScale, posZ);
@@ -1189,7 +1189,7 @@ export class GrailBallRenderer {
       } else if (itemRoll < 0.12) {
         // Mug/tankard
         const mug = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.03, 0.035, 0.06, 6),
+          new THREE.CylinderGeometry(0.03, 0.035, 0.06, 12),
           new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.6, metalness: 0.3 }),
         );
         mug.position.set(posX + 0.15, y + 0.6 * personScale, posZ);
@@ -1203,7 +1203,7 @@ export class GrailBallRenderer {
   private _buildBannerPole(x: number, z: number): THREE.Group {
     const group = new THREE.Group();
     const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.08, 6, 6),
+      new THREE.CylinderGeometry(0.06, 0.08, 6, 12),
       new THREE.MeshPhysicalMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.4 }),
     );
     pole.position.set(x, 3, z);
@@ -1216,7 +1216,7 @@ export class GrailBallRenderer {
     this._flagMeshes.push(banner);
     group.add(banner);
     const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 6, 4),
+      new THREE.SphereGeometry(0.12, 12, 10),
       new THREE.MeshPhysicalMaterial({ color: 0xffd700, metalness: 0.7, roughness: 0.2 }),
     );
     cap.position.set(x, 6, z);
@@ -1236,13 +1236,13 @@ export class GrailBallRenderer {
     bowl.position.set(x, 4.4, z);
     group.add(bowl);
     const flame = new THREE.Mesh(
-      new THREE.SphereGeometry(0.18, 8, 6),
+      new THREE.SphereGeometry(0.18, 16, 12),
       new THREE.MeshBasicMaterial({ color: 0xff6600 }),
     );
     flame.position.set(x, 4.75, z);
     group.add(flame);
     const glowShell = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 6, 4),
+      new THREE.SphereGeometry(0.3, 12, 10),
       new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.15 }),
     );
     glowShell.position.set(x, 4.75, z);
@@ -1295,7 +1295,7 @@ export class GrailBallRenderer {
       cap.position.set(x, gh + 1.2, pz);
       group.add(cap);
       const gargoyle = new THREE.Mesh(
-        new THREE.ConeGeometry(0.3, 0.8, 6),
+        new THREE.ConeGeometry(0.3, 0.8, 12),
         new THREE.MeshPhysicalMaterial({ color: 0x555544, roughness: 0.85 }),
       );
       gargoyle.position.set(x + (side === 0 ? 0.6 : -0.6), gh + 1, pz);
@@ -1308,12 +1308,12 @@ export class GrailBallRenderer {
     const barCount = 7;
     for (let i = 0; i < barCount; i++) {
       const bz = -gw / 2 + 0.5 + i * (gw - 1) / (barCount - 1);
-      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, gh, 6), ironMat);
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, gh, 12), ironMat);
       bar.position.set(x, gh / 2, bz);
       group.add(bar);
     }
     for (let j = 0; j < 3; j++) {
-      const hbar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, gw - 1, 6), ironMat);
+      const hbar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, gw - 1, 12), ironMat);
       hbar.rotation.x = Math.PI / 2;
       hbar.position.set(x, 1 + j * (gh - 1) / 2, 0);
       group.add(hbar);
@@ -1514,7 +1514,7 @@ export class GrailBallRenderer {
     robe.position.y = -0.5;
     this._merlinMesh.add(robe);
     const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 10, 8),
+      new THREE.SphereGeometry(0.3, 16, 12),
       new THREE.MeshPhysicalMaterial({ color: 0xddbb99, roughness: 0.6 }),
     );
     head.position.y = 0.7;
@@ -1524,7 +1524,7 @@ export class GrailBallRenderer {
     this._merlinMesh.add(hat);
     for (let i = 0; i < 4; i++) {
       const star = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 6, 4),
+        new THREE.SphereGeometry(0.06, 12, 10),
         new THREE.MeshBasicMaterial({ color: 0xffd700 }),
       );
       const a = (i / 4) * TAU;
@@ -1532,7 +1532,7 @@ export class GrailBallRenderer {
       this._merlinMesh.add(star);
     }
     const beard = new THREE.Mesh(
-      new THREE.ConeGeometry(0.15, 0.6, 6),
+      new THREE.ConeGeometry(0.15, 0.6, 12),
       new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 }),
     );
     beard.position.set(0, 0.25, 0.2);
@@ -1597,17 +1597,17 @@ export class GrailBallRenderer {
     const rightGreave = leftGreave.clone(); rightGreave.position.x = 0.18; rightGreave.name = "rightShin"; group.add(rightGreave);
     // Knee guards with rivets
     for (const xp of [-0.18, 0.18]) {
-      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), darkArmor);
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), darkArmor);
       knee.position.set(xp, 0.9, 0.08); group.add(knee);
       // Knee guard plate
       const kneeGuard = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.12), wornArmor);
       kneeGuard.position.set(xp, 0.9, 0.14); group.add(kneeGuard);
       // Knee rivet
-      group.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat, xp, 0.9, 0.2));
+      group.add(meshAt(new THREE.SphereGeometry(0.015, 12, 10), rivetMat, xp, 0.9, 0.2));
     }
     // Chainmail visible at knee joints
     for (const xp of [-0.18, 0.18]) {
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.12, 6), chainmailMat);
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.12, 12), chainmailMat);
       chain.position.set(xp, 0.85, 0); group.add(chain);
     }
     // Thighs
@@ -1618,7 +1618,7 @@ export class GrailBallRenderer {
     group.add(meshAt(new THREE.CylinderGeometry(0.22, 0.2, 0.15, 8), beltMat, 0, 1.38, 0));
     // Belt buckle
     group.add(meshAt(new THREE.BoxGeometry(0.1, 0.1, 0.04), rivetMat, 0, 1.38, 0.12));
-    group.add(meshAt(new THREE.TorusGeometry(0.04, 0.01, 4, 6), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.8, roughness: 0.25 }), 0, 1.38, 0.14));
+    group.add(meshAt(new THREE.TorusGeometry(0.04, 0.01, 10, 6), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.8, roughness: 0.25 }), 0, 1.38, 0.14));
     // Torso with muscle definition
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.6, 0.35), armorMat);
     torso.position.y = 1.7; torso.name = "torso"; group.add(torso);
@@ -1634,25 +1634,25 @@ export class GrailBallRenderer {
     const tabB = tabF.clone(); tabB.position.z = -0.19; group.add(tabB);
     // Shoulder plates with rivets
     for (const xp of [-0.38, 0.38]) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6), darkArmor);
+      const p = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), darkArmor);
       p.scale.set(1.3, 0.8, 1); p.position.set(xp, 1.95, 0); group.add(p);
       // Rivets on shoulder plates
       for (let ri = 0; ri < 3; ri++) {
         const angle = (ri / 3) * Math.PI - Math.PI * 0.3;
-        group.add(meshAt(new THREE.SphereGeometry(0.018, 4, 4), rivetMat,
+        group.add(meshAt(new THREE.SphereGeometry(0.018, 12, 10), rivetMat,
           xp + Math.cos(angle) * 0.12, 1.95 + Math.sin(angle) * 0.06, 0.08));
       }
       // Shoulder battle-worn patch
-      group.add(meshAt(new THREE.SphereGeometry(0.04, 4, 4), wornArmor, xp, 1.98, 0.06));
+      group.add(meshAt(new THREE.SphereGeometry(0.04, 12, 10), wornArmor, xp, 1.98, 0.06));
     }
     // Upper arms and forearms
     for (const xp of [-0.4, 0.4]) {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.35, 8), armorMat);
       arm.position.set(xp, 1.72, 0); arm.name = xp < 0 ? "leftUpperArm" : "rightUpperArm"; group.add(arm);
       // Chainmail at elbow joint
-      group.add(meshAt(new THREE.CylinderGeometry(0.065, 0.065, 0.08, 5), chainmailMat, xp, 1.55, 0));
+      group.add(meshAt(new THREE.CylinderGeometry(0.065, 0.065, 0.08, 10), chainmailMat, xp, 1.55, 0));
       // Forearm (separate from gauntlet)
-      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 6), armorMat);
+      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 12), armorMat);
       forearm.position.set(xp * 1.02, 1.5, 0); group.add(forearm);
       // Gauntlet with finger details
       const gaunt = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.3, 0.13), darkArmor);
@@ -1664,9 +1664,9 @@ export class GrailBallRenderer {
       }
     }
     // Neck
-    group.add(meshAt(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 6), skinMat, 0, 2.07, 0));
+    group.add(meshAt(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 12), skinMat, 0, 2.07, 0));
     // Chainmail gorget at neck
-    group.add(meshAt(new THREE.CylinderGeometry(0.13, 0.14, 0.06, 6), chainmailMat, 0, 2.02, 0));
+    group.add(meshAt(new THREE.CylinderGeometry(0.13, 0.14, 0.06, 12), chainmailMat, 0, 2.02, 0));
     // Helm (great helm style -- more rounded and realistic)
     const helm = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.18, 0.35, 10), darkArmor);
     helm.position.y = 2.35; helm.name = "head"; group.add(helm);
@@ -1685,7 +1685,7 @@ export class GrailBallRenderer {
     group.add(meshAt(new THREE.BoxGeometry(0.25, 0.035, 0.01), new THREE.MeshBasicMaterial({ color: 0x0a0a0a }), 0, 2.36, 0.19));
     // Faint eye glow behind visor
     for (const xOff of [-0.06, 0.06]) {
-      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 3),
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 16, 12),
         new THREE.MeshBasicMaterial({ color: 0x334455, transparent: true, opacity: 0.4 }), xOff, 2.36, 0.185));
     }
     // Nose guard (vertical ridge)
@@ -1705,11 +1705,11 @@ export class GrailBallRenderer {
     }
     // Helm rivets around face plate
     for (let i = 0; i < 6; i++) {
-      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat,
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 12, 10), rivetMat,
         -0.12 + i * 0.05, 2.45, 0.185));
     }
     // Helm edge trim
-    group.add(meshAt(new THREE.TorusGeometry(0.175, 0.012, 4, 10), wornArmor, 0, 2.18, 0));
+    group.add(meshAt(new THREE.TorusGeometry(0.175, 0.012, 10, 10), wornArmor, 0, 2.18, 0));
     // Helmet plume (red/team color feather)
     const plumeMat = new THREE.MeshPhysicalMaterial({ color: pri, roughness: 0.7, metalness: 0.05 });
     // Plume base crest (taller, more prominent)
@@ -1723,7 +1723,7 @@ export class GrailBallRenderer {
       group.add(feather);
     }
     // Plume tip
-    group.add(meshAt(new THREE.ConeGeometry(0.025, 0.1, 4), plumeMat, 0, 2.82, 0.15));
+    group.add(meshAt(new THREE.ConeGeometry(0.025, 0.1, 10), plumeMat, 0, 2.82, 0.15));
     // Sword with crossguard and pommel
     // Blade
     const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.55, 0.02), armorMat);
@@ -1731,19 +1731,19 @@ export class GrailBallRenderer {
     // Crossguard
     group.add(meshAt(new THREE.BoxGeometry(0.18, 0.04, 0.04), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 }), 0.55, 1.26, 0.15));
     // Grip
-    group.add(meshAt(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 6), new THREE.MeshPhysicalMaterial({ color: 0x442200, roughness: 0.8 }), 0.55, 1.16, 0.15));
+    group.add(meshAt(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 12), new THREE.MeshPhysicalMaterial({ color: 0x442200, roughness: 0.8 }), 0.55, 1.16, 0.15));
     // Pommel
-    group.add(meshAt(new THREE.SphereGeometry(0.04, 6, 4), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 }), 0.55, 1.07, 0.15));
+    group.add(meshAt(new THREE.SphereGeometry(0.04, 12, 10), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 }), 0.55, 1.07, 0.15));
     // Shield
     const shield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.35),
       new THREE.MeshPhysicalMaterial({ color: sec, metalness: 0.4, roughness: 0.45, clearcoat: 0.3 }));
     shield.position.set(-0.55, 1.6, 0); shield.name = "shield"; group.add(shield);
-    group.add(meshAt(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.6, roughness: 0.3 }), -0.58, 1.6, 0));
+    group.add(meshAt(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.6, roughness: 0.3 }), -0.58, 1.6, 0));
     // Shield rivets along edge
     for (let i = 0; i < 6; i++) {
       const ry = 1.38 + i * 0.08;
-      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, -0.58, ry, 0.15));
-      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, -0.58, ry, -0.15));
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 12, 10), rivetMat, -0.58, ry, 0.15));
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 12, 10), rivetMat, -0.58, ry, -0.15));
     }
     // Cape
     const cape = new THREE.Mesh(
@@ -1775,23 +1775,23 @@ export class GrailBallRenderer {
     group.add(meshAt(new THREE.BoxGeometry(0.24, 0.03, 0.42), soleMat, 0.14, 0.01, 0.03));
     // Boot buckles
     for (const xp of [-0.14, 0.14]) {
-      group.add(meshAt(new THREE.TorusGeometry(0.025, 0.006, 4, 6), buckleMat, xp, 0.28, 0.22));
+      group.add(meshAt(new THREE.TorusGeometry(0.025, 0.006, 10, 6), buckleMat, xp, 0.28, 0.22));
       group.add(meshAt(new THREE.BoxGeometry(0.06, 0.02, 0.01), darkLeather, xp, 0.28, 0.23));
     }
     // Shins
     for (const [xp, nm] of [[-0.14, "leftShin"], [0.14, "rightShin"]] as const) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.9, 6), leather);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.9, 12), leather);
       leg.position.set(xp, 0.8, 0); leg.name = nm; group.add(leg);
     }
     // Thighs
     for (const [xp, nm] of [[-0.13, "leftThigh"], [0.13, "rightThigh"]] as const) {
-      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.35, 6), leather);
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.35, 12), leather);
       t.position.set(xp, 1.15, 0); t.name = nm; group.add(t);
     }
     // Belt with pouches
     group.add(meshAt(new THREE.CylinderGeometry(0.17, 0.16, 0.1, 8), darkLeather, 0, 1.35, 0));
     // Belt buckle
-    group.add(meshAt(new THREE.TorusGeometry(0.03, 0.008, 4, 6), buckleMat, 0, 1.35, 0.17));
+    group.add(meshAt(new THREE.TorusGeometry(0.03, 0.008, 10, 6), buckleMat, 0, 1.35, 0.17));
     // Belt pouches (small boxes)
     group.add(meshAt(new THREE.BoxGeometry(0.08, 0.08, 0.06), wornLeather, 0.15, 1.35, 0.1));
     group.add(meshAt(new THREE.BoxGeometry(0.06, 0.06, 0.05), wornLeather, -0.15, 1.35, 0.08));
@@ -1811,7 +1811,7 @@ export class GrailBallRenderer {
     const strap2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.01), darkLeather);
     strap2.position.set(-0.05, 1.65, 0.15); strap2.rotation.z = -0.3; group.add(strap2);
     // Strap buckle at intersection
-    group.add(meshAt(new THREE.SphereGeometry(0.025, 4, 4), buckleMat, 0, 1.65, 0.16));
+    group.add(meshAt(new THREE.SphereGeometry(0.025, 12, 10), buckleMat, 0, 1.65, 0.16));
     // Battle-worn scar on torso
     group.add(meshAt(new THREE.BoxGeometry(0.15, 0.015, 0.01), new THREE.MeshPhysicalMaterial({ color: 0x4a3320, roughness: 0.9 }), -0.05, 1.7, 0.15));
     // Shoulders
@@ -1820,11 +1820,11 @@ export class GrailBallRenderer {
     }
     // Arms with forearm wrappings
     for (const [xp, armNm, handNm] of [[-0.3, "leftUpperArm", "leftHand"], [0.3, "rightUpperArm", "rightHand"]] as const) {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 6), leather);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 12), leather);
       arm.position.set(xp, 1.55, 0); arm.name = armNm; group.add(arm);
       // Forearm wrappings (multiple thin bands)
       for (let w = 0; w < 4; w++) {
-        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.01, 4, 8), wrappingMat);
+        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.01, 10, 8), wrappingMat);
         wrap.position.set(xp, 1.35 + w * 0.06, 0);
         wrap.rotation.x = Math.PI / 2;
         group.add(wrap);
@@ -1833,7 +1833,7 @@ export class GrailBallRenderer {
       hand.position.set(xp, 1.22, 0); hand.name = handNm; group.add(hand);
     }
     // Neck
-    group.add(meshAt(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 6), skinMat, 0, 1.93, 0));
+    group.add(meshAt(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 12), skinMat, 0, 1.93, 0));
     // Head (slightly oval for realism)
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), skinMat);
     head.position.y = 2.15; head.name = "head";
@@ -1849,7 +1849,7 @@ export class GrailBallRenderer {
     // Cheekbones
     for (const xOff of [-0.1, 0.1]) {
       const cheek = new THREE.Mesh(
-        new THREE.SphereGeometry(0.04, 6, 4),
+        new THREE.SphereGeometry(0.04, 12, 10),
         new THREE.MeshPhysicalMaterial({ color: 0xd9aa88, roughness: 0.7 }),
       );
       cheek.position.set(xOff, 2.12, 0.13);
@@ -1871,14 +1871,14 @@ export class GrailBallRenderer {
     noseBase.position.set(0, 2.12, 0.17);
     group.add(noseBase);
     const noseTip = new THREE.Mesh(
-      new THREE.SphereGeometry(0.025, 6, 4),
+      new THREE.SphereGeometry(0.025, 12, 10),
       skinMat,
     );
     noseTip.position.set(0, 2.1, 0.19);
     group.add(noseTip);
     // Nostrils
     for (const xOff of [-0.015, 0.015]) {
-      group.add(meshAt(new THREE.SphereGeometry(0.008, 4, 3), new THREE.MeshBasicMaterial({ color: 0x996655 }), xOff, 2.09, 0.19));
+      group.add(meshAt(new THREE.SphereGeometry(0.008, 16, 12), new THREE.MeshBasicMaterial({ color: 0x996655 }), xOff, 2.09, 0.19));
     }
     // Mouth
     const mouth = new THREE.Mesh(
@@ -1893,7 +1893,7 @@ export class GrailBallRenderer {
     // Ears
     for (const xOff of [-0.17, 0.17]) {
       const ear = new THREE.Mesh(
-        new THREE.SphereGeometry(0.03, 5, 4),
+        new THREE.SphereGeometry(0.03, 12, 10),
         skinMat,
       );
       ear.position.set(xOff, 2.14, 0.02);
@@ -1922,11 +1922,11 @@ export class GrailBallRenderer {
     // Eyes (more detailed with whites and irises)
     for (const xOff of [-0.06, 0.06]) {
       // Eye white
-      group.add(meshAt(new THREE.SphereGeometry(0.022, 6, 4), new THREE.MeshBasicMaterial({ color: 0xeeeedd }), xOff, 2.16, 0.155));
+      group.add(meshAt(new THREE.SphereGeometry(0.022, 12, 10), new THREE.MeshBasicMaterial({ color: 0xeeeedd }), xOff, 2.16, 0.155));
       // Iris
-      group.add(meshAt(new THREE.SphereGeometry(0.013, 5, 4), new THREE.MeshBasicMaterial({ color: 0x446633 }), xOff, 2.16, 0.165));
+      group.add(meshAt(new THREE.SphereGeometry(0.013, 12, 10), new THREE.MeshBasicMaterial({ color: 0x446633 }), xOff, 2.16, 0.165));
       // Pupil
-      group.add(meshAt(new THREE.SphereGeometry(0.007, 4, 3), new THREE.MeshBasicMaterial({ color: 0x111111 }), xOff, 2.16, 0.17));
+      group.add(meshAt(new THREE.SphereGeometry(0.007, 16, 12), new THREE.MeshBasicMaterial({ color: 0x111111 }), xOff, 2.16, 0.17));
       // Eyelid shadow
       group.add(meshAt(new THREE.BoxGeometry(0.035, 0.006, 0.01), new THREE.MeshPhysicalMaterial({ color: 0xbb9977, roughness: 0.7 }), xOff, 2.175, 0.16));
     }
@@ -1951,14 +1951,14 @@ export class GrailBallRenderer {
       // Crossguard
       group.add(meshAt(new THREE.BoxGeometry(0.08, 0.025, 0.03), buckleMat, side * 0.2, 1.32, -0.1));
       // Wrapped handle
-      group.add(meshAt(new THREE.CylinderGeometry(0.02, 0.02, 0.08, 4), darkLeather, side * 0.2, 1.36, -0.1));
+      group.add(meshAt(new THREE.CylinderGeometry(0.02, 0.02, 0.08, 10), darkLeather, side * 0.2, 1.36, -0.1));
       // Handle wrapping strips
       for (let w = 0; w < 3; w++) {
         group.add(meshAt(new THREE.TorusGeometry(0.022, 0.004, 3, 4), wrappingMat,
           side * 0.2, 1.34 + w * 0.025, -0.1));
       }
       // Pommel
-      group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), buckleMat, side * 0.2, 1.41, -0.1));
+      group.add(meshAt(new THREE.SphereGeometry(0.02, 12, 10), buckleMat, side * 0.2, 1.41, -0.1));
     }
     // Cloak
     const cloak = new THREE.Mesh(
@@ -2001,12 +2001,12 @@ export class GrailBallRenderer {
     // Robe inner seam
     group.add(meshAt(new THREE.PlaneGeometry(0.2, 1.2), innerRobe, 0, 0.9, 0.16));
     // Robe trim at bottom (golden edge)
-    group.add(meshAt(new THREE.TorusGeometry(0.34, 0.015, 4, 12), robeEdgeMat, 0, 0.07, 0));
+    group.add(meshAt(new THREE.TorusGeometry(0.34, 0.015, 10, 12), robeEdgeMat, 0, 0.07, 0));
     // Belt/sash
     group.add(meshAt(new THREE.CylinderGeometry(0.18, 0.17, 0.08, 8), robeEdgeMat, 0, 1.4, 0));
     // Belt clasp with gem
     group.add(meshAt(new THREE.BoxGeometry(0.06, 0.06, 0.03), new THREE.MeshPhysicalMaterial({ color: 0xddaa33, metalness: 0.7, roughness: 0.3 }), 0, 1.4, 0.18));
-    group.add(meshAt(new THREE.SphereGeometry(0.02, 6, 4), new THREE.MeshPhysicalMaterial({ color: acc, emissive: acc, emissiveIntensity: 0.5 }), 0, 1.4, 0.2));
+    group.add(meshAt(new THREE.SphereGeometry(0.02, 12, 10), new THREE.MeshPhysicalMaterial({ color: acc, emissive: acc, emissiveIntensity: 0.5 }), 0, 1.4, 0.2));
     // Upper torso
     group.add(meshAt(new THREE.BoxGeometry(0.36, 0.35, 0.25), robeMat, 0, 1.72, 0));
     // Collar
@@ -2017,12 +2017,12 @@ export class GrailBallRenderer {
       sleeve.position.set(xSign * 0.32, 1.55, 0); sleeve.rotation.z = xSign * 0.3;
       sleeve.name = xSign === -1 ? "leftUpperArm" : "rightUpperArm"; group.add(sleeve);
       // Sleeve trim
-      group.add(meshAt(new THREE.TorusGeometry(0.155, 0.01, 4, 8), robeEdgeMat, xSign * 0.32, 1.28, 0));
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), skinMat);
+      group.add(meshAt(new THREE.TorusGeometry(0.155, 0.01, 10, 8), robeEdgeMat, xSign * 0.32, 1.28, 0));
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), skinMat);
       hand.position.set(xSign * 0.42, 1.3, 0);
       hand.name = xSign === -1 ? "leftHand" : "rightHand"; group.add(hand);
       const handGlow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.14, 8, 6), glowMat,
+        new THREE.SphereGeometry(0.14, 16, 12), glowMat,
       );
       handGlow.position.set(xSign * 0.42, 1.3, 0);
       handGlow.name = xSign === -1 ? "leftGlow" : "rightGlow"; group.add(handGlow);
@@ -2039,11 +2039,11 @@ export class GrailBallRenderer {
     const mageNose = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.04), skinMat);
     mageNose.position.set(0, 2.08, 0.16);
     group.add(mageNose);
-    group.add(meshAt(new THREE.SphereGeometry(0.022, 5, 4), skinMat, 0, 2.06, 0.18));
+    group.add(meshAt(new THREE.SphereGeometry(0.022, 12, 10), skinMat, 0, 2.06, 0.18));
     // Cheeks (aged, slightly sunken)
     for (const xOff of [-0.08, 0.08]) {
       const cheek = new THREE.Mesh(
-        new THREE.SphereGeometry(0.035, 5, 4),
+        new THREE.SphereGeometry(0.035, 12, 10),
         new THREE.MeshPhysicalMaterial({ color: 0xd4aa88, roughness: 0.7 }),
       );
       cheek.position.set(xOff, 2.07, 0.12);
@@ -2055,7 +2055,7 @@ export class GrailBallRenderer {
       new THREE.MeshPhysicalMaterial({ color: 0xaa7766, roughness: 0.5 }), 0, 2.02, 0.15));
     // Ears
     for (const xOff of [-0.16, 0.16]) {
-      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 3), skinMat);
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), skinMat);
       ear.position.set(xOff, 2.1, 0.01);
       ear.scale.set(0.5, 1, 0.6);
       group.add(ear);
@@ -2070,10 +2070,10 @@ export class GrailBallRenderer {
     // Hat brim
     group.add(meshAt(new THREE.CylinderGeometry(0.28, 0.3, 0.04, 8), robeMat, 0, 2.22, 0));
     // Hat band trim
-    group.add(meshAt(new THREE.TorusGeometry(0.22, 0.015, 4, 10), robeEdgeMat, 0, 2.22, 0));
+    group.add(meshAt(new THREE.TorusGeometry(0.22, 0.015, 10, 10), robeEdgeMat, 0, 2.22, 0));
     // Stars on hat
     for (let i = 0; i < 3; i++) {
-      const star = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4),
+      const star = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10),
         new THREE.MeshBasicMaterial({ color: acc }));
       const a = (i / 3) * TAU + 0.5;
       star.position.set(Math.cos(a) * 0.15, 2.4 + i * 0.12, Math.sin(a) * 0.15);
@@ -2082,12 +2082,12 @@ export class GrailBallRenderer {
     // Glowing eyes (mystical)
     for (const xOff of [-0.06, 0.06]) {
       // Eye socket shadow
-      group.add(meshAt(new THREE.SphereGeometry(0.03, 5, 4),
+      group.add(meshAt(new THREE.SphereGeometry(0.03, 12, 10),
         new THREE.MeshPhysicalMaterial({ color: 0x887766, roughness: 0.8 }), xOff, 2.12, 0.13));
       // Glowing eye
-      group.add(meshAt(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshBasicMaterial({ color: acc }), xOff, 2.12, 0.15));
+      group.add(meshAt(new THREE.SphereGeometry(0.025, 12, 10), new THREE.MeshBasicMaterial({ color: acc }), xOff, 2.12, 0.15));
       // Eye glow halo
-      group.add(meshAt(new THREE.SphereGeometry(0.04, 6, 4),
+      group.add(meshAt(new THREE.SphereGeometry(0.04, 12, 10),
         new THREE.MeshBasicMaterial({ color: acc, transparent: true, opacity: 0.25 }), xOff, 2.12, 0.14));
       // Eyebrow
       group.add(meshAt(new THREE.BoxGeometry(0.035, 0.007, 0.012),
@@ -2099,15 +2099,15 @@ export class GrailBallRenderer {
     // Beard detail (fuller, more layered)
     const beardColor = 0x999999;
     // Main beard cone
-    group.add(meshAt(new THREE.ConeGeometry(0.08, 0.3, 6),
+    group.add(meshAt(new THREE.ConeGeometry(0.08, 0.3, 12),
       new THREE.MeshStandardMaterial({ color: beardColor, roughness: 0.9 }), 0, 1.9, 0.1));
     // Beard mustache
     for (const xOff of [-0.03, 0.03]) {
-      group.add(meshAt(new THREE.CylinderGeometry(0.015, 0.01, 0.12, 4),
+      group.add(meshAt(new THREE.CylinderGeometry(0.015, 0.01, 0.12, 10),
         new THREE.MeshStandardMaterial({ color: beardColor, roughness: 0.85 }), xOff, 2.0, 0.14));
     }
     // Beard tuft at chin
-    group.add(meshAt(new THREE.SphereGeometry(0.04, 5, 4),
+    group.add(meshAt(new THREE.SphereGeometry(0.04, 12, 10),
       new THREE.MeshStandardMaterial({ color: beardColor, roughness: 0.9 }), 0, 1.97, 0.13));
     // Floating magical runes orbiting the character (small glowing planes)
     for (let i = 0; i < 5; i++) {
@@ -2126,7 +2126,7 @@ export class GrailBallRenderer {
     staff.position.set(0.5, 1.5, 0); staff.name = "staff"; group.add(staff);
     // Staff wrapped section
     for (let w = 0; w < 3; w++) {
-      group.add(meshAt(new THREE.TorusGeometry(0.042, 0.008, 4, 6),
+      group.add(meshAt(new THREE.TorusGeometry(0.042, 0.008, 10, 6),
         new THREE.MeshPhysicalMaterial({ color: 0x887744, roughness: 0.7 }), 0.5, 1.0 + w * 0.15, 0));
     }
     // Crystal cluster at staff top (multiple small crystals around core)
@@ -2151,7 +2151,7 @@ export class GrailBallRenderer {
     }
     // Crystal cage / prongs holding crystals
     for (let i = 0; i < 3; i++) {
-      const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.2, 4),
+      const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.2, 10),
         new THREE.MeshPhysicalMaterial({ color: 0x887744, metalness: 0.3, roughness: 0.5 }));
       const pa = (i / 3) * TAU;
       prong.position.set(0.5 + Math.cos(pa) * 0.05, 2.58, Math.sin(pa) * 0.05);
@@ -2187,8 +2187,8 @@ export class GrailBallRenderer {
     for (const xp of [-0.22, 0.22]) {
       group.add(meshAt(new THREE.BoxGeometry(0.12 * s, 0.2 * s, 0.02), heavyMetal, xp * s, 0.3 * s, 0.27 * s));
       // Boot rivets
-      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, xp * s, 0.35 * s, 0.28 * s));
-      group.add(meshAt(new THREE.SphereGeometry(0.012, 4, 4), rivetMat, xp * s, 0.22 * s, 0.28 * s));
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 12, 10), rivetMat, xp * s, 0.35 * s, 0.28 * s));
+      group.add(meshAt(new THREE.SphereGeometry(0.012, 12, 10), rivetMat, xp * s, 0.22 * s, 0.28 * s));
     }
     // Greaves
     for (const [xp, nm] of [[-0.2, "leftShin"], [0.2, "rightShin"]] as const) {
@@ -2197,13 +2197,13 @@ export class GrailBallRenderer {
     }
     // Knee guards
     for (const xp of [-0.2, 0.2]) {
-      const kneeGuard = new THREE.Mesh(new THREE.SphereGeometry(0.1 * s, 6, 4), darkMetal);
+      const kneeGuard = new THREE.Mesh(new THREE.SphereGeometry(0.1 * s, 12, 10), darkMetal);
       kneeGuard.position.set(xp * s, 0.98 * s, 0.08 * s); group.add(kneeGuard);
-      group.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat, xp * s, 0.98 * s, 0.16 * s));
+      group.add(meshAt(new THREE.SphereGeometry(0.015, 12, 10), rivetMat, xp * s, 0.98 * s, 0.16 * s));
     }
     // Chainmail at knee joints
     for (const xp of [-0.2, 0.2]) {
-      group.add(meshAt(new THREE.CylinderGeometry(0.1 * s, 0.1 * s, 0.1 * s, 6), chainmailMat, xp * s, 0.95 * s, 0));
+      group.add(meshAt(new THREE.CylinderGeometry(0.1 * s, 0.1 * s, 0.1 * s, 12), chainmailMat, xp * s, 0.95 * s, 0));
     }
     // Thighs
     for (const [xp, nm] of [[-0.18, "leftThigh"], [0.18, "rightThigh"]] as const) {
@@ -2226,28 +2226,28 @@ export class GrailBallRenderer {
     group.add(meshAt(new THREE.BoxGeometry(0.02, 0.15 * s, 0.01), new THREE.MeshPhysicalMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.6 }), -0.12 * s, 1.75 * s, 0.21 * s));
     // Rivets on torso
     for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
-      group.add(meshAt(new THREE.SphereGeometry(0.02, 4, 4), darkMetal, (c - 1) * 0.15 * s, (1.55 + r * 0.15) * s, 0.21 * s));
+      group.add(meshAt(new THREE.SphereGeometry(0.02, 12, 10), darkMetal, (c - 1) * 0.15 * s, (1.55 + r * 0.15) * s, 0.21 * s));
     }
     // Tabard
     group.add(meshAt(new THREE.BoxGeometry(0.5 * s, 0.6 * s, 0.01), tabardMat, 0, 1.8 * s, 0.21 * s));
     // Shoulder plates with MORE spikes
     for (const xSign of [-1, 1]) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 10, 8), heavyMetal);
+      const p = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 16, 12), heavyMetal);
       p.scale.set(1.3, 0.7, 1.1); p.position.set(xSign * 0.48 * s, 2.1 * s, 0); group.add(p);
       // Main shoulder spike
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.22, 4), darkMetal);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.22, 10), darkMetal);
       spike.position.set(xSign * 0.55 * s, 2.25 * s, 0); group.add(spike);
       // Additional spikes
-      const spike2 = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.16, 4), darkMetal);
+      const spike2 = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.16, 10), darkMetal);
       spike2.position.set(xSign * 0.52 * s, 2.22 * s, 0.08 * s);
       spike2.rotation.x = 0.3; group.add(spike2);
-      const spike3 = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.14, 4), darkMetal);
+      const spike3 = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.14, 10), darkMetal);
       spike3.position.set(xSign * 0.52 * s, 2.22 * s, -0.08 * s);
       spike3.rotation.x = -0.3; group.add(spike3);
       // Shoulder rivets
       for (let ri = 0; ri < 3; ri++) {
         const angle = (ri / 3) * Math.PI - Math.PI * 0.3;
-        group.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat,
+        group.add(meshAt(new THREE.SphereGeometry(0.015, 12, 10), rivetMat,
           xSign * 0.48 * s + Math.cos(angle) * 0.1 * s, 2.1 * s + Math.sin(angle) * 0.04 * s, 0.1 * s));
       }
     }
@@ -2256,9 +2256,9 @@ export class GrailBallRenderer {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * s, 0.12 * s, 0.5 * s, 8), heavyMetal);
       arm.position.set(xp * s, 1.75 * s, 0); arm.name = armNm; group.add(arm);
       // Chainmail at elbow
-      group.add(meshAt(new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 0.1 * s, 5), chainmailMat, xp * s, 1.52 * s, 0));
+      group.add(meshAt(new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 0.1 * s, 10), chainmailMat, xp * s, 1.52 * s, 0));
       // Forearm plate
-      group.add(meshAt(new THREE.CylinderGeometry(0.09 * s, 0.1 * s, 0.2 * s, 6), heavyMetal, xp * 1.01 * s, 1.48 * s, 0));
+      group.add(meshAt(new THREE.CylinderGeometry(0.09 * s, 0.1 * s, 0.2 * s, 12), heavyMetal, xp * 1.01 * s, 1.48 * s, 0));
       const gaunt = new THREE.Mesh(new THREE.BoxGeometry(0.14 * s, 0.3 * s, 0.14 * s), darkMetal);
       gaunt.position.set(xp * 1.04 * s, 1.4 * s, 0); gaunt.name = handNm; group.add(gaunt);
       // Gauntlet finger ridges
@@ -2276,7 +2276,7 @@ export class GrailBallRenderer {
     // Helm crown plate
     group.add(meshAt(new THREE.CylinderGeometry(0.2 * s, 0.2 * s, 0.04 * s, 10), darkMetal, 0, 2.65 * s, 0));
     // Helm top spike
-    group.add(meshAt(new THREE.ConeGeometry(0.03, 0.15, 4), darkMetal, 0, 2.72 * s, 0));
+    group.add(meshAt(new THREE.ConeGeometry(0.03, 0.15, 10), darkMetal, 0, 2.72 * s, 0));
     // Face guard with visor slits
     group.add(meshAt(new THREE.BoxGeometry(0.25 * s, 0.03, 0.01), new THREE.MeshBasicMaterial({ color: 0x111111 }), 0, 2.45 * s, 0.22 * s));
     // Vertical face guard bars
@@ -2287,7 +2287,7 @@ export class GrailBallRenderer {
     for (let i = 0; i < 5; i++)
       group.add(meshAt(new THREE.CircleGeometry(0.01, 4), new THREE.MeshBasicMaterial({ color: 0x111111 }), (i - 2) * 0.04, 2.38 * s, 0.23 * s));
     // Battle-worn helm dent
-    group.add(meshAt(new THREE.SphereGeometry(0.05 * s, 4, 4), wornMetal, 0.1 * s, 2.5 * s, 0.15 * s));
+    group.add(meshAt(new THREE.SphereGeometry(0.05 * s, 12, 10), wornMetal, 0.1 * s, 2.5 * s, 0.15 * s));
     // Tower Shield (larger, more detailed)
     const towerShield = new THREE.Group();
     const shieldMat = new THREE.MeshPhysicalMaterial({ color: sec, metalness: 0.4, roughness: 0.4, clearcoat: 0.3 });
@@ -2297,7 +2297,7 @@ export class GrailBallRenderer {
     const shieldBoss = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.06, 8), bossMat);
     shieldBoss.position.set(0.06, 0, 0); shieldBoss.rotation.z = Math.PI / 2; towerShield.add(shieldBoss);
     // Boss center spike
-    towerShield.add(meshAt(new THREE.ConeGeometry(0.04, 0.1, 6), heavyMetal, 0.1, 0, 0));
+    towerShield.add(meshAt(new THREE.ConeGeometry(0.04, 0.1, 12), heavyMetal, 0.1, 0, 0));
     // Cross emblem
     const crossMat = new THREE.MeshPhysicalMaterial({ color: pri, metalness: 0.5, roughness: 0.35 });
     const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.8 * s, 0.06), crossMat);
@@ -2305,16 +2305,16 @@ export class GrailBallRenderer {
     const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.06, 0.5 * s), crossMat);
     crossH.position.set(0.05, 0.1, 0); towerShield.add(crossH);
     // Shield boss sphere
-    towerShield.add(meshAt(new THREE.SphereGeometry(0.08, 8, 6), heavyMetal, 0.05, 0, 0));
+    towerShield.add(meshAt(new THREE.SphereGeometry(0.08, 16, 12), heavyMetal, 0.05, 0, 0));
     // Rim with rivets
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35 * s, 0.02, 4, 12), darkMetal);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35 * s, 0.02, 10, 12), darkMetal);
     rim.position.x = 0.05; rim.rotation.y = Math.PI / 2; rim.scale.y = 1.7; towerShield.add(rim);
     // Shield edge rivets
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * TAU;
       const ry = Math.sin(a) * 0.35 * s * 1.7;
       const rz = Math.cos(a) * 0.35 * s;
-      towerShield.add(meshAt(new THREE.SphereGeometry(0.015, 4, 4), rivetMat, 0.05, ry, rz));
+      towerShield.add(meshAt(new THREE.SphereGeometry(0.015, 12, 10), rivetMat, 0.05, ry, rz));
     }
     // Shield battle damage (dark scratch)
     towerShield.add(meshAt(new THREE.BoxGeometry(0.01, 0.3 * s, 0.015), wornMetal, 0.06, 0.15, 0.12));
@@ -2351,7 +2351,7 @@ export class GrailBallRenderer {
     );
     group.add(crystal);
     group.add(new THREE.Mesh(
-      new THREE.SphereGeometry(0.8, 10, 8),
+      new THREE.SphereGeometry(0.8, 16, 12),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending }),
     ));
     group.add(new THREE.PointLight(color, 0.6, 10, 1.5));

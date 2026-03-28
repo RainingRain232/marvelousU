@@ -372,7 +372,7 @@ export class LotRenderer {
     this._playerGroup.add(this._playerBody);
 
     // Helmet
-    const helmetGeo = new THREE.SphereGeometry(0.35, 8, 6);
+    const helmetGeo = new THREE.SphereGeometry(0.35, 16, 12);
     const helmetMat = new THREE.MeshStandardMaterial({ color: 0x8899bb, metalness: 0.8, roughness: 0.2 });
     this._playerHelmet = new THREE.Mesh(helmetGeo, helmetMat);
     this._playerHelmet.position.y = 2.0;
@@ -402,7 +402,7 @@ export class LotRenderer {
     this._playerGroup.add(guard);
 
     // Shield
-    const shieldGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.08, 6);
+    const shieldGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.08, 12);
     const shieldMat = new THREE.MeshStandardMaterial({ color: 0x3344aa, metalness: 0.5, roughness: 0.4 });
     this._playerShield = new THREE.Mesh(shieldGeo, shieldMat);
     this._playerShield.rotation.z = Math.PI / 2;
@@ -423,7 +423,7 @@ export class LotRenderer {
     // Shoulder pauldrons
     const pauldronMat = new THREE.MeshStandardMaterial({ color: 0x6677aa, metalness: 0.8, roughness: 0.2 });
     for (const side of [-0.55, 0.55]) {
-      const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 4), pauldronMat);
+      const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), pauldronMat);
       pauldron.scale.set(1.2, 0.7, 1);
       pauldron.position.set(side, 1.7, 0);
       this._playerGroup.add(pauldron);
@@ -432,7 +432,7 @@ export class LotRenderer {
     // Gauntlets (arms)
     const gauntletMat = new THREE.MeshStandardMaterial({ color: 0x5566aa, metalness: 0.7, roughness: 0.3 });
     for (const side of [-0.6, 0.6]) {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.8, 6), gauntletMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.8, 12), gauntletMat);
       arm.position.set(side, 1.1, 0.15);
       this._playerGroup.add(arm);
     }
@@ -440,7 +440,7 @@ export class LotRenderer {
     // Leg armor / boots
     const bootMat = new THREE.MeshStandardMaterial({ color: 0x445577, metalness: 0.5, roughness: 0.5 });
     for (const side of [-0.2, 0.2]) {
-      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.5, 6), bootMat);
+      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.5, 12), bootMat);
       boot.position.set(side, 0.25, 0);
       this._playerGroup.add(boot);
     }
@@ -542,7 +542,7 @@ export class LotRenderer {
 
   private _buildDustParticles(): void {
     // Ambient floating dust/embers using instanced mesh
-    const geo = new THREE.SphereGeometry(0.04, 3, 2);
+    const geo = new THREE.SphereGeometry(0.04, 16, 12);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffaa66, transparent: true, opacity: 0.5 });
     this._dustMesh = new THREE.InstancedMesh(geo, mat, this._dustCount);
     this._dustMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -572,7 +572,7 @@ export class LotRenderer {
 
       // Stone base
       const base = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.5, 0.7, 1.5, 6),
+        new THREE.CylinderGeometry(0.5, 0.7, 1.5, 12),
         new THREE.MeshStandardMaterial({ color: 0x443355, roughness: 0.9 }),
       );
       base.position.y = 0.75;
@@ -580,7 +580,7 @@ export class LotRenderer {
 
       // Bowl
       const bowl = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.6, 0.35, 0.4, 6, 1, true),
+        new THREE.CylinderGeometry(0.6, 0.35, 0.4, 12, 1, true),
         new THREE.MeshStandardMaterial({ color: 0x554466, metalness: 0.4 }),
       );
       bowl.position.y = 1.6;
@@ -588,7 +588,7 @@ export class LotRenderer {
 
       // Fire core (emissive sphere)
       const fire = new THREE.Mesh(
-        new THREE.SphereGeometry(0.35, 6, 4),
+        new THREE.SphereGeometry(0.35, 12, 10),
         new THREE.MeshBasicMaterial({ color: 0xff6622 }),
       );
       fire.position.y = 1.9;
@@ -596,7 +596,7 @@ export class LotRenderer {
 
       // Fire glow
       const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.8, 8, 6),
+        new THREE.SphereGeometry(0.8, 16, 12),
         new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.15 }),
       );
       glow.position.y = 2.0;
@@ -741,7 +741,7 @@ export class LotRenderer {
     // Spokes
     for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * TAU;
-      const spokeGeo = new THREE.CylinderGeometry(0.1, 0.1, 12, 6);
+      const spokeGeo = new THREE.CylinderGeometry(0.1, 0.1, 12, 12);
       const spokeMat = new THREE.MeshStandardMaterial({ color: 0xaa8833, metalness: 0.7 });
       const spoke = new THREE.Mesh(spokeGeo, spokeMat);
       spoke.rotation.z = Math.PI / 2;
@@ -786,7 +786,7 @@ export class LotRenderer {
   }
 
   private _buildParticleSystem(): void {
-    const geo = new THREE.SphereGeometry(0.1, 4, 4);
+    const geo = new THREE.SphereGeometry(0.1, 12, 10);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     this._particleInstancedMesh = new THREE.InstancedMesh(geo, mat, this._maxParticles);
     this._particleInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -983,7 +983,7 @@ export class LotRenderer {
       // Spawn afterimage ghost
       if (state.tick % 3 === 0) {
         const ghost = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.4, 0.5, 1.8, 6),
+          new THREE.CylinderGeometry(0.4, 0.5, 1.8, 12),
           new THREE.MeshBasicMaterial({ color: 0x4466cc, transparent: true, opacity: 0.4 }),
         );
         ghost.position.copy(this._playerGroup.position);
@@ -1123,35 +1123,35 @@ export class LotRenderer {
       case "skeleton": {
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.8 });
         // Ribcage torso
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 1.0, 6), boneMat);
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 1.0, 12), boneMat);
         torso.position.y = 1.0; torso.castShadow = true; g.add(torso);
         // Spine visible behind
-        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 4), boneMat);
+        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 10), boneMat);
         spine.position.set(0, 0.9, -0.15); g.add(spine);
         // Pelvis
         const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, 0.25), boneMat);
         pelvis.position.y = 0.45; g.add(pelvis);
         // Skull
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
         skull.position.y = 1.7; skull.scale.set(1, 1.15, 1); g.add(skull);
         // Jaw (slight gap)
         const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.12), boneMat);
         jaw.position.set(0, 1.52, 0.12); g.add(jaw);
         // Eyes (red glow)
         for (const s of [-0.07, 0.07]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 4, 4), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
           eye.position.set(s, 1.73, 0.18); g.add(eye);
         }
         // Arms (bone segments)
         for (const s of [-1, 1]) {
-          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.6, 4), boneMat);
+          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.6, 10), boneMat);
           upper.position.set(s * 0.35, 1.25, 0); upper.rotation.z = s * 0.3; g.add(upper);
-          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.5, 4), boneMat);
+          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.5, 10), boneMat);
           lower.position.set(s * 0.5, 0.85, 0.15); lower.rotation.z = s * 0.5; g.add(lower);
         }
         // Legs (bone segments)
         for (const s of [-0.15, 0.15]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.6, 4), boneMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.6, 10), boneMat);
           leg.position.set(s, 0.15, 0); g.add(leg);
         }
         // Rusty sword
@@ -1173,30 +1173,30 @@ export class LotRenderer {
         const robe = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2.2, 8), robeMat);
         robe.position.y = 1.1; g.add(robe);
         // Inner darker robe layer
-        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.8, 6),
+        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.8, 12),
           new THREE.MeshStandardMaterial({ color: 0x331166, transparent: true, opacity: 0.8, emissive: 0x220066, emissiveIntensity: 0.4 }));
         inner.position.y = 1.2; g.add(inner);
         // Hood
-        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6),
+        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0x442288, emissive: 0x221144, emissiveIntensity: 0.3 }));
         hood.position.y = 2.1; hood.scale.set(1, 1.1, 0.9); g.add(hood);
         // Void face (dark recessed)
-        const voidFace = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4),
+        const voidFace = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10),
           new THREE.MeshBasicMaterial({ color: 0x110022 }));
         voidFace.position.set(0, 2.05, 0.2); g.add(voidFace);
         // Glowing eyes
         for (const s of [-0.08, 0.08]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 4), new THREE.MeshBasicMaterial({ color: 0xeeddff }));
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), new THREE.MeshBasicMaterial({ color: 0xeeddff }));
           eye.position.set(s, 2.08, 0.3); g.add(eye);
         }
         // Ghostly trailing wisps
         for (let i = 0; i < 3; i++) {
-          const wisp = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.08, 0.8, 4),
+          const wisp = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.08, 0.8, 10),
             new THREE.MeshBasicMaterial({ color: 0x8866cc, transparent: true, opacity: 0.3 }));
           wisp.position.set((i - 1) * 0.25, -0.1, 0); wisp.rotation.z = (i - 1) * 0.15; g.add(wisp);
         }
         // Soul orb in hands
-        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4),
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10),
           new THREE.MeshBasicMaterial({ color: 0xaa88ff }));
         orb.position.set(0, 1.5, 0.4); g.add(orb);
         break;
@@ -1207,7 +1207,7 @@ export class LotRenderer {
         const torso = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.8, 1.0), rockMat);
         torso.position.y = 1.2; torso.castShadow = true; g.add(torso);
         // Belly boulder
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 6, 4), rockMat);
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), rockMat);
         belly.position.set(0, 0.8, 0.3); g.add(belly);
         // Head (small, sunken into shoulders)
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.55),
@@ -1225,20 +1225,20 @@ export class LotRenderer {
         }
         // Heavy arms (thick cylinders with fist spheres)
         for (const s of [-1, 1]) {
-          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.0, 6), rockMat);
+          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.0, 12), rockMat);
           upper.position.set(s * 0.85, 1.4, 0); upper.rotation.z = s * 0.2; g.add(upper);
-          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.9, 6), rockMat);
+          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.9, 12), rockMat);
           lower.position.set(s * 1.0, 0.6, 0.1); g.add(lower);
-          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 4), rockMat);
+          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), rockMat);
           fist.position.set(s * 1.0, 0.15, 0.15); g.add(fist);
         }
         // Stumpy legs
         for (const s of [-0.35, 0.35]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.6, 6), rockMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.6, 12), rockMat);
           leg.position.set(s, 0.1, 0); g.add(leg);
         }
         // Inner glow
-        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.8, 6, 4),
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 10),
           new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.06 }));
         glow.position.y = 1.0; g.add(glow);
         break;
@@ -1254,33 +1254,33 @@ export class LotRenderer {
         plate.position.set(0, 1.7, 0.35); g.add(plate);
         // Massive shoulders
         for (const s of [-0.9, 0.9]) {
-          const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 4),
+          const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10),
             new THREE.MeshStandardMaterial({ color: 0x551122, metalness: 0.6 }));
           shoulder.position.set(s, 2.5, 0); shoulder.scale.set(1.3, 0.8, 1); g.add(shoulder);
           // Shoulder spike
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 4),
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 10),
             new THREE.MeshStandardMaterial({ color: 0x220000, emissive: 0x440000, emissiveIntensity: 0.3 }));
           spike.position.set(s * 1.1, 2.7, 0); spike.rotation.z = s * -0.5; g.add(spike);
         }
         // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), demonMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), demonMat);
         head.position.y = 3.0; head.scale.set(1, 1.1, 0.9); g.add(head);
         // Crown/horns (larger, more dramatic)
         for (const s of [-0.35, 0.35]) {
-          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 1.0, 5),
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 1.0, 10),
             new THREE.MeshStandardMaterial({ color: 0x220000, emissive: 0x660000, emissiveIntensity: 0.5 }));
           horn.position.set(s, 3.5, 0); horn.rotation.z = s > 0 ? -0.25 : 0.25; g.add(horn);
         }
         // Glowing eyes
         for (const s of [-0.12, 0.12]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
           eye.position.set(s, 3.05, 0.32); g.add(eye);
         }
         // Arms with gauntlets
         for (const s of [-1, 1]) {
-          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 1.2, 6), demonMat);
+          const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 1.2, 12), demonMat);
           arm.position.set(s * 1.0, 1.8, 0.1); arm.rotation.z = s * 0.15; g.add(arm);
-          const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.4, 6),
+          const gauntlet = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.4, 12),
             new THREE.MeshStandardMaterial({ color: 0x331111, metalness: 0.7 }));
           gauntlet.position.set(s * 1.0, 1.1, 0.15); g.add(gauntlet);
         }
@@ -1293,11 +1293,11 @@ export class LotRenderer {
         bladeGlow.position.set(1.2, 1.6, 0.32); g.add(bladeGlow);
         // Legs
         for (const s of [-0.3, 0.3]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 1.0, 6), demonMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 1.0, 12), demonMat);
           leg.position.set(s, 0.2, 0); g.add(leg);
         }
         // Demonic aura (pulsing)
-        const aura = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8),
+        const aura = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 12),
           new THREE.MeshBasicMaterial({ color: 0xff2200, transparent: true, opacity: 0.06 }));
         aura.position.y = 1.5; g.add(aura);
         break;
@@ -1312,7 +1312,7 @@ export class LotRenderer {
         body.castShadow = true;
         g.add(body);
         const helmet = new THREE.Mesh(
-          new THREE.SphereGeometry(0.35, 8, 6),
+          new THREE.SphereGeometry(0.35, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0xaa4444, metalness: 0.8 }),
         );
         helmet.position.y = 2.0;
@@ -1320,7 +1320,7 @@ export class LotRenderer {
         g.add(helmet);
         // Plume
         const plume = new THREE.Mesh(
-          new THREE.ConeGeometry(0.1, 0.6, 4),
+          new THREE.ConeGeometry(0.1, 0.6, 10),
           new THREE.MeshStandardMaterial({ color: 0xff2222 }),
         );
         plume.position.set(0, 2.4, -0.1);
@@ -1337,21 +1337,21 @@ export class LotRenderer {
       case "skeleton_archer": {
         // Similar to skeleton but with a bow
         const body = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.25, 0.3, 1.5, 6),
+          new THREE.CylinderGeometry(0.25, 0.3, 1.5, 12),
           new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.8 }),
         );
         body.position.y = 0.75;
         body.castShadow = true;
         g.add(body);
         const skull = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22, 6, 4),
+          new THREE.SphereGeometry(0.22, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0xccbbaa }),
         );
         skull.position.y = 1.65;
         g.add(skull);
         // Bow (arc shape)
         const bow = new THREE.Mesh(
-          new THREE.TorusGeometry(0.4, 0.03, 4, 8, Math.PI),
+          new THREE.TorusGeometry(0.4, 0.03, 10, 8, Math.PI),
           new THREE.MeshStandardMaterial({ color: 0x664422 }),
         );
         bow.position.set(0.4, 1.0, 0.2);
@@ -1360,7 +1360,7 @@ export class LotRenderer {
         // Orange eyes
         for (const side of [-0.06, 0.06]) {
           const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03, 4, 4),
+            new THREE.SphereGeometry(0.03, 12, 10),
             new THREE.MeshBasicMaterial({ color: 0xff8844 }),
           );
           eye.position.set(side, 1.67, 0.18);
@@ -1371,7 +1371,7 @@ export class LotRenderer {
       case "necromancer": {
         // Dark robed figure with green glow
         const robe = new THREE.Mesh(
-          new THREE.ConeGeometry(0.5, 2.0, 6),
+          new THREE.ConeGeometry(0.5, 2.0, 12),
           new THREE.MeshStandardMaterial({
             color: 0x224422,
             emissive: 0x114411,
@@ -1382,7 +1382,7 @@ export class LotRenderer {
         g.add(robe);
         // Hood/head
         const head = new THREE.Mesh(
-          new THREE.SphereGeometry(0.3, 6, 4),
+          new THREE.SphereGeometry(0.3, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0x112211 }),
         );
         head.position.y = 2.0;
@@ -1390,7 +1390,7 @@ export class LotRenderer {
         // Green glowing eyes
         for (const side of [-0.1, 0.1]) {
           const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05, 4, 4),
+            new THREE.SphereGeometry(0.05, 12, 10),
             new THREE.MeshBasicMaterial({ color: 0x44ff44 }),
           );
           eye.position.set(side, 2.05, 0.25);
@@ -1398,21 +1398,21 @@ export class LotRenderer {
         }
         // Staff
         const staff = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04, 0.04, 2.5, 4),
+          new THREE.CylinderGeometry(0.04, 0.04, 2.5, 10),
           new THREE.MeshStandardMaterial({ color: 0x332211 }),
         );
         staff.position.set(0.4, 1.2, 0);
         g.add(staff);
         // Staff orb
         const orb = new THREE.Mesh(
-          new THREE.SphereGeometry(0.15, 6, 4),
+          new THREE.SphereGeometry(0.15, 12, 10),
           new THREE.MeshBasicMaterial({ color: 0x44ff44 }),
         );
         orb.position.set(0.4, 2.5, 0);
         g.add(orb);
         // Green aura
         const aura = new THREE.Mesh(
-          new THREE.SphereGeometry(1.5, 8, 8),
+          new THREE.SphereGeometry(1.5, 16, 12),
           new THREE.MeshBasicMaterial({ color: 0x22aa22, transparent: true, opacity: 0.08 }),
         );
         aura.position.y = 1;
@@ -1523,7 +1523,7 @@ export class LotRenderer {
         // Metal spikes
         for (let i = 0; i < 5; i++) {
           const spike = new THREE.Mesh(
-            new THREE.ConeGeometry(0.15, 1.2, 4),
+            new THREE.ConeGeometry(0.15, 1.2, 10),
             new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.8 }),
           );
           spike.position.set(rng() * 1.5 - 0.75, 0.6, rng() * 1.5 - 0.75);
@@ -1539,14 +1539,14 @@ export class LotRenderer {
       }
       case "fire_pillar": {
         const pillar = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.3, 0.4, 3, 6),
+          new THREE.CylinderGeometry(0.3, 0.4, 3, 12),
           new THREE.MeshStandardMaterial({ color: 0x442200 }),
         );
         pillar.position.y = 1.5;
         g.add(pillar);
         // Fire glow
         const fire = new THREE.Mesh(
-          new THREE.SphereGeometry(obs.radius, 8, 6),
+          new THREE.SphereGeometry(obs.radius, 16, 12),
           new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.25 }),
         );
         fire.position.y = 2;
@@ -1559,14 +1559,14 @@ export class LotRenderer {
       case "pendulum": {
         // Chain
         const chain = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.05, 0.05, 6, 4),
+          new THREE.CylinderGeometry(0.05, 0.05, 6, 10),
           new THREE.MeshStandardMaterial({ color: 0x666677, metalness: 0.8 }),
         );
         chain.position.y = 3;
         g.add(chain);
         // Heavy ball
         const ball = new THREE.Mesh(
-          new THREE.SphereGeometry(0.8, 8, 6),
+          new THREE.SphereGeometry(0.8, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.7 }),
         );
         ball.position.y = 0;
@@ -1575,7 +1575,7 @@ export class LotRenderer {
         for (let i = 0; i < 6; i++) {
           const spikeAngle = (i / 6) * TAU;
           const spike = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 0.4, 4),
+            new THREE.ConeGeometry(0.1, 0.4, 10),
             new THREE.MeshStandardMaterial({ color: 0x555566 }),
           );
           spike.position.set(Math.cos(spikeAngle) * 0.7, Math.sin(spikeAngle) * 0.7, 0);
@@ -1635,7 +1635,7 @@ export class LotRenderer {
 
     // Glow
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.8, 8, 6),
+      new THREE.SphereGeometry(0.8, 16, 12),
       new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.2 }),
     );
     g.add(glow);
@@ -1765,13 +1765,13 @@ export class LotRenderer {
         const group = new THREE.Group();
         // Core
         const core = new THREE.Mesh(
-          new THREE.SphereGeometry(proj.radius, 6, 4),
+          new THREE.SphereGeometry(proj.radius, 12, 10),
           new THREE.MeshBasicMaterial({ color: new THREE.Color(proj.color) }),
         );
         group.add(core);
         // Glow trail
         const glow = new THREE.Mesh(
-          new THREE.SphereGeometry(proj.radius * 2.5, 6, 4),
+          new THREE.SphereGeometry(proj.radius * 2.5, 12, 10),
           new THREE.MeshBasicMaterial({
             color: new THREE.Color(proj.color),
             transparent: true,
@@ -1972,14 +1972,14 @@ export class LotRenderer {
         const color = s.type === "power" ? 0xff6644 : s.type === "speed" ? 0x44ccff : 0x88aacc;
         // Pillar
         const pillar = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.3, 0.4, 1.5, 6),
+          new THREE.CylinderGeometry(0.3, 0.4, 1.5, 12),
           new THREE.MeshStandardMaterial({ color: 0x554466 }),
         );
         pillar.position.y = 0.75;
         group.add(pillar);
         // Floating orb
         const orb = new THREE.Mesh(
-          new THREE.SphereGeometry(0.3, 8, 6),
+          new THREE.SphereGeometry(0.3, 16, 12),
           new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8 }),
         );
         orb.position.y = 2;

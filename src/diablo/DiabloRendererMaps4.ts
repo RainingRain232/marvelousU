@@ -660,7 +660,7 @@ export function buildCrystalCaverns(mctx: MapBuildContext, w: number, d: number)
       for (let p = 0; p < prismCount; p++) {
         const prismH = 0.8 + Math.random() * 2.5;
         const prismR = 0.1 + Math.random() * 0.3;
-        const prism = new THREE.Mesh(new THREE.CylinderGeometry(prismR * 0.3, prismR, prismH, 6), hexCrystMat);
+        const prism = new THREE.Mesh(new THREE.CylinderGeometry(prismR * 0.3, prismR, prismH, 12), hexCrystMat);
         prism.position.set((Math.random() - 0.5) * 2, prismH / 2, (Math.random() - 0.5) * 2);
         prism.rotation.z = (Math.random() - 0.5) * 0.4;
         prism.rotation.x = (Math.random() - 0.5) * 0.4;
@@ -1627,7 +1627,7 @@ export function buildFrozenTundra(mctx: MapBuildContext, w: number, d: number): 
         iceBlock.rotation.y = Math.random(); fishHole.add(iceBlock);
       }
       // Fishing line
-      const fishLine = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 1.0, 4), rockMat);
+      const fishLine = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 1.0, 10), rockMat);
       fishLine.position.y = -0.5; fishHole.add(fishLine);
       const fhX = (Math.random() - 0.5) * w * 0.3;
       const fhZ = (Math.random() - 0.5) * d * 0.3;
@@ -1650,7 +1650,7 @@ export function buildFrozenTundra(mctx: MapBuildContext, w: number, d: number): 
       topBall.position.y = 1.45; snowman.add(topBall);
       // Twig arms
       for (const aSide of [-1, 1]) {
-        const twigArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.5, 6), snowmanTwigMat);
+        const twigArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.5, 12), snowmanTwigMat);
         twigArm.position.set(aSide * 0.35, 1.0, 0);
         twigArm.rotation.z = aSide * 1.2; snowman.add(twigArm);
       }
@@ -2339,7 +2339,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
       sgFrameTop.position.y = sgH;
       sgWindow.add(sgFrameTop);
       // Pointed arch top
-      const sgPeak = new THREE.Mesh(new THREE.ConeGeometry(sgW * 0.35, 0.8, 3), darkStoneMat);
+      const sgPeak = new THREE.Mesh(new THREE.ConeGeometry(sgW * 0.35, 0.8, 8), darkStoneMat);
       sgPeak.position.y = sgH + 0.4;
       sgPeak.rotation.y = Math.PI / 6;
       sgWindow.add(sgPeak);
@@ -2830,7 +2830,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
         const pier = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.5, 0.6), darkStoneMat);
         pier.position.set(side === 0 ? -buttressH * 0.4 : buttressH * 0.4, 1.75, 0);
         buttressGrp.add(pier);
-        const pierCap = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.6, 4), darkStoneMat);
+        const pierCap = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.6, 10), darkStoneMat);
         pierCap.position.set(pier.position.x, 3.7, 0);
         pierCap.rotation.y = Math.PI / 4;
         buttressGrp.add(pierCap);
@@ -2918,7 +2918,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
         const archTop2 = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.15, 0.15), lightStoneMat);
         archTop2.position.y = 1.0;
         archOpening.add(archTop2);
-        const archTip = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.5, 3), lightStoneMat);
+        const archTip = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.5, 8), lightStoneMat);
         archTip.position.y = 1.35;
         archOpening.add(archTip);
         const voidPlane = new THREE.Mesh(
@@ -2945,7 +2945,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
       );
       rope.position.y = btH * 0.35;
       bellTower.add(rope);
-      const spire = new THREE.Mesh(new THREE.ConeGeometry(btR * 0.9, 3.0, 4), darkStoneMat);
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(btR * 0.9, 3.0, 10), darkStoneMat);
       spire.position.y = btH + 1.5;
       spire.rotation.y = Math.PI / 4;
       bellTower.add(spire);
@@ -3023,7 +3023,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
         grgSpout.add(horn);
         // Horn ridges
         for (let hr = 0; hr < 3; hr++) {
-          const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.025 - hr * 0.005, 0.005, 6, 12), gargStoneMat);
+          const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.025 - hr * 0.005, 0.005, 12, 12), gargStoneMat);
           ridge.position.set(hSide * (0.1 + hr * 0.015 * hSide), 0.6 + hr * 0.04, 0.38 - hr * 0.01);
           ridge.rotation.z = hSide * 0.5;
           grgSpout.add(ridge);
@@ -3236,7 +3236,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
           else { fpX = cemW / 2; fpZ = t; }
           fPost.position.set(fpX, 0.7, fpZ);
           cemeteryGrp.add(fPost);
-          const fTip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 4), ironMat);
+          const fTip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 10), ironMat);
           fTip.position.set(fpX, 1.45, fpZ);
           cemeteryGrp.add(fTip);
         }
@@ -3265,7 +3265,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
           const obel = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.6, 0.3), lightStoneMat);
           obel.position.y = 0.8;
           gsGrp.add(obel);
-          const obelTop = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 4), lightStoneMat);
+          const obelTop = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 10), lightStoneMat);
           obelTop.position.y = 1.8;
           obelTop.rotation.y = Math.PI / 4;
           gsGrp.add(obelTop);
@@ -3337,7 +3337,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
       opCrown.position.y = 7.15;
       organWall.add(opCrown);
       for (let fi = 0; fi < 3; fi++) {
-        const finial = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 6), darkStoneMat);
+        const finial = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 12), darkStoneMat);
         finial.position.set(-2 + fi * 2, 7.55, 0);
         organWall.add(finial);
       }
@@ -3433,7 +3433,7 @@ export function buildHauntedCathedral(mctx: MapBuildContext, w: number, d: numbe
       const potCount = 2 + Math.floor(Math.random() * 3);
       for (let pot = 0; pot < potCount; pot++) {
         const shard = new THREE.Mesh(
-          new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 6, 5),
+          new THREE.SphereGeometry(0.05 + Math.random() * 0.08, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0x885544, roughness: 0.8 }),
         );
         shard.scale.set(1 + Math.random() * 0.5, 0.3 + Math.random() * 0.4, 1 + Math.random() * 0.5);
@@ -4101,7 +4101,7 @@ export function buildThornwoodThicket(mctx: MapBuildContext, w: number, d: numbe
         seg.rotation.z = Math.cos(angle) * 0.3; seg.rotation.x = Math.sin(angle) * 0.3;
         vineSpiral.add(seg);
         if (Math.random() > 0.5) {
-          const vThorn = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 6), thornMat);
+          const vThorn = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 12), thornMat);
           vThorn.position.set(Math.cos(angle) * (spiralR + 0.02), t * spiralH, Math.sin(angle) * (spiralR + 0.02));
           vThorn.rotation.z = Math.cos(angle) * 1.2; vThorn.rotation.x = Math.sin(angle) * 1.2;
           vineSpiral.add(vThorn);
@@ -4118,7 +4118,7 @@ export function buildThornwoodThicket(mctx: MapBuildContext, w: number, d: numbe
       const radials = 8 + Math.floor(Math.random() * 4);
       for (let r = 0; r < radials; r++) {
         const rAngle = (r / radials) * Math.PI * 2;
-        const radLine = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, wR2, 4), webMat);
+        const radLine = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, wR2, 10), webMat);
         radLine.position.set(Math.cos(rAngle) * wR2 * 0.5, 0, Math.sin(rAngle) * wR2 * 0.5);
         radLine.rotation.z = Math.PI / 2; radLine.rotation.y = rAngle;
         webDetail.add(radLine);
@@ -4143,7 +4143,7 @@ export function buildThornwoodThicket(mctx: MapBuildContext, w: number, d: numbe
         berry.position.set((Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06);
         berryCluster.add(berry);
       }
-      const bStem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.08, 6), darkBarkMat);
+      const bStem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.08, 12), darkBarkMat);
       bStem.position.y = 0.05; berryCluster.add(bStem);
       const bLeaf = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.02), vineMat);
       bLeaf.position.set(0.015, 0.04, 0); bLeaf.rotation.z = 0.3; berryCluster.add(bLeaf);
@@ -4188,7 +4188,7 @@ export function buildThornwoodThicket(mctx: MapBuildContext, w: number, d: numbe
       }
       for (let r = 0; r < 4; r++) {
         for (const side of [-1, 1]) {
-          const rib2 = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.003, 6, 12, Math.PI * 0.7), skelBoneMat);
+          const rib2 = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.003, 12, 12, Math.PI * 0.7), skelBoneMat);
           rib2.position.set(side * 0.01, 0.04, (r / 4) * spineLen2 * 0.6 - spineLen2 * 0.15);
           rib2.rotation.y = side * Math.PI / 2; rib2.rotation.x = 0.3;
           skel2.add(rib2);

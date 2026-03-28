@@ -111,7 +111,7 @@ export class AoWUnitRenderer {
     // Faction banner pole
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.8 });
     const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.015, 0.015, 0.8, 4),
+      new THREE.CylinderGeometry(0.015, 0.015, 0.8, 10),
       poleMat,
     );
     pole.position.set(0.18, 0.4, 0);
@@ -217,7 +217,7 @@ export class AoWUnitRenderer {
         roughness: 0.2,
       });
       const crown = new THREE.Mesh(
-        new THREE.TorusGeometry(0.12, 0.02, 6, 8),
+        new THREE.TorusGeometry(0.12, 0.02, 12, 8),
         crownMat,
       );
       crown.position.y = 0.55;
@@ -228,7 +228,7 @@ export class AoWUnitRenderer {
       for (let i = 0; i < 5; i++) {
         const angle = (Math.PI * 2 / 5) * i;
         const spike = new THREE.Mesh(
-          new THREE.ConeGeometry(0.015, 0.06, 3),
+          new THREE.ConeGeometry(0.015, 0.06, 8),
           crownMat,
         );
         spike.position.set(Math.cos(angle) * 0.12, 0.57, Math.sin(angle) * 0.12);
@@ -343,18 +343,18 @@ export class AoWUnitRenderer {
     switch (faction) {
       case AoWFaction.CAMELOT:
         // Tall knight silhouette
-        return new THREE.CylinderGeometry(0.18, 0.22, 1.0, 6);
+        return new THREE.CylinderGeometry(0.18, 0.22, 1.0, 12);
       case AoWFaction.UNDEAD:
         // Hooded lich shape (wider top)
-        return new THREE.CylinderGeometry(0.22, 0.15, 1.0, 5);
+        return new THREE.CylinderGeometry(0.22, 0.15, 1.0, 10);
       case AoWFaction.FEY:
         // Slender elf queen
         return new THREE.CylinderGeometry(0.14, 0.18, 1.1, 8);
       case AoWFaction.DWARVES:
         // Stocky and wide
-        return new THREE.CylinderGeometry(0.22, 0.25, 0.8, 6);
+        return new THREE.CylinderGeometry(0.22, 0.25, 0.8, 12);
       default:
-        return new THREE.CylinderGeometry(0.2, 0.25, 1.0, 6);
+        return new THREE.CylinderGeometry(0.2, 0.25, 1.0, 12);
     }
   }
 
@@ -362,12 +362,12 @@ export class AoWUnitRenderer {
     switch (faction) {
       case AoWFaction.FEY:
         // Tall slender archer
-        return new THREE.CylinderGeometry(0.1, 0.14, 0.8, 6);
+        return new THREE.CylinderGeometry(0.1, 0.14, 0.8, 12);
       case AoWFaction.DWARVES:
         // Stocky crossbowman
         return new THREE.BoxGeometry(0.28, 0.5, 0.22);
       default:
-        return new THREE.ConeGeometry(0.17, 0.75, 4);
+        return new THREE.ConeGeometry(0.17, 0.75, 10);
     }
   }
 
@@ -391,7 +391,7 @@ export class AoWUnitRenderer {
         return new THREE.BoxGeometry(0.4, 0.65, 0.35);
       case AoWFaction.CAMELOT:
         // Heavy knight
-        return new THREE.CylinderGeometry(0.2, 0.2, 0.7, 6);
+        return new THREE.CylinderGeometry(0.2, 0.2, 0.7, 12);
       default:
         return new THREE.BoxGeometry(0.35, 0.6, 0.35);
     }
@@ -400,7 +400,7 @@ export class AoWUnitRenderer {
   private _createBasicGeometry(faction: AoWFaction): THREE.BufferGeometry {
     switch (faction) {
       case AoWFaction.CAMELOT:
-        return new THREE.CylinderGeometry(0.13, 0.16, 0.55, 6);
+        return new THREE.CylinderGeometry(0.13, 0.16, 0.55, 12);
       case AoWFaction.UNDEAD:
         // Skeletal - thinner
         return new THREE.CapsuleGeometry(0.1, 0.4, 4, 5);
@@ -409,7 +409,7 @@ export class AoWUnitRenderer {
         return new THREE.CapsuleGeometry(0.12, 0.35, 4, 6);
       case AoWFaction.DWARVES:
         // Stocky warrior
-        return new THREE.CylinderGeometry(0.16, 0.18, 0.5, 6);
+        return new THREE.CylinderGeometry(0.16, 0.18, 0.5, 12);
       default:
         return new THREE.CapsuleGeometry(0.15, 0.35, 4, 6);
     }
@@ -437,7 +437,7 @@ export class AoWUnitRenderer {
         break;
       case AoWFaction.UNDEAD:
         // Scythe blade
-        weapon = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 3), bladeMat);
+        weapon = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 8), bladeMat);
         weapon.position.set(0.15, 0.25, 0);
         weapon.rotation.z = -0.6;
         break;

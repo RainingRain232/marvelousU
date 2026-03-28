@@ -51,6 +51,8 @@ export class RampartRenderer {
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this._renderer.toneMappingExposure = 1.0;
     this.canvas = this._renderer.domElement;
     this.canvas.style.position = "fixed";
     this.canvas.style.top = "0";
@@ -272,7 +274,7 @@ export class RampartRenderer {
     this._castleGroup.add(keep);
 
     // Roof
-    const roofGeo = new THREE.ConeGeometry(7, 4, 4);
+    const roofGeo = new THREE.ConeGeometry(7, 4, 10);
     const roof = new THREE.Mesh(roofGeo, this._getMat(RAMPART.COLOR_CASTLE_ROOF));
     roof.position.set(cx, baseY + 10, cz);
     roof.rotation.y = Math.PI / 4;
@@ -319,7 +321,7 @@ export class RampartRenderer {
     // Banner poles with flags
     const bannerPositions = [[-5, -3], [5, -3]];
     for (const [ox, oz] of bannerPositions) {
-      const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 4, 4);
+      const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 4, 10);
       const pole = new THREE.Mesh(poleGeo, this._getMat(0x888888));
       pole.position.set(cx + ox, baseY + 14, cz + oz);
       this._castleGroup.add(pole);
@@ -511,7 +513,7 @@ export class RampartRenderer {
 
       // Muzzle flash
       if (tower.muzzleFlash > 0) {
-        const flashGeo = new THREE.SphereGeometry(0.3, 6, 6);
+        const flashGeo = new THREE.SphereGeometry(0.3, 12, 10);
         const flashMat = new THREE.MeshBasicMaterial({
           color: tower.def.projectileColor,
           transparent: true,
@@ -587,13 +589,13 @@ export class RampartRenderer {
       frame.castShadow = true;
       group.add(frame);
 
-      const bowGeo = new THREE.TorusGeometry(1.2, 0.08, 4, 12, Math.PI);
+      const bowGeo = new THREE.TorusGeometry(1.2, 0.08, 10, 12, Math.PI);
       const bow = new THREE.Mesh(bowGeo, this._getMat(0x8b6914));
       bow.position.set(0, 1.8, 0);
       bow.rotation.z = Math.PI / 2;
       group.add(bow);
 
-      const boltGeo = new THREE.CylinderGeometry(0.04, 0.04, 2, 4);
+      const boltGeo = new THREE.CylinderGeometry(0.04, 0.04, 2, 10);
       const bolt = new THREE.Mesh(boltGeo, this._getMat(0xcccccc));
       bolt.position.set(0, 1.8, 0.5);
       bolt.rotation.x = Math.PI / 2;
@@ -649,7 +651,7 @@ export class RampartRenderer {
         group.add(bowl);
 
         // Flame glow
-        const flameGeo = new THREE.SphereGeometry(0.35, 6, 6);
+        const flameGeo = new THREE.SphereGeometry(0.35, 12, 10);
         const flameMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.7 });
         const flame = new THREE.Mesh(flameGeo, flameMat);
         flame.position.y = def.height + 1.5;
@@ -767,7 +769,7 @@ export class RampartRenderer {
       body.castShadow = true;
       group.add(body);
 
-      const ramGeo = new THREE.CylinderGeometry(0.15 * s, 0.15 * s, 3 * s, 6);
+      const ramGeo = new THREE.CylinderGeometry(0.15 * s, 0.15 * s, 3 * s, 12);
       const ram = new THREE.Mesh(ramGeo, this._getMat(0x444444));
       ram.rotation.x = Math.PI / 2;
       ram.position.set(0, 0.8 * s, 1.8 * s);
@@ -800,7 +802,7 @@ export class RampartRenderer {
       // Legs
       for (const ox of [-0.3, 0.3]) {
         for (const oz of [-0.5, 0.5]) {
-          const legGeo = new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 0.6 * s, 4);
+          const legGeo = new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 0.6 * s, 10);
           const leg = new THREE.Mesh(legGeo, this._getMat(0x664422));
           leg.position.set(ox * s, 0.3 * s, oz * s);
           group.add(leg);
@@ -814,7 +816,7 @@ export class RampartRenderer {
       body.castShadow = true;
       group.add(body);
 
-      const headGeo = new THREE.SphereGeometry(0.5 * s, 6, 6);
+      const headGeo = new THREE.SphereGeometry(0.5 * s, 12, 10);
       const head = new THREE.Mesh(headGeo, this._getMat(0x886655));
       head.position.y = 4 * s;
       head.castShadow = true;
@@ -822,7 +824,7 @@ export class RampartRenderer {
 
       // Arms
       for (const ox of [-0.9, 0.9]) {
-        const armGeo = new THREE.CylinderGeometry(0.15 * s, 0.12 * s, 1.5 * s, 4);
+        const armGeo = new THREE.CylinderGeometry(0.15 * s, 0.12 * s, 1.5 * s, 10);
         const arm = new THREE.Mesh(armGeo, this._getMat(color));
         arm.position.set(ox * s, 2 * s, 0);
         group.add(arm);
@@ -830,26 +832,26 @@ export class RampartRenderer {
 
       // Legs
       for (const ox of [-0.35, 0.35]) {
-        const legGeo = new THREE.CylinderGeometry(0.2 * s, 0.18 * s, 1.5 * s, 4);
+        const legGeo = new THREE.CylinderGeometry(0.2 * s, 0.18 * s, 1.5 * s, 10);
         const leg = new THREE.Mesh(legGeo, this._getMat(color));
         leg.position.set(ox * s, 0.75 * s, 0);
         group.add(leg);
       }
     } else if (enemy.def.id === "darkMage") {
       // Dark mage — robed figure with glowing orb
-      const bodyGeo = new THREE.ConeGeometry(0.4 * s, 1.5 * s, 6);
+      const bodyGeo = new THREE.ConeGeometry(0.4 * s, 1.5 * s, 12);
       const body = new THREE.Mesh(bodyGeo, this._getMat(color));
       body.position.y = 0.75 * s;
       body.castShadow = true;
       group.add(body);
 
-      const headGeo = new THREE.SphereGeometry(0.22 * s, 6, 6);
+      const headGeo = new THREE.SphereGeometry(0.22 * s, 12, 10);
       const head = new THREE.Mesh(headGeo, this._getMat(0x665588));
       head.position.y = 1.7 * s;
       group.add(head);
 
       // Glowing orb
-      const orbGeo = new THREE.SphereGeometry(0.15 * s, 8, 8);
+      const orbGeo = new THREE.SphereGeometry(0.15 * s, 16, 12);
       const orbMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.8 });
       const orb = new THREE.Mesh(orbGeo, orbMat);
       orb.position.set(0.5 * s, 1.3 * s, 0.3 * s);
@@ -862,7 +864,7 @@ export class RampartRenderer {
       body.castShadow = true;
       group.add(body);
 
-      const headGeo = new THREE.SphereGeometry(0.18 * s, 6, 6);
+      const headGeo = new THREE.SphereGeometry(0.18 * s, 12, 10);
       const head = new THREE.Mesh(headGeo, this._getMat(0xddbb99));
       head.position.y = 1.7 * s;
       head.castShadow = true;
@@ -870,7 +872,7 @@ export class RampartRenderer {
 
       // Legs
       for (const ox of [-0.12, 0.12]) {
-        const legGeo = new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 0.5 * s, 4);
+        const legGeo = new THREE.CylinderGeometry(0.08 * s, 0.08 * s, 0.5 * s, 10);
         const leg = new THREE.Mesh(legGeo, this._getMat(0x554433));
         leg.position.set(ox * s, 0.45 * s, 0);
         group.add(leg);
@@ -884,14 +886,14 @@ export class RampartRenderer {
         group.add(shield);
 
         // Helmet
-        const helmetGeo = new THREE.CylinderGeometry(0.2 * s, 0.2 * s, 0.25 * s, 6);
+        const helmetGeo = new THREE.CylinderGeometry(0.2 * s, 0.2 * s, 0.25 * s, 12);
         const helmet = new THREE.Mesh(helmetGeo, this._getMat(0xcccccc));
         helmet.position.y = 1.85 * s;
         group.add(helmet);
       }
 
       // Weapon — sword or pitchfork
-      const weapGeo = new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.8 * s, 4);
+      const weapGeo = new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.8 * s, 10);
       const weap = new THREE.Mesh(weapGeo, this._getMat(enemy.def.id === "peasant" ? 0x8b6914 : 0xaaaaaa));
       weap.position.set(0.35 * s, 1.2 * s, 0);
       weap.rotation.z = -0.3;
@@ -935,11 +937,11 @@ export class RampartRenderer {
       let mesh: THREE.Mesh;
       if (proj.splash > 0) {
         // Boulder
-        const geo = new THREE.SphereGeometry(0.35, 6, 6);
+        const geo = new THREE.SphereGeometry(0.35, 12, 10);
         mesh = new THREE.Mesh(geo, this._getMat(proj.color));
       } else {
         // Arrow / bolt
-        const geo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 4);
+        const geo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 10);
         mesh = new THREE.Mesh(geo, this._getMat(proj.color));
         // Orient towards target
         const dx = proj.tx - proj.x;
@@ -967,7 +969,7 @@ export class RampartRenderer {
   private _updateParticles(state: RampartState): void {
     // Lazy-init shared geometry
     if (!this._sharedParticleGeo) {
-      this._sharedParticleGeo = new THREE.SphereGeometry(1, 6, 5);
+      this._sharedParticleGeo = new THREE.SphereGeometry(1, 12, 10);
     }
 
     // Hide all pooled particles

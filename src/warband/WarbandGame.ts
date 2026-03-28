@@ -5174,9 +5174,9 @@ export class WarbandGame {
           const group = new THREE.Group();
           // Outer glow
           if (!this._sharedRayOuterGeo) {
-            this._sharedRayOuterGeo = new THREE.CylinderGeometry(0.06, 0.02, 0.8, 5);
-            this._sharedRayInnerGeo = new THREE.CylinderGeometry(0.025, 0.01, 0.7, 5);
-            this._sharedRayTipGeo = new THREE.SphereGeometry(0.07, 4, 4);
+            this._sharedRayOuterGeo = new THREE.CylinderGeometry(0.06, 0.02, 0.8, 10);
+            this._sharedRayInnerGeo = new THREE.CylinderGeometry(0.025, 0.01, 0.7, 10);
+            this._sharedRayTipGeo = new THREE.SphereGeometry(0.07, 12, 10);
             this._sharedRayCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
           }
           const outerMat = new THREE.MeshBasicMaterial({
@@ -5198,7 +5198,7 @@ export class WarbandGame {
         } else {
           // Arrow: standard brown cylinder (shared geometry)
           if (!this._sharedArrowGeo) {
-            this._sharedArrowGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4);
+            this._sharedArrowGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 10);
             this._sharedArrowMat = new THREE.MeshBasicMaterial({ color: 0x8b6914 });
           }
           mesh = new THREE.Mesh(this._sharedArrowGeo, this._sharedArrowMat!);

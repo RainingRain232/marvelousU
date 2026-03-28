@@ -1075,7 +1075,7 @@ export class CreatureMesh {
 
     // Rope/leather strap across torso (bandolier)
     const strapMat = mat(0x4a3018, { roughness: 0.9 });
-    const strapGeo = new THREE.TorusGeometry(0.45, 0.015, 6, 24);
+    const strapGeo = new THREE.TorusGeometry(0.45, 0.015, 12, 24);
     const strap = new THREE.Mesh(strapGeo, strapMat);
     strap.position.set(0, 2.3, 0);
     strap.rotation.x = Math.PI / 2;
@@ -1197,7 +1197,7 @@ export class CreatureMesh {
     this._body.add(backFlap);
 
     // Loincloth waist cord
-    const waistCordGeo = new THREE.TorusGeometry(0.3, 0.01, 6, 16);
+    const waistCordGeo = new THREE.TorusGeometry(0.3, 0.01, 12, 16);
     const waistCord = new THREE.Mesh(waistCordGeo, trollLoinMat);
     waistCord.position.set(0, 1.5, 0);
     waistCord.rotation.x = Math.PI / 2;
@@ -1232,7 +1232,7 @@ export class CreatureMesh {
     // --- Flies buzzing around the troll ---
     const trollFlyMat = mat(0x111111);
     for (let i = 0; i < 8; i++) {
-      const flyGeo = new THREE.SphereGeometry(0.006, 4, 4);
+      const flyGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const fly = new THREE.Mesh(flyGeo, trollFlyMat);
       const flyA = Math.random() * Math.PI * 2;
       const flyR = 0.3 + Math.random() * 0.5;
@@ -1258,7 +1258,7 @@ export class CreatureMesh {
     const trollBloodMat = mat(0x550011, { roughness: 0.3, transparent: true, opacity: 0.5 });
     for (const side of [-1, 1]) {
       for (let b = 0; b < 3; b++) {
-        const bloodGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 6);
+        const bloodGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
         const blood = new THREE.Mesh(bloodGeo, trollBloodMat);
         blood.scale.set(1.3, 0.3, 1.0);
         blood.position.set(
@@ -1304,7 +1304,7 @@ export class CreatureMesh {
     // --- Drool / saliva drip from mouth ---
     const trollDroolMat = mat(0x88aa77, { transparent: true, opacity: 0.4, roughness: 0.2 });
     for (let i = 0; i < 3; i++) {
-      const droolGeo = new THREE.SphereGeometry(0.006, 4, 4);
+      const droolGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const drool = new THREE.Mesh(droolGeo, trollDroolMat);
       drool.scale.set(0.6, 1.5, 0.6);
       drool.position.set(
@@ -1350,7 +1350,7 @@ export class CreatureMesh {
       this._body.add(innerEar);
 
       // Earring (crude bone ring)
-      const earringGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+      const earringGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 8);
       const earring = new THREE.Mesh(earringGeo, boneMaterial(0xc8b890));
       earring.position.set(side * 0.34, 2.8, 0.02);
       earring.rotation.y = Math.PI / 2;
@@ -1821,7 +1821,7 @@ export class CreatureMesh {
     this._body.add(clothBack);
 
     // Leather belt holding loincloth
-    const beltGeo = new THREE.TorusGeometry(0.5, 0.02, 6, 20);
+    const beltGeo = new THREE.TorusGeometry(0.5, 0.02, 12, 20);
     const belt = new THREE.Mesh(beltGeo, mat(0x553318, { roughness: 0.85 }));
     belt.position.y = 2.1;
     belt.rotation.x = Math.PI / 2;
@@ -1829,7 +1829,7 @@ export class CreatureMesh {
     this._body.add(belt);
 
     // Necklace of bones — more detailed
-    const neckCordGeo = new THREE.TorusGeometry(0.5, 0.008, 6, 20);
+    const neckCordGeo = new THREE.TorusGeometry(0.5, 0.008, 12, 20);
     const neckCord = new THREE.Mesh(neckCordGeo, mat(0x443322));
     neckCord.position.set(0, 3.6, 0.05);
     neckCord.rotation.x = Math.PI / 2;
@@ -1957,7 +1957,7 @@ export class CreatureMesh {
 
     // Belt rivets
     for (let i = 0; i < 8; i++) {
-      const rivetGeo = new THREE.SphereGeometry(0.012, 6, 6);
+      const rivetGeo = new THREE.SphereGeometry(0.012, 12, 10);
       const rivet = new THREE.Mesh(rivetGeo, buckleMat);
       const rAngle = (i / 8) * Math.PI * 2;
       rivet.position.set(
@@ -2062,7 +2062,7 @@ export class CreatureMesh {
       this._body.add(toothMesh);
     }
     // Necklace cord
-    const cordGeo = new THREE.TorusGeometry(0.42, 0.008, 6, 24);
+    const cordGeo = new THREE.TorusGeometry(0.42, 0.008, 12, 24);
     const cord = new THREE.Mesh(cordGeo, mat(0x4a3a1a, { roughness: 0.9 }));
     cord.position.set(0, 3.52, 0.05);
     cord.rotation.x = Math.PI / 2;
@@ -2132,7 +2132,7 @@ export class CreatureMesh {
     // --- Ground dust/debris at feet ---
     const cyDustMat = mat(0xbbaa88, { transparent: true, opacity: 0.2 });
     for (let i = 0; i < 12; i++) {
-      const dustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.02, 6, 4);
+      const dustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.02, 12, 10);
       const dust = new THREE.Mesh(dustGeo, cyDustMat);
       const dAngle = Math.random() * Math.PI * 2;
       dust.position.set(
@@ -2376,7 +2376,7 @@ export class CreatureMesh {
 
         // Bristles / hair on femur and tibia
         for (let b = 0; b < 3; b++) {
-          const bristleGeo = new THREE.ConeGeometry(0.006, 0.05, 6);
+          const bristleGeo = new THREE.ConeGeometry(0.006, 0.05, 12);
           const bristle = new THREE.Mesh(bristleGeo, bristleMat);
           bristle.position.set(
             sideData.side * (0.3 + b * 0.12),
@@ -2389,7 +2389,7 @@ export class CreatureMesh {
 
         // Extra bristle pairs for more hairy appearance
         for (let b = 0; b < 2; b++) {
-          const extraBristleGeo = new THREE.ConeGeometry(0.005, 0.04, 5);
+          const extraBristleGeo = new THREE.ConeGeometry(0.005, 0.04, 10);
           const extraBristle = new THREE.Mesh(extraBristleGeo, bristleMat);
           extraBristle.position.set(
             sideData.side * (0.25 + b * 0.2),
@@ -2405,7 +2405,7 @@ export class CreatureMesh {
     // Abdomen bristles — scattered tiny spines
     for (let i = 0; i < 8; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const bGeo = new THREE.ConeGeometry(0.008, 0.06, 6);
+      const bGeo = new THREE.ConeGeometry(0.008, 0.06, 12);
       const b = new THREE.Mesh(bGeo, bristleMat);
       b.position.set(
         Math.cos(angle) * (0.25 + Math.random() * 0.2),
@@ -2470,7 +2470,7 @@ export class CreatureMesh {
     // ---- Pedipalp sensory hairs ----
     for (const side of [-1, 1]) {
       for (let h = 0; h < 3; h++) {
-        const palpHairGeo = new THREE.ConeGeometry(0.004, 0.03, 5);
+        const palpHairGeo = new THREE.ConeGeometry(0.004, 0.03, 10);
         const palpHair = new THREE.Mesh(palpHairGeo, bristleMat);
         palpHair.position.set(side * (0.14 + h * 0.005), -0.06 - h * 0.015, 0.1 + h * 0.01);
         palpHair.rotation.z = -side * 0.5;
@@ -2512,7 +2512,7 @@ export class CreatureMesh {
     for (const ep of [eyePositions[0], eyePositions[1]]) {
       for (let f = 0; f < 5; f++) {
         const facetAngle = (f / 5) * Math.PI * 2;
-        const facetGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const facetGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const facet = new THREE.Mesh(facetGeo, eyeMat);
         facet.position.set(ep.x + Math.cos(facetAngle) * 0.018, ep.y + Math.sin(facetAngle) * 0.018, ep.z + 0.01);
         this._head.add(facet);
@@ -2526,7 +2526,7 @@ export class CreatureMesh {
     ]) {
       for (let lIdx = 0; lIdx < 4; lIdx++) {
         for (let h = 0; h < 2; h++) {
-          const sensorGeo = new THREE.ConeGeometry(0.003, 0.035, 4);
+          const sensorGeo = new THREE.ConeGeometry(0.003, 0.035, 10);
           const sensor = new THREE.Mesh(sensorGeo, bristleMat);
           sensor.position.set(
             sideData.side * (0.4 + lIdx * 0.05 + h * 0.08),
@@ -2594,7 +2594,7 @@ export class CreatureMesh {
     for (let ring = 0; ring < 3; ring++) {
       for (let b = 0; b < 8; b++) {
         const ang = (b / 8) * Math.PI * 2;
-        const bristleGeo = new THREE.ConeGeometry(0.006, 0.06 + ring * 0.01, 6);
+        const bristleGeo = new THREE.ConeGeometry(0.006, 0.06 + ring * 0.01, 12);
         const bristle = new THREE.Mesh(bristleGeo, bristleMat);
         bristle.position.set(
           Math.cos(ang) * (0.28 - ring * 0.04),
@@ -2610,7 +2610,7 @@ export class CreatureMesh {
     // Sensory bristles on head
     for (let i = 0; i < 6; i++) {
       const ang = (i / 6) * Math.PI * 2;
-      const sensGeo = new THREE.ConeGeometry(0.004, 0.04, 5);
+      const sensGeo = new THREE.ConeGeometry(0.004, 0.04, 10);
       const sens = new THREE.Mesh(sensGeo, bristleMat);
       sens.position.set(Math.cos(ang) * 0.14, 0.08 + Math.sin(ang) * 0.05, Math.sin(ang) * 0.14);
       sens.rotation.x = Math.cos(ang) * 0.6;
@@ -2651,7 +2651,7 @@ export class CreatureMesh {
 
     // Silk anchor points on abdomen
     for (let i = 0; i < 4; i++) {
-      const anchorGeo = new THREE.SphereGeometry(0.01, 6, 6);
+      const anchorGeo = new THREE.SphereGeometry(0.01, 12, 10);
       const anchor = new THREE.Mesh(anchorGeo, mat(0xcccccc, { transparent: true, opacity: 0.25 }));
       anchor.position.set(-0.08 + i * 0.04, 1.0 - i * 0.03, -1.18);
       this._body.add(anchor);
@@ -2671,7 +2671,7 @@ export class CreatureMesh {
     // ==== Leg joint detail ====
     for (const side of [-1, 1]) {
       for (let legIdx = 0; legIdx < 4; legIdx++) {
-        const socketGeo = new THREE.TorusGeometry(0.04, 0.008, 6, 10);
+        const socketGeo = new THREE.TorusGeometry(0.04, 0.008, 12, 10);
         const socket = new THREE.Mesh(socketGeo, chitinMat(0x252545));
         const zPos = 0.35 - legIdx * 0.2;
         socket.position.set(side * 0.35, 1.2, zPos);
@@ -2698,7 +2698,7 @@ export class CreatureMesh {
       pupil.position.set(side * 0.06, 0.065, 0.155);
       this._head.add(pupil);
 
-      const highlightGeo = new THREE.SphereGeometry(0.006, 6, 6);
+      const highlightGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const highlight = new THREE.Mesh(highlightGeo, mat(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.5 }));
       highlight.position.set(side * 0.055, 0.075, 0.157);
       this._head.add(highlight);
@@ -2736,7 +2736,7 @@ export class CreatureMesh {
       this._head.add(ppTarsus);
 
       for (let h = 0; h < 4; h++) {
-        const ppHairGeo = new THREE.ConeGeometry(0.002, 0.02, 4);
+        const ppHairGeo = new THREE.ConeGeometry(0.002, 0.02, 10);
         const ppHair = new THREE.Mesh(ppHairGeo, bristleMat);
         ppHair.position.set(side * (0.11 + h * 0.003), -0.08 - h * 0.02, 0.19 + h * 0.01);
         ppHair.rotation.z = side * 0.4;
@@ -2746,12 +2746,12 @@ export class CreatureMesh {
 
     // ==== Abdomen warning pattern ====
     const spdrWarningMat = mat(0xcc1133, { emissive: 0x440011, emissiveIntensity: 0.3 });
-    const topTriGeo = new THREE.ConeGeometry(0.06, 0.08, 3);
+    const topTriGeo = new THREE.ConeGeometry(0.06, 0.08, 8);
     const topTri = new THREE.Mesh(topTriGeo, spdrWarningMat);
     topTri.position.set(0, 0.92, -0.55);
     topTri.rotation.x = Math.PI / 2;
     this._body.add(topTri);
-    const botTriGeo = new THREE.ConeGeometry(0.06, 0.08, 3);
+    const botTriGeo = new THREE.ConeGeometry(0.06, 0.08, 8);
     const botTri = new THREE.Mesh(botTriGeo, spdrWarningMat);
     botTri.position.set(0, 0.92, -0.68);
     botTri.rotation.x = -Math.PI / 2;
@@ -2777,7 +2777,7 @@ export class CreatureMesh {
       nozzle.rotation.x = Math.PI * 0.55;
       this._body.add(nozzle);
 
-      const resGeo = new THREE.SphereGeometry(0.006, 6, 6);
+      const resGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const res = new THREE.Mesh(resGeo, mat(0xdddddd, { transparent: true, opacity: 0.2 }));
       res.position.set(Math.cos(spAng) * 0.04, 0.92, -1.28 + Math.sin(spAng) * 0.02);
       this._body.add(res);
@@ -2830,7 +2830,7 @@ export class CreatureMesh {
     for (let i = 0; i < 12; i++) {
       const mAng = (i / 12) * Math.PI * 2;
       for (let j = 0; j < 3; j++) {
-        const microBumpGeo = new THREE.SphereGeometry(0.008, 6, 4);
+        const microBumpGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const microBump = new THREE.Mesh(microBumpGeo, textureMat);
         microBump.position.set(
           Math.cos(mAng) * (0.3 + j * 0.05),
@@ -3465,7 +3465,7 @@ export class CreatureMesh {
       this._head.add(parotoid);
 
       for (let g = 0; g < 4; g++) {
-        const gpGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const gpGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const gp = new THREE.Mesh(gpGeo, mat(0x2a4a22));
         gp.position.set(
           side * (0.25 + (g - 1.5) * 0.012),
@@ -3512,7 +3512,7 @@ export class CreatureMesh {
 
     // ---- Tongue texture -- bumpy papillae ----
     for (let i = 0; i < 8; i++) {
-      const papGeo = new THREE.SphereGeometry(0.004, 6, 6);
+      const papGeo = new THREE.SphereGeometry(0.004, 12, 10);
       const pap = new THREE.Mesh(papGeo, mat(0xdd7788));
       pap.position.set(
         (Math.random() - 0.5) * 0.03,
@@ -3545,7 +3545,7 @@ export class CreatureMesh {
     // ---- Ground contact splash -- water ring around feet ----
     for (const side of [-1, 1]) {
       const frogSplashLeg = side === -1 ? this._leftLeg : this._rightLeg;
-      const splashGeo = new THREE.TorusGeometry(0.16, 0.008, 6, 16);
+      const splashGeo = new THREE.TorusGeometry(0.16, 0.008, 12, 16);
       const splash = new THREE.Mesh(
         splashGeo,
         mat(0x5a8a55, { transparent: true, opacity: 0.25 }),
@@ -4134,7 +4134,7 @@ export class CreatureMesh {
       clearcoat: 0.8,
     });
     for (let i = 0; i < 3; i++) {
-      const droolGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const droolGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const drool = new THREE.Mesh(droolGeo, rhinoDroolMat);
       drool.position.set((i - 1) * 0.05, -0.2, 0.42);
       this._head.add(drool);
@@ -4153,7 +4153,7 @@ export class CreatureMesh {
       birdHead.position.set(-0.1 + i * 0.25, 2.1, 0.24 - i * 0.4);
       this._body.add(birdHead);
 
-      const beakGeo = new THREE.ConeGeometry(0.004, 0.015, 6);
+      const beakGeo = new THREE.ConeGeometry(0.004, 0.015, 12);
       const beak = new THREE.Mesh(beakGeo, mat(0xcc8844));
       beak.position.set(-0.1 + i * 0.25, 2.1, 0.255 - i * 0.4);
       beak.rotation.x = Math.PI / 2;
@@ -4658,7 +4658,7 @@ export class CreatureMesh {
       }
 
       // Ear tip cartilage
-      const earTipGeo = new THREE.ConeGeometry(0.008, 0.03, 6);
+      const earTipGeo = new THREE.ConeGeometry(0.008, 0.03, 12);
       const earTip = new THREE.Mesh(earTipGeo, darkSkinMat);
       earTip.position.set(side * 0.15, 3.12, 0.02);
       this._body.add(earTip);
@@ -4668,7 +4668,7 @@ export class CreatureMesh {
     const vbBloodMat = mat(0x880011, { roughness: 0.2, transparent: true, opacity: 0.7 });
     for (const side of [-1, 1]) {
       // Blood drip on fang
-      const dripGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const dripGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const drip = new THREE.Mesh(dripGeo, vbBloodMat);
       drip.scale.set(0.6, 1.5, 0.6);
       drip.position.set(side * 0.04, 2.5, 0.22);
@@ -4713,7 +4713,7 @@ export class CreatureMesh {
     // --- Wing claw hooks at wing joints ---
     for (const side of [-1, 1]) {
       for (let w = 0; w < 2; w++) {
-        const hookGeo = new THREE.ConeGeometry(0.008, 0.04, 6);
+        const hookGeo = new THREE.ConeGeometry(0.008, 0.04, 12);
         const hook = new THREE.Mesh(hookGeo, clawMat);
         hook.position.set(side * (0.6 + w * 0.3), 2.35, -0.02);
         hook.rotation.z = side * 0.8;
@@ -4725,7 +4725,7 @@ export class CreatureMesh {
     // --- Dark energy aura particles around body ---
     const vbAuraMat = mat(0x2a0033, { emissive: 0x1a0022, emissiveIntensity: 2.0, transparent: true, opacity: 0.2 });
     for (let i = 0; i < 15; i++) {
-      const auraGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.02, 6, 6);
+      const auraGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.02, 12, 10);
       const auraP = new THREE.Mesh(auraGeo, vbAuraMat);
       const aAngle = Math.random() * Math.PI * 2;
       const aR = 0.3 + Math.random() * 0.4;
@@ -4765,7 +4765,7 @@ export class CreatureMesh {
     // --- Glowing red eye reflection spots ---
     const vbReflectMat = mat(0xff4400, { emissive: 0xff2200, emissiveIntensity: 3.0, transparent: true, opacity: 0.8 });
     for (const side of [-1, 1]) {
-      const reflectGeo = new THREE.SphereGeometry(0.006, 6, 6);
+      const reflectGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const reflect = new THREE.Mesh(reflectGeo, vbReflectMat);
       reflect.position.set(side * 0.065, 2.76, 0.22);
       this._body.add(reflect);
@@ -4806,7 +4806,7 @@ export class CreatureMesh {
 
     // --- Blood drip particles falling from mouth ---
     for (let i = 0; i < 6; i++) {
-      const dropGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 4, 4);
+      const dropGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 12, 10);
       const drop = new THREE.Mesh(dropGeo, vbBloodMat);
       drop.position.set(
         (Math.random() - 0.5) * 0.06,
@@ -4826,7 +4826,7 @@ export class CreatureMesh {
         this._body.add(toe);
 
         // Toe claw
-        const toeClawGeo = new THREE.ConeGeometry(0.005, 0.025, 6);
+        const toeClawGeo = new THREE.ConeGeometry(0.005, 0.025, 12);
         const toeClaw = new THREE.Mesh(toeClawGeo, clawMat);
         toeClaw.position.set(side * 0.1 + (t - 1) * 0.02, 0.32, 0.24);
         toeClaw.rotation.x = Math.PI / 3;
@@ -5339,7 +5339,7 @@ export class CreatureMesh {
     // ---- Dust cloud at base — floating pebble particles ----
     const dustMat = mat(0x8b8370, { transparent: true, opacity: 0.3 });
     for (let i = 0; i < 10; i++) {
-      const dustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 6);
+      const dustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
       const dust = new THREE.Mesh(dustGeo, dustMat);
       dust.position.set(
         -0.5 + Math.random() * 1.0,
@@ -5358,7 +5358,7 @@ export class CreatureMesh {
     ];
     for (const cp of craterPositions) {
       // Outer crater rim
-      const rimGeo = new THREE.TorusGeometry(0.05, 0.01, 6, 10);
+      const rimGeo = new THREE.TorusGeometry(0.05, 0.01, 12, 10);
       const rim = new THREE.Mesh(rimGeo, craterMat);
       rim.position.set(cp.x, cp.y, cp.z);
       rim.rotation.x = Math.PI / 2;
@@ -5774,7 +5774,7 @@ export class CreatureMesh {
     for (const wSide of [-1, 1]) {
       for (let b = 0; b < 3; b++) {
         for (let r = 0; r < 5; r++) {
-          const bandRivetGeo = new THREE.SphereGeometry(0.008, 6, 6);
+          const bandRivetGeo = new THREE.SphereGeometry(0.008, 12, 10);
           const bandRivet = new THREE.Mesh(bandRivetGeo, mat(0x555555, { metalness: 0.6 }));
           bandRivet.position.set(
             wSide * (housingW * 0.5 + 0.015),
@@ -5789,7 +5789,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Rope wrapping on frame and support beams ----
     for (const rzOff of [-0.4, 0.4]) {
       for (let rc = 0; rc < 5; rc++) {
-        const ropeCoilGeo = new THREE.TorusGeometry(0.02, 0.005, 6, 10);
+        const ropeCoilGeo = new THREE.TorusGeometry(0.02, 0.005, 12, 10);
         const ropeCoil = new THREE.Mesh(ropeCoilGeo, ropeMat);
         ropeCoil.position.set(0, 0.55 - rc * 0.06, 1.0 + rzOff);
         this._rightArm.add(ropeCoil);
@@ -5799,7 +5799,7 @@ export class CreatureMesh {
     // Rope binding wraps on side rails
     for (const rSide of [-1, 1]) {
       for (let rw = 0; rw < 4; rw++) {
-        const railWrapGeo = new THREE.TorusGeometry(0.06, 0.006, 6, 10);
+        const railWrapGeo = new THREE.TorusGeometry(0.06, 0.006, 12, 10);
         const railWrap = new THREE.Mesh(railWrapGeo, ropeMat);
         railWrap.position.set(rSide * 0.6, 1.2, -0.8 + rw * 0.55);
         railWrap.rotation.y = Math.PI / 2;
@@ -5838,7 +5838,7 @@ export class CreatureMesh {
 
     // Leather grip wrapping on the ram beam near the head
     for (let lw = 0; lw < 6; lw++) {
-      const gripWrapGeo = new THREE.TorusGeometry(0.11, 0.008, 6, 12);
+      const gripWrapGeo = new THREE.TorusGeometry(0.11, 0.008, 12, 12);
       const gripWrap = new THREE.Mesh(gripWrapGeo, leatherMat);
       gripWrap.position.set(0, 0, 2.3 + lw * 0.08);
       gripWrap.rotation.y = Math.PI / 2;
@@ -5892,7 +5892,7 @@ export class CreatureMesh {
     // Mud splatter on lower frame
     const ramMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.5 });
     for (let ms = 0; ms < 6; ms++) {
-      const mudGeo = new THREE.SphereGeometry(0.025, 6, 5);
+      const mudGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const mudBlob = new THREE.Mesh(mudGeo, ramMudMat);
       mudBlob.position.set(-0.5 + ms * 0.2, 0.55, 0.5 - ms * 0.1);
       this._body.add(mudBlob);
@@ -5915,7 +5915,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Chain links for pulling the ram ----
     for (const chainXOff of [-0.3, 0.3]) {
       for (let cl = 0; cl < 8; cl++) {
-        const chainLinkGeo = new THREE.TorusGeometry(0.018, 0.004, 6, 8);
+        const chainLinkGeo = new THREE.TorusGeometry(0.018, 0.004, 12, 8);
         const chainLink = new THREE.Mesh(chainLinkGeo, ironMat);
         chainLink.position.set(chainXOff, 0.85 + cl * 0.04, -housingD * 0.5 - 0.02);
         chainLink.rotation.y = cl % 2 === 0 ? 0 : Math.PI / 2;
@@ -5935,7 +5935,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Dust particles near ground level ----
     const ramDustMat = mat(0x998877, { transparent: true, opacity: 0.25 });
     for (let dp = 0; dp < 10; dp++) {
-      const dustGeo = new THREE.SphereGeometry(0.015, 4, 4);
+      const dustGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const dustP = new THREE.Mesh(dustGeo, ramDustMat);
       dustP.position.set(-0.7 + dp * 0.16, 0.35 + (dp % 3) * 0.06, -0.8 + dp * 0.18);
       this._body.add(dustP);
@@ -5983,7 +5983,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Spark particles near the ram head ----
     const ramSparkMat = mat(0xffcc44, { emissive: 0xaa6600, transparent: true, opacity: 0.7 });
     for (let sk = 0; sk < 5; sk++) {
-      const sparkGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const sparkGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const sparkP = new THREE.Mesh(sparkGeo, ramSparkMat);
       sparkP.position.set((sk % 3 - 1) * 0.08, (sk % 2 - 0.5) * 0.12, 3.15 + sk * 0.02);
       this._rightArm.add(sparkP);
@@ -5994,7 +5994,7 @@ export class CreatureMesh {
     for (const gSide of [-1, 1]) {
       const gLeg = gSide === -1 ? this._leftLeg : this._rightLeg;
       for (const gFb of [-1, 1]) {
-        const greaseGeo = new THREE.SphereGeometry(0.04, 6, 6);
+        const greaseGeo = new THREE.SphereGeometry(0.04, 12, 10);
         const greaseMark = new THREE.Mesh(greaseGeo, ramGreaseMat);
         greaseMark.position.set(gSide * 0.03, -0.05, gFb * 0.75);
         gLeg.add(greaseMark);
@@ -6004,7 +6004,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Nail heads on planks ----
     for (const nSide of [-1, 1]) {
       for (let n = 0; n < 12; n++) {
-        const nailGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.01, 6);
+        const nailGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.01, 12);
         const nailHead = new THREE.Mesh(nailGeo, ironMat);
         nailHead.rotation.y = Math.PI / 2;
         nailHead.position.set(
@@ -6186,7 +6186,7 @@ export class CreatureMesh {
       sconceArm.position.set(tSide * (housingW * 0.5 + 0.05), wallY + 0.3, 0.5);
       this._body.add(sconceArm);
 
-      const sconceRingGeo = new THREE.TorusGeometry(0.025, 0.005, 6, 8);
+      const sconceRingGeo = new THREE.TorusGeometry(0.025, 0.005, 12, 8);
       const sconceRing = new THREE.Mesh(sconceRingGeo, ironMat);
       sconceRing.position.set(tSide * (housingW * 0.5 + 0.1), wallY + 0.3, 0.5);
       sconceRing.rotation.y = Math.PI / 2;
@@ -6245,7 +6245,7 @@ export class CreatureMesh {
     ramPulleyBracket.position.set(0, wallY + housingH * 0.5 + 0.06, -housingD * 0.3);
     this._body.add(ramPulleyBracket);
 
-    const ramPulleyWheelGeo = new THREE.TorusGeometry(0.03, 0.008, 6, 10);
+    const ramPulleyWheelGeo = new THREE.TorusGeometry(0.03, 0.008, 12, 10);
     const ramPulleyWheel = new THREE.Mesh(ramPulleyWheelGeo, ironMat);
     ramPulleyWheel.position.set(0, wallY + housingH * 0.5 + 0.06, -housingD * 0.3);
     this._body.add(ramPulleyWheel);
@@ -6286,7 +6286,7 @@ export class CreatureMesh {
     lanternChain.position.set(0.3, wallY + housingH * 0.5 - 0.05, 0);
     this._body.add(lanternChain);
 
-    const lanternGlowGeo = new THREE.SphereGeometry(0.012, 6, 6);
+    const lanternGlowGeo = new THREE.SphereGeometry(0.012, 12, 10);
     const lanternGlow = new THREE.Mesh(
       lanternGlowGeo,
       mat(0xffaa44, { emissive: 0x884400, transparent: true, opacity: 0.8 }),
@@ -6325,7 +6325,7 @@ export class CreatureMesh {
       { x: 0, y: 0.55, z: 0.85 }, { x: 0, y: 0.55, z: -0.85 },
     ];
     for (const bp of catBoltPositions) {
-      const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.005, 6);
+      const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.005, 12);
       const bolt = new THREE.Mesh(boltGeo, catBoltMat);
       bolt.position.set(bp.x, bp.y, bp.z);
       this._body.add(bolt);
@@ -6362,7 +6362,7 @@ export class CreatureMesh {
       rustDrip.position.set(side * 0.42, 1.95, 0.06);
       this._body.add(rustDrip);
 
-      const rustPatchGeo = new THREE.SphereGeometry(0.015, 6, 4);
+      const rustPatchGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const rustPatch = new THREE.Mesh(rustPatchGeo, catRustMat);
       rustPatch.scale.set(1.5, 0.3, 1.5);
       rustPatch.position.set(side * 0.42, 2.02, 0.04);
@@ -6388,7 +6388,7 @@ export class CreatureMesh {
     const catGreaseMat = mat(0x333322, { roughness: 0.5, metalness: 0.1 });
     for (const side of [-1, 1]) {
       const catWLeg = side === -1 ? this._leftLeg : this._rightLeg;
-      const greaseRingGeo = new THREE.TorusGeometry(0.04, 0.006, 6, 10);
+      const greaseRingGeo = new THREE.TorusGeometry(0.04, 0.006, 12, 10);
       const greaseRing = new THREE.Mesh(greaseRingGeo, catGreaseMat);
       greaseRing.rotation.z = Math.PI / 2;
       catWLeg.add(greaseRing);
@@ -6575,7 +6575,7 @@ export class CreatureMesh {
 
     // Winch rope wrap detail
     for (let w = 0; w < 4; w++) {
-      const wrapGeo = new THREE.TorusGeometry(0.085, 0.006, 6, 14);
+      const wrapGeo = new THREE.TorusGeometry(0.085, 0.006, 12, 14);
       const wrap = new THREE.Mesh(wrapGeo, ropeMat);
       wrap.rotation.y = Math.PI / 2;
       wrap.position.set(-0.12 + w * 0.08, 0.65, -0.75);
@@ -6727,7 +6727,7 @@ export class CreatureMesh {
     ];
     for (const jp of catJointPositions) {
       for (let w = 0; w < 3; w++) {
-        const twineGeo = new THREE.TorusGeometry(0.055, 0.005, 6, 12);
+        const twineGeo = new THREE.TorusGeometry(0.055, 0.005, 12, 12);
         const twine = new THREE.Mesh(twineGeo, ropeMat);
         twine.position.set(jp.x, jp.y + w * 0.02, jp.z);
         this._body.add(twine);
@@ -6765,7 +6765,7 @@ export class CreatureMesh {
       const wLeg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let s = 0; s < 8; s++) {
         const studAngle = (s / 8) * Math.PI * 2;
-        const studGeo = new THREE.SphereGeometry(0.015, 6, 6);
+        const studGeo = new THREE.SphereGeometry(0.015, 12, 10);
         const stud = new THREE.Mesh(studGeo, ironMat);
         stud.position.set(Math.cos(studAngle) * 0.41, Math.sin(studAngle) * 0.41, side * 0.04);
         stud.rotation.z = Math.PI / 2;
@@ -6901,7 +6901,7 @@ export class CreatureMesh {
         catStrip.rotation.z = side * -0.1;
         this._body.add(catStrip);
         for (const rv of [-0.08, 0.08]) {
-          const catRivetGeo = new THREE.SphereGeometry(0.006, 6, 6);
+          const catRivetGeo = new THREE.SphereGeometry(0.006, 12, 10);
           const catRivet = new THREE.Mesh(catRivetGeo, catBoltMat);
           catRivet.position.set(side * 0.465, 1.2 + i * 0.3 + rv, 0.04);
           this._body.add(catRivet);
@@ -6930,7 +6930,7 @@ export class CreatureMesh {
     // ---- Chain links from counterweight ----
     for (const side of [-1, 1]) {
       for (let cl = 0; cl < 5; cl++) {
-        const catChainLinkGeo = new THREE.TorusGeometry(0.01, 0.003, 6, 8);
+        const catChainLinkGeo = new THREE.TorusGeometry(0.01, 0.003, 12, 8);
         const catChainLink = new THREE.Mesh(catChainLinkGeo, ironMat);
         catChainLink.position.set(side * 0.08, -0.05 - cl * 0.025, -0.6);
         catChainLink.rotation.x = cl % 2 === 0 ? 0 : Math.PI / 2;
@@ -6943,7 +6943,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const catWLeg3 = side === -1 ? this._leftLeg : this._rightLeg;
       for (let i = 0; i < 6; i++) {
-        const mudGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const mudGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
         const mud = new THREE.Mesh(mudGeo, catMudMat);
         const mAngle = Math.random() * Math.PI * 2;
         mud.position.set(
@@ -6973,7 +6973,7 @@ export class CreatureMesh {
     // ---- Boulder surface moss and lichen ----
     const catMossMat = mat(0x446633, { roughness: 0.95 });
     for (let i = 0; i < 4; i++) {
-      const mossGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 6, 4);
+      const mossGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 12, 10);
       const moss = new THREE.Mesh(mossGeo, catMossMat);
       moss.scale.set(1.5, 0.3, 1.5);
       moss.position.set(
@@ -6997,7 +6997,7 @@ export class CreatureMesh {
     // ---- Dried oil stains on throwing arm ----
     const catStainMat = mat(0x3a2218, { roughness: 0.95, transparent: true, opacity: 0.6 });
     for (let i = 0; i < 5; i++) {
-      const stainGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+      const stainGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
       const stain = new THREE.Mesh(stainGeo, catStainMat);
       stain.scale.set(2.0, 0.2, 1.5);
       stain.position.set((Math.random() - 0.5) * 0.08, 0.065, 0.5 + i * 0.35);
@@ -7096,7 +7096,7 @@ export class CreatureMesh {
     const trebRustMat = mat(0x8b4513, { roughness: 0.9, metalness: 0.2 });
     for (const side of [-1, 1]) {
       for (const fb of [-1, 1]) {
-        const rustGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 6, 4);
+        const rustGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 12, 10);
         const rust = new THREE.Mesh(rustGeo, trebRustMat);
         rust.scale.set(1.5, 0.3, 1.5);
         rust.position.set(side * 0.9, 0.62, fb * 1.35);
@@ -7107,7 +7107,7 @@ export class CreatureMesh {
     // ---- Additional rope lashings on A-frame joints ----
     for (const side of [-1, 1]) {
       for (let r = 0; r < 4; r++) {
-        const lashGeo = new THREE.TorusGeometry(0.075 + r * 0.003, 0.004, 6, 10);
+        const lashGeo = new THREE.TorusGeometry(0.075 + r * 0.003, 0.004, 12, 10);
         const lash = new THREE.Mesh(lashGeo, ropeMat);
         lash.position.set(side * 0.35, 1.2 + r * 0.35, 0);
         lash.rotation.y = Math.PI / 2;
@@ -7118,7 +7118,7 @@ export class CreatureMesh {
     // ---- Iron nail heads on base planks ----
     const trebNailMat = mat(0x2a2a2a, { metalness: 0.7, roughness: 0.3 });
     for (let i = 0; i < 16; i++) {
-      const nailGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.005, 6);
+      const nailGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.005, 12);
       const nail = new THREE.Mesh(nailGeo, trebNailMat);
       nail.position.set(
         (Math.random() - 0.5) * 1.8,
@@ -7131,7 +7131,7 @@ export class CreatureMesh {
     // ---- Counterweight chain detail with individual links ----
     for (const side of [-1, 1]) {
       for (let ci = 0; ci < 6; ci++) {
-        const chainLinkGeo = new THREE.TorusGeometry(0.015, 0.004, 6, 8);
+        const chainLinkGeo = new THREE.TorusGeometry(0.015, 0.004, 12, 8);
         const chainLink = new THREE.Mesh(chainLinkGeo, ironMat);
         chainLink.position.set(side * 0.15, -0.55 - ci * 0.04, -1.5);
         chainLink.rotation.x = ci % 2 === 0 ? 0 : Math.PI / 2;
@@ -7179,7 +7179,7 @@ export class CreatureMesh {
         // Wheel rim bolt heads
         for (let b = 0; b < 6; b++) {
           const boltAngle = (b / 6) * Math.PI * 2;
-          const boltGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.02, 6);
+          const boltGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.02, 12);
           const bolt = new THREE.Mesh(boltGeo, ironMat);
           bolt.position.set(
             Math.cos(boltAngle) * 0.36,
@@ -7214,7 +7214,7 @@ export class CreatureMesh {
     // ---- Dust/dirt buildup at base ----
     const trebDirtMat = mat(0x665544, { roughness: 0.98 });
     for (let i = 0; i < 8; i++) {
-      const dirtGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 6, 4);
+      const dirtGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 12, 10);
       const dirt = new THREE.Mesh(dirtGeo, trebDirtMat);
       dirt.scale.set(2, 0.3, 2);
       dirt.position.set(
@@ -7236,7 +7236,7 @@ export class CreatureMesh {
     // Grease stains around pivot
     const greaseMat = mat(0x333322, { roughness: 0.6, metalness: 0.1 });
     for (let i = 0; i < 4; i++) {
-      const greaseGeo = new THREE.SphereGeometry(0.015, 6, 4);
+      const greaseGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const grease = new THREE.Mesh(greaseGeo, greaseMat);
       const gAngle = (i / 4) * Math.PI * 2;
       grease.scale.set(2, 0.3, 2);
@@ -7247,7 +7247,7 @@ export class CreatureMesh {
     // ---- Counterweight surface detail ----
     // Counterweight stone texture
     for (let i = 0; i < 6; i++) {
-      const cwStoneGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 6, 4);
+      const cwStoneGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 12, 10);
       const cwStone = new THREE.Mesh(cwStoneGeo, boulderMat);
       cwStone.scale.set(1, 0.5, 1);
       cwStone.position.set(
@@ -7440,7 +7440,7 @@ export class CreatureMesh {
 
       // Chain link detail
       for (let cl = 0; cl < 3; cl++) {
-        const linkGeo = new THREE.TorusGeometry(0.018, 0.005, 6, 8);
+        const linkGeo = new THREE.TorusGeometry(0.018, 0.005, 12, 8);
         const link = new THREE.Mesh(linkGeo, ironMat);
         link.position.set(side * 0.15, -0.02 + cl * -0.07, -1.5);
         this._rightArm.add(link);
@@ -7501,7 +7501,7 @@ export class CreatureMesh {
 
     // Winch rope wrapping detail
     for (let w = 0; w < 5; w++) {
-      const wrapGeo = new THREE.TorusGeometry(0.105, 0.006, 6, 14);
+      const wrapGeo = new THREE.TorusGeometry(0.105, 0.006, 12, 14);
       const wrap = new THREE.Mesh(wrapGeo, ropeMat);
       wrap.rotation.y = Math.PI / 2;
       wrap.position.set(-0.2 + w * 0.1, 0.65, -1.2);
@@ -7643,7 +7643,7 @@ export class CreatureMesh {
       this._rightArm.add(beamBand);
       // Band rivets
       for (const side of [-1, 1]) {
-        const bandRivetGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const bandRivetGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const bandRivet = new THREE.Mesh(bandRivetGeo, ironMat);
         bandRivet.position.set(side * 0.065, 0.08, -1.5 + i * 0.55);
         this._rightArm.add(bandRivet);
@@ -7689,7 +7689,7 @@ export class CreatureMesh {
         const drip = new THREE.Mesh(dripGeo, trebRustDripMat);
         drip.position.set(side * 0.9, 0.55, fb * 1.35);
         this._body.add(drip);
-        const dripPoolGeo = new THREE.SphereGeometry(0.012, 6, 4);
+        const dripPoolGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const dripPool = new THREE.Mesh(dripPoolGeo, trebRustDripMat);
         dripPool.scale.set(1.5, 0.2, 1.5);
         dripPool.position.set(side * 0.9, 0.5, fb * 1.35);
@@ -7706,7 +7706,7 @@ export class CreatureMesh {
         stake.position.set(side * 1.1, 0.2, fb * 1.5);
         stake.rotation.z = side * 0.2;
         this._body.add(stake);
-        const stakeRingGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+        const stakeRingGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 8);
         const stakeRing = new THREE.Mesh(stakeRingGeo, trebStakeMat);
         stakeRing.position.set(side * 1.1, 0.32, fb * 1.5);
         this._body.add(stakeRing);
@@ -7718,7 +7718,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const trebLeg2 = side === -1 ? this._leftLeg : this._rightLeg;
       for (const fb of [-1, 1]) {
-        const greaseGeo = new THREE.SphereGeometry(0.02, 6, 4);
+        const greaseGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const grease = new THREE.Mesh(greaseGeo, trebGreaseMat);
         grease.scale.set(1.5, 0.3, 1.5);
         grease.position.set(0, 0, fb * 1.15);
@@ -7805,7 +7805,7 @@ export class CreatureMesh {
     trebSpring.rotation.x = 0.5;
     this._body.add(trebSpring);
     for (let i = 0; i < 6; i++) {
-      const springCoilGeo = new THREE.TorusGeometry(0.012, 0.003, 6, 8);
+      const springCoilGeo = new THREE.TorusGeometry(0.012, 0.003, 12, 8);
       const springCoil = new THREE.Mesh(springCoilGeo, ironMat);
       springCoil.position.set(0.3, 0.75 + i * 0.02, -0.95);
       this._body.add(springCoil);
@@ -8017,7 +8017,7 @@ export class CreatureMesh {
       }
 
       // Rope binding between wraps
-      const limbBindGeo = new THREE.TorusGeometry(0.035, 0.006, 6, 10);
+      const limbBindGeo = new THREE.TorusGeometry(0.035, 0.006, 12, 10);
       const limbBind = new THREE.Mesh(limbBindGeo, stringMat);
       limbBind.position.set(0, side * 0.05, 0);
       arm.add(limbBind);
@@ -8098,7 +8098,7 @@ export class CreatureMesh {
       cable.position.set(0.5, 0.85, side * 0.3);
       cable.rotation.x = side * 0.5;
       this._body.add(cable);
-      const anchorGeo = new THREE.TorusGeometry(0.025, 0.005, 6, 10);
+      const anchorGeo = new THREE.TorusGeometry(0.025, 0.005, 12, 10);
       const anchor = new THREE.Mesh(anchorGeo, ironMat);
       anchor.position.set(0.5, 0.82, side * 0.35);
       this._body.add(anchor);
@@ -8136,7 +8136,7 @@ export class CreatureMesh {
       sPlate.position.set(0.1, 0.65, side * 0.42);
       this._body.add(sPlate);
       for (let r = 0; r < 4; r++) {
-        const prGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const prGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const pr = new THREE.Mesh(prGeo, ironMat);
         pr.position.set(-0.1 + r * 0.15, 0.65, side * 0.43);
         this._body.add(pr);
@@ -8159,14 +8159,14 @@ export class CreatureMesh {
     const sightPost = new THREE.Mesh(sightPostGeo, ironMat);
     sightPost.position.set(0.65, 0.95, 0);
     this._body.add(sightPost);
-    const sightRingGeo = new THREE.TorusGeometry(0.02, 0.003, 6, 12);
+    const sightRingGeo = new THREE.TorusGeometry(0.02, 0.003, 12, 12);
     const sightRing = new THREE.Mesh(sightRingGeo, ironMat);
     sightRing.position.set(0.65, 1.0, 0);
     this._body.add(sightRing);
 
     // ---- Bolt tip detail ----
     for (const side of [-1, 1]) {
-      const barbGeo = new THREE.ConeGeometry(0.015, 0.04, 6);
+      const barbGeo = new THREE.ConeGeometry(0.015, 0.04, 12);
       const barb = new THREE.Mesh(barbGeo, boltHeadMat);
       barb.position.set(0.82, 0.87, side * 0.025);
       barb.rotation.z = side * 0.4 - Math.PI / 2;
@@ -8196,7 +8196,7 @@ export class CreatureMesh {
 
     // ---- Nail heads on wooden joints ----
     for (let i = 0; i < 16; i++) {
-      const nailGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const nailGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const nail = new THREE.Mesh(nailGeo, ironMat);
       const nailAngle = Math.random() * Math.PI * 2;
       nail.position.set(
@@ -8211,7 +8211,7 @@ export class CreatureMesh {
     for (let j = 0; j < 3; j++) {
       const lashX = -0.3 + j * 0.35;
       for (let w = 0; w < 4; w++) {
-        const ropeGeo = new THREE.TorusGeometry(0.045, 0.004, 6, 10);
+        const ropeGeo = new THREE.TorusGeometry(0.045, 0.004, 12, 10);
         const rope = new THREE.Mesh(
           ropeGeo,
           mat(0x8b7355, { roughness: 0.9 }),
@@ -8279,7 +8279,7 @@ export class CreatureMesh {
     this._body.add(winchGrip);
 
     for (let w = 0; w < 5; w++) {
-      const wCableGeo = new THREE.TorusGeometry(0.042, 0.003, 6, 10);
+      const wCableGeo = new THREE.TorusGeometry(0.042, 0.003, 12, 10);
       const wCable = new THREE.Mesh(wCableGeo, stringMat);
       wCable.position.set(-0.5, 0.72, -0.05 + w * 0.025);
       wCable.rotation.x = Math.PI / 2;
@@ -8300,7 +8300,7 @@ export class CreatureMesh {
     this._body.add(gripPad);
 
     for (let s = 0; s < 6; s++) {
-      const stitchGeo = new THREE.SphereGeometry(0.003, 4, 4);
+      const stitchGeo = new THREE.SphereGeometry(0.003, 12, 10);
       const stitch = new THREE.Mesh(stitchGeo, mat(0x3a2a1a));
       stitch.position.set(-0.08 + s * 0.03, 0.875, 0.04);
       this._body.add(stitch);
@@ -8311,7 +8311,7 @@ export class CreatureMesh {
       const ballistaLeg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let n = 0; n < 8; n++) {
         const wheelNailAngle = (n / 8) * Math.PI * 2;
-        const wheelNailGeo = new THREE.SphereGeometry(0.006, 6, 6);
+        const wheelNailGeo = new THREE.SphereGeometry(0.006, 12, 10);
         const wheelNail = new THREE.Mesh(wheelNailGeo, ironMat);
         wheelNail.position.set(
           Math.cos(wheelNailAngle) * 0.34,
@@ -8400,7 +8400,7 @@ export class CreatureMesh {
 
         for (let rv = 0; rv < 2; rv++) {
           for (let rh = 0; rh < 2; rh++) {
-            const bRivetGeo = new THREE.SphereGeometry(0.005, 6, 6);
+            const bRivetGeo = new THREE.SphereGeometry(0.005, 12, 10);
             const bRivet = new THREE.Mesh(bRivetGeo, ironMat);
             bRivet.position.set(
               -0.62 + c * 1.15 + rh * 0.04,
@@ -8741,7 +8741,7 @@ export class CreatureMesh {
     cnHammer.position.set(-0.12, 0.15, 0);
     cnHammer.rotation.z = 0.3;
     this._head.add(cnHammer);
-    const cnSpringGeo = new THREE.TorusGeometry(0.015, 0.003, 6, 10);
+    const cnSpringGeo = new THREE.TorusGeometry(0.015, 0.003, 12, 10);
     const cnSpring = new THREE.Mesh(cnSpringGeo, darkIronMat);
     cnSpring.position.set(-0.08, 0.14, 0);
     this._head.add(cnSpring);
@@ -8787,7 +8787,7 @@ export class CreatureMesh {
       cnShield.rotation.y = side * 0.15;
       this._body.add(cnShield);
       for (let r = 0; r < 3; r++) {
-        const shRivetGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const shRivetGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const shRivet = new THREE.Mesh(shRivetGeo, darkIronMat);
         shRivet.position.set(0.05 + r * 0.15, 0.82, side * 0.36);
         this._body.add(shRivet);
@@ -8801,7 +8801,7 @@ export class CreatureMesh {
       engraving.rotation.z = Math.PI / 2;
       engraving.position.set(0.25 + i * 0.25, 0.08, 0.06);
       this._head.add(engraving);
-      const flourishGeo = new THREE.TorusGeometry(0.03, 0.002, 6, 10);
+      const flourishGeo = new THREE.TorusGeometry(0.03, 0.002, 12, 10);
       const flourish = new THREE.Mesh(flourishGeo, bronzeMat);
       flourish.position.set(0.25 + i * 0.25, 0.06, 0.06);
       flourish.rotation.y = Math.PI / 2;
@@ -8991,7 +8991,7 @@ export class CreatureMesh {
     // ==== Rope and tackle detail ====
     // Rope coil near carriage
     for (let loop = 0; loop < 5; loop++) {
-      const ropeLoopGeo = new THREE.TorusGeometry(0.05, 0.006, 6, 12);
+      const ropeLoopGeo = new THREE.TorusGeometry(0.05, 0.006, 12, 12);
       const ropeLoop = new THREE.Mesh(ropeLoopGeo, ropeMat);
       ropeLoop.position.set(-0.7, 0.25, -0.4);
       ropeLoop.rotation.x = Math.PI / 2;
@@ -9063,7 +9063,7 @@ export class CreatureMesh {
 
     // Spark particles near fuse
     for (let i = 0; i < 5; i++) {
-      const sparkGeo = new THREE.SphereGeometry(0.005, 6, 4);
+      const sparkGeo = new THREE.SphereGeometry(0.005, 12, 10);
       const spark = new THREE.Mesh(sparkGeo, mat(0xffaa00, { emissive: 0xff6600, emissiveIntensity: 2.0, transparent: true, opacity: 0.7 }));
       spark.position.set(-0.53 + i * 0.02, 0.75 + i * 0.015, 0.32 + (Math.sin(i * 1.5) * 0.02));
       this._body.add(spark);
@@ -9614,7 +9614,7 @@ export class CreatureMesh {
 
     // --- Skin folds and wrinkles on neck ---
     for (let i = 0; i < 5; i++) {
-      const neckFoldGeo = new THREE.TorusGeometry(0.22 - i * 0.01, 0.015, 6, 16);
+      const neckFoldGeo = new THREE.TorusGeometry(0.22 - i * 0.01, 0.015, 12, 16);
       const neckFold = new THREE.Mesh(neckFoldGeo, darkSkinMat);
       neckFold.position.set(0, 4.6 + i * 0.06, 0);
       neckFold.rotation.x = Math.PI / 2;
@@ -9658,7 +9658,7 @@ export class CreatureMesh {
 
       // Pauldron rivets
       for (let r = 0; r < 4; r++) {
-        const rivetGeo = new THREE.SphereGeometry(0.015, 6, 6);
+        const rivetGeo = new THREE.SphereGeometry(0.015, 12, 10);
         const rivet = new THREE.Mesh(rivetGeo, chainMat);
         const rivetA = -0.4 + r * 0.3;
         rivet.position.set(
@@ -9691,7 +9691,7 @@ export class CreatureMesh {
 
       // Eye sockets on trophy skull
       for (const es of [-1, 1]) {
-        const eyeSocketGeo = new THREE.SphereGeometry(0.015, 6, 6);
+        const eyeSocketGeo = new THREE.SphereGeometry(0.015, 12, 10);
         const eyeSocket = new THREE.Mesh(eyeSocketGeo, mat(0x111111));
         eyeSocket.position.set(
           Math.sin(tAngle) * 0.55 + es * 0.02,
@@ -9731,7 +9731,7 @@ export class CreatureMesh {
 
       // Bracer studs
       for (let s = 0; s < 3; s++) {
-        const studGeo = new THREE.ConeGeometry(0.012, 0.025, 6);
+        const studGeo = new THREE.ConeGeometry(0.012, 0.025, 12);
         const stud = new THREE.Mesh(studGeo, chainMat);
         stud.position.set(side * 0.96, 2.42 + s * 0.06, 0.12);
         stud.rotation.x = -Math.PI / 2;
@@ -9778,7 +9778,7 @@ export class CreatureMesh {
     // --- Flies buzzing around giant (small dark spheres) ---
     const flyMat = mat(0x111111);
     for (let i = 0; i < 10; i++) {
-      const flyGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const flyGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const fly = new THREE.Mesh(flyGeo, flyMat);
       const flyA = Math.random() * Math.PI * 2;
       const flyR = 0.5 + Math.random() * 1.0;
@@ -9813,7 +9813,7 @@ export class CreatureMesh {
 
     // --- Crude iron chain wrapped diagonally across torso ---
     for (let i = 0; i < 12; i++) {
-      const tChainGeo = new THREE.TorusGeometry(0.04, 0.012, 6, 8);
+      const tChainGeo = new THREE.TorusGeometry(0.04, 0.012, 12, 8);
       const tChain = new THREE.Mesh(tChainGeo, chainMat);
       const cx = -0.4 + i * 0.07;
       const cy = 3.0 + i * 0.1;
@@ -10294,7 +10294,7 @@ export class CreatureMesh {
     }
 
     // ---- Tail spade — diamond-shaped blade at tail end ----
-    const tailSpadeGeo = new THREE.ConeGeometry(0.08, 0.15, 4);
+    const tailSpadeGeo = new THREE.ConeGeometry(0.08, 0.15, 10);
     const tailSpade = new THREE.Mesh(tailSpadeGeo, darkScaleMat);
     tailSpade.position.set(0, 1.6 - 9 * 0.15, -0.4 - 9 * 0.22);
     tailSpade.rotation.x = -Math.PI / 2;
@@ -10364,7 +10364,7 @@ export class CreatureMesh {
     const emberMat = mat(0xff6600, { emissive: 0xff4400, emissiveIntensity: 1.5 });
     for (let i = 0; i < 15; i++) {
       const emberAngle = (i / 15) * Math.PI * 2;
-      const emberGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 6, 6);
+      const emberGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 12, 10);
       const ember = new THREE.Mesh(emberGeo, emberMat);
       ember.position.set(
         Math.cos(emberAngle) * (0.8 + Math.random() * 0.5),
@@ -10399,7 +10399,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let i = 0; i < 6; i++) {
-        const legScaleGeo = new THREE.ConeGeometry(0.02, 0.03, 6);
+        const legScaleGeo = new THREE.ConeGeometry(0.02, 0.03, 12);
         const legScale = new THREE.Mesh(legScaleGeo, darkScaleMat);
         legScale.position.set(0.08, -0.3 - i * 0.15, 0.05 + i * 0.02);
         legScale.rotation.x = -0.5;
@@ -10793,7 +10793,7 @@ export class CreatureMesh {
       this._body.add(fScar);
       // Frost crystals forming along the scar
       for (let j = 0; j < 3; j++) {
-        const scarCrystalGeo = new THREE.ConeGeometry(0.008, 0.025, 4);
+        const scarCrystalGeo = new THREE.ConeGeometry(0.008, 0.025, 10);
         const scarCrystal = new THREE.Mesh(scarCrystalGeo, frostCrustMat);
         scarCrystal.position.set(
           fs.x + (j - 1) * 0.04,
@@ -10835,7 +10835,7 @@ export class CreatureMesh {
         wing.add(wingFrost);
       }
       // Wing tip icicle
-      const tipIcicleGeo = new THREE.ConeGeometry(0.015, 0.1, 6);
+      const tipIcicleGeo = new THREE.ConeGeometry(0.015, 0.1, 12);
       const tipIcicle = new THREE.Mesh(tipIcicleGeo, icicleMat);
       tipIcicle.position.set(side * 1.2, -0.35, -0.25);
       tipIcicle.rotation.z = side * 0.8;
@@ -10846,7 +10846,7 @@ export class CreatureMesh {
     const snowflakeMat = mat(0xeeeeff, { emissive: 0xaabbdd, emissiveIntensity: 0.5, transparent: true, opacity: 0.6 });
     for (let i = 0; i < 18; i++) {
       const sfAngle = (i / 18) * Math.PI * 2;
-      const sfGeo = new THREE.SphereGeometry(0.006 + Math.random() * 0.005, 6, 6);
+      const sfGeo = new THREE.SphereGeometry(0.006 + Math.random() * 0.005, 12, 10);
       const sf = new THREE.Mesh(sfGeo, snowflakeMat);
       sf.position.set(
         Math.cos(sfAngle) * (0.8 + Math.random() * 0.6),
@@ -10892,7 +10892,7 @@ export class CreatureMesh {
     // ---- Rime ice along horns ----
     for (const side of [-1, 1]) {
       for (let i = 0; i < 4; i++) {
-        const rimeGeo = new THREE.SphereGeometry(0.01, 6, 6);
+        const rimeGeo = new THREE.SphereGeometry(0.01, 12, 10);
         const rime = new THREE.Mesh(rimeGeo, frostCrustMat);
         rime.position.set(
           side * 0.14 + (Math.random() - 0.5) * 0.02,
@@ -10907,7 +10907,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let i = 0; i < 5; i++) {
-        const frostScaleGeo = new THREE.ConeGeometry(0.02, 0.03, 6);
+        const frostScaleGeo = new THREE.ConeGeometry(0.02, 0.03, 12);
         const frostScale = new THREE.Mesh(frostScaleGeo, icicleMat);
         frostScale.position.set(0.08, -0.3 - i * 0.18, 0.05 + i * 0.03);
         frostScale.rotation.x = -0.5;
@@ -11449,7 +11449,7 @@ export class CreatureMesh {
 
     // Ember particles floating near body
     for (let i = 0; i < 10; i++) {
-      const emberGeo = new THREE.SphereGeometry(0.008, 6, 4);
+      const emberGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const ember = new THREE.Mesh(emberGeo, mat(0xff6600, { emissive: 0xff4400, emissiveIntensity: 3.0, transparent: true, opacity: 0.6 }));
       ember.position.set(
         (Math.sin(i * 1.3) * 0.6),
@@ -11487,7 +11487,7 @@ export class CreatureMesh {
     // Brow ridge spikes
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
-        const browGeo = new THREE.ConeGeometry(0.01, 0.04, 6);
+        const browGeo = new THREE.ConeGeometry(0.01, 0.04, 12);
         const brow = new THREE.Mesh(browGeo, hornMat);
         brow.position.set(side * (0.08 + i * 0.03), 0.1, 0.12 - i * 0.03);
         brow.rotation.z = side * (0.4 + i * 0.1);
@@ -12048,7 +12048,7 @@ export class CreatureMesh {
 
     // Spine icicle formations
     for (let i = 0; i < 8; i++) {
-      const icicleGeo = new THREE.ConeGeometry(0.02, 0.12 - i * 0.008, 6);
+      const icicleGeo = new THREE.ConeGeometry(0.02, 0.12 - i * 0.008, 12);
       const icicle = new THREE.Mesh(icicleGeo, icicleMat);
       icicle.position.set(0, 3.6 - i * 0.15, -0.4 - i * 0.02);
       icicle.rotation.x = -0.3;
@@ -12142,7 +12142,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       // Brow ridge spikes (icy)
       for (let i = 0; i < 3; i++) {
-        const iceBrowGeo = new THREE.ConeGeometry(0.012, 0.05, 6);
+        const iceBrowGeo = new THREE.ConeGeometry(0.012, 0.05, 12);
         const iceBrow = new THREE.Mesh(iceBrowGeo, hornMat);
         iceBrow.position.set(side * (0.08 + i * 0.03), 0.1, 0.12 - i * 0.03);
         iceBrow.rotation.z = side * (0.4 + i * 0.1);
@@ -12151,7 +12151,7 @@ export class CreatureMesh {
 
       // Jaw ridge spikes
       for (let i = 0; i < 4; i++) {
-        const jawIceGeo = new THREE.ConeGeometry(0.012, 0.05 + i * 0.008, 6);
+        const jawIceGeo = new THREE.ConeGeometry(0.012, 0.05 + i * 0.008, 12);
         const jawIce = new THREE.Mesh(jawIceGeo, hornMat);
         jawIce.position.set(side * (0.12 - i * 0.01), -0.06 - i * 0.02, 0.1 - i * 0.04);
         jawIce.rotation.z = side * 0.3;
@@ -12172,7 +12172,7 @@ export class CreatureMesh {
 
     // Tail icicle spines
     for (let i = 0; i < 12; i++) {
-      const tailSpineGeo = new THREE.ConeGeometry(0.018 - i * 0.001, 0.06 - i * 0.003, 6);
+      const tailSpineGeo = new THREE.ConeGeometry(0.018 - i * 0.001, 0.06 - i * 0.003, 12);
       const tailSpine = new THREE.Mesh(tailSpineGeo, icicleMat);
       tailSpine.position.set(0, 2.1 - i * 0.12, -0.48 - i * 0.07);
       tailSpine.rotation.x = -0.5;
@@ -12591,7 +12591,7 @@ export class CreatureMesh {
     for (const feLegSide of [-1, 1]) {
       const feLeg = feLegSide === -1 ? this._leftLeg : this._rightLeg;
       for (let e = 0; e < 6; e++) {
-        const trailGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const trailGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
         const trail = new THREE.Mesh(trailGeo, emberMat);
         const trAngle = (e / 6) * Math.PI * 2;
         trail.position.set(Math.cos(trAngle) * 0.22, -0.3 - e * 0.15, Math.sin(trAngle) * 0.22);
@@ -12632,7 +12632,7 @@ export class CreatureMesh {
     // --- Spark particle burst around body ---
     const feSparkMat = mat(0xffffaa, { emissive: 0xffee66, transparent: true, opacity: 0.8 });
     for (let i = 0; i < 15; i++) {
-      const sparkGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 4, 4);
+      const sparkGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 12, 10);
       const spark = new THREE.Mesh(sparkGeo, feSparkMat);
       const spAngle = Math.random() * Math.PI * 2;
       const spR = 0.4 + Math.random() * 0.8;
@@ -12669,7 +12669,7 @@ export class CreatureMesh {
       const spiralT = i / 12;
       const spiralAngle = spiralT * Math.PI * 4;
       const spiralR = 0.15 + spiralT * 0.15;
-      const spiralGeo = new THREE.SphereGeometry(0.02 + spiralT * 0.01, 6, 4);
+      const spiralGeo = new THREE.SphereGeometry(0.02 + spiralT * 0.01, 12, 10);
       const spiralNode = new THREE.Mesh(spiralGeo, mat(0xffaa00, { emissive: 0xff6600, transparent: true, opacity: 0.4 }));
       spiralNode.position.set(Math.cos(spiralAngle) * spiralR, 2.0 + spiralT * 1.2, Math.sin(spiralAngle) * spiralR);
       this._body.add(spiralNode);
@@ -12692,7 +12692,7 @@ export class CreatureMesh {
         fingerFlame.rotation.x = Math.PI;
         feHandArm.add(fingerFlame);
       }
-      const feWristGeo = new THREE.TorusGeometry(0.06, 0.01, 6, 12);
+      const feWristGeo = new THREE.TorusGeometry(0.06, 0.01, 12, 12);
       const feWrist = new THREE.Mesh(feWristGeo, emberMat);
       feWrist.position.y = -1.05;
       feWrist.rotation.x = Math.PI / 2;
@@ -12863,20 +12863,20 @@ export class CreatureMesh {
       this._body.add(arm);
 
       // Shoulder joint — angular
-      const shoulderGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.2, 5);
+      const shoulderGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.2, 10);
       const shoulder = new THREE.Mesh(shoulderGeo, deepBlueMat);
       shoulder.rotation.y = 0.3;
       arm.add(shoulder);
 
       // Upper arm segment
-      const upperArmGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.65, 5);
+      const upperArmGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.65, 10);
       const upperArm = new THREE.Mesh(upperArmGeo, iceMat);
       upperArm.position.set(0, -0.4, 0);
       upperArm.rotation.z = side * 0.1;
       arm.add(upperArm);
 
       // Elbow crystal
-      const elbowGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.18, 5);
+      const elbowGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.18, 10);
       const elbow = new THREE.Mesh(elbowGeo, deepBlueMat);
       elbow.position.y = -0.8;
       elbow.rotation.y = 0.5;
@@ -12890,14 +12890,14 @@ export class CreatureMesh {
       arm.add(elbowSpike);
 
       // Forearm
-      const foreGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.6, 5);
+      const foreGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.6, 10);
       const fore = new THREE.Mesh(foreGeo, iceMat);
       fore.position.y = -1.2;
       fore.rotation.z = side * -0.08;
       arm.add(fore);
 
       // Forearm frost ridge
-      const frostRidgeGeo = new THREE.ConeGeometry(0.02, 0.3, 4);
+      const frostRidgeGeo = new THREE.ConeGeometry(0.02, 0.3, 10);
       const frostRidge = new THREE.Mesh(frostRidgeGeo, whiteMat);
       frostRidge.position.set(0, -1.1, 0.07);
       arm.add(frostRidge);
@@ -12936,26 +12936,26 @@ export class CreatureMesh {
       this._body.add(leg);
 
       // Upper leg block
-      const thighGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 6);
+      const thighGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.6, 12);
       const thigh = new THREE.Mesh(thighGeo, iceMat);
       thigh.position.y = -0.3;
       leg.add(thigh);
 
       // Knee facet
-      const kneeGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.2, 6);
+      const kneeGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.2, 12);
       const knee = new THREE.Mesh(kneeGeo, deepBlueMat);
       knee.position.y = -0.65;
       knee.rotation.y = 0.2;
       leg.add(knee);
 
       // Shin block
-      const shinGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.55, 6);
+      const shinGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.55, 12);
       const shin = new THREE.Mesh(shinGeo, iceMat);
       shin.position.y = -1.0;
       leg.add(shin);
 
       // Foot — flat hexagonal ice slab
-      const footGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.1, 6);
+      const footGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.1, 12);
       const foot = new THREE.Mesh(footGeo, deepBlueMat);
       foot.position.set(0, -1.32, 0.05);
       foot.scale.set(0.88, 1.0, 1.09);
@@ -12969,7 +12969,7 @@ export class CreatureMesh {
       leg.add(kneeSpike);
 
       // Shin frost ridge detail
-      const shinRidgeGeo = new THREE.ConeGeometry(0.02, 0.25, 4);
+      const shinRidgeGeo = new THREE.ConeGeometry(0.02, 0.25, 10);
       const shinRidge = new THREE.Mesh(shinRidgeGeo, whiteMat);
       shinRidge.position.set(0, -0.9, 0.11);
       leg.add(shinRidge);
@@ -13145,7 +13145,7 @@ export class CreatureMesh {
       const gfAngle = (i / 8) * Math.PI * 2;
       const gfR = 0.4 + Math.random() * 0.3;
       const gfHeight = 0.05 + Math.random() * 0.08;
-      const gfGeo = new THREE.ConeGeometry(0.015, gfHeight, 6);
+      const gfGeo = new THREE.ConeGeometry(0.015, gfHeight, 12);
       const gf = new THREE.Mesh(gfGeo, whiteMat);
       gf.position.set(
         Math.cos(gfAngle) * gfR,
@@ -13284,7 +13284,7 @@ export class CreatureMesh {
       for (let fs = 0; fs < 6; fs++) {
         const footSpikeAngle = (fs / 6) * Math.PI * 2;
         const fsHeight = 0.04 + Math.random() * 0.04;
-        const fsGeo = new THREE.ConeGeometry(0.01, fsHeight, 6);
+        const fsGeo = new THREE.ConeGeometry(0.01, fsHeight, 12);
         const footSpike = new THREE.Mesh(fsGeo, whiteMat);
         footSpike.position.set(
           Math.cos(footSpikeAngle) * 0.14,
@@ -13600,7 +13600,7 @@ export class CreatureMesh {
     const ashMat = mat(0x222222);
     for (const leg of [this._leftLeg, this._rightLeg]) {
       for (let t = -1; t <= 1; t++) {
-        const ashTipGeo = new THREE.SphereGeometry(0.005, 6, 6);
+        const ashTipGeo = new THREE.SphereGeometry(0.005, 12, 10);
         const ashTip = new THREE.Mesh(ashTipGeo, ashMat);
         ashTip.position.set(t * 0.015, -0.145, 0.02);
         leg.add(ashTip);
@@ -13652,7 +13652,7 @@ export class CreatureMesh {
     // ---- Sulfurous fume wisps rising from body ----
     const fumeMat = mat(0x998833, { transparent: true, opacity: 0.12 });
     for (let i = 0; i < 8; i++) {
-      const fumeGeo = new THREE.SphereGeometry(0.01 + Math.random() * 0.008, 6, 6);
+      const fumeGeo = new THREE.SphereGeometry(0.01 + Math.random() * 0.008, 12, 10);
       const fume = new THREE.Mesh(fumeGeo, fumeMat);
       fume.position.set(
         (Math.random() - 0.5) * 0.15,
@@ -13684,7 +13684,7 @@ export class CreatureMesh {
       }
       // Wing membrane tears / worn spots
       for (let i = 0; i < 2; i++) {
-        const tearGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const tearGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const tear = new THREE.Mesh(tearGeo, mat(0x551100, { transparent: true, opacity: 0.3 }));
         tear.scale.set(1.5, 0.5, 0.1);
         tear.position.set(side * (0.08 + i * 0.06), -0.02 - i * 0.04, -0.015);
@@ -13710,12 +13710,12 @@ export class CreatureMesh {
 
     // ---- Ear tufts — fiery wisps ----
     for (const side of [-1, 1]) {
-      const earTuftGeo = new THREE.ConeGeometry(0.008, 0.04, 6);
+      const earTuftGeo = new THREE.ConeGeometry(0.008, 0.04, 12);
       const earTuft = new THREE.Mesh(earTuftGeo, fireMat);
       earTuft.position.set(side * 0.08, 0.06, 0.02);
       earTuft.rotation.z = side * 0.6;
       this._head.add(earTuft);
-      const earTuft2Geo = new THREE.ConeGeometry(0.005, 0.03, 6);
+      const earTuft2Geo = new THREE.ConeGeometry(0.005, 0.03, 12);
       const earTuft2 = new THREE.Mesh(earTuft2Geo, fireMat);
       earTuft2.position.set(side * 0.085, 0.07, 0.01);
       earTuft2.rotation.z = side * 0.8;
@@ -13739,7 +13739,7 @@ export class CreatureMesh {
 
     // ---- Tiny ember trail floating behind ----
     for (let i = 0; i < 10; i++) {
-      const trailGeo = new THREE.SphereGeometry(0.004 + Math.random() * 0.004, 6, 6);
+      const trailGeo = new THREE.SphereGeometry(0.004 + Math.random() * 0.004, 12, 10);
       const trail = new THREE.Mesh(trailGeo, i % 3 === 0 ? fireMat : glowMat);
       trail.position.set(
         (Math.random() - 0.5) * 0.1,
@@ -13754,7 +13754,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       for (let i = 0; i < 3; i++) {
-        const dripGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 6, 6);
+        const dripGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 12, 10);
         const drip = new THREE.Mesh(dripGeo, lavaDripMat);
         drip.position.set(side * 0.06, -0.1 - i * 0.025, 0.04);
         arm.add(drip);
@@ -13764,7 +13764,7 @@ export class CreatureMesh {
     // ---- Knuckle spikes on feet ----
     for (const leg of [this._leftLeg, this._rightLeg]) {
       for (let i = 0; i < 3; i++) {
-        const knuckleSpikeGeo = new THREE.ConeGeometry(0.004, 0.015, 6);
+        const knuckleSpikeGeo = new THREE.ConeGeometry(0.004, 0.015, 12);
         const knuckleSpike = new THREE.Mesh(knuckleSpikeGeo, boneMat);
         knuckleSpike.position.set((i - 1) * 0.015, -0.12, 0.025);
         leg.add(knuckleSpike);
@@ -13787,7 +13787,7 @@ export class CreatureMesh {
     // ---- Charred skin patches ----
     const charMat = mat(0x111111, { roughness: 1.0 });
     for (let i = 0; i < 4; i++) {
-      const charGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const charGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const charPatch = new THREE.Mesh(charGeo, charMat);
       charPatch.scale.set(1.5, 0.5, 1.2);
       charPatch.position.set(
@@ -13800,7 +13800,7 @@ export class CreatureMesh {
 
     // ---- Tail barb detail — serrated edges ----
     for (let i = 0; i < 4; i++) {
-      const barbGeo = new THREE.ConeGeometry(0.004, 0.015, 4);
+      const barbGeo = new THREE.ConeGeometry(0.004, 0.015, 10);
       const barb = new THREE.Mesh(barbGeo, darkSkinMat);
       barb.position.set(
         (i - 1.5) * 0.012,
@@ -14060,7 +14060,7 @@ export class CreatureMesh {
     // Large frost crystal clusters on shoulders
     for (const side of [-1, 1]) {
       for (let c = 0; c < 4; c++) {
-        const crystalGeo = new THREE.ConeGeometry(0.008 + c * 0.002, 0.04 + c * 0.01, 6);
+        const crystalGeo = new THREE.ConeGeometry(0.008 + c * 0.002, 0.04 + c * 0.01, 12);
         const crystal = new THREE.Mesh(crystalGeo, frostMat);
         crystal.position.set(side * (0.08 + c * 0.015), 0.3 + c * 0.01, -0.02 + c * 0.005);
         crystal.rotation.z = side * (-0.3 + c * 0.1);
@@ -14087,7 +14087,7 @@ export class CreatureMesh {
     }
     // Frozen droplets on head
     for (let d = 0; d < 5; d++) {
-      const dropGeo = new THREE.SphereGeometry(0.004, 6, 6);
+      const dropGeo = new THREE.SphereGeometry(0.004, 12, 10);
       const drop = new THREE.Mesh(dropGeo, boneMat);
       drop.position.set((d - 2) * 0.02, 0.06 - d * 0.01, 0.08);
       this._head.add(drop);
@@ -14103,7 +14103,7 @@ export class CreatureMesh {
       this._head.add(crownCrystal);
     }
     // Circlet band connecting crown crystals
-    const iiCircletGeo = new THREE.TorusGeometry(0.08, 0.003, 6, 16);
+    const iiCircletGeo = new THREE.TorusGeometry(0.08, 0.003, 12, 16);
     const iiCirclet = new THREE.Mesh(iiCircletGeo, boneMat);
     iiCirclet.position.y = 0.08;
     iiCirclet.rotation.x = Math.PI / 2;
@@ -14121,7 +14121,7 @@ export class CreatureMesh {
     }
     // Frost bracelet on each wrist
     for (const armGroup of [this._leftArm, this._rightArm]) {
-      const braceletGeo = new THREE.TorusGeometry(0.018, 0.003, 6, 12);
+      const braceletGeo = new THREE.TorusGeometry(0.018, 0.003, 12, 12);
       const bracelet = new THREE.Mesh(braceletGeo, frostMat);
       bracelet.position.y = -0.06;
       bracelet.rotation.x = Math.PI / 2;
@@ -14150,7 +14150,7 @@ export class CreatureMesh {
     }
     // Frost aura glow rings around body
     for (let r = 0; r < 3; r++) {
-      const auraRingGeo = new THREE.TorusGeometry(0.16 + r * 0.04, 0.005, 6, 16);
+      const auraRingGeo = new THREE.TorusGeometry(0.16 + r * 0.04, 0.005, 12, 16);
       const auraRing = new THREE.Mesh(auraRingGeo, iceGlowMat);
       auraRing.position.y = 0.12 + r * 0.1;
       auraRing.rotation.x = Math.PI / 2;
@@ -14184,14 +14184,14 @@ export class CreatureMesh {
       knee.position.set(0, -0.04, 0.02);
       legGroup.add(knee);
       // Ankle frost ring
-      const ankleGeo = new THREE.TorusGeometry(0.022, 0.004, 6, 10);
+      const ankleGeo = new THREE.TorusGeometry(0.022, 0.004, 12, 10);
       const ankle = new THREE.Mesh(ankleGeo, frostMat);
       ankle.position.y = -0.11;
       ankle.rotation.x = Math.PI / 2;
       legGroup.add(ankle);
       // Frozen skin folds around ankle
       for (let f = 0; f < 3; f++) {
-        const foldGeo = new THREE.SphereGeometry(0.005, 6, 6);
+        const foldGeo = new THREE.SphereGeometry(0.005, 12, 10);
         const fold = new THREE.Mesh(foldGeo, boneMat);
         fold.scale.set(1.5, 0.5, 1);
         const fAngle = (f / 3) * Math.PI * 2;
@@ -14209,7 +14209,7 @@ export class CreatureMesh {
     }
     // Secondary frost barbs along tail
     for (let b = 0; b < 4; b++) {
-      const barbGeo = new THREE.ConeGeometry(0.005, 0.02, 5);
+      const barbGeo = new THREE.ConeGeometry(0.005, 0.02, 10);
       const barb = new THREE.Mesh(barbGeo, frostMat);
       barb.position.set(((b % 2) * 2 - 1) * 0.015, 0.05 - b * 0.01, -0.15 - b * 0.02);
       barb.rotation.x = 0.5;
@@ -14219,7 +14219,7 @@ export class CreatureMesh {
 
     // ---- Breath frost mist cloud in front of face ----
     for (let m = 0; m < 6; m++) {
-      const mistGeo = new THREE.SphereGeometry(0.01 + Math.random() * 0.008, 6, 6);
+      const mistGeo = new THREE.SphereGeometry(0.01 + Math.random() * 0.008, 12, 10);
       const mist = new THREE.Mesh(mistGeo, iceGlowMat);
       mist.position.set(
         (Math.random() - 0.5) * 0.06,
@@ -14529,14 +14529,14 @@ export class CreatureMesh {
       this._head.add(liCond);
     }
     // Conductor band
-    const liCondBandGeo = new THREE.TorusGeometry(0.075, 0.004, 6, 14);
+    const liCondBandGeo = new THREE.TorusGeometry(0.075, 0.004, 12, 14);
     const liCondBand = new THREE.Mesh(liCondBandGeo, boneMat);
     liCondBand.position.y = 0.08;
     liCondBand.rotation.x = Math.PI / 2;
     this._head.add(liCondBand);
     // Spark nodes on crown
     for (let n = 0; n < 5; n++) {
-      const liNodeGeo = new THREE.SphereGeometry(0.005, 6, 6);
+      const liNodeGeo = new THREE.SphereGeometry(0.005, 12, 10);
       const liNode = new THREE.Mesh(liNodeGeo, sparkMat);
       const liNAngle = (n / 5) * Math.PI * 2;
       liNode.position.set(Math.cos(liNAngle) * 0.075, 0.08, Math.sin(liNAngle) * 0.075);
@@ -14559,14 +14559,14 @@ export class CreatureMesh {
 
     // ---- Electrified ankle and wrist bands ----
     for (const armGroup of [this._leftArm, this._rightArm]) {
-      const liWristGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 10);
+      const liWristGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 10);
       const liWrist = new THREE.Mesh(liWristGeo, sparkMat);
       liWrist.position.y = -0.06;
       liWrist.rotation.x = Math.PI / 2;
       armGroup.add(liWrist);
       // Tiny sparking nodes on wrist band
       for (let g = 0; g < 4; g++) {
-        const liWNodeGeo = new THREE.SphereGeometry(0.004, 4, 4);
+        const liWNodeGeo = new THREE.SphereGeometry(0.004, 12, 10);
         const liWNode = new THREE.Mesh(liWNodeGeo, sparkMat);
         const liGAngle = (g / 4) * Math.PI * 2;
         liWNode.position.set(Math.cos(liGAngle) * 0.02, -0.06, Math.sin(liGAngle) * 0.02);
@@ -14574,7 +14574,7 @@ export class CreatureMesh {
       }
     }
     for (const legGroup of [this._leftLeg, this._rightLeg]) {
-      const liAnkleGeo = new THREE.TorusGeometry(0.024, 0.004, 6, 10);
+      const liAnkleGeo = new THREE.TorusGeometry(0.024, 0.004, 12, 10);
       const liAnkle = new THREE.Mesh(liAnkleGeo, sparkMat);
       liAnkle.position.y = -0.11;
       liAnkle.rotation.x = Math.PI / 2;
@@ -14583,7 +14583,7 @@ export class CreatureMesh {
 
     // ---- Floating spark particle aura ----
     for (let i = 0; i < 14; i++) {
-      const liSparkParticleGeo = new THREE.SphereGeometry(0.004 + Math.random() * 0.004, 4, 4);
+      const liSparkParticleGeo = new THREE.SphereGeometry(0.004 + Math.random() * 0.004, 12, 10);
       const liSparkParticle = new THREE.Mesh(liSparkParticleGeo, sparkMat);
       liSparkParticle.position.set(
         (Math.random() - 0.5) * 0.5,
@@ -14615,7 +14615,7 @@ export class CreatureMesh {
       }
       // Wing edge spark nodes
       for (let n = 0; n < 3; n++) {
-        const liWingNodeGeo = new THREE.SphereGeometry(0.005, 4, 4);
+        const liWingNodeGeo = new THREE.SphereGeometry(0.005, 12, 10);
         const liWingNode = new THREE.Mesh(liWingNodeGeo, sparkMat);
         liWingNode.position.set(sDir * (0.14 + n * 0.03), -0.01 - n * 0.02, -0.02);
         armGroup.add(liWingNode);
@@ -14930,7 +14930,7 @@ export class CreatureMesh {
       diFLine.rotation.z = fp.rot;
       this._body.add(diFLine);
       // Glow seeping from crack
-      const diSeepGeo = new THREE.SphereGeometry(0.008, 6, 6);
+      const diSeepGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const diSeep = new THREE.Mesh(diSeepGeo, voidGlowMat);
       diSeep.position.set(fp.x, fp.y, fp.z + 0.005);
       this._body.add(diSeep);
@@ -14954,7 +14954,7 @@ export class CreatureMesh {
       this._head.add(diSpire);
     }
     // Crown circlet of shadow
-    const diCircletGeo = new THREE.TorusGeometry(0.08, 0.004, 6, 14);
+    const diCircletGeo = new THREE.TorusGeometry(0.08, 0.004, 12, 14);
     const diCirclet = new THREE.Mesh(diCircletGeo, darkSkinMat);
     diCirclet.position.y = 0.08;
     diCirclet.rotation.x = Math.PI / 2;
@@ -14967,14 +14967,14 @@ export class CreatureMesh {
 
     // ---- Shadow chains and shackles ----
     for (const armGroup of [this._leftArm, this._rightArm]) {
-      const diShackleGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 10);
+      const diShackleGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 10);
       const diShackle = new THREE.Mesh(diShackleGeo, darkSkinMat);
       diShackle.position.y = -0.06;
       diShackle.rotation.x = Math.PI / 2;
       armGroup.add(diShackle);
       // Dangling chain links
       for (let link = 0; link < 3; link++) {
-        const diLinkGeo = new THREE.TorusGeometry(0.008, 0.002, 4, 6);
+        const diLinkGeo = new THREE.TorusGeometry(0.008, 0.002, 10, 6);
         const diChainLink = new THREE.Mesh(diLinkGeo, darkSkinMat);
         diChainLink.position.y = -0.08 - link * 0.025;
         diChainLink.rotation.x = link % 2 === 0 ? Math.PI / 2 : 0;
@@ -14983,7 +14983,7 @@ export class CreatureMesh {
     }
     // Ankle shackles
     for (const legGroup of [this._leftLeg, this._rightLeg]) {
-      const diAnkleShackleGeo = new THREE.TorusGeometry(0.024, 0.004, 6, 10);
+      const diAnkleShackleGeo = new THREE.TorusGeometry(0.024, 0.004, 12, 10);
       const diAnkleShackle = new THREE.Mesh(diAnkleShackleGeo, darkSkinMat);
       diAnkleShackle.position.y = -0.11;
       diAnkleShackle.rotation.x = Math.PI / 2;
@@ -14992,7 +14992,7 @@ export class CreatureMesh {
 
     // ---- Floating void rift particles ----
     for (let i = 0; i < 14; i++) {
-      const diRiftGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.006, 4, 4);
+      const diRiftGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.006, 12, 10);
       const diRift = new THREE.Mesh(diRiftGeo, voidMat);
       diRift.position.set(
         (Math.random() - 0.5) * 0.5,
@@ -15003,7 +15003,7 @@ export class CreatureMesh {
     }
     // Void distortion rings orbiting the body
     for (let r = 0; r < 3; r++) {
-      const diDistortRingGeo = new THREE.TorusGeometry(0.15 + r * 0.04, 0.004, 6, 14);
+      const diDistortRingGeo = new THREE.TorusGeometry(0.15 + r * 0.04, 0.004, 12, 14);
       const diDistortRing = new THREE.Mesh(diDistortRingGeo, voidGlowMat);
       diDistortRing.position.y = 0.15 + r * 0.08;
       diDistortRing.rotation.x = Math.PI / 2 + r * 0.2;
@@ -15023,7 +15023,7 @@ export class CreatureMesh {
       }
       // Void drip nodes at wing tips
       for (let n = 0; n < 3; n++) {
-        const diDripGeo = new THREE.SphereGeometry(0.006, 4, 4);
+        const diDripGeo = new THREE.SphereGeometry(0.006, 12, 10);
         const diDrip = new THREE.Mesh(diDripGeo, voidMat);
         diDrip.position.set(sDir * (0.13 + n * 0.03), -0.02 - n * 0.02, -0.02);
         armGroup.add(diDrip);
@@ -15067,7 +15067,7 @@ export class CreatureMesh {
 
     // ---- Tail void corruption ----
     for (let s = 0; s < 5; s++) {
-      const diVertGeo = new THREE.SphereGeometry(0.008 - s * 0.001, 6, 6);
+      const diVertGeo = new THREE.SphereGeometry(0.008 - s * 0.001, 12, 10);
       const diVert = new THREE.Mesh(diVertGeo, darkSkinMat);
       diVert.position.set(0, 0.06 - s * 0.008, -0.14 - s * 0.02);
       this._body.add(diVert);
@@ -15297,7 +15297,7 @@ export class CreatureMesh {
     const vsPore = new THREE.Mesh(vsPoreGeo, ridgeMat);
     vsPore.position.set(0.22, 0.2, 0.05);
     this._body.add(vsPore);
-    const vsPoreRingGeo = new THREE.TorusGeometry(0.014, 0.003, 6, 10);
+    const vsPoreRingGeo = new THREE.TorusGeometry(0.014, 0.003, 12, 10);
     const vsPoreRing = new THREE.Mesh(vsPoreRingGeo, stalkMat);
     vsPoreRing.position.set(0.22, 0.2, 0.05);
     vsPoreRing.rotation.y = Math.PI / 2;
@@ -15312,7 +15312,7 @@ export class CreatureMesh {
     this._body.add(vsNacre);
     // Growth rings on shell exterior
     for (let gr = 0; gr < 5; gr++) {
-      const vsGrowthGeo = new THREE.TorusGeometry(0.2 - gr * 0.02, 0.004, 6, 16);
+      const vsGrowthGeo = new THREE.TorusGeometry(0.2 - gr * 0.02, 0.004, 12, 16);
       const vsGrowth = new THREE.Mesh(vsGrowthGeo, ridgeMat);
       vsGrowth.position.set(0, 0.38 + gr * 0.04, -0.1 - gr * 0.01);
       vsGrowth.rotation.x = Math.PI / 2 + gr * 0.1;
@@ -15341,7 +15341,7 @@ export class CreatureMesh {
     // ---- Eye stalk enhanced detail ----
     for (const side of [-1, 1]) {
       for (let j = 0; j < 3; j++) {
-        const vsJointGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const vsJointGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const vsJoint = new THREE.Mesh(vsJointGeo, stalkMat);
         vsJoint.position.set(side * (0.05 + j * 0.01), 0.06 + j * 0.06, 0.02);
         this._head.add(vsJoint);
@@ -15365,7 +15365,7 @@ export class CreatureMesh {
       vsLowerStalk.rotation.z = side * -0.2;
       vsLowerStalk.rotation.x = 0.3;
       this._head.add(vsLowerStalk);
-      const vsTipBulbGeo = new THREE.SphereGeometry(0.006, 6, 6);
+      const vsTipBulbGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const vsTipBulb = new THREE.Mesh(vsTipBulbGeo, suckerMat);
       vsTipBulb.position.set(side * 0.05, -0.04, 0.08);
       this._head.add(vsTipBulb);
@@ -15376,7 +15376,7 @@ export class CreatureMesh {
       const sDir = armGroup === this._leftArm ? -1 : 1;
       for (let row = 0; row < 2; row++) {
         for (let s = 0; s < 4; s++) {
-          const vsSuckerGeo = new THREE.SphereGeometry(0.005, 6, 6);
+          const vsSuckerGeo = new THREE.SphereGeometry(0.005, 12, 10);
           const vsSucker = new THREE.Mesh(vsSuckerGeo, suckerMat);
           vsSucker.position.set(
             sDir * (0.03 + s * 0.025),
@@ -15387,7 +15387,7 @@ export class CreatureMesh {
         }
       }
       for (let m = 0; m < 5; m++) {
-        const vsRingGeo = new THREE.TorusGeometry(0.012 - m * 0.001, 0.002, 4, 8);
+        const vsRingGeo = new THREE.TorusGeometry(0.012 - m * 0.001, 0.002, 10, 8);
         const vsRing = new THREE.Mesh(vsRingGeo, stalkMat);
         vsRing.position.set(sDir * (0.02 + m * 0.025), -0.015 + m * 0.01, 0);
         vsRing.rotation.y = sDir * 0.6;
@@ -15408,7 +15408,7 @@ export class CreatureMesh {
       this._body.add(vsStrand);
     }
     for (let b = 0; b < 6; b++) {
-      const vsBubbleGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 6, 6);
+      const vsBubbleGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 12, 10);
       const vsBubble = new THREE.Mesh(vsBubbleGeo, slimeMat);
       vsBubble.position.set(
         (Math.random() - 0.5) * 0.25,
@@ -15477,7 +15477,7 @@ export class CreatureMesh {
 
     // ---- Mantle fringe detail ----
     for (let f = 0; f < 10; f++) {
-      const vsFringeGeo = new THREE.SphereGeometry(0.015, 6, 6);
+      const vsFringeGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const vsFringe = new THREE.Mesh(vsFringeGeo, stalkMat);
       vsFringe.scale.set(1, 0.5, 0.8);
       const vsFAngle = (f / 10) * Math.PI;
@@ -15492,7 +15492,7 @@ export class CreatureMesh {
     vsRadula.position.set(0, -0.08, 0.1);
     this._head.add(vsRadula);
     for (let rt = 0; rt < 5; rt++) {
-      const vsRToothGeo = new THREE.ConeGeometry(0.002, 0.008, 4);
+      const vsRToothGeo = new THREE.ConeGeometry(0.002, 0.008, 10);
       const vsRTooth = new THREE.Mesh(vsRToothGeo, shellMat);
       vsRTooth.position.set((rt - 2) * 0.006, -0.09, 0.11);
       vsRTooth.rotation.x = Math.PI;
@@ -15815,20 +15815,20 @@ export class CreatureMesh {
 
     // ---- Vine jewelry ----
     const vineJewelMat = mat(0x338844, { emissive: 0x226633 });
-    const neckVineGeo = new THREE.TorusGeometry(0.08, 0.004, 6, 14);
+    const neckVineGeo = new THREE.TorusGeometry(0.08, 0.004, 12, 14);
     const neckVine = new THREE.Mesh(neckVineGeo, vineJewelMat);
     neckVine.position.set(0, 1.6, 0.04);
     neckVine.rotation.x = Math.PI / 2;
     this._body.add(neckVine);
     for (const side of [-1, 1]) {
-      const armVineGeo = new THREE.TorusGeometry(0.04, 0.003, 6, 12);
+      const armVineGeo = new THREE.TorusGeometry(0.04, 0.003, 12, 12);
       const armVine = new THREE.Mesh(armVineGeo, vineJewelMat);
       armVine.position.set(side * 0.18, 1.25, -0.05);
       armVine.rotation.x = Math.PI / 2;
       this._body.add(armVine);
     }
     for (let i = 0; i < 5; i++) {
-      const leafGeo = new THREE.SphereGeometry(0.008, 6, 4);
+      const leafGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const leaf = new THREE.Mesh(leafGeo, vineJewelMat);
       leaf.scale.set(1, 0.3, 1.5);
       leaf.position.set((Math.random() - 0.5) * 0.15, 1.55 + Math.random() * 0.1, 0.08 + Math.random() * 0.03);
@@ -15844,7 +15844,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       for (let i = 0; i < 8; i++) {
-        const shimGeo = new THREE.SphereGeometry(0.01 + Math.random() * 0.008, 6, 6);
+        const shimGeo = new THREE.SphereGeometry(0.01 + Math.random() * 0.008, 12, 10);
         const shim = new THREE.Mesh(shimGeo, shimmerMats[i % 3]);
         shim.scale.set(1.5, 0.3, 0.2);
         shim.position.set(
@@ -15891,14 +15891,14 @@ export class CreatureMesh {
     const braceletFlowerMats = [flowerRedMat, flowerBlueMat, flowerYellowMat];
     for (const side of [-1, 1]) {
       const leg = side === -1 ? this._leftLeg : this._rightLeg;
-      const braceletGeo = new THREE.TorusGeometry(0.035, 0.003, 6, 12);
+      const braceletGeo = new THREE.TorusGeometry(0.035, 0.003, 12, 12);
       const bracelet = new THREE.Mesh(braceletGeo, mat(0x338844, { emissive: 0x226633 }));
       bracelet.position.set(0, -0.6, 0.02);
       bracelet.rotation.x = Math.PI / 2;
       leg.add(bracelet);
       for (let i = 0; i < 4; i++) {
         const bfAngle = (i / 4) * Math.PI * 2;
-        const bfGeo = new THREE.SphereGeometry(0.006, 6, 6);
+        const bfGeo = new THREE.SphereGeometry(0.006, 12, 10);
         const bf = new THREE.Mesh(bfGeo, braceletFlowerMats[i % 3]);
         bf.position.set(Math.cos(bfAngle) * 0.035, -0.6, 0.02 + Math.sin(bfAngle) * 0.035);
         leg.add(bf);
@@ -15910,7 +15910,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       for (let i = 0; i < 6; i++) {
-        const dewGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 6, 6);
+        const dewGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 12, 10);
         const dew = new THREE.Mesh(dewGeo, dewMat);
         dew.position.set(
           side * (0.1 + Math.random() * 0.2),
@@ -15925,7 +15925,7 @@ export class CreatureMesh {
     const fireflyMat = mat(0xffee44, { emissive: 0xffdd22, emissiveIntensity: 2.0 });
     for (let i = 0; i < 12; i++) {
       const ffAngle = (i / 12) * Math.PI * 2;
-      const ffGeo = new THREE.SphereGeometry(0.004, 6, 6);
+      const ffGeo = new THREE.SphereGeometry(0.004, 12, 10);
       const ff = new THREE.Mesh(ffGeo, fireflyMat);
       ff.position.set(
         Math.cos(ffAngle) * (0.4 + Math.random() * 0.3),
@@ -15934,7 +15934,7 @@ export class CreatureMesh {
       );
       this._body.add(ff);
       // Firefly glow halo
-      const ffGlowGeo = new THREE.SphereGeometry(0.01, 6, 6);
+      const ffGlowGeo = new THREE.SphereGeometry(0.01, 12, 10);
       const ffGlow = new THREE.Mesh(ffGlowGeo, mat(0xffee44, { emissive: 0xffdd22, transparent: true, opacity: 0.15 }));
       ffGlow.position.copy(ff.position);
       this._body.add(ffGlow);
@@ -15993,7 +15993,7 @@ export class CreatureMesh {
       this._head.add(hairFlower);
       // Tiny leaves around each hair flower
       for (let j = 0; j < 3; j++) {
-        const tinyLeafGeo = new THREE.SphereGeometry(0.005, 4, 4);
+        const tinyLeafGeo = new THREE.SphereGeometry(0.005, 12, 10);
         const tinyLeaf = new THREE.Mesh(tinyLeafGeo, mat(0x338844));
         tinyLeaf.scale.set(1, 0.3, 1.5);
         tinyLeaf.position.set(
@@ -16008,7 +16008,7 @@ export class CreatureMesh {
     // ---- Trailing magic dust from scepter tip ----
     const dustMat = mat(0x88ffcc, { emissive: 0x44dd88, emissiveIntensity: 1.0, transparent: true, opacity: 0.4 });
     for (let i = 0; i < 6; i++) {
-      const scepterDustGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 6, 6);
+      const scepterDustGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 12, 10);
       const scepterDust = new THREE.Mesh(scepterDustGeo, dustMat);
       scepterDust.position.set(
         0.27 + (Math.random() - 0.5) * 0.08,
@@ -16020,7 +16020,7 @@ export class CreatureMesh {
 
     // ---- Shoulder drape / collar detail ----
     const drapeMat = mat(0xaaeebb, { transparent: true, opacity: 0.35, side: THREE.DoubleSide });
-    const collarGeo = new THREE.TorusGeometry(0.14, 0.008, 6, 16);
+    const collarGeo = new THREE.TorusGeometry(0.14, 0.008, 12, 16);
     const collar = new THREE.Mesh(collarGeo, drapeMat);
     collar.position.set(0, 1.5, 0.04);
     collar.rotation.x = Math.PI / 2;
@@ -16028,7 +16028,7 @@ export class CreatureMesh {
     // Collar gems
     for (let i = 0; i < 6; i++) {
       const cAngle = (i / 6) * Math.PI * 2;
-      const collarGemGeo = new THREE.SphereGeometry(0.005, 6, 6);
+      const collarGemGeo = new THREE.SphereGeometry(0.005, 12, 10);
       const collarGem = new THREE.Mesh(collarGemGeo, sparkleMat);
       collarGem.position.set(
         Math.cos(cAngle) * 0.14,
@@ -16045,7 +16045,7 @@ export class CreatureMesh {
       const mrStem = new THREE.Mesh(mrStemGeo, mat(0xccbb99));
       mrStem.position.set(Math.cos(mrAngle) * 0.4, 0.01, Math.sin(mrAngle) * 0.4);
       this._body.add(mrStem);
-      const mrCapGeo = new THREE.SphereGeometry(0.01, 6, 6);
+      const mrCapGeo = new THREE.SphereGeometry(0.01, 12, 10);
       const mrCap = new THREE.Mesh(mrCapGeo, mat(0xdd4444));
       mrCap.scale.set(1, 0.5, 1);
       mrCap.position.set(Math.cos(mrAngle) * 0.4, 0.025, Math.sin(mrAngle) * 0.4);
@@ -16055,7 +16055,7 @@ export class CreatureMesh {
     // ---- Flowing hair shimmer highlights ----
     const hairHighlightMat = mat(0xffee88, { emissive: 0xddcc44, emissiveIntensity: 0.3, transparent: true, opacity: 0.4 });
     for (let i = 0; i < 4; i++) {
-      const highlightGeo = new THREE.SphereGeometry(0.015, 6, 6);
+      const highlightGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const highlight = new THREE.Mesh(highlightGeo, hairHighlightMat);
       highlight.scale.set(0.8, 1.5, 0.3);
       highlight.position.set(
@@ -16569,7 +16569,7 @@ export class CreatureMesh {
       this._body.add(coilPost);
 
       for (let j = 0; j < 3; j++) {
-        const windingGeo = new THREE.TorusGeometry(0.035, 0.004, 6, 12);
+        const windingGeo = new THREE.TorusGeometry(0.035, 0.004, 12, 12);
         const winding = new THREE.Mesh(windingGeo, mat(0xbb7733, { metalness: 0.7, roughness: 0.2 }));
         winding.position.set(0, 2.5 + i * 0.12 + j * 0.06, -0.42 - i * 0.03);
         winding.rotation.x = Math.PI / 2 - 0.4;
@@ -16799,7 +16799,7 @@ export class CreatureMesh {
       leLeg.add(kneeRing);
 
       for (let k = 0; k < 4; k++) {
-        const kSpkGeo = new THREE.SphereGeometry(0.012, 6, 6);
+        const kSpkGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const kSpk = new THREE.Mesh(kSpkGeo, sparkMat);
         const kAngle = (k / 4) * Math.PI * 2;
         kSpk.position.set(Math.cos(kAngle) * 0.14, -0.55, Math.sin(kAngle) * 0.14);
@@ -16849,14 +16849,14 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const leVArm = side === -1 ? this._leftArm : this._rightArm;
       for (let v = 0; v < 5; v++) {
-        const vNodeGeo = new THREE.SphereGeometry(0.01, 6, 6);
+        const vNodeGeo = new THREE.SphereGeometry(0.01, 12, 10);
         const vNode = new THREE.Mesh(vNodeGeo, leVoltMat);
         vNode.position.set(side * 0.03 * (v % 2 === 0 ? 1 : -1), -0.15 - v * 0.2, 0.06);
         leVArm.add(vNode);
       }
       const leVLeg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let v = 0; v < 4; v++) {
-        const vNodeGeo2 = new THREE.SphereGeometry(0.01, 6, 6);
+        const vNodeGeo2 = new THREE.SphereGeometry(0.01, 12, 10);
         const vNode2 = new THREE.Mesh(vNodeGeo2, leVoltMat);
         vNode2.position.set(0.05, -0.2 - v * 0.22, 0.08);
         leVLeg.add(vNode2);
@@ -17250,7 +17250,7 @@ export class CreatureMesh {
         finger.rotation.x = Math.sin(fingerAngle) * 0.5;
         arm.add(finger);
         // Fingertip spark
-        const fSparkGeo = new THREE.SphereGeometry(0.008, 6, 6);
+        const fSparkGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const fSpark = new THREE.Mesh(fSparkGeo, sparkMat);
         fSpark.position.set(
           Math.cos(fingerAngle) * 0.08,
@@ -17953,7 +17953,7 @@ export class CreatureMesh {
       const jointArm = side === -1 ? this._leftArm : this._rightArm;
       for (let ft = 0; ft < 4; ft++) {
         const tongueH = (0.08 + Math.random() * 0.1) * s;
-        const tongueGeo = new THREE.ConeGeometry(0.015 * s, tongueH, 6);
+        const tongueGeo = new THREE.ConeGeometry(0.015 * s, tongueH, 12);
         const tongue = new THREE.Mesh(tongueGeo, mat(0xff8800, { emissive: 0xff5500, transparent: true, opacity: 0.55 }));
         tongue.position.set(
           (Math.random() - 0.5) * 0.1 * s,
@@ -18036,7 +18036,7 @@ export class CreatureMesh {
 
     // --- Additional detail: swirling fire tornado funnel ---
     for (let tf = 0; tf < 4; tf++) {
-      const funnelGeo = new THREE.TorusGeometry((0.15 + tf * 0.08) * s, 0.012 * s, 6, 16);
+      const funnelGeo = new THREE.TorusGeometry((0.15 + tf * 0.08) * s, 0.012 * s, 12, 16);
       const funnel = new THREE.Mesh(funnelGeo, mat(0xff6600, { emissive: 0xff4400, transparent: true, opacity: 0.12 - tf * 0.02, side: THREE.DoubleSide }));
       funnel.position.y = (3.6 + tf * 0.2) * s;
       funnel.rotation.x = Math.PI / 2;
@@ -18073,7 +18073,7 @@ export class CreatureMesh {
 
     // --- Additional detail: superheated air distortion rings ---
     for (let dr = 0; dr < 3; dr++) {
-      const distRingGeo = new THREE.TorusGeometry((0.5 + dr * 0.15) * s, 0.008 * s, 6, 24);
+      const distRingGeo = new THREE.TorusGeometry((0.5 + dr * 0.15) * s, 0.008 * s, 12, 24);
       const distRing = new THREE.Mesh(distRingGeo, mat(0xffaa44, { transparent: true, opacity: 0.04, side: THREE.DoubleSide }));
       distRing.position.y = (2.4 + dr * 0.4) * s;
       distRing.rotation.x = Math.PI / 2 + dr * 0.1;
@@ -18397,7 +18397,7 @@ export class CreatureMesh {
     for (let fc = 0; fc < 10; fc++) {
       const fcAngle = (fc / 10) * Math.PI * 2;
       const fcH = (0.06 + Math.random() * 0.08) * s;
-      const fcGeo = new THREE.ConeGeometry(0.015 * s, fcH, 6);
+      const fcGeo = new THREE.ConeGeometry(0.015 * s, fcH, 12);
       const frostCrystal = new THREE.Mesh(fcGeo, whiteMat);
       frostCrystal.position.set(
         Math.cos(fcAngle) * 0.5 * s,
@@ -18447,7 +18447,7 @@ export class CreatureMesh {
     // --- Additional detail: surface hoarfrost texture bumps ---
     for (let hf = 0; hf < 14; hf++) {
       const hfAngle = Math.random() * Math.PI * 2;
-      const hfGeo = new THREE.SphereGeometry((0.012 + Math.random() * 0.01) * s, 6, 4);
+      const hfGeo = new THREE.SphereGeometry((0.012 + Math.random() * 0.01) * s, 12, 10);
       const hoarfrost = new THREE.Mesh(hfGeo, mat(0xeef4ff, { roughness: 0.05, metalness: 0.2 }));
       hoarfrost.position.set(
         Math.cos(hfAngle) * (0.42 + Math.random() * 0.05) * s,
@@ -18461,7 +18461,7 @@ export class CreatureMesh {
     // --- Additional detail: ice column spine ridge on back ---
     for (let sp = 0; sp < 6; sp++) {
       const spineH = (0.06 + Math.random() * 0.06) * s;
-      const spineGeo = new THREE.ConeGeometry(0.025 * s, spineH, 6);
+      const spineGeo = new THREE.ConeGeometry(0.025 * s, spineH, 12);
       const spine = new THREE.Mesh(spineGeo, deepBlueMat);
       spine.position.set(
         0,
@@ -18505,7 +18505,7 @@ export class CreatureMesh {
       const stalArm = side === -1 ? this._leftArm : this._rightArm;
       for (let st = 0; st < 5; st++) {
         const stalLen = (0.04 + Math.random() * 0.06) * s;
-        const stalGeo = new THREE.ConeGeometry(0.008 * s, stalLen, 6);
+        const stalGeo = new THREE.ConeGeometry(0.008 * s, stalLen, 12);
         const stalactite = new THREE.Mesh(stalGeo, whiteMat);
         stalactite.position.set(
           (Math.random() - 0.5) * 0.08 * s,
@@ -18528,7 +18528,7 @@ export class CreatureMesh {
     }
 
     // --- Additional detail: head frost crown filigree ---
-    const filiGeo = new THREE.TorusGeometry(0.22 * s, 0.008 * s, 6, 20);
+    const filiGeo = new THREE.TorusGeometry(0.22 * s, 0.008 * s, 12, 20);
     const filigree = new THREE.Mesh(filiGeo, mat(0xccddff, { emissive: 0x88aacc, transparent: true, opacity: 0.5 }));
     filigree.position.set(0, 0.12 * s, 0);
     filigree.rotation.x = Math.PI / 2;
@@ -18761,7 +18761,7 @@ export class CreatureMesh {
       );
       metalFrag.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
       this._body.add(metalFrag);
-      const fragSparkGeo = new THREE.SphereGeometry(0.008 * s, 6, 4);
+      const fragSparkGeo = new THREE.SphereGeometry(0.008 * s, 12, 10);
       const fragSpark = new THREE.Mesh(fragSparkGeo, sparkMat);
       fragSpark.position.copy(metalFrag.position);
       fragSpark.position.y += 0.02 * s;
@@ -18772,7 +18772,7 @@ export class CreatureMesh {
     for (let st = 0; st < 10; st++) {
       const stAngle = Math.random() * Math.PI * 2;
       const stRadius = (0.3 + Math.random() * 0.6) * s;
-      const sparkTrailGeo = new THREE.SphereGeometry((0.005 + Math.random() * 0.008) * s, 6, 4);
+      const sparkTrailGeo = new THREE.SphereGeometry((0.005 + Math.random() * 0.008) * s, 12, 10);
       const sparkTrail = new THREE.Mesh(sparkTrailGeo, mat(0xeeeeff, { emissive: 0xddddff }));
       sparkTrail.position.set(
         Math.cos(stAngle) * stRadius,
@@ -18809,7 +18809,7 @@ export class CreatureMesh {
         tdSeg.rotation.set(seg * 0.4, tdAngle + seg * 0.3, Math.PI / 4);
         this._body.add(tdSeg);
       }
-      const tdTipGeo = new THREE.SphereGeometry(0.015 * s, 6, 4);
+      const tdTipGeo = new THREE.SphereGeometry(0.015 * s, 12, 10);
       const tdTip = new THREE.Mesh(tdTipGeo, sparkMat);
       tdTip.position.set(
         Math.cos(tdAngle + 0.75) * 0.75 * s,
@@ -18916,7 +18916,7 @@ export class CreatureMesh {
 
     // --- Additional detail: magnetic field visualization rings ---
     for (let mf2 = 0; mf2 < 3; mf2++) {
-      const fieldRingGeo = new THREE.TorusGeometry((0.4 + mf2 * 0.12) * s, 0.008 * s, 6, 20);
+      const fieldRingGeo = new THREE.TorusGeometry((0.4 + mf2 * 0.12) * s, 0.008 * s, 12, 20);
       const fieldRing = new THREE.Mesh(fieldRingGeo, mat(0x6644cc, { emissive: 0x4422aa, transparent: true, opacity: 0.12 - mf2 * 0.03, side: THREE.DoubleSide }));
       fieldRing.position.y = 2.4 * s;
       fieldRing.rotation.x = Math.PI / 3 + mf2 * 0.5;
@@ -18926,7 +18926,7 @@ export class CreatureMesh {
 
     // --- Additional detail: flickering spark motes ---
     for (let fm = 0; fm < 15; fm++) {
-      const moteGeo = new THREE.SphereGeometry((0.004 + Math.random() * 0.006) * s, 4, 4);
+      const moteGeo = new THREE.SphereGeometry((0.004 + Math.random() * 0.006) * s, 12, 10);
       const mote = new THREE.Mesh(moteGeo, mat(0xeeeeff, { emissive: 0xddddff, emissiveIntensity: 2.0 }));
       const mAngle = Math.random() * Math.PI * 2;
       const mRadius = (0.2 + Math.random() * 0.8) * s;
@@ -18991,7 +18991,7 @@ export class CreatureMesh {
       }
       // Foot discharge sparks
       for (let fd = 0; fd < 4; fd++) {
-        const footSparkGeo = new THREE.SphereGeometry(0.01 * s, 6, 4);
+        const footSparkGeo = new THREE.SphereGeometry(0.01 * s, 12, 10);
         const footSpark = new THREE.Mesh(footSparkGeo, sparkMat);
         footSpark.position.set(
           (Math.random() - 0.5) * 0.2 * s,
@@ -19004,7 +19004,7 @@ export class CreatureMesh {
 
     // --- Additional detail: stormy energy vortex above head ---
     for (let sv = 0; sv < 3; sv++) {
-      const vortexGeo = new THREE.TorusGeometry((0.12 + sv * 0.06) * s, 0.01 * s, 6, 14);
+      const vortexGeo = new THREE.TorusGeometry((0.12 + sv * 0.06) * s, 0.01 * s, 12, 14);
       const vortex = new THREE.Mesh(vortexGeo, mat(0x4488ff, { emissive: 0x2266cc, transparent: true, opacity: 0.2 - sv * 0.05, side: THREE.DoubleSide }));
       vortex.position.y = (3.7 + sv * 0.12) * s;
       vortex.rotation.x = Math.PI / 2;
@@ -19274,7 +19274,7 @@ export class CreatureMesh {
 
     // --- Additional detail: distortion ring pulses ---
     for (let i = 0; i < 3; i++) {
-      const ringPulseGeo = new THREE.TorusGeometry((0.4 + i * 0.15) * s, 0.01 * s, 6, 20);
+      const ringPulseGeo = new THREE.TorusGeometry((0.4 + i * 0.15) * s, 0.01 * s, 12, 20);
       const ringPulse = new THREE.Mesh(ringPulseGeo, mat(0x6622aa, { emissive: 0x4411aa, transparent: true, opacity: 0.15 - i * 0.03, side: THREE.DoubleSide }));
       ringPulse.position.y = (2.4 + i * 0.2) * s;
       ringPulse.rotation.x = Math.PI / 2 + i * 0.2;
@@ -19296,7 +19296,7 @@ export class CreatureMesh {
       lens.scale.set(1.3, 0.7, 1.3);
       this._body.add(lens);
       // Warped light ring around each lens
-      const warpRingGeo = new THREE.TorusGeometry(0.05 * s, 0.004 * s, 6, 12);
+      const warpRingGeo = new THREE.TorusGeometry(0.05 * s, 0.004 * s, 12, 12);
       const warpRing = new THREE.Mesh(warpRingGeo, mat(0x8833cc, { emissive: 0x6622aa, transparent: true, opacity: 0.3 }));
       warpRing.position.copy(lens.position);
       warpRing.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -19326,7 +19326,7 @@ export class CreatureMesh {
       this._body.add(riftBorder);
       // Leaking void particles from each rift
       for (let rp = 0; rp < 3; rp++) {
-        const leakGeo = new THREE.SphereGeometry((0.008 + Math.random() * 0.006) * s, 6, 4);
+        const leakGeo = new THREE.SphereGeometry((0.008 + Math.random() * 0.006) * s, 12, 10);
         const leak = new THREE.Mesh(leakGeo, mat(0xaa44ff, { emissive: 0x6622cc }));
         leak.position.set(
           riftTear.position.x + (Math.random() - 0.5) * 0.06 * s,
@@ -19495,7 +19495,7 @@ export class CreatureMesh {
       anchor.rotation.set(Math.PI / 4, anchorAngle, 0);
       this._body.add(anchor);
       // Anchor point glow
-      const anchorPtGeo = new THREE.SphereGeometry(0.015 * s, 6, 4);
+      const anchorPtGeo = new THREE.SphereGeometry(0.015 * s, 12, 10);
       const anchorPt = new THREE.Mesh(anchorPtGeo, glowMat);
       anchorPt.position.set(
         Math.cos(anchorAngle) * (0.3 + anchorLen * 0.5) * s,
@@ -19810,7 +19810,7 @@ export class CreatureMesh {
 
     // Wood knots on carriage surface
     for (let wk = 0; wk < 5; wk++) {
-      const knotGeo = new THREE.SphereGeometry(0.012, 6, 6);
+      const knotGeo = new THREE.SphereGeometry(0.012, 12, 10);
       const knotMesh = new THREE.Mesh(knotGeo, mat(0x3a1808));
       knotMesh.position.set(-0.6 + wk * 0.3, 0.76, -0.2 + wk * 0.08);
       this._body.add(knotMesh);
@@ -19818,7 +19818,7 @@ export class CreatureMesh {
 
     // ---- ENHANCED DETAIL: Torsion bundle rope wrapping ----
     for (let tb = 0; tb < 8; tb++) {
-      const torsionGeo = new THREE.TorusGeometry(0.05, 0.006, 6, 12);
+      const torsionGeo = new THREE.TorusGeometry(0.05, 0.006, 12, 12);
       const torsionRing = new THREE.Mesh(torsionGeo, mat(0x887755));
       torsionRing.position.set(0.55, 0.86 + tb * 0.025, 0);
       torsionRing.rotation.x = Math.PI / 2;
@@ -19871,7 +19871,7 @@ export class CreatureMesh {
 
     // ---- ENHANCED DETAIL: Winch drum rope wrapping ----
     for (let wr = 0; wr < 6; wr++) {
-      const windRopeGeo = new THREE.TorusGeometry(0.085, 0.005, 6, 12);
+      const windRopeGeo = new THREE.TorusGeometry(0.085, 0.005, 12, 12);
       const windRope = new THREE.Mesh(windRopeGeo, mat(0x887755));
       windRope.rotation.y = Math.PI / 2;
       windRope.position.set(-0.3, 0.7, -0.48 + wr * 0.02);
@@ -19898,7 +19898,7 @@ export class CreatureMesh {
 
     // ---- ENHANCED DETAIL: Battle damage on shield plate ----
     for (let bd = 0; bd < 6; bd++) {
-      const dentGeo = new THREE.SphereGeometry(0.015, 5, 4);
+      const dentGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const dent = new THREE.Mesh(dentGeo, mat(0x2a2a2a, { metalness: 0.5 }));
       dent.position.set(-0.5 + (bd % 3) * 0.15, 1.0 + (bd % 2) * 0.15, -0.42);
       this._body.add(dent);
@@ -19950,7 +19950,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Mud and dust accumulation ----
     const btMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.45 });
     for (let md = 0; md < 8; md++) {
-      const mudGeo = new THREE.SphereGeometry(0.018, 5, 4);
+      const mudGeo = new THREE.SphereGeometry(0.018, 12, 10);
       const mudBlob = new THREE.Mesh(mudGeo, btMudMat);
       mudBlob.position.set(-0.6 + md * 0.18, 0.45, -0.3 + (md % 3) * 0.15);
       this._body.add(mudBlob);
@@ -19959,7 +19959,7 @@ export class CreatureMesh {
     // Dust particles floating near the mechanism
     const btDustMat = mat(0xaa9977, { transparent: true, opacity: 0.2 });
     for (let dtp = 0; dtp < 8; dtp++) {
-      const dustPGeo = new THREE.SphereGeometry(0.01, 4, 3);
+      const dustPGeo = new THREE.SphereGeometry(0.01, 10, 8);
       const dustParticle = new THREE.Mesh(dustPGeo, btDustMat);
       dustParticle.position.set(
         -0.4 + dtp * 0.12,
@@ -19975,7 +19975,7 @@ export class CreatureMesh {
         // Mud on wheel rims
         for (let wm = 0; wm < 4; wm++) {
           const wmAngle = (wm / 4) * Math.PI * 2;
-          const wheelMudGeo = new THREE.SphereGeometry(0.015, 4, 4);
+          const wheelMudGeo = new THREE.SphereGeometry(0.015, 12, 10);
           const wheelMud = new THREE.Mesh(wheelMudGeo, btMudMat);
           wheelMud.position.set(
             wxOff + Math.cos(wmAngle) * 0.27,
@@ -19988,7 +19988,7 @@ export class CreatureMesh {
         // Iron tire nails
         for (let tn = 0; tn < 8; tn++) {
           const tnAngle = (tn / 8) * Math.PI * 2;
-          const tireNailGeo = new THREE.SphereGeometry(0.008, 4, 4);
+          const tireNailGeo = new THREE.SphereGeometry(0.008, 12, 10);
           const tireNail = new THREE.Mesh(tireNailGeo, rivetMat);
           tireNail.position.set(
             wxOff + Math.cos(tnAngle) * 0.28,
@@ -20016,7 +20016,7 @@ export class CreatureMesh {
     this._body.add(spareString);
 
     // Coiled end of spare string
-    const coilGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+    const coilGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 8);
     const coil = new THREE.Mesh(coilGeo, mat(0x998866));
     coil.position.set(-0.6, 0.48, 0.45);
     this._body.add(coil);
@@ -20170,7 +20170,7 @@ export class CreatureMesh {
     const rearSight = new THREE.Mesh(rearSightGeo, ironMat);
     rearSight.position.set(-0.6, 0.95, 0);
     this._body.add(rearSight);
-    const frontSightGeo = new THREE.SphereGeometry(0.015, 6, 6);
+    const frontSightGeo = new THREE.SphereGeometry(0.015, 12, 10);
     const frontSight = new THREE.Mesh(frontSightGeo, ironMat);
     frontSight.position.set(0.8, 0.95, 0);
     this._body.add(frontSight);
@@ -20182,7 +20182,7 @@ export class CreatureMesh {
       framePlate.position.set(0.1, 0.55, frameSide * 0.52);
       this._body.add(framePlate);
       for (const xr of [-0.5, 0, 0.5]) {
-        const fpRvGeo = new THREE.SphereGeometry(0.012, 6, 6);
+        const fpRvGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const fpRv = new THREE.Mesh(fpRvGeo, rivetMat);
         fpRv.position.set(xr + 0.1, 0.55, frameSide * 0.54);
         this._body.add(fpRv);
@@ -20274,7 +20274,7 @@ export class CreatureMesh {
       specular: new THREE.Color(0x110800),
     });
     for (let gw = 0; gw < 4; gw++) {
-      const gripWrapGeo = new THREE.TorusGeometry(0.025, 0.006, 6, 10);
+      const gripWrapGeo = new THREE.TorusGeometry(0.025, 0.006, 12, 10);
       const gripWrap = new THREE.Mesh(gripWrapGeo, btGripMat);
       gripWrap.position.set(-0.3, 0.75 + gw * 0.02, -0.72);
       this._body.add(gripWrap);
@@ -20302,7 +20302,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Rope tie-down loops on carriage sides ----
     for (const tdSide of [-1, 1]) {
       for (const tdZ of [-0.3, 0.3]) {
-        const tieRingGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+        const tieRingGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 8);
         const tieRing = new THREE.Mesh(tieRingGeo, ironMat);
         tieRing.position.set(tdSide * 0.91, 0.5, tdZ);
         tieRing.rotation.y = Math.PI / 2;
@@ -20409,7 +20409,7 @@ export class CreatureMesh {
 
     // ---- ENHANCED DETAIL: Ornamental iron finials on shield struts ----
     for (const finSide of [-0.2, 0.2]) {
-      const finGeo = new THREE.SphereGeometry(0.018, 6, 6);
+      const finGeo = new THREE.SphereGeometry(0.018, 12, 10);
       const finMesh = new THREE.Mesh(finGeo, ironMat);
       finMesh.position.set(-0.5 + finSide, 1.36, -0.4);
       this._body.add(finMesh);
@@ -20433,7 +20433,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Axle grease drip marks on ground ----
     const btGreaseDripMat = mat(0x1a1a0a, { transparent: true, opacity: 0.3 });
     for (let gd = 0; gd < 6; gd++) {
-      const dripGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const dripGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const dripMark = new THREE.Mesh(dripGeo, btGreaseDripMat);
       dripMark.position.set(-0.65 + gd * 0.28, 0.0, -0.5 + (gd % 3) * 0.22);
       this._body.add(dripMark);
@@ -20681,7 +20681,7 @@ export class CreatureMesh {
     // Wood knots on the wagon body panels
     for (const kSide of [-1, 1]) {
       for (let kn = 0; kn < 6; kn++) {
-        const knotGeo = new THREE.SphereGeometry(0.012, 6, 5);
+        const knotGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const knotMesh = new THREE.Mesh(knotGeo, mat(0x3a1808));
         knotMesh.position.set(kSide * 0.9, 0.9 + kn * 0.15, -0.8 + kn * 0.3);
         this._body.add(knotMesh);
@@ -20813,7 +20813,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Chains hanging from roof interior ----
     for (const chZ of [-0.7, 0, 0.7]) {
       for (let chl = 0; chl < 5; chl++) {
-        const chainLinkGeo = new THREE.TorusGeometry(0.015, 0.004, 6, 8);
+        const chainLinkGeo = new THREE.TorusGeometry(0.015, 0.004, 12, 8);
         const chainLink = new THREE.Mesh(chainLinkGeo, ironMat);
         chainLink.position.set(0.5, 1.95 - chl * 0.08, chZ);
         chainLink.rotation.y = chl % 2 === 0 ? 0 : Math.PI / 2;
@@ -20841,7 +20841,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Mud accumulation on lower body and wheels ----
     const wwMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.45 });
     for (let md = 0; md < 10; md++) {
-      const mudGeo = new THREE.SphereGeometry(0.02, 5, 4);
+      const mudGeo = new THREE.SphereGeometry(0.02, 12, 10);
       const mudBlob = new THREE.Mesh(mudGeo, wwMudMat);
       mudBlob.position.set(-0.8 + md * 0.18, 0.62, -1.0 + (md % 4) * 0.5);
       this._body.add(mudBlob);
@@ -20852,7 +20852,7 @@ export class CreatureMesh {
       for (const mxOff of [-1.15, 1.15]) {
         for (let wm = 0; wm < 6; wm++) {
           const wmAngle = (wm / 6) * Math.PI * 2;
-          const wheelMudGeo = new THREE.SphereGeometry(0.018, 4, 4);
+          const wheelMudGeo = new THREE.SphereGeometry(0.018, 12, 10);
           const wheelMud = new THREE.Mesh(wheelMudGeo, wwMudMat);
           wheelMud.position.set(
             mxOff + Math.cos(wmAngle) * 0.41,
@@ -20878,7 +20878,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Smoke wisps near the barrel ports ----
     const wwSmokeMat = mat(0x888888, { transparent: true, opacity: 0.15 });
     for (let sm = 0; sm < 4; sm++) {
-      const smokeGeo = new THREE.SphereGeometry(0.03, 4, 4);
+      const smokeGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const smokeWisp = new THREE.Mesh(smokeGeo, wwSmokeMat);
       smokeWisp.position.set((sm % 2 - 0.5) * 0.2, 1.2 + sm * 0.06, 2.2 + sm * 0.05);
       this._body.add(smokeWisp);
@@ -20887,7 +20887,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Nail heads on every plank seam ----
     for (const nSide of [-1, 1]) {
       for (let np = 0; np < 15; np++) {
-        const nailGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.008, 5);
+        const nailGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.008, 10);
         const nailMesh = new THREE.Mesh(nailGeo, rivetMat);
         nailMesh.rotation.z = Math.PI / 2;
         nailMesh.position.set(nSide * 0.92, 0.7 + (np % 5) * 0.22, -1.0 + Math.floor(np / 5) * 0.45);
@@ -21039,7 +21039,7 @@ export class CreatureMesh {
         const weap = new THREE.Mesh(weapGeo, mat(0x5a4020));
         weap.position.set(0.58 - w * 0.06, 1.3, zOff);
         this._body.add(weap);
-        const spTipGeo = new THREE.ConeGeometry(0.025, 0.08, 6);
+        const spTipGeo = new THREE.ConeGeometry(0.025, 0.08, 12);
         const spTip = new THREE.Mesh(spTipGeo, ironMat);
         spTip.position.set(0.58 - w * 0.06, 1.72, zOff);
         this._body.add(spTip);
@@ -21110,7 +21110,7 @@ export class CreatureMesh {
       this._body.add(ram);
       for (const xr of [-0.5, -0.2, 0.1, 0.4]) {
         for (const yr of [0.75, 1.05]) {
-          const ramRvGeo = new THREE.SphereGeometry(0.014, 6, 6);
+          const ramRvGeo = new THREE.SphereGeometry(0.014, 12, 10);
           const ramRv = new THREE.Mesh(ramRvGeo, rivetMat);
           ramRv.position.set(xr, yr, zs * 1.37);
           this._body.add(ramRv);
@@ -21125,13 +21125,13 @@ export class CreatureMesh {
       chainMount.position.set(0, 0.8, 1.35 + (clZ > 0 ? 0.01 : 0.01));
       this._body.add(chainMount);
 
-      const chainRingGeo = new THREE.TorusGeometry(0.04, 0.008, 6, 10);
+      const chainRingGeo = new THREE.TorusGeometry(0.04, 0.008, 12, 10);
       const chainRing = new THREE.Mesh(chainRingGeo, ironMat);
       chainRing.position.set(clZ * 0.4, 0.8, 1.38);
       this._body.add(chainRing);
 
       for (let tl = 0; tl < 6; tl++) {
-        const towLinkGeo = new THREE.TorusGeometry(0.02, 0.005, 6, 8);
+        const towLinkGeo = new THREE.TorusGeometry(0.02, 0.005, 12, 8);
         const towLink = new THREE.Mesh(towLinkGeo, ironMat);
         towLink.position.set(clZ * 0.4, 0.75 - tl * 0.05, 1.38 + tl * 0.03);
         towLink.rotation.y = tl % 2 === 0 ? 0 : Math.PI / 2;
@@ -21244,7 +21244,7 @@ export class CreatureMesh {
     lanternBox.position.set(0.92, 1.56, 1.28);
     this._body.add(lanternBox);
 
-    const lanternFlameGeo = new THREE.SphereGeometry(0.015, 6, 6);
+    const lanternFlameGeo = new THREE.SphereGeometry(0.015, 12, 10);
     const lanternFlame = new THREE.Mesh(
       lanternFlameGeo,
       mat(0xffaa44, { emissive: 0x884400, transparent: true, opacity: 0.8 }),
@@ -21266,7 +21266,7 @@ export class CreatureMesh {
     wwBarrel.position.set(-0.82, 1.0, 0.8);
     this._body.add(wwBarrel);
 
-    const wwBarrelBand1 = new THREE.TorusGeometry(0.1, 0.008, 6, 14);
+    const wwBarrelBand1 = new THREE.TorusGeometry(0.1, 0.008, 12, 14);
     const wwBand1 = new THREE.Mesh(wwBarrelBand1, ironMat);
     wwBand1.position.set(-0.82, 0.92, 0.8);
     this._body.add(wwBand1);
@@ -21284,7 +21284,7 @@ export class CreatureMesh {
 
     // ---- ENHANCED DETAIL: Dent marks on iron plating ----
     for (let dm = 0; dm < 8; dm++) {
-      const dentGeo = new THREE.SphereGeometry(0.02, 5, 4);
+      const dentGeo = new THREE.SphereGeometry(0.02, 12, 10);
       const dentMark = new THREE.Mesh(
         dentGeo,
         mat(0x2a2a2a, { metalness: 0.5, transparent: true, opacity: 0.6 }),
@@ -21305,7 +21305,7 @@ export class CreatureMesh {
       quarrel.position.set(0.4, 0.68, -0.6 + cq * 0.12);
       this._body.add(quarrel);
 
-      const quarrelTipGeo = new THREE.ConeGeometry(0.015, 0.04, 6);
+      const quarrelTipGeo = new THREE.ConeGeometry(0.015, 0.04, 12);
       const quarrelTip = new THREE.Mesh(quarrelTipGeo, ironMat);
       quarrelTip.rotation.z = -Math.PI / 2;
       quarrelTip.position.set(0.6, 0.68, -0.6 + cq * 0.12);
@@ -21348,7 +21348,7 @@ export class CreatureMesh {
 
     // ---- ENHANCED DETAIL: Dragging chains underneath ----
     for (let dc = 0; dc < 8; dc++) {
-      const dragLinkGeo = new THREE.TorusGeometry(0.018, 0.005, 6, 8);
+      const dragLinkGeo = new THREE.TorusGeometry(0.018, 0.005, 12, 8);
       const dragLink = new THREE.Mesh(dragLinkGeo, ironMat);
       dragLink.position.set(-0.3 + dc * 0.08, 0.3, 0.6);
       dragLink.rotation.y = dc % 2 === 0 ? 0 : Math.PI / 2;
@@ -21453,7 +21453,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Rope lashing on trunnion brackets ----
     for (const tSide of [-1, 1]) {
       for (let tr = 0; tr < 5; tr++) {
-        const tRopeGeo = new THREE.TorusGeometry(0.05, 0.005, 6, 10);
+        const tRopeGeo = new THREE.TorusGeometry(0.05, 0.005, 12, 10);
         const tRope = new THREE.Mesh(tRopeGeo, mat(0x887755));
         tRope.position.set(-0.1, 0.82 + tr * 0.05, tSide * 0.45);
         tRope.rotation.x = Math.PI / 2;
@@ -21535,7 +21535,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Smoke wisps from muzzle ----
     const bombSmokeMat = mat(0x888888, { transparent: true, opacity: 0.15 });
     for (let sw = 0; sw < 6; sw++) {
-      const smokeGeo = new THREE.SphereGeometry(0.04 + sw * 0.01, 5, 4);
+      const smokeGeo = new THREE.SphereGeometry(0.04 + sw * 0.01, 12, 10);
       const smokeWisp = new THREE.Mesh(smokeGeo, bombSmokeMat);
       smokeWisp.position.set(1.3 + sw * 0.08, 1.15 + sw * 0.05, (sw % 2 - 0.5) * 0.1);
       this._body.add(smokeWisp);
@@ -21605,7 +21605,7 @@ export class CreatureMesh {
     // Spent powder residue
     const residueMat = mat(0x1a1a1a, { transparent: true, opacity: 0.3 });
     for (let pr = 0; pr < 6; pr++) {
-      const residueGeo = new THREE.SphereGeometry(0.015, 4, 4);
+      const residueGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const residue = new THREE.Mesh(residueGeo, residueMat);
       residue.position.set(1.0 + pr * 0.08, 0.38, -0.1 + (pr % 3) * 0.08);
       this._body.add(residue);
@@ -21614,7 +21614,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Spark particles from fuse ----
     const bombSparkMat = mat(0xffaa22, { emissive: 0xff6600, transparent: true, opacity: 0.6 });
     for (let spk = 0; spk < 4; spk++) {
-      const sparkGeo = new THREE.SphereGeometry(0.006, 4, 4);
+      const sparkGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const sparkP = new THREE.Mesh(sparkGeo, bombSparkMat);
       sparkP.position.set(-0.05 + spk * 0.03, 1.85 + spk * 0.02, (spk % 2 - 0.5) * 0.03);
       this._body.add(sparkP);
@@ -21789,7 +21789,7 @@ export class CreatureMesh {
       this._body.add(felloeRing);
       for (let n = 0; n < 12; n++) {
         const nAngle = (n / 12) * Math.PI * 2;
-        const tireNailGeo = new THREE.SphereGeometry(0.012, 6, 4);
+        const tireNailGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const tireNail = new THREE.Mesh(tireNailGeo, ironMat);
         tireNail.position.set(
           Math.cos(nAngle) * 0.52,
@@ -21831,7 +21831,7 @@ export class CreatureMesh {
     this._body.add(bsCrossV);
     for (const bsXR of [-0.35, 0, 0.35]) {
       for (const bsYR of [-0.2, 0.2]) {
-        const bsRvGeo = new THREE.SphereGeometry(0.014, 6, 6);
+        const bsRvGeo = new THREE.SphereGeometry(0.014, 12, 10);
         const bsRv = new THREE.Mesh(bsRvGeo, rivetMat);
         bsRv.position.set(0.6 + bsXR, 1.4 + bsYR, -0.59);
         this._body.add(bsRv);
@@ -21849,7 +21849,7 @@ export class CreatureMesh {
     aimScrew.rotation.z = Math.PI / 2;
     aimScrew.position.set(-0.55, 0.72, 0);
     this._body.add(aimScrew);
-    const aimWheelGeo = new THREE.TorusGeometry(0.05, 0.01, 6, 12);
+    const aimWheelGeo = new THREE.TorusGeometry(0.05, 0.01, 12, 12);
     const aimWheel = new THREE.Mesh(aimWheelGeo, ironMat);
     aimWheel.position.set(-0.73, 0.72, 0);
     aimWheel.rotation.y = Math.PI / 2;
@@ -21896,7 +21896,7 @@ export class CreatureMesh {
 
     // ---- ENHANCED DETAIL: Worm screw elevation mechanism detail ----
     for (let ws = 0; ws < 10; ws++) {
-      const screwThreadGeo = new THREE.TorusGeometry(0.022, 0.003, 6, 8);
+      const screwThreadGeo = new THREE.TorusGeometry(0.022, 0.003, 12, 8);
       const screwThread = new THREE.Mesh(screwThreadGeo, ironMat);
       screwThread.position.set(-0.55 + ws * 0.02, 0.72, 0);
       screwThread.rotation.y = Math.PI / 2;
@@ -21921,7 +21921,7 @@ export class CreatureMesh {
 
     // Knots on rope lashings
     for (const knSide of [-1, 1]) {
-      const knotGeo = new THREE.SphereGeometry(0.015, 6, 6);
+      const knotGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const knotMesh = new THREE.Mesh(knotGeo, bombRopeMat);
       knotMesh.position.set(-0.1, 0.72, knSide * 0.48);
       this._body.add(knotMesh);
@@ -21938,7 +21938,7 @@ export class CreatureMesh {
     this._body.add(dragHook2);
 
     for (const dhZ of [-0.2, 0.2]) {
-      const dHookRingGeo = new THREE.TorusGeometry(0.03, 0.006, 6, 8);
+      const dHookRingGeo = new THREE.TorusGeometry(0.03, 0.006, 12, 8);
       const dHookRing = new THREE.Mesh(dHookRingGeo, ironMat);
       dHookRing.position.set(-1.08, 0.25, dhZ);
       this._body.add(dHookRing);
@@ -21997,7 +21997,7 @@ export class CreatureMesh {
     linstockHolder.position.set(0.5, 1.0, -0.5);
     this._body.add(linstockHolder);
 
-    const linstockClipGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+    const linstockClipGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 8);
     const linstockClip = new THREE.Mesh(linstockClipGeo, ironMat);
     linstockClip.position.set(0.5, 1.0, -0.56);
     this._body.add(linstockClip);
@@ -22026,7 +22026,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Wadding material near muzzle ----
     const waddingMat = mat(0x8b8b7a, { transparent: true, opacity: 0.5 });
     for (let wd = 0; wd < 4; wd++) {
-      const wadGeo = new THREE.SphereGeometry(0.02, 5, 4);
+      const wadGeo = new THREE.SphereGeometry(0.02, 12, 10);
       const wadMesh = new THREE.Mesh(wadGeo, waddingMat);
       wadMesh.position.set(1.3 + wd * 0.06, 0.38, -0.08 + wd * 0.04);
       this._body.add(wadMesh);
@@ -22062,7 +22062,7 @@ export class CreatureMesh {
     bucketMesh.position.set(0.85, 0.45, 0.3);
     this._body.add(bucketMesh);
 
-    const bucketBandGeo = new THREE.TorusGeometry(0.055, 0.005, 6, 10);
+    const bucketBandGeo = new THREE.TorusGeometry(0.055, 0.005, 12, 10);
     const bucketBand = new THREE.Mesh(bucketBandGeo, ironMat);
     bucketBand.position.set(0.85, 0.42, 0.3);
     this._body.add(bucketBand);
@@ -22159,7 +22159,7 @@ export class CreatureMesh {
 
     // Wood knots scattered on walls
     for (let kn = 0; kn < 16; kn++) {
-      const knotGeo = new THREE.SphereGeometry(0.015, 6, 5);
+      const knotGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const knotMesh = new THREE.Mesh(knotGeo, mat(0x3a1808));
       const kSide = kn % 4 < 2 ? -1 : 1;
       const kFace = kn % 2 === 0;
@@ -22175,7 +22175,7 @@ export class CreatureMesh {
     for (const rpxs of [-1, 1]) {
       for (const rpzs of [-1, 1]) {
         for (let rr = 0; rr < 8; rr++) {
-          const postRopeGeo = new THREE.TorusGeometry(0.14, 0.006, 6, 10);
+          const postRopeGeo = new THREE.TorusGeometry(0.14, 0.006, 12, 10);
           const postRope = new THREE.Mesh(postRopeGeo, mat(0x887755));
           postRope.position.set(rpxs * 1.1, 1.0 + rr * 0.7, rpzs * 1.1);
           this._body.add(postRope);
@@ -22186,7 +22186,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Iron nail heads on all planks ----
     for (const nSide of [-1, 1]) {
       for (let ni = 0; ni < 20; ni++) {
-        const nailGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.01, 5);
+        const nailGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.01, 10);
         const nail = new THREE.Mesh(nailGeo, ironMat);
         nail.rotation.z = Math.PI / 2;
         nail.position.set(
@@ -22302,7 +22302,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Mud accumulation at base ----
     const stMudMat = mat(0x4a3a1a, { transparent: true, opacity: 0.45 });
     for (let md = 0; md < 12; md++) {
-      const mudGeo = new THREE.SphereGeometry(0.025, 5, 4);
+      const mudGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const mudBlob = new THREE.Mesh(mudGeo, stMudMat);
       mudBlob.position.set(
         -1.2 + (md % 4) * 0.8,
@@ -22317,7 +22317,7 @@ export class CreatureMesh {
       for (const wxOff of [-1.45, 1.45]) {
         for (let tn = 0; tn < 10; tn++) {
           const tnAngle = (tn / 10) * Math.PI * 2;
-          const tireNailGeo = new THREE.SphereGeometry(0.008, 4, 4);
+          const tireNailGeo = new THREE.SphereGeometry(0.008, 12, 10);
           const tireNail = new THREE.Mesh(tireNailGeo, ironMat);
           tireNail.position.set(
             wxOff + Math.cos(tnAngle) * 0.45,
@@ -22332,7 +22332,7 @@ export class CreatureMesh {
     // ---- ENHANCED DETAIL: Dust and debris at base ----
     const stDustMat = mat(0xaa9977, { transparent: true, opacity: 0.2 });
     for (let dt = 0; dt < 10; dt++) {
-      const dustGeo = new THREE.SphereGeometry(0.012, 4, 3);
+      const dustGeo = new THREE.SphereGeometry(0.012, 10, 8);
       const dustP = new THREE.Mesh(dustGeo, stDustMat);
       dustP.position.set(
         -1.0 + dt * 0.22,
@@ -22350,7 +22350,7 @@ export class CreatureMesh {
         bracketArm.position.set(tbSide * 1.12, tbY, 0);
         this._body.add(bracketArm);
 
-        const bracketRingGeo = new THREE.TorusGeometry(0.035, 0.006, 6, 8);
+        const bracketRingGeo = new THREE.TorusGeometry(0.035, 0.006, 12, 8);
         const bracketRing = new THREE.Mesh(bracketRingGeo, ironMat);
         bracketRing.position.set(tbSide * 1.12, tbY, tbSide > 0 ? 0.08 : -0.08);
         bracketRing.rotation.y = Math.PI / 2;
@@ -22366,7 +22366,7 @@ export class CreatureMesh {
       hookShaft.rotation.z = 0.3;
       this._body.add(hookShaft);
 
-      const hookTipGeo = new THREE.ConeGeometry(0.02, 0.08, 6);
+      const hookTipGeo = new THREE.ConeGeometry(0.02, 0.08, 12);
       const hookTip = new THREE.Mesh(hookTipGeo, ironMat);
       hookTip.position.set(0.95, 6.78, ghZ);
       hookTip.rotation.z = 0.3;
@@ -22534,7 +22534,7 @@ export class CreatureMesh {
     }
     for (const chainSide of [-0.5, 0.5]) {
       for (let cl = 0; cl < 6; cl++) {
-        const linkGeo = new THREE.TorusGeometry(0.025, 0.006, 6, 8);
+        const linkGeo = new THREE.TorusGeometry(0.025, 0.006, 12, 8);
         const link = new THREE.Mesh(linkGeo, ironMat);
         link.position.set(1.18, 6.3 - cl * 0.12, chainSide);
         link.rotation.y = cl % 2 === 0 ? 0 : Math.PI / 2;
@@ -22733,7 +22733,7 @@ export class CreatureMesh {
       hookShaft2.rotation.z = 0.4;
       this._body.add(hookShaft2);
 
-      const hookCurveGeo = new THREE.TorusGeometry(0.03, 0.008, 6, 8, Math.PI);
+      const hookCurveGeo = new THREE.TorusGeometry(0.03, 0.008, 12, 8, Math.PI);
       const hookCurve = new THREE.Mesh(hookCurveGeo, ironMat);
       hookCurve.position.set(1.33, ghY + 0.1, 0.6);
       this._body.add(hookCurve);
@@ -22794,7 +22794,7 @@ export class CreatureMesh {
     cauldron.position.set(-0.4, 3.05, -0.4);
     this._body.add(cauldron);
 
-    const cauldronRimGeo = new THREE.TorusGeometry(0.12, 0.008, 6, 12);
+    const cauldronRimGeo = new THREE.TorusGeometry(0.12, 0.008, 12, 12);
     const cauldronRim = new THREE.Mesh(cauldronRimGeo, ironMat);
     cauldronRim.position.set(-0.4, 3.05, -0.4);
     this._body.add(cauldronRim);
@@ -22810,7 +22810,7 @@ export class CreatureMesh {
         shield.position.set(srSide * 0.85, 2.0 + sr * 0.4, -0.7);
         this._body.add(shield);
 
-        const shieldBossGeo = new THREE.SphereGeometry(0.04, 6, 6);
+        const shieldBossGeo = new THREE.SphereGeometry(0.04, 12, 10);
         const shieldBoss = new THREE.Mesh(shieldBossGeo, ironMat);
         shieldBoss.position.set(srSide * 0.85, 2.0 + sr * 0.4, -0.72);
         this._body.add(shieldBoss);
@@ -22864,7 +22864,7 @@ export class CreatureMesh {
         anchorPeg.position.set(apX, 0.32, apZ);
         this._body.add(anchorPeg);
 
-        const anchorRingGeo = new THREE.TorusGeometry(0.025, 0.005, 6, 8);
+        const anchorRingGeo = new THREE.TorusGeometry(0.025, 0.005, 12, 8);
         const anchorRing = new THREE.Mesh(anchorRingGeo, ironMat);
         anchorRing.position.set(apX, 0.42, apZ);
         this._body.add(anchorRing);
@@ -23178,7 +23178,7 @@ export class CreatureMesh {
         tArm.add(twigDetail);
       }
       for (let lb = 0; lb < 3; lb++) {
-        const budGeo = new THREE.SphereGeometry(0.025, 6, 4);
+        const budGeo = new THREE.SphereGeometry(0.025, 12, 10);
         const bud = new THREE.Mesh(budGeo, leafMat);
         bud.position.set(side * (0.3 + lb * 0.05), -1.1 - lb * 0.1, (Math.random() - 0.5) * 0.08);
         tArm.add(bud);
@@ -23187,7 +23187,7 @@ export class CreatureMesh {
 
     // --- Additional detail: bark texture ridges (horizontal) ---
     for (let i = 0; i < 8; i++) {
-      const hRidgeGeo = new THREE.TorusGeometry(0.44 - i * 0.01, 0.015, 6, 16);
+      const hRidgeGeo = new THREE.TorusGeometry(0.44 - i * 0.01, 0.015, 12, 16);
       const hRidge = new THREE.Mesh(hRidgeGeo, darkBarkMat);
       hRidge.position.y = 0.8 + i * 0.3;
       hRidge.rotation.x = Math.PI / 2;
@@ -23222,7 +23222,7 @@ export class CreatureMesh {
       surfRoot.rotation.z = Math.cos(rootAngle) * 0.8;
       surfRoot.rotation.x = -Math.sin(rootAngle) * 0.8;
       this._body.add(surfRoot);
-      const rootTipGeo = new THREE.SphereGeometry(0.025, 6, 4);
+      const rootTipGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const rootTip = new THREE.Mesh(rootTipGeo, rootMat);
       rootTip.position.set(Math.cos(rootAngle) * (0.4 + rootLen * 0.7), 0.05, Math.sin(rootAngle) * (0.4 + rootLen * 0.7));
       this._body.add(rootTip);
@@ -23270,7 +23270,7 @@ export class CreatureMesh {
       knotBump.position.set(Math.cos(knotAngle) * 0.43, knotY, Math.sin(knotAngle) * 0.43);
       knotBump.scale.set(0.7, 0.7, 0.4);
       this._body.add(knotBump);
-      const knotCenterGeo = new THREE.SphereGeometry(0.025, 6, 4);
+      const knotCenterGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const knotCenter = new THREE.Mesh(knotCenterGeo, mat(0x1a1008));
       knotCenter.position.set(Math.cos(knotAngle) * 0.45, knotY, Math.sin(knotAngle) * 0.45);
       this._body.add(knotCenter);
@@ -23284,7 +23284,7 @@ export class CreatureMesh {
       const sapMesh = new THREE.Mesh(sapGeo, mat(0xcc8833, { transparent: true, opacity: 0.7 }));
       sapMesh.position.set(Math.cos(sapAngle) * 0.45, sapY, Math.sin(sapAngle) * 0.45);
       this._body.add(sapMesh);
-      const sapDropGeo = new THREE.SphereGeometry(0.015, 6, 4);
+      const sapDropGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const sapDrop = new THREE.Mesh(sapDropGeo, mat(0xcc8833, { transparent: true, opacity: 0.8, clearcoat: 0.8 }));
       sapDrop.position.set(Math.cos(sapAngle) * 0.45, sapY - 0.07, Math.sin(sapAngle) * 0.45);
       this._body.add(sapDrop);
@@ -23294,14 +23294,14 @@ export class CreatureMesh {
     for (let hr = 0; hr < 5; hr++) {
       const heartAngle = Math.random() * Math.PI * 2;
       const heartY = 1.2 + Math.random() * 1.8;
-      const ringGeo = new THREE.TorusGeometry(0.04 + Math.random() * 0.03, 0.006, 6, 12);
+      const ringGeo = new THREE.TorusGeometry(0.04 + Math.random() * 0.03, 0.006, 12, 12);
       const ring = new THREE.Mesh(ringGeo, mat(0x886644, { roughness: 0.7 }));
       ring.position.set(Math.cos(heartAngle) * 0.44, heartY, Math.sin(heartAngle) * 0.44);
       ring.rotation.y = heartAngle + Math.PI / 2;
       ring.rotation.x = (Math.random() - 0.5) * 0.3;
       this._body.add(ring);
       // Inner heartwood exposed through crack
-      const heartWoodGeo = new THREE.SphereGeometry(0.03, 6, 4);
+      const heartWoodGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const heartWood = new THREE.Mesh(heartWoodGeo, mat(0xaa7744, { roughness: 0.6, sheen: 0.2, sheenRoughness: 0.5, sheenColor: new THREE.Color(0xccaa66) }));
       heartWood.position.set(Math.cos(heartAngle) * 0.43, heartY, Math.sin(heartAngle) * 0.43);
       heartWood.scale.set(1, 1, 0.3);
@@ -23352,7 +23352,7 @@ export class CreatureMesh {
       this._body.add(vineSeg);
       // Ivy leaves along the vine
       for (let il = 0; il < 2; il++) {
-        const ivyLeafGeo = new THREE.SphereGeometry(0.02, 6, 4);
+        const ivyLeafGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const ivyLeaf = new THREE.Mesh(ivyLeafGeo, mat(0x336622, { roughness: 0.8, sheen: 0.3, sheenColor: new THREE.Color(0x55aa33), sheenRoughness: 0.4 }));
         ivyLeaf.position.set(
           Math.cos(ivyAngle + il * 0.3) * (ivyR + 0.02),
@@ -23377,7 +23377,7 @@ export class CreatureMesh {
       flower.scale.set(1.2, 0.5, 1.2);
       this._head.add(flower);
       // Flower center stamen
-      const stamenGeo = new THREE.SphereGeometry(0.01, 4, 4);
+      const stamenGeo = new THREE.SphereGeometry(0.01, 12, 10);
       const stamen = new THREE.Mesh(stamenGeo, mat(0xffdd44));
       stamen.position.copy(flower.position);
       stamen.position.y += 0.015;
@@ -23386,7 +23386,7 @@ export class CreatureMesh {
 
     // --- Additional detail: pollen/spore particles drifting from canopy ---
     for (let po = 0; po < 14; po++) {
-      const pollenGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 4, 4);
+      const pollenGeo = new THREE.SphereGeometry(0.005 + Math.random() * 0.004, 12, 10);
       const pollen = new THREE.Mesh(pollenGeo, mat(0xffffcc, { transparent: true, opacity: 0.5 + Math.random() * 0.3 }));
       pollen.position.set(
         (Math.random() - 0.5) * 1.2,
@@ -23398,7 +23398,7 @@ export class CreatureMesh {
 
     // --- Additional detail: fallen leaf litter at base ---
     for (let ll = 0; ll < 12; ll++) {
-      const leafLitterGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+      const leafLitterGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
       const leafColor = Math.random() > 0.6 ? 0x886622 : Math.random() > 0.3 ? 0x668833 : 0xaa8833;
       const leafLitter = new THREE.Mesh(leafLitterGeo, mat(leafColor, { roughness: 0.9 }));
       const llAngle = Math.random() * Math.PI * 2;
@@ -23479,7 +23479,7 @@ export class CreatureMesh {
       burl.scale.set(1.2, 0.8, 0.6);
       this._body.add(burl);
       // Bark swirl pattern on burl
-      const swirlGeo = new THREE.TorusGeometry(burlSize * 0.6, 0.004, 4, 10);
+      const swirlGeo = new THREE.TorusGeometry(burlSize * 0.6, 0.004, 10, 10);
       const swirl = new THREE.Mesh(swirlGeo, darkBarkMat);
       swirl.position.copy(burl.position);
       swirl.position.x += Math.cos(burlAngle) * 0.01;
@@ -23494,7 +23494,7 @@ export class CreatureMesh {
     bugBody.position.set(0.3, -0.6, 0.06);
     bugBody.rotation.z = Math.PI / 2;
     this._leftArm.add(bugBody);
-    const bugHeadGeo = new THREE.SphereGeometry(0.01, 6, 4);
+    const bugHeadGeo = new THREE.SphereGeometry(0.01, 12, 10);
     const bugHead = new THREE.Mesh(bugHeadGeo, mat(0x338811));
     bugHead.position.set(0.32, -0.6, 0.06);
     this._leftArm.add(bugHead);
@@ -23522,7 +23522,7 @@ export class CreatureMesh {
       this._head.add(mistletoe);
       // Mistletoe berries
       for (let mb = 0; mb < 3; mb++) {
-        const berryGeo = new THREE.SphereGeometry(0.008, 4, 4);
+        const berryGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const berry = new THREE.Mesh(berryGeo, mat(0xeeeeee, { clearcoat: 0.6, clearcoatRoughness: 0.3 }));
         berry.position.set(
           mistletoe.position.x + (Math.random() - 0.5) * 0.04,
@@ -24172,7 +24172,7 @@ export class CreatureMesh {
 
     // --- Inscription bands around torso ---
     for (let i = 0; i < 4; i++) {
-      const wgBandGeo = new THREE.TorusGeometry(0.48 - i * 0.02, 0.008, 6, 20);
+      const wgBandGeo = new THREE.TorusGeometry(0.48 - i * 0.02, 0.008, 12, 20);
       const wgBand = new THREE.Mesh(wgBandGeo, runeMat);
       wgBand.position.set(0, 2.3 + i * 0.3, 0);
       wgBand.rotation.x = Math.PI / 2;
@@ -24205,7 +24205,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const wgBandArm = side === -1 ? this._leftArm : this._rightArm;
       for (let i = 0; i < 5; i++) {
-        const wgIBandGeo = new THREE.TorusGeometry(0.13 + (i > 2 ? 0.02 : 0), 0.006, 6, 12);
+        const wgIBandGeo = new THREE.TorusGeometry(0.13 + (i > 2 ? 0.02 : 0), 0.006, 12, 12);
         const wgIBand = new THREE.Mesh(wgIBandGeo, mat(0x555544, { metalness: 0.65, roughness: 0.3 }));
         wgIBand.position.y = -0.15 - i * 0.25;
         wgIBand.rotation.x = Math.PI / 2;
@@ -24224,7 +24224,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const wgBandLeg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let i = 0; i < 3; i++) {
-        const wgLIBGeo = new THREE.TorusGeometry(0.135, 0.006, 6, 12);
+        const wgLIBGeo = new THREE.TorusGeometry(0.135, 0.006, 12, 12);
         const wgLIB = new THREE.Mesh(wgLIBGeo, mat(0x555544, { metalness: 0.65 }));
         wgLIB.position.y = -0.3 - i * 0.3;
         wgLIB.rotation.x = Math.PI / 2;
@@ -24266,7 +24266,7 @@ export class CreatureMesh {
 
     // --- Dust particles ---
     for (let i = 0; i < 8; i++) {
-      const wgDustGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 4, 4);
+      const wgDustGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.006, 12, 10);
       const wgDust = new THREE.Mesh(wgDustGeo, mat(0x888877, { transparent: true, opacity: 0.3 }));
       wgDust.position.set((Math.random() - 0.5) * 0.8, 0.05 + Math.random() * 0.3, (Math.random() - 0.5) * 0.6);
       this._body.add(wgDust);
@@ -24275,7 +24275,7 @@ export class CreatureMesh {
     // --- Lichen and mineral deposits ---
     const wgLichenMat = mat(0x667755, { roughness: 0.95 });
     for (let i = 0; i < 8; i++) {
-      const wgLichGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.02, 5, 4);
+      const wgLichGeo = new THREE.SphereGeometry(0.025 + Math.random() * 0.02, 12, 10);
       const wgLich = new THREE.Mesh(wgLichGeo, wgLichenMat);
       const wgLichA = Math.random() * Math.PI * 2;
       wgLich.position.set(Math.cos(wgLichA) * 0.42, 2.0 + Math.random() * 0.5, Math.sin(wgLichA) * 0.35);
@@ -24284,7 +24284,7 @@ export class CreatureMesh {
     }
 
     // --- Head crown rune circle ---
-    const wgCrownGeo = new THREE.TorusGeometry(0.2, 0.008, 6, 16);
+    const wgCrownGeo = new THREE.TorusGeometry(0.2, 0.008, 12, 16);
     const wgCrown = new THREE.Mesh(wgCrownGeo, runeMat);
     wgCrown.position.set(0, 0.18, 0);
     wgCrown.rotation.x = Math.PI / 2;
@@ -24658,7 +24658,7 @@ export class CreatureMesh {
       [0.09, 0.32, 0.0, 2.85, 0.0, darkCrystalMat],
     ];
     for (const [r, h, x, y, z, m] of shardDefs) {
-      const sGeo = new THREE.ConeGeometry(r, h, 6);
+      const sGeo = new THREE.ConeGeometry(r, h, 12);
       const shard = new THREE.Mesh(sGeo, m);
       shard.position.set(x, y, z);
       shard.rotation.set((Math.random() - 0.5) * 0.8, 0, (Math.random() - 0.5) * 0.8);
@@ -24688,7 +24688,7 @@ export class CreatureMesh {
     this._head.add(ih);
     // Crown crystals (cluster of smaller shards on top)
     for (let i = 0; i < 5; i++) {
-      const ccGeo = new THREE.ConeGeometry(0.025 + i * 0.005, 0.1 + i * 0.02, 5);
+      const ccGeo = new THREE.ConeGeometry(0.025 + i * 0.005, 0.1 + i * 0.02, 10);
       const cc = new THREE.Mesh(ccGeo, i % 2 === 0 ? darkCrystalMat : amethystMat);
       const a = (i / 5) * Math.PI * 2;
       cc.position.set(Math.cos(a) * 0.1, 0.2, Math.sin(a) * 0.1);
@@ -24728,7 +24728,7 @@ export class CreatureMesh {
       sc.rotation.y = Math.PI / 4;
       arm.add(sc);
       // Shoulder shard
-      const ssGeo = new THREE.ConeGeometry(0.04, 0.15, 5);
+      const ssGeo = new THREE.ConeGeometry(0.04, 0.15, 10);
       const ss = new THREE.Mesh(ssGeo, amethystMat);
       ss.position.set(side * 0.06, 0.1, 0);
       arm.add(ss);
@@ -24740,12 +24740,12 @@ export class CreatureMesh {
       upper.rotation.y = Math.PI / 6;
       arm.add(upper);
       // Facet growth on upper arm
-      const fGeo = new THREE.ConeGeometry(0.035, 0.12, 5);
+      const fGeo = new THREE.ConeGeometry(0.035, 0.12, 10);
       const facet = new THREE.Mesh(fGeo, side === -1 ? roseMat : amethystMat);
       facet.position.set(side * 0.06, -0.3, 0.06);
       facet.rotation.z = side * 0.4;
       arm.add(facet);
-      const f2Geo = new THREE.ConeGeometry(0.03, 0.1, 5);
+      const f2Geo = new THREE.ConeGeometry(0.03, 0.1, 10);
       const facet2 = new THREE.Mesh(f2Geo, darkCrystalMat);
       facet2.position.set(-side * 0.04, -0.5, -0.04);
       facet2.rotation.z = -side * 0.3;
@@ -24770,14 +24770,14 @@ export class CreatureMesh {
       arm.add(fv);
 
       // Crystal blade hand (multi-prong)
-      const bladeGeo = new THREE.ConeGeometry(0.06, 0.25, 6);
+      const bladeGeo = new THREE.ConeGeometry(0.06, 0.25, 12);
       const blade = new THREE.Mesh(bladeGeo, coreMat);
       blade.position.y = -1.35;
       blade.rotation.x = Math.PI;
       arm.add(blade);
       // Secondary blade prongs
       for (let p = -1; p <= 1; p += 2) {
-        const pbGeo = new THREE.ConeGeometry(0.03, 0.15, 5);
+        const pbGeo = new THREE.ConeGeometry(0.03, 0.15, 10);
         const pb = new THREE.Mesh(pbGeo, darkCrystalMat);
         pb.position.set(p * 0.05, -1.3, 0.03);
         pb.rotation.x = Math.PI;
@@ -24805,7 +24805,7 @@ export class CreatureMesh {
       kc.position.set(0, -0.62, 0.08);
       leg.add(kc);
       // Knee shard growth
-      const ksGeo = new THREE.ConeGeometry(0.035, 0.12, 5);
+      const ksGeo = new THREE.ConeGeometry(0.035, 0.12, 10);
       const ks = new THREE.Mesh(ksGeo, amethystMat);
       ks.position.set(0.04, -0.58, 0.1);
       ks.rotation.z = 0.3;
@@ -24818,7 +24818,7 @@ export class CreatureMesh {
       shin.rotation.y = -side * Math.PI / 8;
       leg.add(shin);
       // Shin facet growth
-      const sfGeo = new THREE.ConeGeometry(0.03, 0.1, 5);
+      const sfGeo = new THREE.ConeGeometry(0.03, 0.1, 10);
       const sf = new THREE.Mesh(sfGeo, roseMat);
       sf.position.set(-0.05, -0.85, 0.06);
       sf.rotation.z = -0.25;
@@ -24832,7 +24832,7 @@ export class CreatureMesh {
       leg.add(foot);
       // Toe crystal growth
       for (let t = 0; t < 2; t++) {
-        const tGeo = new THREE.ConeGeometry(0.02, 0.06, 5);
+        const tGeo = new THREE.ConeGeometry(0.02, 0.06, 10);
         const tc = new THREE.Mesh(tGeo, crystalMat);
         tc.position.set((t - 0.5) * 0.08, -1.22, 0.14);
         tc.rotation.x = Math.PI / 3;
@@ -24882,7 +24882,7 @@ export class CreatureMesh {
       this._body.add(lattice);
     }
     for (let i = 0; i < 3; i++) {
-      const cgRingGeo = new THREE.TorusGeometry(0.15, 0.003, 6, 12);
+      const cgRingGeo = new THREE.TorusGeometry(0.15, 0.003, 12, 12);
       const cgRing = new THREE.Mesh(cgRingGeo, cgLatticeMat);
       cgRing.position.set(0, 2.0 + i * 0.25, 0);
       cgRing.rotation.x = Math.PI / 2;
@@ -25123,7 +25123,7 @@ export class CreatureMesh {
     }
 
     for (let i = 0; i < 4; i++) {
-      const cgHRingGeo = new THREE.TorusGeometry(0.36, 0.003, 6, 16);
+      const cgHRingGeo = new THREE.TorusGeometry(0.36, 0.003, 12, 16);
       const cgHRing = new THREE.Mesh(
         cgHRingGeo,
         mat(0x8899bb, { transparent: true, opacity: 0.2 }),
@@ -25136,7 +25136,7 @@ export class CreatureMesh {
     // ---- Stalactite growth from head underside ----
     for (let i = 0; i < 4; i++) {
       const stalLen = 0.04 + Math.random() * 0.05;
-      const stalGeo = new THREE.ConeGeometry(0.012, stalLen, 5);
+      const stalGeo = new THREE.ConeGeometry(0.012, stalLen, 10);
       const stal = new THREE.Mesh(stalGeo, darkCrystalMat);
       stal.position.set(
         -0.06 + i * 0.04,
@@ -25348,7 +25348,7 @@ export class CreatureMesh {
       this._body.add(rim);
       // Pauldron rivets
       for (let r = 0; r < 4; r++) {
-        const prGeo = new THREE.SphereGeometry(0.02, 6, 6);
+        const prGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const pr = new THREE.Mesh(prGeo, rivetMat);
         const a = (r / 4) * Math.PI;
         pr.position.set(side * 0.75 + Math.cos(a) * side * 0.22, 4.5, Math.sin(a) * 0.22);
@@ -25386,7 +25386,7 @@ export class CreatureMesh {
     visor.position.set(0, -0.02, 0.02);
     this._head.add(visor);
     // Visor slit — horizontal eye slot
-    const slitBgGeo = new THREE.TorusGeometry(0.17, 0.015, 6, 16, Math.PI * 0.8);
+    const slitBgGeo = new THREE.TorusGeometry(0.17, 0.015, 12, 16, Math.PI * 0.8);
     const slitBg = new THREE.Mesh(slitBgGeo, mat(0x0a0500));
     slitBg.position.set(0, 0.0, 0.2);
     slitBg.rotation.y = Math.PI;
@@ -25443,7 +25443,7 @@ export class CreatureMesh {
       elbow.position.y = -1.2;
       arm.add(elbow);
       // Gear cog on elbow
-      const cogGeo = new THREE.TorusGeometry(0.13, 0.02, 6, 12);
+      const cogGeo = new THREE.TorusGeometry(0.13, 0.02, 12, 12);
       const cog = new THREE.Mesh(cogGeo, copperMat);
       cog.position.set(side * 0.12, -1.2, 0);
       cog.rotation.y = Math.PI / 2;
@@ -25499,7 +25499,7 @@ export class CreatureMesh {
         f1.position.set(f * 0.07, -2.85, 0.03);
         arm.add(f1);
         // Knuckle rivet
-        const fkGeo = new THREE.SphereGeometry(0.02, 6, 6);
+        const fkGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const fk = new THREE.Mesh(fkGeo, rivetMat);
         fk.position.set(f * 0.07, -2.91, 0.06);
         arm.add(fk);
@@ -25518,7 +25518,7 @@ export class CreatureMesh {
 
       // Arm rivets along seam lines
       for (let rv = 0; rv < 5; rv++) {
-        const rvGeo = new THREE.SphereGeometry(0.02, 6, 6);
+        const rvGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const rivet = new THREE.Mesh(rvGeo, rivetMat);
         rivet.position.set(side * 0.15, -0.3 - rv * 0.4, 0.14);
         arm.add(rivet);
@@ -25553,7 +25553,7 @@ export class CreatureMesh {
       kc.position.set(0, -1.0, 0.15);
       leg.add(kc);
       // Knee gear
-      const kgGeo = new THREE.TorusGeometry(0.1, 0.015, 6, 10);
+      const kgGeo = new THREE.TorusGeometry(0.1, 0.015, 12, 10);
       const kg = new THREE.Mesh(kgGeo, copperMat);
       kg.position.set(side * 0.14, -1.0, 0);
       kg.rotation.y = Math.PI / 2;
@@ -25590,7 +25590,7 @@ export class CreatureMesh {
       leg.add(tc);
       // Sole rivets
       for (let r = 0; r < 3; r++) {
-        const srGeo = new THREE.SphereGeometry(0.02, 6, 6);
+        const srGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const sr = new THREE.Mesh(srGeo, rivetMat);
         sr.position.set((r - 1) * 0.1, -2.25, 0.3);
         leg.add(sr);
@@ -25678,7 +25678,7 @@ export class CreatureMesh {
     // Gorget rivets
     for (let i = 0; i < 8; i++) {
       const grAng = (i / 8) * Math.PI * 2;
-      const grGeo = new THREE.SphereGeometry(0.015, 6, 6);
+      const grGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const gr = new THREE.Mesh(grGeo, rivetMat);
       gr.position.set(
         Math.cos(grAng) * 0.28,
@@ -25716,7 +25716,7 @@ export class CreatureMesh {
 
     // Pitting and dent damage
     for (let i = 0; i < 10; i++) {
-      const dentGeo = new THREE.SphereGeometry(0.015 + (i % 3) * 0.005, 6, 6);
+      const dentGeo = new THREE.SphereGeometry(0.015 + (i % 3) * 0.005, 12, 10);
       const dent = new THREE.Mesh(dentGeo, mat(0x333333, { metalness: 0.5, roughness: 0.6 }));
       dent.scale.set(1.0 + (i % 2) * 0.3, 0.3, 1.0 + (i % 2) * 0.3);
       dent.position.set(
@@ -25731,7 +25731,7 @@ export class CreatureMesh {
     // Heavy chains draped across shoulders
     for (const side of [-1, 1]) {
       for (let link = 0; link < 8; link++) {
-        const chainLinkGeo = new THREE.TorusGeometry(0.025, 0.008, 6, 8);
+        const chainLinkGeo = new THREE.TorusGeometry(0.025, 0.008, 12, 8);
         const chainLink = new THREE.Mesh(chainLinkGeo, wornIronMat);
         chainLink.position.set(
           side * (0.55 - link * 0.04),
@@ -25757,13 +25757,13 @@ export class CreatureMesh {
 
     // ==== Rune engravings (expanded) ====
     // Full rune circle on chest
-    const runeCircleGeo = new THREE.TorusGeometry(0.2, 0.008, 6, 24);
+    const runeCircleGeo = new THREE.TorusGeometry(0.2, 0.008, 12, 24);
     const runeCircle = new THREE.Mesh(runeCircleGeo, runeMat);
     runeCircle.position.set(0, 3.8, 0.54);
     this._body.add(runeCircle);
 
     // Inner rune circle
-    const innerRuneGeo = new THREE.TorusGeometry(0.12, 0.006, 6, 20);
+    const innerRuneGeo = new THREE.TorusGeometry(0.12, 0.006, 12, 20);
     const innerRune = new THREE.Mesh(innerRuneGeo, runeMat);
     innerRune.position.set(0, 3.8, 0.55);
     this._body.add(innerRune);
@@ -25810,7 +25810,7 @@ export class CreatureMesh {
       this._body.add(pipe);
 
       // Pipe opening
-      const pipeOpenGeo = new THREE.TorusGeometry(0.04, 0.008, 6, 10);
+      const pipeOpenGeo = new THREE.TorusGeometry(0.04, 0.008, 12, 10);
       const pipeOpen = new THREE.Mesh(pipeOpenGeo, copperMat);
       pipeOpen.position.set(side * 0.35, 4.45, -0.45);
       this._body.add(pipeOpen);
@@ -25857,7 +25857,7 @@ export class CreatureMesh {
       }
 
       // Elbow joint gear
-      const elbowGearGeo = new THREE.TorusGeometry(0.05, 0.01, 6, 10);
+      const elbowGearGeo = new THREE.TorusGeometry(0.05, 0.01, 12, 10);
       const elbowGear = new THREE.Mesh(elbowGearGeo, brassMat);
       elbowGear.position.set(side * 0.85, 3.5, 0.0);
       elbowGear.rotation.y = Math.PI / 2;
@@ -25874,7 +25874,7 @@ export class CreatureMesh {
         this._body.add(hydraulic);
 
         // Pipe clamp
-        const clampGeo = new THREE.TorusGeometry(0.015, 0.004, 4, 8);
+        const clampGeo = new THREE.TorusGeometry(0.015, 0.004, 10, 8);
         const clamp = new THREE.Mesh(clampGeo, darkIronMat);
         clamp.position.set(side * (0.48 + i * 0.04), 3.8, -0.15 + i * 0.08);
         clamp.rotation.x = Math.PI / 2;
@@ -25885,7 +25885,7 @@ export class CreatureMesh {
     // ==== Spark and aura effects ====
     // Arcane sparks near runes
     for (let i = 0; i < 8; i++) {
-      const sparkGeo = new THREE.SphereGeometry(0.008, 6, 4);
+      const sparkGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const spark = new THREE.Mesh(sparkGeo, mat(0xff8800, { emissive: 0xff6600, emissiveIntensity: 3.0, transparent: true, opacity: 0.6 }));
       spark.position.set(
         Math.cos((i / 8) * Math.PI * 2) * 0.22,
@@ -25897,7 +25897,7 @@ export class CreatureMesh {
 
     // Eye glow halo
     for (const side of [-1, 1]) {
-      const haloGeo = new THREE.TorusGeometry(0.04, 0.006, 6, 12);
+      const haloGeo = new THREE.TorusGeometry(0.04, 0.006, 12, 12);
       const halo = new THREE.Mesh(haloGeo, mat(0xff6600, { emissive: 0xcc4400, emissiveIntensity: 2.0, transparent: true, opacity: 0.4 }));
       halo.position.set(side * 0.15, 5.35, 0.32);
       this._body.add(halo);
@@ -25958,7 +25958,7 @@ export class CreatureMesh {
       vert.position.set(0, 2.6 + i * 0.22, -0.38);
       this._body.add(vert);
       // Spinous process (dorsal spike on each vertebra)
-      const spGeo = new THREE.ConeGeometry(0.02, 0.1 + i * 0.005, 6);
+      const spGeo = new THREE.ConeGeometry(0.02, 0.1 + i * 0.005, 12);
       const sp = new THREE.Mesh(spGeo, wornBoneMat);
       sp.position.set(0, 2.6 + i * 0.22, -0.48);
       sp.rotation.x = -0.3;
@@ -26011,7 +26011,7 @@ export class CreatureMesh {
     sternum.position.set(0, 3.4, 0.35);
     this._body.add(sternum);
     // Xiphoid process (bottom tip of sternum)
-    const xiphGeo = new THREE.ConeGeometry(0.025, 0.12, 6);
+    const xiphGeo = new THREE.ConeGeometry(0.025, 0.12, 12);
     const xiph = new THREE.Mesh(xiphGeo, wornBoneMat);
     xiph.position.set(0, 2.75, 0.35);
     xiph.rotation.x = Math.PI;
@@ -26102,7 +26102,7 @@ export class CreatureMesh {
     }
 
     // Nasal cavity (triangular hole)
-    const nasalGeo = new THREE.ConeGeometry(0.04, 0.08, 3);
+    const nasalGeo = new THREE.ConeGeometry(0.04, 0.08, 8);
     const nasal = new THREE.Mesh(nasalGeo, cavityMat);
     nasal.position.set(0, -0.06, 0.3);
     nasal.rotation.x = Math.PI;
@@ -26194,14 +26194,14 @@ export class CreatureMesh {
     // Lower teeth (mandibular)
     for (let t = -2; t <= 2; t++) {
       if (t === 0) continue;
-      const toothGeo = new THREE.ConeGeometry(0.011, 0.04, 6);
+      const toothGeo = new THREE.ConeGeometry(0.011, 0.04, 12);
       const tooth = new THREE.Mesh(toothGeo, mat(0xe8dcc0));
       tooth.position.set(t * 0.035, -0.25, 0.2);
       this._head.add(tooth);
     }
     // Fangs (canines, longer)
     for (const side of [-1, 1]) {
-      const fangGeo = new THREE.ConeGeometry(0.015, 0.09, 6);
+      const fangGeo = new THREE.ConeGeometry(0.015, 0.09, 12);
       const fang = new THREE.Mesh(fangGeo, mat(0xeee8d0));
       fang.position.set(side * 0.1, -0.12, 0.24);
       fang.rotation.x = Math.PI;
@@ -26273,7 +26273,7 @@ export class CreatureMesh {
         pp.rotation.z = fAngle * 0.7;
         arm.add(pp);
         // Claw tip (distal phalanx)
-        const clGeo = new THREE.ConeGeometry(0.015, 0.1, 6);
+        const clGeo = new THREE.ConeGeometry(0.015, 0.1, 12);
         const cl = new THREE.Mesh(clGeo, darkBoneMat);
         cl.position.set(Math.sin(fAngle) * 0.12, -2.58, Math.cos(fAngle) * 0.04);
         cl.rotation.x = Math.PI;
@@ -26286,7 +26286,7 @@ export class CreatureMesh {
       th.position.set(side * 0.06, -2.25, 0.05);
       th.rotation.z = side * 0.8;
       arm.add(th);
-      const thClGeo = new THREE.ConeGeometry(0.014, 0.07, 6);
+      const thClGeo = new THREE.ConeGeometry(0.014, 0.07, 12);
       const thCl = new THREE.Mesh(thClGeo, darkBoneMat);
       thCl.position.set(side * 0.1, -2.32, 0.06);
       thCl.rotation.x = Math.PI;
@@ -26361,7 +26361,7 @@ export class CreatureMesh {
         mt.rotation.x = Math.PI / 2.5;
         leg.add(mt);
         // Toe claw
-        const tcGeo = new THREE.ConeGeometry(0.012, 0.06, 6);
+        const tcGeo = new THREE.ConeGeometry(0.012, 0.06, 12);
         const tc = new THREE.Mesh(tcGeo, darkBoneMat);
         tc.position.set((t - 1) * 0.035, -2.25, 0.15);
         tc.rotation.x = Math.PI / 2;
@@ -26430,7 +26430,7 @@ export class CreatureMesh {
     // --- Bone dust particle cloud around feet ---
     const bcDustMat = mat(0xccbb99, { transparent: true, opacity: 0.15, emissive: 0x332200, emissiveIntensity: 0.2 });
     for (let i = 0; i < 20; i++) {
-      const dustGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 6, 6);
+      const dustGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 12, 10);
       const dustP = new THREE.Mesh(dustGeo, bcDustMat);
       const da = Math.random() * Math.PI * 2;
       const dr = 0.3 + Math.random() * 0.8;
@@ -26455,7 +26455,7 @@ export class CreatureMesh {
       this._body.add(scapRidge);
 
       // Acromion process (protruding tip)
-      const acromGeo = new THREE.ConeGeometry(0.025, 0.08, 6);
+      const acromGeo = new THREE.ConeGeometry(0.025, 0.08, 12);
       const acrom = new THREE.Mesh(acromGeo, wornBoneMat);
       acrom.position.set(side * 0.6, 4.15, -0.3);
       acrom.rotation.z = side * -0.6;
@@ -26479,7 +26479,7 @@ export class CreatureMesh {
     this._body.add(bcSternum);
 
     // Xiphoid process (small pointed tip at bottom of sternum)
-    const bcXiphGeo = new THREE.ConeGeometry(0.015, 0.06, 6);
+    const bcXiphGeo = new THREE.ConeGeometry(0.015, 0.06, 12);
     const bcXiph = new THREE.Mesh(bcXiphGeo, darkBoneMat);
     bcXiph.position.set(0, 3.5, 0.38);
     bcXiph.rotation.x = Math.PI;
@@ -26492,7 +26492,7 @@ export class CreatureMesh {
     bcSacrum.position.set(0, 2.35, -0.35);
     this._body.add(bcSacrum);
 
-    const bcCoccyxGeo = new THREE.ConeGeometry(0.03, 0.1, 6);
+    const bcCoccyxGeo = new THREE.ConeGeometry(0.03, 0.1, 12);
     const bcCoccyx = new THREE.Mesh(bcCoccyxGeo, wornBoneMat);
     bcCoccyx.position.set(0, 2.2, -0.38);
     bcCoccyx.rotation.x = Math.PI;
@@ -26620,7 +26620,7 @@ export class CreatureMesh {
 
     // --- Calcified cartilage rings on the trachea area ---
     for (let i = 0; i < 4; i++) {
-      const cartGeo = new THREE.TorusGeometry(0.04 - i * 0.003, 0.008, 6, 12);
+      const cartGeo = new THREE.TorusGeometry(0.04 - i * 0.003, 0.008, 12, 12);
       const cartMesh = new THREE.Mesh(cartGeo, wornBoneMat);
       cartMesh.position.set(0, 4.55 + i * 0.06, 0.08);
       cartMesh.rotation.x = Math.PI / 2;
@@ -26631,7 +26631,7 @@ export class CreatureMesh {
     const bcChainMat = mat(0x333333, { metalness: 0.6, roughness: 0.35, emissive: 0x112211, emissiveIntensity: 0.3 });
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
-        const chainRingGeo = new THREE.TorusGeometry(0.07, 0.008, 6, 12);
+        const chainRingGeo = new THREE.TorusGeometry(0.07, 0.008, 12, 12);
         const chainRing = new THREE.Mesh(chainRingGeo, bcChainMat);
         chainRing.position.set(side * 0.65, 3.8 - i * 0.12, 0);
         chainRing.rotation.x = Math.PI / 2;
@@ -26643,7 +26643,7 @@ export class CreatureMesh {
     // --- Dangling chain links ---
     for (const side of [-1, 1]) {
       for (let i = 0; i < 4; i++) {
-        const linkGeo = new THREE.TorusGeometry(0.015, 0.004, 6, 8);
+        const linkGeo = new THREE.TorusGeometry(0.015, 0.004, 12, 8);
         const linkMesh = new THREE.Mesh(linkGeo, bcChainMat);
         linkMesh.position.set(side * 0.65 + (Math.random() - 0.5) * 0.05, 3.5 - i * 0.06, (Math.random() - 0.5) * 0.05);
         linkMesh.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
@@ -26678,13 +26678,13 @@ export class CreatureMesh {
     this._body.add(bcBrow);
 
     // --- Nasal bone / cavity ---
-    const bcNasalGeo = new THREE.ConeGeometry(0.025, 0.06, 4);
+    const bcNasalGeo = new THREE.ConeGeometry(0.025, 0.06, 10);
     const bcNasal = new THREE.Mesh(bcNasalGeo, boneMat);
     bcNasal.position.set(0, 4.7, 0.25);
     bcNasal.rotation.x = Math.PI;
     this._body.add(bcNasal);
 
-    const bcNasalCavGeo = new THREE.SphereGeometry(0.02, 6, 6);
+    const bcNasalCavGeo = new THREE.SphereGeometry(0.02, 12, 10);
     const bcNasalCav = new THREE.Mesh(bcNasalCavGeo, cavityMat);
     bcNasalCav.position.set(0, 4.68, 0.26);
     this._body.add(bcNasalCav);
@@ -26739,7 +26739,7 @@ export class CreatureMesh {
       this._body.add(radiusMesh);
 
       // Olecranon (elbow point)
-      const olecGeo = new THREE.ConeGeometry(0.02, 0.05, 6);
+      const olecGeo = new THREE.ConeGeometry(0.02, 0.05, 12);
       const olecMesh = new THREE.Mesh(olecGeo, darkBoneMat);
       olecMesh.position.set(side * 0.68, 3.2, -0.05);
       olecMesh.rotation.x = -0.3;
@@ -26848,7 +26848,7 @@ export class CreatureMesh {
     nose.position.set(0, -0.02, 0.2);
     this._head.add(nose);
     // Nasal cavity
-    const nasalGeo = new THREE.SphereGeometry(0.02, 6, 6);
+    const nasalGeo = new THREE.SphereGeometry(0.02, 12, 10);
     const nasal = new THREE.Mesh(nasalGeo, darkMat);
     nasal.position.set(0, -0.04, 0.19);
     nasal.scale.set(0.8, 1.0, 0.5);
@@ -26862,7 +26862,7 @@ export class CreatureMesh {
     this._head.add(jaw);
     // Jaw hinge nodes
     for (const side of [-1, 1]) {
-      const hingeGeo = new THREE.SphereGeometry(0.02, 6, 6);
+      const hingeGeo = new THREE.SphereGeometry(0.02, 12, 10);
       const hinge = new THREE.Mesh(hingeGeo, boneMat);
       hinge.position.set(side * 0.13, -0.1, 0.1);
       this._head.add(hinge);
@@ -26892,7 +26892,7 @@ export class CreatureMesh {
     band.rotation.x = Math.PI / 2;
     this._head.add(band);
     // Crown second band — thinner filigree
-    const band2Geo = new THREE.TorusGeometry(0.195, 0.006, 6, 24);
+    const band2Geo = new THREE.TorusGeometry(0.195, 0.006, 12, 24);
     const band2 = new THREE.Mesh(band2Geo, mat(0x6688bb, { metalness: 0.8, roughness: 0.15 }));
     band2.position.y = 0.13;
     band2.rotation.x = Math.PI / 2;
@@ -26990,7 +26990,7 @@ export class CreatureMesh {
         finger.rotation.z = (f - 1.5) * 0.08;
         arm.add(finger);
         // Finger claw tip
-        const clGeo = new THREE.ConeGeometry(0.005, 0.03, 4);
+        const clGeo = new THREE.ConeGeometry(0.005, 0.03, 10);
         const claw = new THREE.Mesh(clGeo, mat(0x44ddff, { emissive: 0x22aacc, emissiveIntensity: 2.0 }));
         claw.position.set((f - 1.5) * 0.018, -1.17, 0.03);
         claw.rotation.x = 0.3;
@@ -27068,7 +27068,7 @@ export class CreatureMesh {
 
     // Spectral spine
     for (let v = 0; v < 12; v++) {
-      const vertGeo = new THREE.SphereGeometry(0.018, 6, 6);
+      const vertGeo = new THREE.SphereGeometry(0.018, 12, 10);
       const vert = new THREE.Mesh(vertGeo, boneMat);
       vert.position.set(0, 1.2 + v * 0.13, -0.15);
       this._body.add(vert);
@@ -27105,7 +27105,7 @@ export class CreatureMesh {
     // --- Soul chains — binding the wraith to the mortal plane ---
     for (const side of [-1, 1]) {
       for (let link = 0; link < 6; link++) {
-        const linkGeo = new THREE.TorusGeometry(0.02, 0.005, 6, 8);
+        const linkGeo = new THREE.TorusGeometry(0.02, 0.005, 12, 8);
         const chainLink = new THREE.Mesh(linkGeo, chainMat);
         chainLink.position.set(side * 0.2, 2.0 - link * 0.12, 0.05);
         chainLink.rotation.x = link % 2 === 0 ? Math.PI / 2 : 0;
@@ -27135,7 +27135,7 @@ export class CreatureMesh {
 
     // --- Orbiting soul wisps — captured spirits ---
     for (let i = 0; i < 10; i++) {
-      const swGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 6);
+      const swGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
       const sw = new THREE.Mesh(swGeo, soulMat);
       const a = (i / 10) * Math.PI * 2;
       const r = 0.5 + Math.random() * 0.3;
@@ -27196,7 +27196,7 @@ export class CreatureMesh {
 
     // --- Spectral mist at base ---
     for (let m = 0; m < 12; m++) {
-      const mistGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 6, 6);
+      const mistGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 12, 10);
       const mist = new THREE.Mesh(mistGeo, mat(0x334455, { transparent: true, opacity: 0.08 + Math.random() * 0.06 }));
       mist.position.set(
         (Math.random() - 0.5) * 0.7,
@@ -27210,7 +27210,7 @@ export class CreatureMesh {
     // --- Skull face detail enhancements ---
     // Temporal bone ridges
     for (const side of [-1, 1]) {
-      const tempGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const tempGeo = new THREE.SphereGeometry(0.04, 12, 10);
       const temp = new THREE.Mesh(tempGeo, ghostMat);
       temp.position.set(side * 0.17, -0.02, 0.05);
       temp.scale.set(0.5, 0.8, 0.6);
@@ -27227,7 +27227,7 @@ export class CreatureMesh {
 
     // --- Ethereal energy spiraling upward from body ---
     for (let s = 0; s < 16; s++) {
-      const spGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const spGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const sp = new THREE.Mesh(spGeo, soulMat);
       const spAngle = (s / 16) * Math.PI * 6;
       sp.position.set(
@@ -27422,7 +27422,7 @@ export class CreatureMesh {
     }
     // Tiny soul orbs drifting away
     for (let i = 0; i < 6; i++) {
-      const soGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 6);
+      const soGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
       const so = new THREE.Mesh(soGeo, mat(0xaabbdd, { emissive: 0x6688bb, transparent: true, opacity: 0.4 }));
       so.position.set(
         (Math.random() - 0.5) * 0.8,
@@ -27435,7 +27435,7 @@ export class CreatureMesh {
     // --- Additional detail: ghostly chains ---
     for (const side of [-1, 1]) {
       for (let link = 0; link < 4; link++) {
-        const linkGeo = new THREE.TorusGeometry(0.02, 0.004, 6, 8);
+        const linkGeo = new THREE.TorusGeometry(0.02, 0.004, 12, 8);
         const chainLink = new THREE.Mesh(linkGeo, mat(0x888899, { transparent: true, opacity: 0.35, metalness: 0.5 }));
         chainLink.position.set(side * 0.18, 1.2 - link * 0.08, 0);
         chainLink.rotation.x = link % 2 === 0 ? Math.PI / 2 : 0;
@@ -27446,7 +27446,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const arm = side === -1 ? this._leftArm : this._rightArm;
       for (let link = 0; link < 3; link++) {
-        const wlGeo = new THREE.TorusGeometry(0.015, 0.003, 6, 8);
+        const wlGeo = new THREE.TorusGeometry(0.015, 0.003, 12, 8);
         const wl = new THREE.Mesh(wlGeo, mat(0x8888aa, { transparent: true, opacity: 0.3, metalness: 0.5 }));
         wl.position.set(0, -0.75 - link * 0.06, 0);
         wl.rotation.x = link % 2 === 0 ? Math.PI / 2 : 0;
@@ -27458,7 +27458,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       // Extended tear trails
       for (let t = 0; t < 3; t++) {
-        const tearDropGeo = new THREE.SphereGeometry(0.006 - t * 0.001, 6, 6);
+        const tearDropGeo = new THREE.SphereGeometry(0.006 - t * 0.001, 12, 10);
         const tearDrop = new THREE.Mesh(tearDropGeo, mat(0xccddff, { emissive: 0x8899cc, emissiveIntensity: 1.5, transparent: true, opacity: 0.5 }));
         tearDrop.position.set(side * 0.08, -0.14 - t * 0.04, 0.16);
         this._head.add(tearDrop);
@@ -27478,7 +27478,7 @@ export class CreatureMesh {
     }
     // Spectral spine vertebrae
     for (let v = 0; v < 10; v++) {
-      const bnVertGeo = new THREE.SphereGeometry(0.015, 6, 6);
+      const bnVertGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const bnVert = new THREE.Mesh(bnVertGeo, mat(0x9999bb, { transparent: true, opacity: 0.3, emissive: 0x334455 }));
       bnVert.position.set(0, 1.0 + v * 0.12, -0.15);
       this._body.add(bnVert);
@@ -27516,7 +27516,7 @@ export class CreatureMesh {
     }
     // Spiraling spectral energy around lower body
     for (let s = 0; s < 12; s++) {
-      const bnSpiralGeo = new THREE.SphereGeometry(0.01, 4, 4);
+      const bnSpiralGeo = new THREE.SphereGeometry(0.01, 12, 10);
       const bnSpiral = new THREE.Mesh(bnSpiralGeo, mat(0xaabbdd, { emissive: 0x6688aa, transparent: true, opacity: 0.35 }));
       const bnSAngle = (s / 12) * Math.PI * 4;
       bnSpiral.position.set(
@@ -27541,7 +27541,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const bnArm = side === -1 ? this._leftArm : this._rightArm;
       for (let w = 0; w < 4; w++) {
-        const bnWrapGeo = new THREE.TorusGeometry(0.03 - w * 0.002, 0.004, 4, 8);
+        const bnWrapGeo = new THREE.TorusGeometry(0.03 - w * 0.002, 0.004, 10, 8);
         const bnWrap = new THREE.Mesh(bnWrapGeo, mat(0x888899, { transparent: true, opacity: 0.25 }));
         bnWrap.position.y = -0.45 - w * 0.06;
         bnWrap.rotation.x = Math.PI / 2;
@@ -27559,14 +27559,14 @@ export class CreatureMesh {
 
     // ---- Screaming aura: sound wave distortion rings ----
     for (let r = 0; r < 5; r++) {
-      const bnWaveRingGeo = new THREE.TorusGeometry(0.12 + r * 0.08, 0.003, 6, 18);
+      const bnWaveRingGeo = new THREE.TorusGeometry(0.12 + r * 0.08, 0.003, 12, 18);
       const bnWaveRing = new THREE.Mesh(bnWaveRingGeo, mat(0xaaaacc, { transparent: true, opacity: 0.08 - r * 0.012, side: THREE.DoubleSide }));
       bnWaveRing.position.set(0, 2.0, 0.2 + r * 0.1);
       this._body.add(bnWaveRing);
     }
     // Sonic distortion particles
     for (let p = 0; p < 10; p++) {
-      const bnSonicGeo = new THREE.SphereGeometry(0.006 + Math.random() * 0.004, 4, 4);
+      const bnSonicGeo = new THREE.SphereGeometry(0.006 + Math.random() * 0.004, 12, 10);
       const bnSonic = new THREE.Mesh(bnSonicGeo, mat(0xbbbbdd, { emissive: 0x6666aa, transparent: true, opacity: 0.3 }));
       const bnPAngle = (p / 10) * Math.PI * 2;
       const bnPRadius = 0.15 + Math.random() * 0.2;
@@ -27579,7 +27579,7 @@ export class CreatureMesh {
     }
 
     // ---- Ghostly jewelry: tarnished silver ----
-    const bnNecklaceGeo = new THREE.TorusGeometry(0.12, 0.004, 6, 16);
+    const bnNecklaceGeo = new THREE.TorusGeometry(0.12, 0.004, 12, 16);
     const bnNecklace = new THREE.Mesh(bnNecklaceGeo, mat(0x888899, { transparent: true, opacity: 0.35, metalness: 0.6 }));
     bnNecklace.position.y = 1.85;
     bnNecklace.rotation.x = Math.PI / 2;
@@ -27589,7 +27589,7 @@ export class CreatureMesh {
     bnPendant.position.set(0, 1.78, 0.12);
     this._body.add(bnPendant);
     // Tarnished circlet on head
-    const bnCircletGeo = new THREE.TorusGeometry(0.18, 0.006, 6, 18);
+    const bnCircletGeo = new THREE.TorusGeometry(0.18, 0.006, 12, 18);
     const bnCirclet = new THREE.Mesh(bnCircletGeo, mat(0x777788, { transparent: true, opacity: 0.35, metalness: 0.5 }));
     bnCirclet.position.y = 0.12;
     bnCirclet.rotation.x = Math.PI / 2;
@@ -27600,7 +27600,7 @@ export class CreatureMesh {
     this._head.add(bnCircletGem);
     // Earrings
     for (const side of [-1, 1]) {
-      const bnEarringGeo = new THREE.TorusGeometry(0.012, 0.002, 4, 8);
+      const bnEarringGeo = new THREE.TorusGeometry(0.012, 0.002, 10, 8);
       const bnEarring = new THREE.Mesh(bnEarringGeo, mat(0x888899, { transparent: true, opacity: 0.3, metalness: 0.5 }));
       bnEarring.position.set(side * 0.18, -0.02, 0.08);
       this._head.add(bnEarring);
@@ -27610,7 +27610,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const bnFingerArm = side === -1 ? this._leftArm : this._rightArm;
       for (let f = 0; f < 5; f++) {
-        const bnKnuckleGeo = new THREE.SphereGeometry(0.008, 4, 4);
+        const bnKnuckleGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const bnKnuckle = new THREE.Mesh(bnKnuckleGeo, mat(0xaaaacc, { transparent: true, opacity: 0.3, emissive: 0x445566 }));
         bnKnuckle.position.set((f - 2) * 0.015, -0.7, 0);
         bnFingerArm.add(bnKnuckle);
@@ -27650,7 +27650,7 @@ export class CreatureMesh {
 
     // ---- Wailing mist around feet ----
     for (let m = 0; m < 10; m++) {
-      const bnMistGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 6, 6);
+      const bnMistGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 12, 10);
       const bnMist = new THREE.Mesh(bnMistGeo, mat(0x8888aa, { transparent: true, opacity: 0.08 + Math.random() * 0.06 }));
       bnMist.position.set(
         (Math.random() - 0.5) * 0.5,
@@ -27711,7 +27711,7 @@ export class CreatureMesh {
       this._head.add(horn);
       // Horn ridges
       for (let r = 0; r < 3; r++) {
-        const rgGeo = new THREE.TorusGeometry(0.04 - r * 0.008, 0.008, 6, 10);
+        const rgGeo = new THREE.TorusGeometry(0.04 - r * 0.008, 0.008, 12, 10);
         const rg = new THREE.Mesh(rgGeo, mat(0x333333));
         rg.position.set(side * (0.2 - r * side * 0.04), 0.12 + r * 0.1, -0.05);
         rg.rotation.x = Math.PI / 2;
@@ -27813,7 +27813,7 @@ export class CreatureMesh {
     // --- Serratus anterior muscles ---
     for (const side of [-1, 1]) {
       for (let i = 0; i < 4; i++) {
-        const plSerrGeo = new THREE.SphereGeometry(0.04, 6, 5);
+        const plSerrGeo = new THREE.SphereGeometry(0.04, 12, 10);
         const plSerr = new THREE.Mesh(plSerrGeo, muscleMat);
         plSerr.position.set(side * 0.5, 3.0 + i * 0.12, 0.15);
         plSerr.scale.set(0.4, 0.8, 0.5);
@@ -27873,13 +27873,13 @@ export class CreatureMesh {
         plSecBone.rotation.z = side * (0.4 + b * 0.1);
         plWArm.add(plSecBone);
       }
-      const plWcGeo = new THREE.ConeGeometry(0.02, 0.08, 6);
+      const plWcGeo = new THREE.ConeGeometry(0.02, 0.08, 12);
       const plWc = new THREE.Mesh(plWcGeo, hornMat);
       plWc.position.set(side * 0.15, 0.15, 0);
       plWc.rotation.z = side * 0.5;
       plWArm.add(plWc);
       // Wing elbow spike
-      const plWESGeo = new THREE.ConeGeometry(0.025, 0.1, 6);
+      const plWESGeo = new THREE.ConeGeometry(0.025, 0.1, 12);
       const plWES = new THREE.Mesh(plWESGeo, hornMat);
       plWES.position.set(side * 0.15, -0.8, -0.05);
       plWES.rotation.z = side * 0.4;
@@ -27888,7 +27888,7 @@ export class CreatureMesh {
 
     // --- Tail segments and spines ---
     for (let i = 0; i < 5; i++) {
-      const plTsGeo = new THREE.TorusGeometry(0.06 - i * 0.008, 0.01, 6, 8);
+      const plTsGeo = new THREE.TorusGeometry(0.06 - i * 0.008, 0.01, 12, 8);
       const plTs = new THREE.Mesh(plTsGeo, darkMat);
       const plTT = i / 5;
       plTs.position.set(0, 2.5 - plTT * 0.5, -0.5 - plTT * 0.55);
@@ -27896,7 +27896,7 @@ export class CreatureMesh {
       this._body.add(plTs);
     }
     for (let i = 0; i < 4; i++) {
-      const plTdGeo = new THREE.ConeGeometry(0.015, 0.06, 5);
+      const plTdGeo = new THREE.ConeGeometry(0.015, 0.06, 10);
       const plTd = new THREE.Mesh(plTdGeo, hornMat);
       const plTdT = i / 4;
       plTd.position.set(0, 2.4 - plTdT * 0.4, -0.55 - plTdT * 0.45);
@@ -27911,7 +27911,7 @@ export class CreatureMesh {
     plJaw.scale.set(1.2, 0.5, 0.8);
     this._head.add(plJaw);
     for (const side of [-1, 1]) {
-      const plFgGeo = new THREE.ConeGeometry(0.015, 0.08, 6);
+      const plFgGeo = new THREE.ConeGeometry(0.015, 0.08, 12);
       const plFg = new THREE.Mesh(plFgGeo, hornMat);
       plFg.position.set(side * 0.08, -0.2, 0.18);
       plFg.rotation.x = Math.PI;
@@ -27923,7 +27923,7 @@ export class CreatureMesh {
     plBrow.scale.set(2.0, 0.4, 0.6);
     this._head.add(plBrow);
     for (const side of [-1, 1]) {
-      const plEarGeo = new THREE.ConeGeometry(0.03, 0.1, 6);
+      const plEarGeo = new THREE.ConeGeometry(0.03, 0.1, 12);
       const plEar = new THREE.Mesh(plEarGeo, skinMat);
       plEar.position.set(side * 0.25, 0.05, -0.05);
       plEar.rotation.z = side * 0.6;
@@ -27947,7 +27947,7 @@ export class CreatureMesh {
       plSplit.position.set(0, -1.58, 0.04);
       plHLeg.add(plSplit);
       for (const inner of [-1, 1]) {
-        const plAnkGeo = new THREE.SphereGeometry(0.03, 6, 5);
+        const plAnkGeo = new THREE.SphereGeometry(0.03, 12, 10);
         const plAnk = new THREE.Mesh(plAnkGeo, darkMat);
         plAnk.position.set(inner * 0.06, -1.45, 0);
         plHLeg.add(plAnk);
@@ -27956,13 +27956,13 @@ export class CreatureMesh {
 
     // --- Hellfire aura ---
     for (let i = 0; i < 10; i++) {
-      const plEmbGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 6, 6);
+      const plEmbGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 12, 10);
       const plEmb = new THREE.Mesh(plEmbGeo, mat(0xff4400, { emissive: 0xcc2200, emissiveIntensity: 2.5, transparent: true, opacity: 0.5 }));
       plEmb.position.set((Math.random() - 0.5) * 1.2, 2.0 + Math.random() * 3.0, (Math.random() - 0.5) * 0.8);
       this._body.add(plEmb);
     }
     for (let i = 0; i < 6; i++) {
-      const plSmkGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 6, 5);
+      const plSmkGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 12, 10);
       const plSmk = new THREE.Mesh(plSmkGeo, mat(0x220808, { transparent: true, opacity: 0.3 }));
       plSmk.position.set((Math.random() - 0.5) * 0.9, 3.5 + Math.random() * 1.5, (Math.random() - 0.5) * 0.6);
       plSmk.scale.set(1.5, 2.0, 1.5);
@@ -27976,7 +27976,7 @@ export class CreatureMesh {
 
     // --- Infernal chain around torso ---
     for (let i = 0; i < 12; i++) {
-      const plChainGeo = new THREE.TorusGeometry(0.015, 0.005, 4, 6);
+      const plChainGeo = new THREE.TorusGeometry(0.015, 0.005, 10, 6);
       const plChain = new THREE.Mesh(plChainGeo, mat(0x444444, { metalness: 0.7, roughness: 0.25 }));
       const plChA = (i / 12) * Math.PI * 2;
       plChain.position.set(Math.cos(plChA) * 0.52, 3.2 + Math.sin(plChA * 0.5) * 0.2, Math.sin(plChA) * 0.43);
@@ -28102,7 +28102,7 @@ export class CreatureMesh {
       fist.position.y = -1.55;
       arm.add(fist);
       // Armor spikes on forearm
-      const aspGeo = new THREE.ConeGeometry(0.025, 0.1, 6);
+      const aspGeo = new THREE.ConeGeometry(0.025, 0.1, 12);
       const asp = new THREE.Mesh(aspGeo, spikeMat);
       asp.position.set(side * 0.08, -0.9, 0.08);
       asp.rotation.z = side * 0.3;
@@ -28155,7 +28155,7 @@ export class CreatureMesh {
     // Armor scale pattern
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 5; col++) {
-        const dgScaleGeo = new THREE.SphereGeometry(0.03, 6, 5);
+        const dgScaleGeo = new THREE.SphereGeometry(0.03, 12, 10);
         const dgScale = new THREE.Mesh(dgScaleGeo, armorMat);
         dgScale.position.set(-0.12 + col * 0.06 + (row % 2 === 0 ? 0 : 0.03), 2.45 + row * 0.12, 0.38);
         dgScale.scale.set(1, 0.6, 0.3);
@@ -28199,14 +28199,14 @@ export class CreatureMesh {
     dgSkull.scale.set(0.8, 1, 0.7);
     this._body.add(dgSkull);
     for (const side of [-1, 1]) {
-      const dgSkEyeGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const dgSkEyeGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const dgSkEye = new THREE.Mesh(dgSkEyeGeo, mat(0x111111));
       dgSkEye.position.set(0.2 + side * 0.015, 2.12, 0.37);
       this._body.add(dgSkEye);
     }
 
     // --- Belt with chains ---
-    const dgBeltGeo = new THREE.TorusGeometry(0.38, 0.012, 6, 16);
+    const dgBeltGeo = new THREE.TorusGeometry(0.38, 0.012, 12, 16);
     const dgBelt = new THREE.Mesh(dgBeltGeo, mat(0x333333, { metalness: 0.8, roughness: 0.2 }));
     dgBelt.position.set(0, 2.1, 0);
     dgBelt.rotation.x = Math.PI / 2;
@@ -28215,7 +28215,7 @@ export class CreatureMesh {
     for (let i = 0; i < 3; i++) {
       const dgChainA = (i / 3) * Math.PI * 0.6 - 0.3;
       for (let link = 0; link < 4; link++) {
-        const dgLinkGeo = new THREE.TorusGeometry(0.008, 0.003, 4, 6);
+        const dgLinkGeo = new THREE.TorusGeometry(0.008, 0.003, 10, 6);
         const dgLink = new THREE.Mesh(dgLinkGeo, mat(0x444444, { metalness: 0.7 }));
         dgLink.position.set(Math.cos(dgChainA) * 0.38, 2.05 - link * 0.03, Math.sin(dgChainA) * 0.3);
         dgLink.rotation.set(link % 2 === 0 ? 0 : Math.PI / 2, 0, 0);
@@ -28268,7 +28268,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const dgWSArm = side === -1 ? this._leftArm : this._rightArm;
       for (let s = 0; s < 3; s++) {
-        const dgWSGeo = new THREE.ConeGeometry(0.012, 0.06, 5);
+        const dgWSGeo = new THREE.ConeGeometry(0.012, 0.06, 10);
         const dgWS = new THREE.Mesh(dgWSGeo, spikeMat);
         const dgWSA = (s / 3) * Math.PI - Math.PI / 2;
         dgWS.position.set(Math.cos(dgWSA) * 0.1, -1.3, Math.sin(dgWSA) * 0.1);
@@ -28283,7 +28283,7 @@ export class CreatureMesh {
         dgWSArm.add(dgFg);
       }
       for (let c = 0; c < 3; c++) {
-        const dgCtGeo = new THREE.ConeGeometry(0.008, 0.04, 5);
+        const dgCtGeo = new THREE.ConeGeometry(0.008, 0.04, 10);
         const dgCt = new THREE.Mesh(dgCtGeo, spikeMat);
         dgCt.position.set(-0.04 + c * 0.04, -1.72, 0.1);
         dgCt.rotation.x = 0.4;
@@ -28309,7 +28309,7 @@ export class CreatureMesh {
     dgPom.position.y = -1.5;
     this._rightArm.add(dgPom);
 
-    const dgPgGeo = new THREE.SphereGeometry(0.015, 6, 6);
+    const dgPgGeo = new THREE.SphereGeometry(0.015, 12, 10);
     const dgPg = new THREE.Mesh(dgPgGeo, mat(0xff0000, { emissive: 0xcc0000, emissiveIntensity: 2.0 }));
     dgPg.position.set(0, -1.5, 0.025);
     this._rightArm.add(dgPg);
@@ -28339,7 +28339,7 @@ export class CreatureMesh {
     // --- Knee and leg armor ---
     for (const side of [-1, 1]) {
       const dgLeg = side === -1 ? this._leftLeg : this._rightLeg;
-      const dgKgGeo = new THREE.ConeGeometry(0.025, 0.08, 6);
+      const dgKgGeo = new THREE.ConeGeometry(0.025, 0.08, 12);
       const dgKg = new THREE.Mesh(dgKgGeo, spikeMat);
       dgKg.position.set(0, -0.7, 0.12);
       dgLeg.add(dgKg);
@@ -28347,7 +28347,7 @@ export class CreatureMesh {
       const dgGr = new THREE.Mesh(dgGrGeo, armorMat);
       dgGr.position.set(0, -1.0, 0.1);
       dgLeg.add(dgGr);
-      const dgHtGeo = new THREE.TorusGeometry(0.08, 0.008, 6, 10);
+      const dgHtGeo = new THREE.TorusGeometry(0.08, 0.008, 12, 10);
       const dgHt = new THREE.Mesh(dgHtGeo, spikeMat);
       dgHt.position.set(0, -1.35, 0.04);
       dgHt.rotation.x = Math.PI / 2;
@@ -28389,7 +28389,7 @@ export class CreatureMesh {
 
     // Eyes
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const eGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const eye = new THREE.Mesh(eGeo, eyeMat);
       eye.position.set(side * 0.06, 0.02, 0.13);
       this._head.add(eye);
@@ -28455,7 +28455,7 @@ export class CreatureMesh {
       leg.add(shin);
       // Clawed feet
       for (let t = -1; t <= 1; t++) {
-        const clGeo = new THREE.ConeGeometry(0.008, 0.04, 6);
+        const clGeo = new THREE.ConeGeometry(0.008, 0.04, 12);
         const claw = new THREE.Mesh(clGeo, hornMat);
         claw.position.set(t * 0.02, -0.95, 0.03);
         claw.rotation.x = 0.3;
@@ -28470,7 +28470,7 @@ export class CreatureMesh {
     // --- Torso musculature and anatomy ---
     // Spine vertebrae bumps along back
     for (let i = 0; i < 8; i++) {
-      const scVertGeo = new THREE.SphereGeometry(0.012, 6, 5);
+      const scVertGeo = new THREE.SphereGeometry(0.012, 12, 10);
       const scVert = new THREE.Mesh(scVertGeo, skinMat);
       scVert.position.set(0, 1.4 + i * 0.18, -0.16);
       this._body.add(scVert);
@@ -28478,7 +28478,7 @@ export class CreatureMesh {
 
     // Lower back dimples
     for (const side of [-1, 1]) {
-      const scDimGeo = new THREE.SphereGeometry(0.015, 6, 5);
+      const scDimGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const scDim = new THREE.Mesh(scDimGeo, mat(0x773399, { roughness: 0.8 }));
       scDim.position.set(side * 0.06, 1.35, -0.12);
       scDim.scale.set(1, 0.5, 0.5);
@@ -28488,7 +28488,7 @@ export class CreatureMesh {
     // Abdominal muscle subtle definition
     for (let i = 0; i < 3; i++) {
       for (const side of [-1, 1]) {
-        const scAbsGeo = new THREE.SphereGeometry(0.025, 6, 5);
+        const scAbsGeo = new THREE.SphereGeometry(0.025, 12, 10);
         const scAbs = new THREE.Mesh(scAbsGeo, skinMat);
         scAbs.position.set(side * 0.04, 1.5 + i * 0.12, 0.14);
         scAbs.scale.set(0.8, 0.6, 0.3);
@@ -28526,7 +28526,7 @@ export class CreatureMesh {
 
     // Beauty marks
     for (let i = 0; i < 3; i++) {
-      const scMoleGeo = new THREE.SphereGeometry(0.004, 4, 4);
+      const scMoleGeo = new THREE.SphereGeometry(0.004, 12, 10);
       const scMole = new THREE.Mesh(scMoleGeo, mat(0x442244));
       scMole.position.set((Math.random() - 0.5) * 0.2, 1.6 + Math.random() * 0.8, 0.14 + Math.random() * 0.02);
       this._body.add(scMole);
@@ -28543,14 +28543,14 @@ export class CreatureMesh {
         scCapArm.add(scCap);
       }
       for (let s = 0; s < 5; s++) {
-        const scScallGeo = new THREE.SphereGeometry(0.008, 5, 4);
+        const scScallGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const scScall = new THREE.Mesh(scScallGeo, mat(0x552266, { transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
         scScall.position.set(side * (0.15 + s * 0.1), -0.5 - s * 0.02, 0);
         scScall.scale.set(1, 0.3, 1);
         scCapArm.add(scScall);
       }
       for (let c = 0; c < 4; c++) {
-        const scClawGeo = new THREE.ConeGeometry(0.005, 0.035, 5);
+        const scClawGeo = new THREE.ConeGeometry(0.005, 0.035, 10);
         const scClaw = new THREE.Mesh(scClawGeo, mat(0x220022, { metalness: 0.4, roughness: 0.2, clearcoat: 0.7 }));
         scClaw.position.set(side * (0.08 + c * 0.04), -0.55, 0.02);
         scClaw.rotation.x = 0.5;
@@ -28559,7 +28559,7 @@ export class CreatureMesh {
     }
 
     // --- Jewelry and adornments ---
-    const scChokerGeo = new THREE.TorusGeometry(0.14, 0.006, 6, 16);
+    const scChokerGeo = new THREE.TorusGeometry(0.14, 0.006, 12, 16);
     const scChoker = new THREE.Mesh(scChokerGeo, mat(0x222222, { metalness: 0.9, roughness: 0.1, clearcoat: 0.8 }));
     scChoker.position.set(0, 2.48, 0.02);
     scChoker.rotation.x = Math.PI / 2;
@@ -28573,7 +28573,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const scBArm = side === -1 ? this._leftArm : this._rightArm;
       for (let b = 0; b < 2; b++) {
-        const scBangGeo = new THREE.TorusGeometry(0.032, 0.004, 6, 12);
+        const scBangGeo = new THREE.TorusGeometry(0.032, 0.004, 12, 12);
         const scBang = new THREE.Mesh(scBangGeo, mat(0x888844, { metalness: 0.85, roughness: 0.15 }));
         scBang.position.set(0, -0.1 - b * 0.06, 0);
         scBang.rotation.x = Math.PI / 2;
@@ -28583,13 +28583,13 @@ export class CreatureMesh {
 
     for (const side of [-1, 1]) {
       const scALeg = side === -1 ? this._leftLeg : this._rightLeg;
-      const scAChainGeo = new THREE.TorusGeometry(0.045, 0.003, 6, 12);
+      const scAChainGeo = new THREE.TorusGeometry(0.045, 0.003, 12, 12);
       const scAChain = new THREE.Mesh(scAChainGeo, mat(0x666644, { metalness: 0.8, roughness: 0.15 }));
       scAChain.position.set(0, -0.85, 0);
       scAChain.rotation.x = Math.PI / 2;
       scALeg.add(scAChain);
       for (let lk = 0; lk < 3; lk++) {
-        const scLnkGeo = new THREE.TorusGeometry(0.006, 0.002, 4, 6);
+        const scLnkGeo = new THREE.TorusGeometry(0.006, 0.002, 10, 6);
         const scLnk = new THREE.Mesh(scLnkGeo, mat(0x666644, { metalness: 0.8 }));
         scLnk.position.set(0.03, -0.87 - lk * 0.02, 0.04);
         scALeg.add(scLnk);
@@ -28598,12 +28598,12 @@ export class CreatureMesh {
 
     // --- Ear detail ---
     for (const side of [-1, 1]) {
-      const scEarGeo = new THREE.ConeGeometry(0.015, 0.06, 5);
+      const scEarGeo = new THREE.ConeGeometry(0.015, 0.06, 10);
       const scEar = new THREE.Mesh(scEarGeo, skinMat);
       scEar.position.set(side * 0.15, 0.02, 0);
       scEar.rotation.z = side * 0.8;
       this._head.add(scEar);
-      const scEarRGeo = new THREE.TorusGeometry(0.008, 0.002, 4, 8);
+      const scEarRGeo = new THREE.TorusGeometry(0.008, 0.002, 10, 8);
       const scEarR = new THREE.Mesh(scEarRGeo, mat(0x888844, { metalness: 0.9 }));
       scEarR.position.set(side * 0.16, -0.01, 0);
       this._head.add(scEarR);
@@ -28645,7 +28645,7 @@ export class CreatureMesh {
       scFt.scale.set(0.8, 0.3, 1.2);
       scTLeg.add(scFt);
       for (let t = 0; t < 3; t++) {
-        const scToeGeo = new THREE.SphereGeometry(0.01, 5, 4);
+        const scToeGeo = new THREE.SphereGeometry(0.01, 12, 10);
         const scToe = new THREE.Mesh(scToeGeo, skinMat);
         scToe.position.set(-0.015 + t * 0.015, -0.97, 0.06);
         scTLeg.add(scToe);
@@ -28654,7 +28654,7 @@ export class CreatureMesh {
 
     // --- Magical charm sigils floating ---
     for (let i = 0; i < 6; i++) {
-      const scSigGeo = new THREE.TorusGeometry(0.012, 0.002, 4, 8);
+      const scSigGeo = new THREE.TorusGeometry(0.012, 0.002, 10, 8);
       const scSig = new THREE.Mesh(scSigGeo, mat(0xff88ff, { emissive: 0xcc66dd, emissiveIntensity: 3.0, transparent: true, opacity: 0.45 }));
       const scSigA = (i / 6) * Math.PI * 2;
       scSig.position.set(Math.cos(scSigA) * 0.4, 1.8 + Math.sin(scSigA * 1.5) * 0.5, Math.sin(scSigA) * 0.35);
@@ -28664,7 +28664,7 @@ export class CreatureMesh {
 
     // --- Pheromone mist particles ---
     for (let i = 0; i < 10; i++) {
-      const scMistGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 5, 4);
+      const scMistGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
       const scMist = new THREE.Mesh(scMistGeo, mat(0xdd88ee, { transparent: true, opacity: 0.08 + Math.random() * 0.07 }));
       scMist.position.set((Math.random() - 0.5) * 0.5, 1.2 + Math.random() * 1.8, (Math.random() - 0.5) * 0.4);
       scMist.scale.set(1.5, 1.5, 1.5);
@@ -28673,7 +28673,7 @@ export class CreatureMesh {
 
     // --- Tail sinuous segments ---
     for (let i = 0; i < 4; i++) {
-      const scTmGeo = new THREE.SphereGeometry(0.018 - i * 0.003, 6, 5);
+      const scTmGeo = new THREE.SphereGeometry(0.018 - i * 0.003, 12, 10);
       const scTm = new THREE.Mesh(scTmGeo, skinMat);
       const scTProg = i / 4;
       scTm.position.set(Math.sin(scTProg * 2) * 0.04, 1.15 - scTProg * 0.25, -0.22 - scTProg * 0.35);
@@ -28704,7 +28704,7 @@ export class CreatureMesh {
     this._body.add(scSss);
 
     // --- Chin and jaw detail ---
-    const scChinGeo = new THREE.SphereGeometry(0.02, 6, 5);
+    const scChinGeo = new THREE.SphereGeometry(0.02, 12, 10);
     const scChin = new THREE.Mesh(scChinGeo, skinMat);
     scChin.position.set(0, -0.1, 0.12);
     scChin.scale.set(0.8, 0.5, 0.6);
@@ -28782,7 +28782,7 @@ export class CreatureMesh {
 
     // Skull ridges — cranial bumps
     for (let i = 0; i < 3; i++) {
-      const ridgeGeo = new THREE.SphereGeometry(0.03, 6, 5);
+      const ridgeGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const ridge = new THREE.Mesh(ridgeGeo, skinMat);
       ridge.position.set(0, 0.12 + i * 0.04, -0.02 - i * 0.02);
       ridge.scale.set(1.2, 0.5, 0.8);
@@ -28828,7 +28828,7 @@ export class CreatureMesh {
       eye.position.set(side * 0.07, 0.03, 0.14);
       this._head.add(eye);
       // Pupil slit
-      const pupGeo = new THREE.SphereGeometry(0.012, 6, 6);
+      const pupGeo = new THREE.SphereGeometry(0.012, 12, 10);
       const pup = new THREE.Mesh(pupGeo, mat(0x111111));
       pup.position.set(side * 0.07, 0.03, 0.17);
       pup.scale.set(0.5, 1.2, 0.5);
@@ -28851,7 +28851,7 @@ export class CreatureMesh {
     this._head.add(mouth);
     // Fangs
     for (const side of [-1, 1]) {
-      const fangGeo = new THREE.ConeGeometry(0.006, 0.04, 5);
+      const fangGeo = new THREE.ConeGeometry(0.006, 0.04, 10);
       const fang = new THREE.Mesh(fangGeo, boneMaterial(0xddddbb));
       fang.position.set(side * 0.03, -0.08, 0.13);
       fang.rotation.x = Math.PI;
@@ -28859,7 +28859,7 @@ export class CreatureMesh {
     }
     // Additional small teeth
     for (let t = 0; t < 4; t++) {
-      const tGeo = new THREE.ConeGeometry(0.004, 0.02, 4);
+      const tGeo = new THREE.ConeGeometry(0.004, 0.02, 10);
       const tooth = new THREE.Mesh(tGeo, boneMaterial(0xccccaa));
       tooth.position.set(-0.015 + t * 0.01, -0.065, 0.13);
       tooth.rotation.x = Math.PI;
@@ -28882,13 +28882,13 @@ export class CreatureMesh {
       ear.rotation.z = side * 0.5;
       this._head.add(ear);
       // Ear inner ridge
-      const earInGeo = new THREE.ConeGeometry(0.02, 0.06, 6);
+      const earInGeo = new THREE.ConeGeometry(0.02, 0.06, 12);
       const earIn = new THREE.Mesh(earInGeo, darkMat);
       earIn.position.set(side * 0.14, 0.06, 0.02);
       earIn.rotation.z = side * 0.5;
       this._head.add(earIn);
       // Ear notch/torn edge
-      const notchGeo = new THREE.SphereGeometry(0.008, 4, 4);
+      const notchGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const notch = new THREE.Mesh(notchGeo, scarMat);
       notch.position.set(side * 0.17, 0.1, 0);
       this._head.add(notch);
@@ -28926,7 +28926,7 @@ export class CreatureMesh {
         arm.add(fb);
       }
       // Wing claw at tip
-      const wcGeo = new THREE.ConeGeometry(0.008, 0.04, 5);
+      const wcGeo = new THREE.ConeGeometry(0.008, 0.04, 10);
       const wc = new THREE.Mesh(wcGeo, hornMat);
       wc.position.set(side * 0.06, 0.08, 0);
       wc.rotation.z = side * 0.6;
@@ -28957,7 +28957,7 @@ export class CreatureMesh {
       this._body.add(ts);
     }
     // Tail barb — arrow-shaped
-    const barbGeo = new THREE.ConeGeometry(0.02, 0.06, 6);
+    const barbGeo = new THREE.ConeGeometry(0.02, 0.06, 12);
     const barb = new THREE.Mesh(barbGeo, hornMat);
     barb.position.set(0, 0.48, -0.42);
     barb.rotation.x = 0.6;
@@ -28991,14 +28991,14 @@ export class CreatureMesh {
       leg.add(foot);
       // Toe claws
       for (let t = -1; t <= 1; t++) {
-        const clGeo = new THREE.ConeGeometry(0.006, 0.03, 5);
+        const clGeo = new THREE.ConeGeometry(0.006, 0.03, 10);
         const claw = new THREE.Mesh(clGeo, hornMat);
         claw.position.set(t * 0.02, -0.44, 0.05);
         claw.rotation.x = 0.4;
         leg.add(claw);
       }
       // Leg muscle bulge
-      const muscGeo = new THREE.SphereGeometry(0.03, 6, 5);
+      const muscGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const musc = new THREE.Mesh(muscGeo, skinMat);
       musc.position.set(0, -0.15, -0.03);
       musc.scale.set(0.8, 1.4, 0.7);
@@ -29024,7 +29024,7 @@ export class CreatureMesh {
     this._body.add(orbInner);
     // Orbiting flame wisps around orb
     for (let i = 0; i < 5; i++) {
-      const fwGeo = new THREE.ConeGeometry(0.012, 0.05, 6);
+      const fwGeo = new THREE.ConeGeometry(0.012, 0.05, 12);
       const fw = new THREE.Mesh(fwGeo, fireMat);
       const a = (i / 5) * Math.PI * 2;
       fw.position.set(Math.cos(a) * 0.08, 1.2 + Math.sin(a) * 0.06, 0.32 + Math.cos(a + 1) * 0.05);
@@ -29033,7 +29033,7 @@ export class CreatureMesh {
 
     // --- Golden overlord jewelry ---
     // Crown circlet — smaller, imp-sized
-    const circletGeo = new THREE.TorusGeometry(0.16, 0.008, 6, 16);
+    const circletGeo = new THREE.TorusGeometry(0.16, 0.008, 12, 16);
     const circlet = new THREE.Mesh(circletGeo, goldMat);
     circlet.position.y = 0.12;
     circlet.rotation.x = Math.PI / 2;
@@ -29044,7 +29044,7 @@ export class CreatureMesh {
     crGem.position.set(0, 0.12, 0.16);
     this._head.add(crGem);
     // Necklace / torc
-    const torcGeo = new THREE.TorusGeometry(0.1, 0.006, 6, 14);
+    const torcGeo = new THREE.TorusGeometry(0.1, 0.006, 12, 14);
     const torc = new THREE.Mesh(torcGeo, goldMat);
     torc.position.set(0, 1.28, 0.03);
     torc.rotation.x = Math.PI / 2;
@@ -29117,7 +29117,7 @@ export class CreatureMesh {
     }
     // Smoke wisps
     for (let i = 0; i < 4; i++) {
-      const smkGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 6, 5);
+      const smkGeo = new THREE.SphereGeometry(0.02 + Math.random() * 0.015, 12, 10);
       const smk = new THREE.Mesh(smkGeo, mat(0x332211, { transparent: true, opacity: 0.2 }));
       smk.position.set((Math.random() - 0.5) * 0.3, 1.4 + Math.random() * 0.5, (Math.random() - 0.5) * 0.2);
       smk.scale.set(1.5, 2.0, 1.5);
@@ -29146,7 +29146,7 @@ export class CreatureMesh {
         fc.position.set(side * 0.03 + (f - 1) * 0.01, -0.37, 0.17);
         fc.rotation.x = 0.4;
         wArm.add(fc);
-        const clawGeo = new THREE.ConeGeometry(0.004, 0.02, 4);
+        const clawGeo = new THREE.ConeGeometry(0.004, 0.02, 10);
         const claw = new THREE.Mesh(clawGeo, hornMat);
         claw.position.set(side * 0.03 + (f - 1) * 0.01, -0.39, 0.19);
         claw.rotation.x = 0.5;
@@ -29208,7 +29208,7 @@ export class CreatureMesh {
 
     // Eyes
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const eGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const eye = new THREE.Mesh(eGeo, eyeMat);
       eye.position.set(side * 0.07, 0.02, 0.16);
       this._head.add(eye);
@@ -29336,7 +29336,7 @@ export class CreatureMesh {
 
     // --- Additional detail: holy light particles ---
     for (let i = 0; i < 14; i++) {
-      const pGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.01, 6, 6);
+      const pGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.01, 12, 10);
       const p = new THREE.Mesh(pGeo, mat(0xffffcc, { emissive: 0xffee88, emissiveIntensity: 2.5, transparent: true, opacity: 0.6 }));
       p.position.set(
         (Math.random() - 0.5) * 1.2,
@@ -29388,7 +29388,7 @@ export class CreatureMesh {
     srHalo2.position.y = 0.3;
     srHalo2.rotation.x = Math.PI / 2;
     this._head.add(srHalo2);
-    const srHalo3Geo = new THREE.TorusGeometry(0.26, 0.008, 6, 24);
+    const srHalo3Geo = new THREE.TorusGeometry(0.26, 0.008, 12, 24);
     const srHalo3 = new THREE.Mesh(srHalo3Geo, mat(0xffee66, { emissive: 0xbbaa22, emissiveIntensity: 1.8, transparent: true, opacity: 0.3 }));
     srHalo3.position.y = 0.3;
     srHalo3.rotation.x = Math.PI / 2 + 0.3;
@@ -29439,7 +29439,7 @@ export class CreatureMesh {
     srBlade.position.set(0.35, 1.5, 0.15);
     srBlade.rotation.z = 0.2;
     this._body.add(srBlade);
-    const srBladeTipGeo = new THREE.ConeGeometry(0.012, 0.06, 4);
+    const srBladeTipGeo = new THREE.ConeGeometry(0.012, 0.06, 10);
     const srBladeTip = new THREE.Mesh(srBladeTipGeo, srBladeMat);
     srBladeTip.position.set(0.27, 1.92, 0.15);
     srBladeTip.rotation.z = 0.2;
@@ -29479,7 +29479,7 @@ export class CreatureMesh {
       const srCrossH = new THREE.Mesh(srCrossHGeo, mat(0xffee66, { emissive: 0xddaa22, emissiveIntensity: 2.0 }));
       srCrossH.position.set(side * 0.25, 2.54, 0.07);
       this._body.add(srCrossH);
-      const srTrimGeo = new THREE.TorusGeometry(0.075, 0.005, 4, 12);
+      const srTrimGeo = new THREE.TorusGeometry(0.075, 0.005, 10, 12);
       const srTrim = new THREE.Mesh(srTrimGeo, mat(0xddcc88, { metalness: 0.8 }));
       srTrim.position.set(side * 0.25, 2.5, 0);
       srTrim.rotation.y = side * 0.3;
@@ -29493,7 +29493,7 @@ export class CreatureMesh {
       srGauntlet.position.set(side * 0.35, 2.0, 0);
       this._body.add(srGauntlet);
       for (let k = 0; k < 3; k++) {
-        const srKnuckleGeo = new THREE.SphereGeometry(0.01, 6, 6);
+        const srKnuckleGeo = new THREE.SphereGeometry(0.01, 12, 10);
         const srKnuckle = new THREE.Mesh(srKnuckleGeo, mat(0xccbb77, { metalness: 0.7 }));
         srKnuckle.position.set(side * 0.35, 1.92, 0.02 + k * 0.015);
         this._body.add(srKnuckle);
@@ -29581,7 +29581,7 @@ export class CreatureMesh {
       shoulder.position.set(side * 0.45, 2.9, 0);
       this._body.add(shoulder);
       // Shoulder edge trim
-      const stGeo = new THREE.TorusGeometry(0.14, 0.01, 6, 14);
+      const stGeo = new THREE.TorusGeometry(0.14, 0.01, 12, 14);
       const st = new THREE.Mesh(stGeo, mat(0xcccc88, { metalness: 0.5 }));
       st.position.set(side * 0.45, 2.9, 0);
       st.rotation.x = Math.PI / 2;
@@ -29654,7 +29654,7 @@ export class CreatureMesh {
       const shin = new THREE.Mesh(shinGeo, armorMat);
       shin.position.y = -0.9;
       leg.add(shin);
-      const footGeo = new THREE.SphereGeometry(0.1, 6, 5);
+      const footGeo = new THREE.SphereGeometry(0.1, 12, 10);
       const foot = new THREE.Mesh(footGeo, armorMat);
       foot.scale.set(1, 0.5, 1.3);
       foot.position.set(0, -1.3, 0.03);
@@ -29673,7 +29673,7 @@ export class CreatureMesh {
     this._body.add(arEagleBody);
 
     for (const side of [-1, 1]) {
-      const arEWGeo = new THREE.ConeGeometry(0.02, 0.08, 5);
+      const arEWGeo = new THREE.ConeGeometry(0.02, 0.08, 10);
       const arEW = new THREE.Mesh(arEWGeo, mat(0xddcc88, { metalness: 0.8, roughness: 0.15 }));
       arEW.position.set(side * 0.05, 2.57, 0.27);
       arEW.rotation.z = side * 1.2;
@@ -29692,7 +29692,7 @@ export class CreatureMesh {
 
     // --- Chainmail under plate gaps ---
     for (let i = 0; i < 12; i++) {
-      const arChainGeo = new THREE.TorusGeometry(0.006, 0.002, 4, 6);
+      const arChainGeo = new THREE.TorusGeometry(0.006, 0.002, 10, 6);
       const arChain = new THREE.Mesh(arChainGeo, mat(0xaaaaaa, { metalness: 0.7, roughness: 0.3 }));
       arChain.position.set((Math.random() - 0.5) * 0.3, 2.1 + Math.random() * 0.3, 0.24 + Math.random() * 0.02);
       arChain.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
@@ -29700,7 +29700,7 @@ export class CreatureMesh {
     }
 
     // --- Belt and tasset armor ---
-    const arBeltGeo = new THREE.TorusGeometry(0.36, 0.015, 6, 16);
+    const arBeltGeo = new THREE.TorusGeometry(0.36, 0.015, 12, 16);
     const arBelt = new THREE.Mesh(arBeltGeo, mat(0xaa9955, { metalness: 0.6, roughness: 0.25 }));
     arBelt.position.set(0, 2.1, 0);
     arBelt.rotation.x = Math.PI / 2;
@@ -29755,7 +29755,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const arFArm = side === -1 ? this._leftArm : this._rightArm;
       for (let f = 0; f < 7; f++) {
-        const arFTipGeo = new THREE.SphereGeometry(0.008, 5, 4);
+        const arFTipGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const arFTip = new THREE.Mesh(arFTipGeo, mat(0xffffcc, { emissive: 0xffee88, emissiveIntensity: 1.5, transparent: true, opacity: 0.5 }));
         arFTip.position.set(side * (0.4 + f * 0.1), -0.25 - f * 0.02, -0.04);
         arFArm.add(arFTip);
@@ -29770,7 +29770,7 @@ export class CreatureMesh {
       arSab.position.set(0, -1.2, 0.04);
       arSab.scale.set(0.8, 0.35, 1.2);
       arBtLeg.add(arSab);
-      const arToGeo = new THREE.SphereGeometry(0.04, 6, 5);
+      const arToGeo = new THREE.SphereGeometry(0.04, 12, 10);
       const arTo = new THREE.Mesh(arToGeo, armorMat);
       arTo.position.set(0, -1.22, 0.08);
       arTo.scale.set(0.8, 0.3, 0.6);
@@ -29781,7 +29781,7 @@ export class CreatureMesh {
         arArt.position.set(0, -1.15 - j * 0.03, 0.07);
         arBtLeg.add(arArt);
       }
-      const arSpurGeo = new THREE.ConeGeometry(0.008, 0.03, 5);
+      const arSpurGeo = new THREE.ConeGeometry(0.008, 0.03, 10);
       const arSpur = new THREE.Mesh(arSpurGeo, mat(0xddcc88, { metalness: 0.8 }));
       arSpur.position.set(0, -1.18, -0.06);
       arSpur.rotation.x = -0.5;
@@ -29793,7 +29793,7 @@ export class CreatureMesh {
       arKg.scale.set(0.8, 0.5, 0.5);
       arBtLeg.add(arKg);
       // Greave trim
-      const arGtGeo = new THREE.TorusGeometry(0.08, 0.005, 6, 10);
+      const arGtGeo = new THREE.TorusGeometry(0.08, 0.005, 12, 10);
       const arGt = new THREE.Mesh(arGtGeo, mat(0xcccc88, { metalness: 0.6 }));
       arGt.position.y = -0.75;
       arGt.rotation.x = Math.PI / 2;
@@ -29802,7 +29802,7 @@ export class CreatureMesh {
 
     // --- Holy mist around feet ---
     for (let i = 0; i < 8; i++) {
-      const arHMistGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 5, 4);
+      const arHMistGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 12, 10);
       const arHMist = new THREE.Mesh(arHMistGeo, mat(0xffffee, { transparent: true, opacity: 0.06 + Math.random() * 0.04 }));
       arHMist.position.set((Math.random() - 0.5) * 0.6, 0.05 + Math.random() * 0.2, (Math.random() - 0.5) * 0.5);
       arHMist.scale.set(1.5, 0.5, 1.5);
@@ -29868,7 +29868,7 @@ export class CreatureMesh {
 
     // --- Shoulder pauldron ornaments ---
     for (const side of [-1, 1]) {
-      const arPwGeo = new THREE.ConeGeometry(0.04, 0.12, 6);
+      const arPwGeo = new THREE.ConeGeometry(0.04, 0.12, 12);
       const arPw = new THREE.Mesh(arPwGeo, armorMat);
       arPw.position.set(side * 0.5, 3.0, 0);
       arPw.rotation.z = side * 0.5;
@@ -30262,7 +30262,7 @@ export class CreatureMesh {
       centralPad.scale.set(1.5, 0.3, 1.2);
       awHindLeg.add(centralPad);
       for (let tp = 0; tp < 4; tp++) {
-        const toePadGeo = new THREE.SphereGeometry(0.008, 6, 4);
+        const toePadGeo = new THREE.SphereGeometry(0.008, 12, 10);
         const toePad = new THREE.Mesh(toePadGeo, organicMat(0x333333, { roughness: 0.4 }));
         toePad.position.set((tp - 1.5) * 0.012, -0.62, 0.025);
         toePad.scale.set(1, 0.3, 1);
@@ -30317,7 +30317,7 @@ export class CreatureMesh {
 
     // --- Eye glow reflection ---
     for (const awEyeSide of [-1, 1]) {
-      const catchLightGeo = new THREE.SphereGeometry(0.005, 6, 4);
+      const catchLightGeo = new THREE.SphereGeometry(0.005, 12, 10);
       const catchLight = new THREE.Mesh(catchLightGeo, mat(0xffffff, { emissive: 0xffffff }));
       catchLight.position.set(awEyeSide * 0.068, 0.046, 0.118);
       this._head.add(catchLight);
@@ -30336,7 +30336,7 @@ export class CreatureMesh {
     // --- Ribcage side definition ---
     for (const awRibSide of [-1, 1]) {
       for (let r = 0; r < 5; r++) {
-        const ribDetailGeo = new THREE.SphereGeometry(0.012, 6, 4);
+        const ribDetailGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const ribDetail = new THREE.Mesh(ribDetailGeo, furM);
         ribDetail.scale.set(0.5, 0.3, 2.0);
         ribDetail.position.set(awRibSide * 0.2, 0.72 + r * 0.04, -0.05 + r * 0.06);
@@ -30373,7 +30373,7 @@ export class CreatureMesh {
     // --- Dew claws ---
     for (const awDewSide of [-1, 1]) {
       const awDewArm = awDewSide === -1 ? this._leftArm : this._rightArm;
-      const dewClawGeo = new THREE.ConeGeometry(0.004, 0.015, 6);
+      const dewClawGeo = new THREE.ConeGeometry(0.004, 0.015, 12);
       const dewClaw = new THREE.Mesh(dewClawGeo, clawMat);
       dewClaw.position.set(awDewSide * 0.03, -0.52, 0);
       dewClaw.rotation.x = Math.PI;
@@ -30405,7 +30405,7 @@ export class CreatureMesh {
     // --- Breath mist ---
     const breathMistMat = mat(0xcccccc, { transparent: true, opacity: 0.08 });
     for (let b = 0; b < 3; b++) {
-      const breathGeo = new THREE.SphereGeometry(0.02 + b * 0.015, 6, 4);
+      const breathGeo = new THREE.SphereGeometry(0.02 + b * 0.015, 12, 10);
       const breath = new THREE.Mesh(breathGeo, breathMistMat);
       breath.position.set(0, -0.01, 0.26 + b * 0.04);
       this._head.add(breath);
@@ -30468,7 +30468,7 @@ export class CreatureMesh {
     beak.rotation.x = Math.PI / 2;
     this._head.add(beak);
     // Beak hook
-    const hookGeo = new THREE.ConeGeometry(0.015, 0.03, 6);
+    const hookGeo = new THREE.ConeGeometry(0.015, 0.03, 12);
     const hook = new THREE.Mesh(hookGeo, beakMat);
     hook.position.set(0, -0.035, 0.17);
     hook.rotation.x = Math.PI * 0.7;
@@ -30476,7 +30476,7 @@ export class CreatureMesh {
 
     // Eyes
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.SphereGeometry(0.02, 6, 6);
+      const eGeo = new THREE.SphereGeometry(0.02, 12, 10);
       const eye = new THREE.Mesh(eGeo, eyeMat);
       eye.position.set(side * 0.06, 0.03, 0.08);
       this._head.add(eye);
@@ -30533,7 +30533,7 @@ export class CreatureMesh {
         leg.add(claw);
       }
       // Rear talon
-      const rtGeo = new THREE.ConeGeometry(0.006, 0.04, 6);
+      const rtGeo = new THREE.ConeGeometry(0.006, 0.04, 12);
       const rt = new THREE.Mesh(rtGeo, talonMat);
       rt.position.set(0, -0.42, -0.02);
       rt.rotation.x = -0.3;
@@ -30608,7 +30608,7 @@ export class CreatureMesh {
         pad.rotation.x = Math.PI / 2;
         thLeg.add(pad);
         // Claw curve tip
-        const curvGeo = new THREE.SphereGeometry(0.006, 6, 4);
+        const curvGeo = new THREE.SphereGeometry(0.006, 12, 10);
         const curv = new THREE.Mesh(curvGeo, talonMat);
         curv.position.set(t * 0.015, -0.455, 0.03);
         thLeg.add(curv);
@@ -30640,7 +30640,7 @@ export class CreatureMesh {
     }
     // Nostril holes
     for (const side of [-1, 1]) {
-      const nostrilGeo = new THREE.SphereGeometry(0.005, 6, 4);
+      const nostrilGeo = new THREE.SphereGeometry(0.005, 12, 10);
       const nostril = new THREE.Mesh(nostrilGeo, mat(0x111111));
       nostril.position.set(side * 0.012, -0.005, 0.11);
       this._head.add(nostril);
@@ -30648,7 +30648,7 @@ export class CreatureMesh {
 
     // --- Additional detail: eye iris and pupil ---
     for (const side of [-1, 1]) {
-      const irisGeo = new THREE.TorusGeometry(0.014, 0.004, 6, 12);
+      const irisGeo = new THREE.TorusGeometry(0.014, 0.004, 12, 12);
       const iris = new THREE.Mesh(irisGeo, mat(0xcc6600, { emissive: 0x884400 }));
       iris.position.set(side * 0.06, 0.03, 0.095);
       iris.rotation.x = Math.PI / 2;
@@ -30683,7 +30683,7 @@ export class CreatureMesh {
       lightBolt.position.set(Math.cos(bAngle) * bRadius, 1.05 + Math.random() * 0.4, Math.sin(bAngle) * bRadius);
       lightBolt.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
       this._body.add(lightBolt);
-      const nodeGeo = new THREE.SphereGeometry(0.008, 6, 4);
+      const nodeGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const node = new THREE.Mesh(nodeGeo, mat(0xeeeeff, { emissive: 0xccddff }));
       node.position.copy(lightBolt.position);
       node.position.y += boltLen * 0.4;
@@ -30717,7 +30717,7 @@ export class CreatureMesh {
     for (let row = 0; row < 5; row++) {
       for (let col = 0; col < 6; col++) {
         const plAngle = (col / 6) * Math.PI * 2;
-        const plGeo = new THREE.SphereGeometry(0.025, 6, 4);
+        const plGeo = new THREE.SphereGeometry(0.025, 12, 10);
         const plume = new THREE.Mesh(plGeo, row % 2 === 0 ? thPlumeMat : featherM);
         plume.scale.set(1.2, 0.25, 0.8);
         plume.position.set(Math.cos(plAngle) * 0.18, 1.05 + row * 0.06, Math.sin(plAngle) * 0.18);
@@ -30766,7 +30766,7 @@ export class CreatureMesh {
       branchBolt.position.set(mainBolt.position.x + (Math.random() - 0.5) * 0.05, mainBolt.position.y + 0.04, mainBolt.position.z + (Math.random() - 0.5) * 0.05);
       branchBolt.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
       this._body.add(branchBolt);
-      const sparkNodeGeo = new THREE.SphereGeometry(0.008, 6, 4);
+      const sparkNodeGeo = new THREE.SphereGeometry(0.008, 12, 10);
       const sparkNode = new THREE.Mesh(sparkNodeGeo, mat(0xffffff, { emissive: 0xccddff }));
       sparkNode.position.copy(mainBolt.position);
       sparkNode.position.y += 0.06;
@@ -30804,7 +30804,7 @@ export class CreatureMesh {
     mandible.rotation.x = Math.PI / 2;
     this._head.add(mandible);
     for (let s = 0; s < 4; s++) {
-      const serrGeo = new THREE.ConeGeometry(0.003, 0.008, 4);
+      const serrGeo = new THREE.ConeGeometry(0.003, 0.008, 10);
       const serr = new THREE.Mesh(serrGeo, beakMat);
       serr.position.set((s - 1.5) * 0.008, -0.035, 0.1 + s * 0.015);
       serr.rotation.x = Math.PI;
@@ -30815,7 +30815,7 @@ export class CreatureMesh {
     for (const thDownySide of [-1, 1]) {
       const thDownyArm = thDownySide === -1 ? this._leftArm : this._rightArm;
       for (let d = 0; d < 8; d++) {
-        const downyGeo = new THREE.SphereGeometry(0.015, 6, 4);
+        const downyGeo = new THREE.SphereGeometry(0.015, 12, 10);
         const downy = new THREE.Mesh(downyGeo, featherMat(0x887766));
         downy.scale.set(1.2, 0.3, 0.8);
         downy.position.set(thDownySide * (0.1 + d * 0.06), 0.03, -0.01);
@@ -30827,7 +30827,7 @@ export class CreatureMesh {
     for (const thAuraSide of [-1, 1]) {
       const thAuraArm = thAuraSide === -1 ? this._leftArm : this._rightArm;
       for (let a2 = 0; a2 < 5; a2++) {
-        const auraSparkGeo = new THREE.SphereGeometry(0.01, 4, 4);
+        const auraSparkGeo = new THREE.SphereGeometry(0.01, 12, 10);
         const auraSpark = new THREE.Mesh(auraSparkGeo, mat(0xaaddff, { emissive: 0x6699ff }));
         auraSpark.position.set(thAuraSide * (0.2 + a2 * 0.1), -0.1 + Math.random() * 0.15, (Math.random() - 0.5) * 0.06);
         thAuraArm.add(auraSpark);
@@ -31100,7 +31100,7 @@ export class CreatureMesh {
       const lower = new THREE.Mesh(lowerGeo, furMat);
       lower.position.y = -0.55;
       leg.add(lower);
-      const pawGeo = new THREE.SphereGeometry(0.09, 6, 5);
+      const pawGeo = new THREE.SphereGeometry(0.09, 12, 10);
       const paw = new THREE.Mesh(pawGeo, darkFurMat);
       paw.scale.set(1.1, 0.5, 1.2);
       paw.position.set(0, -0.8, 0.02);
@@ -31158,7 +31158,7 @@ export class CreatureMesh {
       this._head.add(nostril);
     }
     for (let i = -2; i <= 2; i++) {
-      const dbToothGeo = new THREE.ConeGeometry(0.005, 0.015, 6);
+      const dbToothGeo = new THREE.ConeGeometry(0.005, 0.015, 12);
       const dbTooth = new THREE.Mesh(dbToothGeo, boneMaterial(0xddddcc));
       dbTooth.position.set(i * 0.018, -0.075, 0.2);
       dbTooth.rotation.x = Math.PI;
@@ -31168,7 +31168,7 @@ export class CreatureMesh {
     // ---- Ear tufts ----
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
-        const earTuftGeo = new THREE.ConeGeometry(0.008, 0.035, 6);
+        const earTuftGeo = new THREE.ConeGeometry(0.008, 0.035, 12);
         const earTuft = new THREE.Mesh(earTuftGeo, darkFurMat);
         earTuft.position.set(side * (0.14 + i * 0.01), 0.18 + i * 0.005, -0.02 + i * 0.01);
         earTuft.rotation.z = side * 0.3;
@@ -31278,7 +31278,7 @@ export class CreatureMesh {
     for (const arm of [this._leftArm, this._rightArm]) {
       for (let t = -1; t <= 1; t++) {
         for (let r = 0; r < 3; r++) {
-          const clawRidgeGeo = new THREE.TorusGeometry(0.012 - r * 0.002, 0.002, 4, 8);
+          const clawRidgeGeo = new THREE.TorusGeometry(0.012 - r * 0.002, 0.002, 10, 8);
           const clawRidge = new THREE.Mesh(clawRidgeGeo, clawMat);
           clawRidge.position.set(t * 0.035, -0.88 + r * 0.015, 0.07 + r * 0.005);
           clawRidge.rotation.x = 0.35;
@@ -31290,7 +31290,7 @@ export class CreatureMesh {
     // ---- Detailed nose and muzzle whisker bumps ----
     for (const side of [-1, 1]) {
       for (let w = 0; w < 4; w++) {
-        const whiskerBumpGeo = new THREE.SphereGeometry(0.004, 6, 4);
+        const whiskerBumpGeo = new THREE.SphereGeometry(0.004, 12, 10);
         const whiskerBump = new THREE.Mesh(whiskerBumpGeo, organicMat(0x444433));
         whiskerBump.position.set(side * (0.05 + w * 0.015), -0.03 + w * 0.01, 0.25 - w * 0.02);
         this._head.add(whiskerBump);
@@ -31384,7 +31384,7 @@ export class CreatureMesh {
     // ---- Dirt and debris in fur ----
     const dbDirtMat = mat(0x665544, { roughness: 0.98 });
     for (let i = 0; i < 6; i++) {
-      const dirtGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.005, 6, 4);
+      const dirtGeo = new THREE.SphereGeometry(0.008 + Math.random() * 0.005, 12, 10);
       const dirt = new THREE.Mesh(dirtGeo, dbDirtMat);
       dirt.position.set(
         (Math.random() - 0.5) * 0.5,
@@ -31437,7 +31437,7 @@ export class CreatureMesh {
 
     // ---- Eye reflection highlights ----
     for (const side of [-1, 1]) {
-      const eyeHighGeo = new THREE.SphereGeometry(0.006, 6, 6);
+      const eyeHighGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const eyeHigh = new THREE.Mesh(eyeHighGeo, mat(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.3 }));
       eyeHigh.position.set(side * 0.098, 0.065, 0.155);
       this._head.add(eyeHigh);
@@ -31579,7 +31579,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const dbMudArm = side === -1 ? this._leftArm : this._rightArm;
       for (let m = 0; m < 3; m++) {
-        const mudGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const mudGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
         const mud = new THREE.Mesh(mudGeo, dbMudMat);
         mud.scale.set(1.5, 0.5, 1.5);
         mud.position.set((Math.random() - 0.5) * 0.06, -0.7 - Math.random() * 0.1, (Math.random() - 0.5) * 0.06);
@@ -31587,7 +31587,7 @@ export class CreatureMesh {
       }
       const dbMudLeg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let m = 0; m < 3; m++) {
-        const mudGeo2 = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 6, 4);
+        const mudGeo2 = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 12, 10);
         const mud2 = new THREE.Mesh(mudGeo2, dbMudMat);
         mud2.scale.set(1.5, 0.5, 1.5);
         mud2.position.set((Math.random() - 0.5) * 0.05, -0.65 - Math.random() * 0.1, (Math.random() - 0.5) * 0.05);
@@ -31598,7 +31598,7 @@ export class CreatureMesh {
     // ---- Rib cage definition under fur ----
     for (const side of [-1, 1]) {
       for (let r = 0; r < 5; r++) {
-        const ribGeo = new THREE.SphereGeometry(0.015, 6, 4);
+        const ribGeo = new THREE.SphereGeometry(0.015, 12, 10);
         const rib = new THREE.Mesh(ribGeo, furMat);
         rib.scale.set(0.5, 3.0, 1.0);
         rib.position.set(side * (0.38 - r * 0.02), 1.5 + r * 0.08, 0.1 - r * 0.04);
@@ -31614,7 +31614,7 @@ export class CreatureMesh {
     tailStub.position.set(0, 1.2, -0.5);
     this._body.add(tailStub);
     for (let i = 0; i < 4; i++) {
-      const tailTuftGeo = new THREE.ConeGeometry(0.01, 0.03, 4);
+      const tailTuftGeo = new THREE.ConeGeometry(0.01, 0.03, 10);
       const tailTuft = new THREE.Mesh(tailTuftGeo, furMat);
       tailTuft.position.set((Math.random() - 0.5) * 0.03, 1.18 + (Math.random() - 0.5) * 0.03, -0.53 - Math.random() * 0.02);
       tailTuft.rotation.x = -0.5;
@@ -31759,7 +31759,7 @@ export class CreatureMesh {
     this._head.add(browR);
     // Rock protrusions on crown (horn-like crags)
     for (let i = 0; i < 3; i++) {
-      const hGeo = new THREE.ConeGeometry(0.04, 0.15 + i * 0.03, 6);
+      const hGeo = new THREE.ConeGeometry(0.04, 0.15 + i * 0.03, 12);
       const horn = new THREE.Mesh(hGeo, darkRockMat);
       horn.position.set(-0.1 + i * 0.1, 0.3, -0.05);
       horn.rotation.z = (i - 1) * 0.15;
@@ -31874,7 +31874,7 @@ export class CreatureMesh {
       }
       // Obsidian knuckle spikes
       for (let s = 0; s < 2; s++) {
-        const spGeo = new THREE.ConeGeometry(0.03, 0.1, 6);
+        const spGeo = new THREE.ConeGeometry(0.03, 0.1, 12);
         const sp = new THREE.Mesh(spGeo, obsidianMat);
         sp.position.set((s - 0.5) * 0.12, -1.95, 0.2);
         arm.add(sp);
@@ -31931,7 +31931,7 @@ export class CreatureMesh {
       }
       // Stalagmite-like protrusions on shins
       for (let s = 0; s < 2; s++) {
-        const stGeo = new THREE.ConeGeometry(0.03, 0.12, 6);
+        const stGeo = new THREE.ConeGeometry(0.03, 0.12, 12);
         const st = new THREE.Mesh(stGeo, darkRockMat);
         st.position.set(side * 0.15, -0.8 - s * 0.35, 0.12);
         leg.add(st);
@@ -31951,7 +31951,7 @@ export class CreatureMesh {
     for (const mtSpkSide of [-1, 1]) {
       for (let sp = 0; sp < 4; sp++) {
         const spkH = 0.15 + sp * 0.06;
-        const spkGeo = new THREE.ConeGeometry(0.04 + sp * 0.01, spkH, 6);
+        const spkGeo = new THREE.ConeGeometry(0.04 + sp * 0.01, spkH, 12);
         const spk = new THREE.Mesh(spkGeo, obsidianMat);
         spk.position.set(mtSpkSide * (0.6 + sp * 0.08), 4.1 + sp * 0.12, -0.15 + sp * 0.05);
         spk.rotation.z = mtSpkSide * (0.2 + sp * 0.1);
@@ -31968,7 +31968,7 @@ export class CreatureMesh {
       const drip2 = new THREE.Mesh(dripGeo2, mtDripMat);
       drip2.position.set(Math.cos(dripAngle) * 0.62, 2.8 + Math.random() * 0.8, Math.sin(dripAngle) * 0.5);
       this._body.add(drip2);
-      const beadGeo = new THREE.SphereGeometry(0.012, 6, 4);
+      const beadGeo = new THREE.SphereGeometry(0.012, 12, 10);
       const bead = new THREE.Mesh(beadGeo, mtDripMat);
       bead.position.set(drip2.position.x, drip2.position.y - dripLen * 0.5, drip2.position.z);
       this._body.add(bead);
@@ -31991,12 +31991,12 @@ export class CreatureMesh {
       const fum = new THREE.Mesh(fumGeo, darkRockMat);
       fum.position.set((i - 1.5) * 0.2, 3.8 + i * 0.1, -0.45);
       this._body.add(fum);
-      const fumGlowGeo = new THREE.SphereGeometry(0.025, 6, 4);
+      const fumGlowGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const fumGlow = new THREE.Mesh(fumGlowGeo, lavaM);
       fumGlow.position.set(fum.position.x, fum.position.y + 0.08, fum.position.z);
       this._body.add(fumGlow);
       for (let s = 0; s < 3; s++) {
-        const ventSmokeGeo = new THREE.SphereGeometry(0.03 + s * 0.02, 6, 4);
+        const ventSmokeGeo = new THREE.SphereGeometry(0.03 + s * 0.02, 12, 10);
         const ventSmoke = new THREE.Mesh(ventSmokeGeo, smokeMat);
         ventSmoke.position.set(fum.position.x + (Math.random() - 0.5) * 0.04, fum.position.y + 0.12 + s * 0.08, fum.position.z);
         this._body.add(ventSmoke);
@@ -32030,7 +32030,7 @@ export class CreatureMesh {
       const mtArm = mtArmSide === -1 ? this._leftArm : this._rightArm;
       for (let ep = 0; ep < 6; ep++) {
         const pitAngle = (ep / 6) * Math.PI * 2;
-        const pitGeo = new THREE.SphereGeometry(0.02, 6, 4);
+        const pitGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const pit = new THREE.Mesh(pitGeo, ashMat);
         pit.scale.set(1.5, 0.4, 1.2);
         pit.position.set(Math.cos(pitAngle) * 0.16, -0.3 - ep * 0.1, Math.sin(pitAngle) * 0.16);
@@ -32049,7 +32049,7 @@ export class CreatureMesh {
 
     // --- Head horn detail ---
     for (let h = 0; h < 5; h++) {
-      const hornGeo2 = new THREE.ConeGeometry(0.03 + h * 0.005, 0.12 + h * 0.04, 6);
+      const hornGeo2 = new THREE.ConeGeometry(0.03 + h * 0.005, 0.12 + h * 0.04, 12);
       const horn2 = new THREE.Mesh(hornGeo2, darkRockMat);
       horn2.position.set(-0.15 + h * 0.075, 0.35 + h * 0.02, -0.1 + Math.abs(h - 2) * 0.03);
       horn2.rotation.z = (h - 2) * 0.12;
@@ -32066,7 +32066,7 @@ export class CreatureMesh {
       tooth3.rotation.x = Math.PI;
       this._head.add(tooth3);
       if (Math.abs(t) < 4) {
-        const glowGeo2 = new THREE.SphereGeometry(0.008, 4, 4);
+        const glowGeo2 = new THREE.SphereGeometry(0.008, 12, 10);
         const glow2 = new THREE.Mesh(glowGeo2, lavaGlowMat);
         glow2.position.set(t * 0.03 + 0.015, -0.04, 0.28);
         this._head.add(glow2);
@@ -32115,7 +32115,7 @@ export class CreatureMesh {
     for (const mtCragSide of [-1, 1]) {
       const mtCragArm = mtCragSide === -1 ? this._leftArm : this._rightArm;
       for (let c = 0; c < 4; c++) {
-        const cragGeo = new THREE.ConeGeometry(0.03, 0.1 + c * 0.02, 6);
+        const cragGeo = new THREE.ConeGeometry(0.03, 0.1 + c * 0.02, 12);
         const crag = new THREE.Mesh(cragGeo, darkRockMat);
         const cragAngle = (c / 4) * Math.PI * 2;
         crag.position.set(Math.cos(cragAngle) * 0.18, -1.3 - c * 0.15, Math.sin(cragAngle) * 0.18);
@@ -32143,7 +32143,7 @@ export class CreatureMesh {
         toe2.scale.set(0.8, 0.4, 1.3);
         toe2.position.set((t2 - 1) * 0.12, -1.8, 0.15);
         mtToeLeg.add(toe2);
-        const toeClawGeo = new THREE.ConeGeometry(0.02, 0.08, 6);
+        const toeClawGeo = new THREE.ConeGeometry(0.02, 0.08, 12);
         const toeClaw = new THREE.Mesh(toeClawGeo, obsidianMat);
         toeClaw.position.set((t2 - 1) * 0.12, -1.82, 0.25);
         toeClaw.rotation.x = 0.4;
@@ -32439,7 +32439,7 @@ export class CreatureMesh {
 
     // Small rubble/pebbles at base
     for (let i = 0; i < 4; i++) {
-      const pGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 6, 6);
+      const pGeo = new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 12, 10);
       const peb = new THREE.Mesh(pGeo, sedimentMat);
       peb.position.set((Math.random() - 0.5) * 0.6, 0.03, (Math.random() - 0.5) * 0.4);
       this._body.add(peb);
@@ -32491,7 +32491,7 @@ export class CreatureMesh {
       smallCrystal.position.set(qx + 0.03, qy - 0.02, qz + 0.02);
       smallCrystal.rotation.set((Math.random() - 0.5) * 1.0, 0, (Math.random() - 0.5) * 0.8);
       this._body.add(smallCrystal);
-      const crystBaseGeo = new THREE.SphereGeometry(0.02, 6, 4);
+      const crystBaseGeo = new THREE.SphereGeometry(0.02, 12, 10);
       const crystBase = new THREE.Mesh(crystBaseGeo, quartzMat);
       crystBase.scale.set(1.5, 0.5, 1.5);
       crystBase.position.set(qx, qy - 0.06, qz);
@@ -32502,7 +32502,7 @@ export class CreatureMesh {
     const scarMat = mat(0x4a4a3e, { roughness: 1.0 });
     for (let i = 0; i < 5; i++) {
       const scarAngle = (i / 5) * Math.PI * 2 + 0.7;
-      const craterGeo = new THREE.TorusGeometry(0.04 + Math.random() * 0.02, 0.008, 6, 10);
+      const craterGeo = new THREE.TorusGeometry(0.04 + Math.random() * 0.02, 0.008, 12, 10);
       const crater = new THREE.Mesh(craterGeo, scarMat);
       crater.position.set(Math.cos(scarAngle) * 0.43, 1.8 + i * 0.25, Math.sin(scarAngle) * 0.35);
       crater.lookAt(0, crater.position.y, 0);
@@ -32531,7 +32531,7 @@ export class CreatureMesh {
     // --- Arm rune glyphs ---
     for (const sfArmSide of [-1, 1]) {
       const sfArm = sfArmSide === -1 ? this._leftArm : this._rightArm;
-      const armRuneGeo = new THREE.TorusGeometry(0.06, 0.005, 6, 12);
+      const armRuneGeo = new THREE.TorusGeometry(0.06, 0.005, 12, 12);
       const armRune = new THREE.Mesh(armRuneGeo, runeMat);
       armRune.position.set(0, -0.5, 0.12);
       sfArm.add(armRune);
@@ -32605,7 +32605,7 @@ export class CreatureMesh {
     for (const sfFootSide of [-1, 1]) {
       const sfLeg = sfFootSide === -1 ? this._leftLeg : this._rightLeg;
       for (let t = 0; t < 3; t++) {
-        const toeJointGeo = new THREE.SphereGeometry(0.02, 6, 4);
+        const toeJointGeo = new THREE.SphereGeometry(0.02, 12, 10);
         const toeJoint = new THREE.Mesh(toeJointGeo, crackMat);
         toeJoint.position.set((t - 1) * 0.08, -0.82, 0.14);
         sfLeg.add(toeJoint);
@@ -32619,7 +32619,7 @@ export class CreatureMesh {
       footCrack.position.set(0, -0.78, 0.15);
       footCrack.rotation.z = 0.1;
       sfLeg.add(footCrack);
-      const ankleRingGeo = new THREE.TorusGeometry(0.12, 0.01, 6, 10);
+      const ankleRingGeo = new THREE.TorusGeometry(0.12, 0.01, 12, 10);
       const ankleRing = new THREE.Mesh(ankleRingGeo, sedimentMat);
       ankleRing.position.y = -0.75;
       ankleRing.rotation.x = Math.PI / 2;
@@ -32649,7 +32649,7 @@ export class CreatureMesh {
     }
 
     // --- Head rune carving ---
-    const headRuneCircleGeo = new THREE.TorusGeometry(0.08, 0.005, 6, 12);
+    const headRuneCircleGeo = new THREE.TorusGeometry(0.08, 0.005, 12, 12);
     const headRuneCircle = new THREE.Mesh(headRuneCircleGeo, runeMat);
     headRuneCircle.position.set(0, 0.12, 0.16);
     this._head.add(headRuneCircle);
@@ -32669,7 +32669,7 @@ export class CreatureMesh {
     sfChin.position.set(0, -0.15, 0.12);
     this._head.add(sfChin);
     for (const sfJawSide of [-1, 1]) {
-      const jawHingeGeo = new THREE.SphereGeometry(0.025, 6, 4);
+      const jawHingeGeo = new THREE.SphereGeometry(0.025, 12, 10);
       const jawHinge = new THREE.Mesh(jawHingeGeo, stoneMat);
       jawHinge.position.set(sfJawSide * 0.16, -0.06, 0.08);
       this._head.add(jawHinge);
@@ -32693,12 +32693,12 @@ export class CreatureMesh {
     // --- Elbow spikes ---
     for (const sfElbSide of [-1, 1]) {
       const sfElbowArm = sfElbSide === -1 ? this._leftArm : this._rightArm;
-      const elbowSpikeGeo = new THREE.ConeGeometry(0.03, 0.1, 6);
+      const elbowSpikeGeo = new THREE.ConeGeometry(0.03, 0.1, 12);
       const elbowSpike = new THREE.Mesh(elbowSpikeGeo, darkStoneMat);
       elbowSpike.position.set(0, -0.65, -0.12);
       elbowSpike.rotation.x = -0.5;
       sfElbowArm.add(elbowSpike);
-      const elbowSpike2Geo = new THREE.ConeGeometry(0.02, 0.07, 6);
+      const elbowSpike2Geo = new THREE.ConeGeometry(0.02, 0.07, 12);
       const elbowSpike2 = new THREE.Mesh(elbowSpike2Geo, stoneMat);
       elbowSpike2.position.set(0.04, -0.62, -0.1);
       elbowSpike2.rotation.x = -0.4;
@@ -32713,7 +32713,7 @@ export class CreatureMesh {
       subRune.position.set(Math.cos(subRuneAngle) * 0.18, 2.2 + Math.sin(subRuneAngle) * 0.18, 0.365);
       subRune.rotation.z = subRuneAngle;
       this._body.add(subRune);
-      const subRuneDotGeo = new THREE.SphereGeometry(0.006, 6, 4);
+      const subRuneDotGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const subRuneDot = new THREE.Mesh(subRuneDotGeo, runeMat);
       subRuneDot.position.set(Math.cos(subRuneAngle) * 0.2, 2.2 + Math.sin(subRuneAngle) * 0.2, 0.365);
       this._body.add(subRuneDot);
@@ -32865,7 +32865,7 @@ export class CreatureMesh {
       arm.add(fist);
       // Rock knuckle crust on fist
       for (let k = 0; k < 3; k++) {
-        const kkGeo = new THREE.SphereGeometry(0.035, 6, 6);
+        const kkGeo = new THREE.SphereGeometry(0.035, 12, 10);
         const kk = new THREE.Mesh(kkGeo, darkMat);
         kk.position.set((k - 1) * 0.05, -1.15, 0.12);
         arm.add(kk);
@@ -32924,12 +32924,12 @@ export class CreatureMesh {
 
     // Crystal shards on shoulders (multiple)
     for (const side of [-1, 1]) {
-      const shardGeo = new THREE.ConeGeometry(0.1, 0.4, 6);
+      const shardGeo = new THREE.ConeGeometry(0.1, 0.4, 12);
       const shard = new THREE.Mesh(shardGeo, edgeMat);
       shard.position.set(side * 0.5, 3.0, 0);
       shard.rotation.z = side * 0.3;
       this._body.add(shard);
-      const s2Geo = new THREE.ConeGeometry(0.06, 0.25, 5);
+      const s2Geo = new THREE.ConeGeometry(0.06, 0.25, 10);
       const s2 = new THREE.Mesh(s2Geo, edgeMat);
       s2.position.set(side * 0.45, 2.85, 0.1);
       s2.rotation.z = side * 0.4;
@@ -32946,7 +32946,7 @@ export class CreatureMesh {
     this._head.add(headMesh);
 
     // Visor glow
-    const visorGeo = new THREE.TorusGeometry(0.12, 0.015, 6, 12, Math.PI * 0.7);
+    const visorGeo = new THREE.TorusGeometry(0.12, 0.015, 12, 12, Math.PI * 0.7);
     const visor = new THREE.Mesh(visorGeo, eyeMat);
     visor.position.set(0, 0.02, 0.12);
     visor.rotation.y = Math.PI;
@@ -33087,7 +33087,7 @@ export class CreatureMesh {
     }
 
     // Nasal cavity
-    const nasalGeo = new THREE.SphereGeometry(0.025, 6, 6);
+    const nasalGeo = new THREE.SphereGeometry(0.025, 12, 10);
     const nasalMesh = new THREE.Mesh(nasalGeo, mat(0x111111));
     nasalMesh.position.set(0, -0.03, 0.14);
     nasalMesh.scale.set(0.6, 1.0, 0.5);
@@ -33181,7 +33181,7 @@ export class CreatureMesh {
         finger.rotation.z = (f - 1.5) * 0.08;
         arm.add(finger);
         // Finger flame tip
-        const ftipGeo = new THREE.ConeGeometry(0.008, 0.04, 5);
+        const ftipGeo = new THREE.ConeGeometry(0.008, 0.04, 10);
         const ftip = new THREE.Mesh(ftipGeo, coreMat);
         ftip.position.set((f - 1.5) * 0.015, -0.86, 0.015);
         arm.add(ftip);
@@ -33195,7 +33195,7 @@ export class CreatureMesh {
       }
       // Arm flame wisps
       for (let w = 0; w < 3; w++) {
-        const awGeo = new THREE.ConeGeometry(0.01, 0.06, 5);
+        const awGeo = new THREE.ConeGeometry(0.01, 0.06, 10);
         const aw = new THREE.Mesh(awGeo, coreMat);
         aw.position.set(side * 0.03, -0.2 - w * 0.2, 0.03);
         aw.rotation.z = side * 0.3;
@@ -33279,7 +33279,7 @@ export class CreatureMesh {
 
     // --- Trailing ash particle meshes — more numerous ---
     for (let i = 0; i < 18; i++) {
-      const ashGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.012, 6, 6);
+      const ashGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.012, 12, 10);
       const ash = new THREE.Mesh(ashGeo, mat(0x555555, { transparent: true, opacity: 0.3 + Math.random() * 0.25 }));
       const a = (i / 18) * Math.PI * 2;
       ash.position.set(
@@ -33340,7 +33340,7 @@ export class CreatureMesh {
       sg.rotation.z = side * 0.3;
       this._body.add(sg);
       // Shoulder spike
-      const spkGeo = new THREE.ConeGeometry(0.02, 0.08, 6);
+      const spkGeo = new THREE.ConeGeometry(0.02, 0.08, 12);
       const spk = new THREE.Mesh(spkGeo, obsidianFragMat);
       spk.position.set(side * 0.26, 1.76, 0.04);
       spk.rotation.z = side * 0.4;
@@ -33436,7 +33436,7 @@ export class CreatureMesh {
     }
     // Temporal bone ridges
     for (const side of [-1, 1]) {
-      const tempGeo = new THREE.SphereGeometry(0.03, 6, 5);
+      const tempGeo = new THREE.SphereGeometry(0.03, 12, 10);
       const temp = new THREE.Mesh(tempGeo, charredBoneMat);
       temp.position.set(side * 0.14, 0, 0.04);
       temp.scale.set(0.5, 0.8, 0.6);
@@ -33456,7 +33456,7 @@ export class CreatureMesh {
 
     // --- Swirling cinder particles around body ---
     for (let i = 0; i < 10; i++) {
-      const cpGeo = new THREE.SphereGeometry(0.006 + Math.random() * 0.004, 4, 4);
+      const cpGeo = new THREE.SphereGeometry(0.006 + Math.random() * 0.004, 12, 10);
       const cp = new THREE.Mesh(cpGeo, mat(0xff6600, { emissive: 0xcc4400, emissiveIntensity: 2.5, transparent: true, opacity: 0.5 }));
       const cAngle = (i / 10) * Math.PI * 2;
       const cR = 0.3 + Math.random() * 0.15;
@@ -33530,7 +33530,7 @@ export class CreatureMesh {
 
     // Eyes
     for (const side of [-1, 1]) {
-      const eGeo = new THREE.SphereGeometry(0.05, 6, 6);
+      const eGeo = new THREE.SphereGeometry(0.05, 12, 10);
       const eye = new THREE.Mesh(eGeo, eyeMat);
       eye.position.set(side * 0.13, 0.02, 0.24);
       this._head.add(eye);
@@ -33538,7 +33538,7 @@ export class CreatureMesh {
 
     // Horn crags
     for (const side of [-1, 1]) {
-      const hGeo = new THREE.ConeGeometry(0.08, 0.3, 5);
+      const hGeo = new THREE.ConeGeometry(0.08, 0.3, 10);
       const horn = new THREE.Mesh(hGeo, darkMat);
       horn.position.set(side * 0.2, 0.2, -0.05);
       horn.rotation.z = side * -0.3;
@@ -33558,7 +33558,7 @@ export class CreatureMesh {
       const fore = new THREE.Mesh(foreGeo, darkMat);
       fore.position.y = -1.5;
       arm.add(fore);
-      const fistGeo = new THREE.SphereGeometry(0.28, 6, 6);
+      const fistGeo = new THREE.SphereGeometry(0.28, 12, 10);
       const fist = new THREE.Mesh(fistGeo, lavaMat);
       fist.position.y = -2.1;
       arm.add(fist);
@@ -33577,7 +33577,7 @@ export class CreatureMesh {
       const shin = new THREE.Mesh(shinGeo, darkMat);
       shin.position.y = -1.3;
       leg.add(shin);
-      const footGeo = new THREE.SphereGeometry(0.32, 6, 5);
+      const footGeo = new THREE.SphereGeometry(0.32, 12, 10);
       const foot = new THREE.Mesh(footGeo, rockMat);
       foot.scale.set(1, 0.4, 1.2);
       foot.position.set(0, -1.9, 0.05);
@@ -33621,7 +33621,7 @@ export class CreatureMesh {
 
     // --- Pumice texture patches ---
     for (let i = 0; i < 15; i++) {
-      const vbPumGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 5, 4);
+      const vbPumGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 12, 10);
       const vbPum = new THREE.Mesh(vbPumGeo, mat(0x2a1810, { roughness: 0.98 }));
       const vbPumA = Math.random() * Math.PI * 2;
       vbPum.position.set(Math.cos(vbPumA) * (0.65 + Math.random() * 0.1), 3.0 + Math.random() * 1.5, Math.sin(vbPumA) * (0.55 + Math.random() * 0.08));
@@ -33645,12 +33645,12 @@ export class CreatureMesh {
       const vbVent = new THREE.Mesh(vbVentGeo, darkMat);
       vbVent.position.set((i - 1) * 0.2, 4.0 + i * 0.15, -0.6);
       this._body.add(vbVent);
-      const vbVGlowGeo = new THREE.SphereGeometry(0.05, 6, 5);
+      const vbVGlowGeo = new THREE.SphereGeometry(0.05, 12, 10);
       const vbVGlow = new THREE.Mesh(vbVGlowGeo, mat(0xff6600, { emissive: 0xdd4400, emissiveIntensity: 3.0, transparent: true, opacity: 0.7 }));
       vbVGlow.position.set((i - 1) * 0.2, 4.12 + i * 0.15, -0.6);
       this._body.add(vbVGlow);
       for (let s = 0; s < 3; s++) {
-        const vbVSmkGeo = new THREE.SphereGeometry(0.04 + s * 0.02, 5, 4);
+        const vbVSmkGeo = new THREE.SphereGeometry(0.04 + s * 0.02, 12, 10);
         const vbVSmk = new THREE.Mesh(vbVSmkGeo, mat(0x332211, { transparent: true, opacity: 0.12 - s * 0.03 }));
         vbVSmk.position.set((i - 1) * 0.2, 4.25 + i * 0.15 + s * 0.15, -0.6);
         this._body.add(vbVSmk);
@@ -33697,7 +33697,7 @@ export class CreatureMesh {
 
     // --- Volcanic debris field ---
     for (let i = 0; i < 12; i++) {
-      const vbDebGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 5, 4);
+      const vbDebGeo = new THREE.SphereGeometry(0.04 + Math.random() * 0.04, 12, 10);
       const vbDeb = new THREE.Mesh(vbDebGeo, i % 3 === 0 ? rockMat : darkMat);
       const vbDebA = Math.random() * Math.PI * 2;
       vbDeb.position.set(Math.cos(vbDebA) * (0.6 + Math.random() * 0.4), 0.03 + Math.random() * 0.1, Math.sin(vbDebA) * (0.5 + Math.random() * 0.3));
@@ -33727,7 +33727,7 @@ export class CreatureMesh {
 
     // --- Head back ridges ---
     for (let i = 0; i < 4; i++) {
-      const vbHRidgeGeo = new THREE.ConeGeometry(0.05, 0.12, 5);
+      const vbHRidgeGeo = new THREE.ConeGeometry(0.05, 0.12, 10);
       const vbHRidge = new THREE.Mesh(vbHRidgeGeo, darkMat);
       vbHRidge.position.set(0, 0.15 - i * 0.08, -0.2 - i * 0.03);
       vbHRidge.rotation.x = -0.5;
@@ -33764,7 +33764,7 @@ export class CreatureMesh {
       vbKl.position.y = -0.9;
       vbLLeg.add(vbKl);
       for (let i = 0; i < 2; i++) {
-        const vbSrpGeo = new THREE.SphereGeometry(0.1, 6, 5);
+        const vbSrpGeo = new THREE.SphereGeometry(0.1, 12, 10);
         const vbSrp = new THREE.Mesh(vbSrpGeo, darkMat);
         vbSrp.position.set(0, -1.1 - i * 0.3, 0.15);
         vbSrp.scale.set(0.8, 0.5, 0.6);
@@ -33801,7 +33801,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const fwWingArm = side === -1 ? this._leftArm : this._rightArm;
       for (let i = 0; i < 5; i++) {
-        const rimeGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 6, 4);
+        const rimeGeo = new THREE.SphereGeometry(0.012 + Math.random() * 0.008, 12, 10);
         const rime = new THREE.Mesh(rimeGeo, fwIceShardMat);
         rime.scale.set(1.8, 0.4, 1.2);
         rime.position.set(
@@ -33818,7 +33818,7 @@ export class CreatureMesh {
     for (let row = 0; row < 5; row++) {
       for (let col = 0; col < 6; col++) {
         const scaleAngle = (col / 6) * Math.PI * 2;
-        const scaleGeo = new THREE.SphereGeometry(0.03, 6, 4);
+        const scaleGeo = new THREE.SphereGeometry(0.03, 12, 10);
         const scaleMesh = new THREE.Mesh(scaleGeo, fwFrozenScaleMat);
         scaleMesh.scale.set(1.2, 0.3, 0.8);
         scaleMesh.position.set(
@@ -33897,7 +33897,7 @@ export class CreatureMesh {
     for (const side of [-1, 1]) {
       const fwLeg = side === -1 ? this._leftLeg : this._rightLeg;
       for (let c = 0; c < 4; c++) {
-        const crustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 6, 4);
+        const crustGeo = new THREE.SphereGeometry(0.015 + Math.random() * 0.01, 12, 10);
         const crust = new THREE.Mesh(crustGeo, iceMat);
         crust.position.set(
           (c - 1.5) * 0.025,
@@ -33977,7 +33977,7 @@ export class CreatureMesh {
       tear.rotation.x = 0.3;
       this._head.add(tear);
 
-      const tearDropGeo = new THREE.SphereGeometry(0.006, 6, 4);
+      const tearDropGeo = new THREE.SphereGeometry(0.006, 12, 10);
       const tearDrop = new THREE.Mesh(tearDropGeo, fwIceShardMat);
       tearDrop.position.set(side * 0.12, -0.02, 0.23);
       this._head.add(tearDrop);
@@ -33994,7 +33994,7 @@ export class CreatureMesh {
         fwWArm.add(fingerBone);
 
         // Frost coating on finger bones
-        const frostCoatGeo = new THREE.SphereGeometry(0.012, 6, 4);
+        const frostCoatGeo = new THREE.SphereGeometry(0.012, 12, 10);
         const frostCoat = new THREE.Mesh(frostCoatGeo, frostMat);
         frostCoat.scale.set(2, 0.5, 1);
         frostCoat.position.set(side * (0.35 + fb * 0.15), -0.5 - fb * 0.08, 0);
@@ -34077,7 +34077,7 @@ export class CreatureMesh {
       this._head.add(horn);
       // Horn ridge rings
       for (let i = 0; i < 3; i++) {
-        const rrGeo = new THREE.TorusGeometry(0.035 - i * 0.005, 0.005, 6, 10);
+        const rrGeo = new THREE.TorusGeometry(0.035 - i * 0.005, 0.005, 12, 10);
         const rr = new THREE.Mesh(rrGeo, frostMat);
         const t = (i + 1) * 0.08;
         rr.position.set(side * (0.15 + Math.sin(side * -0.3) * t * side * -0.3), 0.15 + t * 0.9, -0.05 - t * 0.15);
@@ -34365,7 +34365,7 @@ export class CreatureMesh {
         fingerBone.position.set(side * (0.3 + f * 0.15), -0.5 - f * 0.06, 0);
         fingerBone.rotation.z = side * (0.3 + f * 0.12);
         fwArm.add(fingerBone);
-        const tipCrystalGeo = new THREE.ConeGeometry(0.012, 0.04, 6);
+        const tipCrystalGeo = new THREE.ConeGeometry(0.012, 0.04, 12);
         const tipCrystal = new THREE.Mesh(tipCrystalGeo, iceMat);
         tipCrystal.position.set(side * (0.45 + f * 0.2), -0.6 - f * 0.1, 0);
         fwArm.add(tipCrystal);
@@ -34379,7 +34379,7 @@ export class CreatureMesh {
       fwSpine.position.set(0, 1.6 + i * 0.11, -0.4);
       fwSpine.rotation.x = -0.2;
       this._body.add(fwSpine);
-      const frostCoatGeo = new THREE.SphereGeometry(0.015, 6, 4);
+      const frostCoatGeo = new THREE.SphereGeometry(0.015, 12, 10);
       const frostCoat = new THREE.Mesh(frostCoatGeo, frostMat);
       frostCoat.position.set(0, 1.7 + i * 0.11, -0.42);
       frostCoat.scale.set(1, 0.3, 1);
@@ -34460,7 +34460,7 @@ export class CreatureMesh {
       secHorn.rotation.z = side * -0.4;
       this._head.add(secHorn);
       for (let j = 0; j < 4; j++) {
-        const encrustGeo = new THREE.SphereGeometry(0.01, 6, 4);
+        const encrustGeo = new THREE.SphereGeometry(0.01, 12, 10);
         const encrust = new THREE.Mesh(encrustGeo, frostMat);
         encrust.position.set(
           side * (0.14 + Math.cos(j * 1.5) * 0.02),
@@ -34506,7 +34506,7 @@ export class CreatureMesh {
       neckSeg.scale.set(0.8, 0.6, 0.9);
       neckSeg.position.set(0, 2.65 + i * 0.08, 0.3 + i * 0.03);
       this._body.add(neckSeg);
-      const neckFrostGeo = new THREE.TorusGeometry(0.08 - i * 0.008, 0.005, 6, 10);
+      const neckFrostGeo = new THREE.TorusGeometry(0.08 - i * 0.008, 0.005, 12, 10);
       const neckFrost = new THREE.Mesh(neckFrostGeo, frostMat);
       neckFrost.position.set(0, 2.69 + i * 0.08, 0.3 + i * 0.03);
       neckFrost.rotation.x = Math.PI / 2;
@@ -34532,7 +34532,7 @@ export class CreatureMesh {
     fwSpade.scale.set(2.0, 0.3, 1.5);
     fwSpade.position.set(0, 0.55, -1.15);
     this._body.add(fwSpade);
-    const spadeEdgeGeo = new THREE.TorusGeometry(0.08, 0.005, 6, 12);
+    const spadeEdgeGeo = new THREE.TorusGeometry(0.08, 0.005, 12, 12);
     const spadeEdge = new THREE.Mesh(spadeEdgeGeo, iceMat);
     spadeEdge.position.set(0, 0.55, -1.15);
     spadeEdge.rotation.x = Math.PI / 2;

@@ -395,7 +395,7 @@ export class WarbandSceneManager {
 
       // Moss patch on top
       if (rng() < 0.5) {
-        const mossGeo = new THREE.SphereGeometry(0.12 + rng() * 0.18, 5, 3, 0, Math.PI * 2, 0, Math.PI * 0.4);
+        const mossGeo = new THREE.SphereGeometry(0.12 + rng() * 0.18, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.4);
         const moss = new THREE.Mesh(mossGeo, mossMat);
         moss.position.y = 0.12 + rng() * 0.08;
         moss.scale.set(1.3, 0.25, 1.3);
@@ -466,7 +466,7 @@ export class WarbandSceneManager {
 
         // Occasional seed head on tall blades
         if (bladeH > 0.38 && rng() < 0.4) {
-          const seedGeo = new THREE.SphereGeometry(0.018, 4, 3);
+          const seedGeo = new THREE.SphereGeometry(0.018, 16, 12);
           const seed = new THREE.Mesh(seedGeo, seedMat);
           seed.position.set(bx, h + bladeH + 0.02, bz);
           seed.scale.set(1, 1.8, 1);
@@ -485,8 +485,8 @@ export class WarbandSceneManager {
     const trunkGeo = new THREE.CylinderGeometry(0.15, 0.3, 2.5, 8);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 });
     const trunkDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.95 });
-    const barkRingGeo = new THREE.TorusGeometry(0.22, 0.03, 4, 8);
-    const rootGeo = new THREE.CylinderGeometry(0.04, 0.08, 0.8, 5);
+    const barkRingGeo = new THREE.TorusGeometry(0.22, 0.03, 10, 8);
+    const rootGeo = new THREE.CylinderGeometry(0.04, 0.08, 0.8, 10);
 
     // Foliage color palettes
     const leafColors = [
@@ -558,7 +558,7 @@ export class WarbandSceneManager {
       tree.add(leaves2);
 
       // Top cone
-      const leafGeo3 = new THREE.ConeGeometry(0.8, 1.5, 6);
+      const leafGeo3 = new THREE.ConeGeometry(0.8, 1.5, 12);
       const leaves3 = new THREE.Mesh(leafGeo3, leafMat);
       leaves3.position.y = 5.3;
       leaves3.castShadow = true;
@@ -635,7 +635,7 @@ export class WarbandSceneManager {
         color: spec.colors[spec.colors.length - 1],
         roughness: 0.88,
       });
-      const topGeo = new THREE.SphereGeometry(bushR * 0.55, 6, 4);
+      const topGeo = new THREE.SphereGeometry(bushR * 0.55, 12, 10);
       const topLobe = new THREE.Mesh(topGeo, topMat);
       topLobe.position.y = bushH * 0.9;
       topLobe.scale.set(1, 0.5, 1);
@@ -648,7 +648,7 @@ export class WarbandSceneManager {
       for (let s = 0; s < stemCount; s++) {
         const sa = rng() * Math.PI * 2;
         const stemH = bushH * (0.3 + rng() * 0.4);
-        const sGeo = new THREE.CylinderGeometry(0.012, 0.022, stemH, 4);
+        const sGeo = new THREE.CylinderGeometry(0.012, 0.022, stemH, 10);
         const stem = new THREE.Mesh(sGeo, stemMat);
         stem.position.set(Math.cos(sa) * bushR * 0.3, stemH / 2, Math.sin(sa) * bushR * 0.3);
         stem.rotation.z = Math.cos(sa) * 0.2;
@@ -660,7 +660,7 @@ export class WarbandSceneManager {
       if (spec.colors[0] === 0x8a6030 && rng() < 0.5) {
         const berryMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.6 });
         for (let b = 0; b < 6; b++) {
-          const bGeo = new THREE.SphereGeometry(0.025, 4, 3);
+          const bGeo = new THREE.SphereGeometry(0.025, 16, 12);
           const berry = new THREE.Mesh(bGeo, berryMat);
           berry.position.set(
             (rng() - 0.5) * bushR * 1.2,
@@ -709,7 +709,7 @@ export class WarbandSceneManager {
         const stemH = 0.15 + rng() * 0.25;
 
         // Stem
-        const stemGeo = new THREE.CylinderGeometry(0.005, 0.008, stemH, 3);
+        const stemGeo = new THREE.CylinderGeometry(0.005, 0.008, stemH, 8);
         const stem = new THREE.Mesh(stemGeo, stemMat);
         stem.position.set(fx, fh + stemH / 2, fz);
         this.scene.add(stem);
@@ -775,7 +775,7 @@ export class WarbandSceneManager {
 
       for (let l = 0; l < lobeCount; l++) {
         const lr = baseR * (0.4 + rng() * 0.6);
-        const geo = new THREE.SphereGeometry(lr, 6, 5);
+        const geo = new THREE.SphereGeometry(lr, 12, 10);
         const lobe = new THREE.Mesh(geo, mat);
         lobe.position.set(
           (rng() - 0.5) * baseR * 1.5,
@@ -911,7 +911,7 @@ export class WarbandSceneManager {
 
         // Stem
         const stemMat = new THREE.MeshStandardMaterial({ color: spec.stem, roughness: 0.85 });
-        const stemGeo = new THREE.CylinderGeometry(spec.capR * 0.3 * scale, spec.capR * 0.4 * scale, spec.stemH * scale, 5);
+        const stemGeo = new THREE.CylinderGeometry(spec.capR * 0.3 * scale, spec.capR * 0.4 * scale, spec.stemH * scale, 10);
         const stem = new THREE.Mesh(stemGeo, stemMat);
         stem.position.set(mx, mh + spec.stemH * scale * 0.5, mz);
         this.scene.add(stem);
@@ -1006,7 +1006,7 @@ export class WarbandSceneManager {
       // Tiny flower on some lily pads
       if (rng() < 0.4) {
         const fMat = new THREE.MeshStandardMaterial({ color: rng() < 0.5 ? 0xffccdd : 0xffffff, roughness: 0.7 });
-        const fGeo = new THREE.SphereGeometry(0.03, 5, 3);
+        const fGeo = new THREE.SphereGeometry(0.03, 12, 10);
         const flower = new THREE.Mesh(fGeo, fMat);
         flower.position.set(
           px + Math.cos(la) * ld,
@@ -1029,7 +1029,7 @@ export class WarbandSceneManager {
       const rh = getTerrainHeight(rx, rz);
       const reedH = 0.5 + rng() * 0.6;
 
-      const rGeo = new THREE.CylinderGeometry(0.006, 0.01, reedH, 3);
+      const rGeo = new THREE.CylinderGeometry(0.006, 0.01, reedH, 8);
       const reed = new THREE.Mesh(rGeo, reedMat);
       reed.position.set(rx, rh + reedH / 2, rz);
       reed.rotation.x = (rng() - 0.5) * 0.15;
@@ -1038,7 +1038,7 @@ export class WarbandSceneManager {
 
       // Cattail head on some reeds
       if (rng() < 0.5) {
-        const topGeo = new THREE.CylinderGeometry(0.014, 0.016, 0.06, 4);
+        const topGeo = new THREE.CylinderGeometry(0.014, 0.016, 0.06, 10);
         const rTop = new THREE.Mesh(topGeo, reedTopMat);
         rTop.position.set(rx, rh + reedH + 0.02, rz);
         this.scene.add(rTop);
@@ -1050,7 +1050,7 @@ export class WarbandSceneManager {
     for (let i = 0; i < 15; i++) {
       const pa2 = rng() * Math.PI * 2;
       const pd = pondR * (0.9 + rng() * 0.3);
-      const pGeo = new THREE.SphereGeometry(0.03 + rng() * 0.04, 4, 3);
+      const pGeo = new THREE.SphereGeometry(0.03 + rng() * 0.04, 16, 12);
       const pebble = new THREE.Mesh(pGeo, pebbleMat);
       pebble.position.set(
         px + Math.cos(pa2) * pd,
@@ -1118,7 +1118,7 @@ export class WarbandSceneManager {
       this.scene.add(post);
 
       // Top chamfer
-      const capGeo = new THREE.ConeGeometry(0.055, 0.08, 4);
+      const capGeo = new THREE.ConeGeometry(0.055, 0.08, 10);
       const cap = new THREE.Mesh(capGeo, woodMat);
       cap.position.set(fx, fh + postH + 0.03, fenceZ);
       cap.rotation.y = Math.PI / 4;
@@ -1288,7 +1288,7 @@ export class WarbandSceneManager {
         const fz = cz + Math.sin(a) * d;
         const fh = getTerrainHeight(fx, fz);
 
-        const geo = new THREE.SphereGeometry(0.02 + rng() * 0.015, 4, 3);
+        const geo = new THREE.SphereGeometry(0.02 + rng() * 0.015, 16, 12);
         const flower = new THREE.Mesh(geo, mat);
         flower.position.set(fx, fh + 0.03 + rng() * 0.06, fz);
         flower.scale.set(1, 0.5, 1);
@@ -1316,7 +1316,7 @@ export class WarbandSceneManager {
       const mat = pebbleMats[Math.floor(rng() * pebbleMats.length)];
       const r = 0.02 + rng() * 0.05;
 
-      const geo = new THREE.SphereGeometry(r, 4, 3);
+      const geo = new THREE.SphereGeometry(r, 16, 12);
       const pebble = new THREE.Mesh(geo, mat);
       pebble.position.set(x, h + r * 0.3, z);
       pebble.scale.set(1 + rng() * 0.5, 0.4 + rng() * 0.3, 1 + rng() * 0.5);
@@ -1343,7 +1343,7 @@ export class WarbandSceneManager {
       const z = (rng() - 0.5) * halfD * 1.5;
       const r = 0.01 + rng() * 0.02;
 
-      const geo = new THREE.SphereGeometry(r, 3, 2);
+      const geo = new THREE.SphereGeometry(r, 16, 12);
       const mote = new THREE.Mesh(geo, moteMat);
       mote.position.set(x, y, z);
       this.scene.add(mote);
@@ -1433,7 +1433,7 @@ export class WarbandSceneManager {
     // Gate portcullis bars (iron grate above gate)
     const barMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.6 });
     for (let bx = -2; bx <= 2; bx += 0.8) {
-      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5, 4), barMat);
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5, 10), barMat);
       bar.position.set(bx, 2.5, -15);
       this.scene.add(bar);
     }
@@ -1864,7 +1864,7 @@ export class WarbandSceneManager {
     roofL.castShadow = true;
     this.scene.add(roofL);
     // Shelter post
-    const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 3, 4);
+    const postGeo = new THREE.CylinderGeometry(0.06, 0.06, 3, 10);
     const post1 = new THREE.Mesh(postGeo, woodMat);
     post1.position.set(-16.5, 1.5, -19);
     this.scene.add(post1);
@@ -1921,7 +1921,7 @@ export class WarbandSceneManager {
       addWall(0.1, 1.2, 0.3, rx + 1, 2, -33.8, woodMat);
       // Weapons on rack (angled sticks)
       for (let i = -0.7; i <= 0.7; i += 0.35) {
-        const wpnGeo = new THREE.CylinderGeometry(0.02, 0.02, 1.4, 4);
+        const wpnGeo = new THREE.CylinderGeometry(0.02, 0.02, 1.4, 10);
         const wpn = new THREE.Mesh(wpnGeo, barMat);
         wpn.position.set(rx + i, 2, -33.6);
         wpn.rotation.z = 0.15 * (i > 0 ? 1 : -1);
@@ -1937,7 +1937,7 @@ export class WarbandSceneManager {
     well.castShadow = true;
     this.scene.add(well);
     // Well rim
-    const wellRimGeo = new THREE.TorusGeometry(0.85, 0.1, 4, 8);
+    const wellRimGeo = new THREE.TorusGeometry(0.85, 0.1, 10, 8);
     const wellRim = new THREE.Mesh(wellRimGeo, wellMat);
     wellRim.rotation.x = -Math.PI / 2;
     wellRim.position.set(-6, 0.85, -18);
@@ -1950,14 +1950,14 @@ export class WarbandSceneManager {
     water.position.set(-6, 0.3, -18);
     this.scene.add(water);
     // Well roof frame
-    const wellPostGeo = new THREE.CylinderGeometry(0.05, 0.05, 2, 4);
+    const wellPostGeo = new THREE.CylinderGeometry(0.05, 0.05, 2, 10);
     const wp1 = new THREE.Mesh(wellPostGeo, woodMat);
     wp1.position.set(-6.6, 1.8, -18);
     this.scene.add(wp1);
     const wp2 = new THREE.Mesh(wellPostGeo, woodMat);
     wp2.position.set(-5.4, 1.8, -18);
     this.scene.add(wp2);
-    const wellBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 4), woodMat);
+    const wellBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 10), woodMat);
     wellBeam.rotation.z = Math.PI / 2;
     wellBeam.position.set(-6, 2.8, -18);
     this.scene.add(wellBeam);
@@ -1981,7 +1981,7 @@ export class WarbandSceneManager {
     const logMat = new THREE.MeshStandardMaterial({ color: 0x5a3d1e, roughness: 0.9 });
     for (let row = 0; row < 3; row++) {
       for (let i = 0; i < 4 - row; i++) {
-        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2, 6), logMat);
+        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2, 12), logMat);
         log.rotation.z = Math.PI / 2;
         log.position.set(
           12 + i * 0.32 + row * 0.16,
@@ -2010,7 +2010,7 @@ export class WarbandSceneManager {
       banner.rotation.y = Math.PI;
       this.scene.add(banner);
       // Banner rod
-      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 4), barMat);
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 10), barMat);
       rod.rotation.z = Math.PI / 2;
       rod.position.set(bx, by + 1.3, bz);
       this.scene.add(rod);
@@ -2079,13 +2079,13 @@ export class WarbandSceneManager {
     this.scene.add(platform);
 
     // Platform edge ring (stone border)
-    const platEdge = new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.2, 4, 16), wallMat);
+    const platEdge = new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.2, 10, 16), wallMat);
     platEdge.rotation.x = -Math.PI / 2;
     platEdge.position.set(0, 0.42, -28);
     this.scene.add(platEdge);
 
     // Capture zone ring marker (glowing ring on the ground)
-    const ringGeo = new THREE.TorusGeometry(5, 0.15, 6, 32);
+    const ringGeo = new THREE.TorusGeometry(5, 0.15, 12, 32);
     const ringMat = new THREE.MeshStandardMaterial({
       color: 0xffaa00,
       emissive: 0xffaa00,
@@ -2098,7 +2098,7 @@ export class WarbandSceneManager {
     this.scene.add(ring);
 
     // Central banner pole
-    const poleGeo = new THREE.CylinderGeometry(0.06, 0.06, 6, 6);
+    const poleGeo = new THREE.CylinderGeometry(0.06, 0.06, 6, 12);
     const pole = new THREE.Mesh(poleGeo, woodMat);
     pole.position.set(0, 3, -28);
     pole.castShadow = true;
@@ -2119,7 +2119,7 @@ export class WarbandSceneManager {
     addWall(4, 2, 0.5, 5, 1, -28, darkStoneMat);
     addWall(0.5, 2, 6, 0, 1, -31.5, darkStoneMat);
     // Keep pillars at wall junctions
-    const pillarGeo = new THREE.CylinderGeometry(0.2, 0.25, 2.5, 6);
+    const pillarGeo = new THREE.CylinderGeometry(0.2, 0.25, 2.5, 12);
     const pillarPositions = [
       [-7, -28], [-3, -28], [3, -28], [7, -28],
       [0, -34], [0, -28.5],
@@ -2292,7 +2292,7 @@ export class WarbandSceneManager {
       emissive: 0xff4400,
       emissiveIntensity: 0.8,
     });
-    const torchGeo = new THREE.SphereGeometry(0.15, 4, 4);
+    const torchGeo = new THREE.SphereGeometry(0.15, 12, 10);
     const torchPositions = [
       [-9, 3.5, -23], [9, 3.5, -23],
       [-9, 3.5, -27], [9, 3.5, -27],
@@ -2310,7 +2310,7 @@ export class WarbandSceneManager {
       torch.position.set(tx, ty, tz);
       this.scene.add(torch);
       // Torch bracket (iron arm + mounting plate)
-      const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4), barMat);
+      const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 10), barMat);
       bracket.position.set(tx, ty - 0.3, tz);
       this.scene.add(bracket);
       const mountPlate = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), barMat);

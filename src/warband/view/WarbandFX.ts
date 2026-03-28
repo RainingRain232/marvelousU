@@ -55,8 +55,8 @@ export class WarbandFX {
 
   constructor(scene: THREE.Scene) {
     this._scene = scene;
-    this._sparkGeo = new THREE.SphereGeometry(0.03, 3, 2);
-    this._bloodGeo = new THREE.SphereGeometry(0.04, 3, 2);
+    this._sparkGeo = new THREE.SphereGeometry(0.03, 10, 8);
+    this._bloodGeo = new THREE.SphereGeometry(0.04, 10, 8);
     this._sparkMat = new THREE.MeshBasicMaterial({ color: 0xffcc44 });
     this._bloodMat = new THREE.MeshBasicMaterial({ color: 0xaa0000 });
     this._blockMat = new THREE.MeshBasicMaterial({ color: 0x4488ff });

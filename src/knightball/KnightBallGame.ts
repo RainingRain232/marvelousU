@@ -824,7 +824,7 @@ export class KnightBallGame {
     }
 
     // kick direction arrow (hidden by default)
-    const arrowGeo = new THREE.ConeGeometry(0.2, 1.5, 4);
+    const arrowGeo = new THREE.ConeGeometry(0.2, 1.5, 10);
     arrowGeo.rotateX(Math.PI / 2);
     this._kickArrow = new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({
       color: 0xffdd44, transparent: true, opacity: 0.6, depthWrite: false,
@@ -860,7 +860,7 @@ export class KnightBallGame {
     const flagMat = new THREE.MeshStandardMaterial({ color: 0xffdd44, side: THREE.DoubleSide });
     for (const cx of [-ARENA_W / 2, ARENA_W / 2]) {
       for (const cz of [-ARENA_H / 2, ARENA_H / 2]) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 4),
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 10),
           new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5, metalness: 0.3 }));
         pole.position.set(cx, 0.75, cz);
         this._scene.add(pole);
@@ -976,13 +976,13 @@ export class KnightBallGame {
       const cordMat = new THREE.MeshBasicMaterial({ color: netColor, transparent: true, opacity: 0.4 });
       // side net grid lines (vertical wires)
       for (let gz = -GOAL_WIDTH; gz <= GOAL_WIDTH; gz += 0.5) {
-        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, GOAL_HEIGHT, 3), cordMat);
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, GOAL_HEIGHT, 8), cordMat);
         wire.position.set(goalX + side * GOAL_DEPTH, GOAL_HEIGHT / 2, gz);
         group.add(wire);
       }
       // side net grid lines (horizontal wires on back)
       for (let gy = 0.5; gy <= GOAL_HEIGHT; gy += 0.5) {
-        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, GOAL_WIDTH * 2, 3), cordMat);
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, GOAL_WIDTH * 2, 8), cordMat);
         wire.rotation.x = Math.PI / 2;
         wire.position.set(goalX + side * GOAL_DEPTH, gy, 0);
         group.add(wire);
@@ -990,7 +990,7 @@ export class KnightBallGame {
       // depth wires (connecting goal line to back)
       for (let gz = -GOAL_WIDTH; gz <= GOAL_WIDTH; gz += 1) {
         for (let gy = 0; gy <= GOAL_HEIGHT; gy += 1) {
-          const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, GOAL_DEPTH, 3), cordMat);
+          const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, GOAL_DEPTH, 8), cordMat);
           wire.rotation.z = Math.PI / 2;
           wire.position.set(goalX + side * GOAL_DEPTH / 2, gy, gz);
           group.add(wire);
@@ -1031,7 +1031,7 @@ export class KnightBallGame {
     for (const [tx, tz] of torchPositions) {
       // pole with bracket
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x4a3520, roughness: 0.9 });
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, WALL_HEIGHT + 1, 6), poleMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, WALL_HEIGHT + 1, 12), poleMat);
       pole.position.set(tx, (WALL_HEIGHT + 1) / 2, tz);
       this._scene.add(pole);
       // brazier bowl at top
@@ -1040,12 +1040,12 @@ export class KnightBallGame {
       brazier.position.set(tx, WALL_HEIGHT + 0.85, tz);
       this._scene.add(brazier);
       // brazier rim
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 4, 8), brazierMat);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 10, 8), brazierMat);
       rim.position.set(tx, WALL_HEIGHT + 0.95, tz);
       rim.rotation.x = Math.PI / 2;
       this._scene.add(rim);
       // embers in brazier (small emissive sphere)
-      const embers = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4),
+      const embers = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 1.5, roughness: 1, metalness: 0 }));
       embers.position.set(tx, WALL_HEIGHT + 0.9, tz);
       this._scene.add(embers);
@@ -1053,7 +1053,7 @@ export class KnightBallGame {
       // multi-layer flame (3 overlapping cones for fire shape)
       const flameColors = [0xff4400, 0xff6600, 0xffaa22];
       for (let fi = 0; fi < 3; fi++) {
-        const fgeo = new THREE.ConeGeometry(0.12 + fi * 0.04, 0.35 - fi * 0.06, 5);
+        const fgeo = new THREE.ConeGeometry(0.12 + fi * 0.04, 0.35 - fi * 0.06, 10);
         const fmat = new THREE.MeshStandardMaterial({
           color: flameColors[fi], emissive: flameColors[fi],
           emissiveIntensity: 2.5 - fi * 0.5, transparent: true, opacity: 0.8 - fi * 0.15,
@@ -1143,7 +1143,7 @@ export class KnightBallGame {
 
     // crowd heads (spheres on top of boxes)
     const headMesh = new THREE.InstancedMesh(
-      new THREE.SphereGeometry(0.18, 6, 4),
+      new THREE.SphereGeometry(0.18, 12, 10),
       new THREE.MeshStandardMaterial({ color: 0xccaa88, roughness: 0.8 }),
       count
     );
@@ -1342,7 +1342,7 @@ export class KnightBallGame {
       }
       // arch top (half torus)
       const arch = new THREE.Mesh(
-        new THREE.TorusGeometry(1.8, 0.2, 6, 12, Math.PI),
+        new THREE.TorusGeometry(1.8, 0.2, 12, 12, Math.PI),
         archMat
       );
       arch.position.set(0, WALL_HEIGHT + 1.5, archZ);
@@ -1425,12 +1425,12 @@ export class KnightBallGame {
     // gold railing posts
     const railMat = new THREE.MeshStandardMaterial({ color: 0xddaa22, roughness: 0.3, metalness: 0.7 });
     for (const rx of [-2.8, -1.4, 0, 1.4, 2.8]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6), railMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 12), railMat);
       post.position.set(rx, WALL_HEIGHT + 1, boxZ + 0.9);
       this._scene.add(post);
     }
     // gold railing bar
-    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5.6, 6), railMat);
+    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5.6, 12), railMat);
     rail.rotation.z = Math.PI / 2;
     rail.position.set(0, WALL_HEIGHT + 1.4, boxZ + 0.9);
     this._scene.add(rail);
@@ -2335,20 +2335,20 @@ export class KnightBallGame {
 
       // helmet plume (feathered crest)
       const plumeColor = k.team === Team.BLUE ? 0x4488ff : 0xff4444;
-      const plume = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.45, 4),
+      const plume = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.45, 10),
         new THREE.MeshStandardMaterial({ color: plumeColor, roughness: 0.7, metalness: 0.1 }));
       plume.position.set(0, 1.75, -0.05);
       plume.rotation.x = -0.2; // tilt slightly back
       group.add(plume);
       // plume base
-      const plumeBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.1, 6),
+      const plumeBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.1, 12),
         new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.7 }));
       plumeBase.position.set(0, 1.6, -0.05);
       group.add(plumeBase);
 
       // pauldrons
       for (const side of [-1, 1]) {
-        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 4),
+        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10),
           new THREE.MeshStandardMaterial({ color: armorColor, roughness: 0.35, metalness: 0.7 }));
         pauldron.position.set(side * 0.45, 1.2, 0);
         pauldron.scale.set(1, 0.7, 0.8);
@@ -2357,7 +2357,7 @@ export class KnightBallGame {
 
       // legs
       for (const side of [-1, 1]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.6, 6),
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.6, 12),
           new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.4 }));
         leg.position.set(side * 0.18, 0.3, 0);
         group.add(leg); // [5],[6] legs
@@ -2368,9 +2368,9 @@ export class KnightBallGame {
       for (const side of [-1, 1]) {
         const armPivot = new THREE.Group();
         armPivot.position.set(side * 0.42, 1.05, 0);
-        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.55, 6), armMat);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.55, 12), armMat);
         arm.position.y = -0.28; // hang down from pivot
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5, 4),
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10),
           new THREE.MeshStandardMaterial({ color: 0x997755, roughness: 0.7, metalness: 0.1 }));
         hand.position.y = -0.58;
         armPivot.add(arm);
@@ -2415,7 +2415,7 @@ export class KnightBallGame {
 
       // player indicator
       if (k.isPlayer) {
-        const indicator = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 4),
+        const indicator = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 10),
           new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffaa00, emissiveIntensity: 0.5 }));
         indicator.position.y = 2.0;
         indicator.rotation.x = Math.PI;
@@ -2490,7 +2490,7 @@ export class KnightBallGame {
 
     const stitchMat = new THREE.MeshBasicMaterial({ color: 0x664422 });
     for (let i = 0; i < 3; i++) {
-      const stitch = new THREE.Mesh(new THREE.TorusGeometry(BALL_RADIUS + 0.01, 0.015, 4, 24), stitchMat);
+      const stitch = new THREE.Mesh(new THREE.TorusGeometry(BALL_RADIUS + 0.01, 0.015, 10, 24), stitchMat);
       stitch.rotation.set(i * Math.PI / 3, i * 0.5, 0);
       mesh.add(stitch);
     }

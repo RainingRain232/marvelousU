@@ -141,7 +141,7 @@ export class TekkenFXManager {
     }
 
     // Secondary "ember" pool – smaller particles with additive blending
-    const emberGeo = new THREE.SphereGeometry(0.015, 6, 4);
+    const emberGeo = new THREE.SphereGeometry(0.015, 12, 10);
     for (let i = 0; i < 60; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color: 0xff8833,
@@ -688,7 +688,7 @@ export class TekkenFXManager {
     });
 
     // Expanding ring (small torus, blue tint, 8 frames)
-    const blockRingGeo = new THREE.TorusGeometry(0.1, 0.008, 6, 24);
+    const blockRingGeo = new THREE.TorusGeometry(0.1, 0.008, 12, 24);
     const blockRingMat = new THREE.MeshBasicMaterial({
       color: 0x88bbff,
       transparent: true,

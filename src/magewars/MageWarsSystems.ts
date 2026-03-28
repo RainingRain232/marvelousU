@@ -281,7 +281,7 @@ export function buildEnvSpellMesh(entity: EnvSpellEntity): THREE.Group {
       group.add(mesh);
       // Crystal shard decorations
       for (let i = 0; i < 5; i++) {
-        const shardGeo = new THREE.ConeGeometry(0.15, 0.6, 4);
+        const shardGeo = new THREE.ConeGeometry(0.15, 0.6, 10);
         const shardMat = new THREE.MeshStandardMaterial({ color: 0xaaeeff, transparent: true, opacity: 0.5 });
         const shard = new THREE.Mesh(shardGeo, shardMat);
         shard.position.set(
@@ -346,13 +346,13 @@ export function buildEnvSpellMesh(entity: EnvSpellEntity): THREE.Group {
       const postCount = 4;
       for (let i = 0; i < postCount; i++) {
         const px = (i / (postCount - 1)) * def.width - def.width / 2;
-        const postGeo = new THREE.CylinderGeometry(0.08, 0.08, def.height, 6);
+        const postGeo = new THREE.CylinderGeometry(0.08, 0.08, def.height, 12);
         const postMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.6 });
         const post = new THREE.Mesh(postGeo, postMat);
         post.position.set(px, def.height / 2, 0);
         group.add(post);
         // Top spark
-        const sparkGeo = new THREE.SphereGeometry(0.12, 4, 4);
+        const sparkGeo = new THREE.SphereGeometry(0.12, 12, 10);
         const sparkMat = new THREE.MeshBasicMaterial({ color: def.color });
         const spark = new THREE.Mesh(sparkGeo, sparkMat);
         spark.position.set(px, def.height, 0);
@@ -385,7 +385,7 @@ export function buildEnvSpellMesh(entity: EnvSpellEntity): THREE.Group {
       group.add(wall);
       // Leaf decorations
       for (let i = 0; i < 10; i++) {
-        const leafGeo = new THREE.SphereGeometry(0.15, 4, 4);
+        const leafGeo = new THREE.SphereGeometry(0.15, 12, 10);
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x44cc22 });
         const leaf = new THREE.Mesh(leafGeo, leafMat);
         leaf.position.set(
@@ -405,7 +405,7 @@ export function buildEnvSpellMesh(entity: EnvSpellEntity): THREE.Group {
       tBase.position.y = 0.2;
       group.add(tBase);
       // Pillar
-      const pillarGeo = new THREE.CylinderGeometry(0.15, 0.2, def.height - 0.4, 6);
+      const pillarGeo = new THREE.CylinderGeometry(0.15, 0.2, def.height - 0.4, 12);
       const pillarMat = new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissiveColor, emissiveIntensity: 0.4 });
       const pillar = new THREE.Mesh(pillarGeo, pillarMat);
       pillar.position.y = def.height / 2;
@@ -434,7 +434,7 @@ export function buildEnvSpellMesh(entity: EnvSpellEntity): THREE.Group {
       // Ring particles
       for (let i = 0; i < 6; i++) {
         const angle = (i / 6) * Math.PI * 2;
-        const rGeo = new THREE.TorusGeometry(def.areaRadius * (0.5 + i * 0.08), 0.05, 4, 12);
+        const rGeo = new THREE.TorusGeometry(def.areaRadius * (0.5 + i * 0.08), 0.05, 10, 12);
         const rMat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.3 });
         const ring = new THREE.Mesh(rGeo, rMat);
         ring.rotation.x = Math.PI / 2;
@@ -672,7 +672,7 @@ export function buildDragonMesh(state: DragonRiderState): THREE.Group {
   group.add(body);
 
   // Head
-  const headGeo = new THREE.ConeGeometry(0.5, 1.2, 6);
+  const headGeo = new THREE.ConeGeometry(0.5, 1.2, 12);
   const headMat = new THREE.MeshStandardMaterial({ color: def.bodyColor, roughness: 0.5 });
   const head = new THREE.Mesh(headGeo, headMat);
   head.rotation.x = Math.PI / 2;
@@ -698,7 +698,7 @@ export function buildDragonMesh(state: DragonRiderState): THREE.Group {
   group.add(rightWing);
 
   // Tail
-  const tailGeo = new THREE.ConeGeometry(0.3, 2.5, 4);
+  const tailGeo = new THREE.ConeGeometry(0.3, 2.5, 10);
   const tailMat = new THREE.MeshStandardMaterial({ color: def.accentColor });
   const tail = new THREE.Mesh(tailGeo, tailMat);
   tail.rotation.x = -Math.PI / 2;
@@ -706,7 +706,7 @@ export function buildDragonMesh(state: DragonRiderState): THREE.Group {
   group.add(tail);
 
   // Eyes (glow)
-  const eyeGeo = new THREE.SphereGeometry(0.1, 4, 4);
+  const eyeGeo = new THREE.SphereGeometry(0.1, 12, 10);
   const eyeMat = new THREE.MeshBasicMaterial({ color: def.accentColor });
   const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
   leftEye.position.set(-0.25, 0.35, -2.8);
@@ -1236,7 +1236,7 @@ export function buildDuelArenaScene(arenaId: string, scene: THREE.Scene): THREE.
     const angle = (i / 8) * Math.PI * 2;
     const px = Math.cos(angle) * (arena.size - 0.5);
     const pz = Math.sin(angle) * (arena.size - 0.5);
-    const pillarGeo = new THREE.CylinderGeometry(0.3, 0.35, 4, 6);
+    const pillarGeo = new THREE.CylinderGeometry(0.3, 0.35, 4, 12);
     const pillarMat = new THREE.MeshStandardMaterial({ color: arena.wallColor, roughness: 0.5 });
     const pillar = new THREE.Mesh(pillarGeo, pillarMat);
     pillar.position.set(px, 2, pz);

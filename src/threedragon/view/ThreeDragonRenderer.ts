@@ -140,7 +140,7 @@ export class ThreeDragonRenderer {
     this._sphereGeo = new THREE.SphereGeometry(1, 12, 8);
     this._boxGeo = new THREE.BoxGeometry(1, 1, 1);
     this._coneGeo = new THREE.ConeGeometry(1, 2, 8);
-    this._cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 6);
+    this._cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 12);
 
     // Build scene
     this._buildLighting();
@@ -625,7 +625,7 @@ export class ThreeDragonRenderer {
       if (Math.random() < 0.6) {
         const ridgeH = h * (0.4 + Math.random() * 0.3);
         const ridgeW = w * (0.3 + Math.random() * 0.4);
-        const ridgeGeo = new THREE.ConeGeometry(ridgeW, ridgeH, 5);
+        const ridgeGeo = new THREE.ConeGeometry(ridgeW, ridgeH, 10);
         const ridge = new THREE.Mesh(ridgeGeo, mtnMat.clone());
         ridge.position.set(
           (Math.random() < 0.5 ? -1 : 1) * w * 0.5,
@@ -639,7 +639,7 @@ export class ThreeDragonRenderer {
       for (let f = 0; f < 2 + Math.floor(Math.random() * 3); f++) {
         const fh = h * (0.1 + Math.random() * 0.15);
         const fw = w * (0.2 + Math.random() * 0.3);
-        const footGeo = new THREE.ConeGeometry(fw, fh, 5);
+        const footGeo = new THREE.ConeGeometry(fw, fh, 10);
         const footMat = new THREE.MeshPhongMaterial({
           color: new THREE.Color().setHSL(baseHue + 0.02, 0.3, 0.18 + Math.random() * 0.08),
           flatShading: true,
@@ -655,7 +655,7 @@ export class ThreeDragonRenderer {
 
       // Snow cap on tall mountains — layered snow
       if (h > mc.snowThreshold) {
-        const snowGeo = new THREE.ConeGeometry(w * 0.35, h * 0.2, 6);
+        const snowGeo = new THREE.ConeGeometry(w * 0.35, h * 0.2, 12);
         const snowMat = new THREE.MeshPhongMaterial({
           color: mc.snowColor,
           emissive: 0x223344,
@@ -668,7 +668,7 @@ export class ThreeDragonRenderer {
         // Secondary snow streak
         if (h > 32) {
           const streak = new THREE.Mesh(
-            new THREE.ConeGeometry(w * 0.2, h * 0.12, 5),
+            new THREE.ConeGeometry(w * 0.2, h * 0.12, 10),
             snowMat.clone(),
           );
           streak.position.set(w * 0.15, h * 0.32, 0);
@@ -773,7 +773,7 @@ export class ThreeDragonRenderer {
       stem.position.y = 0.15;
       flowerGroup.add(stem);
       // Petals
-      const petalGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 4);
+      const petalGeo = new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 12, 10);
       const petalMat = new THREE.MeshPhongMaterial({
         color: fColor,
         emissive: fColor,
@@ -797,7 +797,7 @@ export class ThreeDragonRenderer {
     for (let i = 0; i < 80; i++) {
       const treeGroup = new THREE.Group();
       const trunkH = 1.5 + Math.random() * 2.5;
-      const trunkGeo = new THREE.CylinderGeometry(0.2, 0.35, trunkH, 6);
+      const trunkGeo = new THREE.CylinderGeometry(0.2, 0.35, trunkH, 12);
       const trunkMat = new THREE.MeshPhongMaterial({
         color: new THREE.Color(mc.trunkColor).offsetHSL(0, 0, (Math.random() - 0.5) * 0.1),
       });
@@ -858,14 +858,14 @@ export class ThreeDragonRenderer {
     this._eagleGroup.add(this._eagleBody);
 
     // Head
-    const headGeo = new THREE.SphereGeometry(0.55, 10, 8);
+    const headGeo = new THREE.SphereGeometry(0.55, 16, 12);
     const headMat = new THREE.MeshPhongMaterial({ color: 0xfaf5e8 });
     this._eagleHead = new THREE.Mesh(headGeo, headMat);
     this._eagleHead.position.set(2, 0.4, 0);
     this._eagleGroup.add(this._eagleHead);
 
     // Beak
-    const beakGeo = new THREE.ConeGeometry(0.2, 0.6, 4);
+    const beakGeo = new THREE.ConeGeometry(0.2, 0.6, 10);
     beakGeo.rotateZ(-Math.PI / 2);
     const beakMat = new THREE.MeshPhongMaterial({ color: 0xddaa33 });
     const beak = new THREE.Mesh(beakGeo, beakMat);
@@ -873,7 +873,7 @@ export class ThreeDragonRenderer {
     this._eagleGroup.add(beak);
 
     // Eyes
-    const eyeGeo = new THREE.SphereGeometry(0.12, 8, 6);
+    const eyeGeo = new THREE.SphereGeometry(0.12, 16, 12);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x221100 });
     const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
     eyeL.position.set(2.3, 0.55, -0.3);
@@ -899,7 +899,7 @@ export class ThreeDragonRenderer {
     this._eagleGroup.add(this._eagleWingR);
 
     // Tail feathers
-    const tailGeo = new THREE.ConeGeometry(0.6, 2, 5);
+    const tailGeo = new THREE.ConeGeometry(0.6, 2, 10);
     tailGeo.rotateZ(Math.PI / 2);
     const tailMat = new THREE.MeshPhongMaterial({ color: 0xe8e0c8 });
     this._eagleTail = new THREE.Mesh(tailGeo, tailMat);
@@ -907,7 +907,7 @@ export class ThreeDragonRenderer {
     this._eagleGroup.add(this._eagleTail);
 
     // Talons
-    const talonGeo = new THREE.ConeGeometry(0.15, 0.6, 4);
+    const talonGeo = new THREE.ConeGeometry(0.15, 0.6, 10);
     const talonMat = new THREE.MeshPhongMaterial({ color: 0xccaa44 });
     for (const z of [-0.4, 0.4]) {
       const talon = new THREE.Mesh(talonGeo, talonMat);
@@ -963,14 +963,14 @@ export class ThreeDragonRenderer {
     this._arthurGroup.add(torso);
 
     // Head
-    const headGeo = new THREE.SphereGeometry(0.25, 8, 6);
+    const headGeo = new THREE.SphereGeometry(0.25, 16, 12);
     const headMat = new THREE.MeshPhongMaterial({ color: 0xffccaa });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.set(0, 1.95, 0);
     this._arthurGroup.add(head);
 
     // Hair
-    const hairGeo = new THREE.SphereGeometry(0.27, 8, 6);
+    const hairGeo = new THREE.SphereGeometry(0.27, 16, 12);
     const hairMat = new THREE.MeshPhongMaterial({ color: 0x553311 });
     const hair = new THREE.Mesh(hairGeo, hairMat);
     hair.position.set(0, 2.05, -0.02);
@@ -991,7 +991,7 @@ export class ThreeDragonRenderer {
     this._arthurGroup.add(crown);
 
     // Crown gems
-    const gemGeo = new THREE.SphereGeometry(0.06, 6, 4);
+    const gemGeo = new THREE.SphereGeometry(0.06, 12, 10);
     const gemMat = new THREE.MeshBasicMaterial({ color: 0xff2244 });
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2;
@@ -1013,7 +1013,7 @@ export class ThreeDragonRenderer {
     this._arthurGroup.add(this._capeMesh);
 
     // Right arm (wand arm)
-    const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6);
+    const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 12);
     const armMat = new THREE.MeshPhongMaterial({ color: 0x2244aa });
     const arm = new THREE.Mesh(armGeo, armMat);
     arm.position.set(0.15, 1.4, 0.3);
@@ -1021,7 +1021,7 @@ export class ThreeDragonRenderer {
     this._arthurGroup.add(arm);
 
     // Wand
-    const wandGeo = new THREE.CylinderGeometry(0.04, 0.06, 1.2, 6);
+    const wandGeo = new THREE.CylinderGeometry(0.04, 0.06, 1.2, 12);
     const wandMat = new THREE.MeshPhongMaterial({ color: 0x886644, specular: 0x444444 });
     const wand = new THREE.Mesh(wandGeo, wandMat);
     wand.position.set(0.2, 1.6, 0.5);
@@ -1030,7 +1030,7 @@ export class ThreeDragonRenderer {
     this._arthurGroup.add(wand);
 
     // Wand orb
-    const orbGeo = new THREE.SphereGeometry(0.15, 10, 8);
+    const orbGeo = new THREE.SphereGeometry(0.15, 16, 12);
     const orbMat = new THREE.MeshBasicMaterial({
       color: 0x88ccff,
     });
@@ -1044,7 +1044,7 @@ export class ThreeDragonRenderer {
     this._arthurGroup.add(this._wandLight);
 
     // Legs
-    const legGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6);
+    const legGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 12);
     const legMat = new THREE.MeshPhongMaterial({ color: 0x443322 });
     for (const z of [-0.12, 0.12]) {
       const leg = new THREE.Mesh(legGeo, legMat);
@@ -1218,12 +1218,12 @@ export class ThreeDragonRenderer {
       body.position.y = 0.6;
       deerGroup.add(body);
       // Head
-      const headGeo = new THREE.SphereGeometry(0.2, 6, 4);
+      const headGeo = new THREE.SphereGeometry(0.2, 12, 10);
       const head = new THREE.Mesh(headGeo, silMat);
       head.position.set(0.7, 0.9, 0);
       deerGroup.add(head);
       // Legs
-      const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 4);
+      const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10);
       for (const lx of [-0.4, 0.4]) {
         const leg = new THREE.Mesh(legGeo, silMat);
         leg.position.set(lx, 0.25, 0);
@@ -1231,7 +1231,7 @@ export class ThreeDragonRenderer {
       }
       // Antlers (on some)
       if (Math.random() < 0.5) {
-        const antlerGeo = new THREE.ConeGeometry(0.04, 0.4, 3);
+        const antlerGeo = new THREE.ConeGeometry(0.04, 0.4, 8);
         for (const z of [-0.1, 0.1]) {
           const antler = new THREE.Mesh(antlerGeo, silMat);
           antler.position.set(0.7, 1.2, z);
@@ -1346,7 +1346,7 @@ export class ThreeDragonRenderer {
       opacity: 0.15,
       depthWrite: false,
     });
-    const aura = new THREE.Mesh(new THREE.SphereGeometry(s * 2, 8, 6), auraMat);
+    const aura = new THREE.Mesh(new THREE.SphereGeometry(s * 2, 16, 12), auraMat);
     aura.name = "aura";
     group.add(aura);
 
@@ -1447,7 +1447,7 @@ export class ThreeDragonRenderer {
           // Hollow glowing purple eye sockets
           for (const zSide of [-1, 1]) {
             const eyeSocket = new THREE.Mesh(
-              new THREE.SphereGeometry(s * 0.06 * skullScale, 6, 4),
+              new THREE.SphereGeometry(s * 0.06 * skullScale, 12, 10),
               eyeSocketMat,
             );
             eyeSocket.position.set(
@@ -1544,7 +1544,7 @@ export class ThreeDragonRenderer {
         });
         for (let i = 0; i < 4; i++) {
           const orb = new THREE.Mesh(
-            new THREE.SphereGeometry(s * 0.07, 5, 4),
+            new THREE.SphereGeometry(s * 0.07, 12, 10),
             orbMat,
           );
           orb.position.set(
@@ -1983,7 +1983,7 @@ export class ThreeDragonRenderer {
           // Each compound eye = 4 small facets
           for (let f = 0; f < 4; f++) {
             const facet = new THREE.Mesh(
-              new THREE.SphereGeometry(s * 0.04, 5, 4),
+              new THREE.SphereGeometry(s * 0.04, 12, 10),
               compoundEyeMat,
             );
             const angle = (f / 4) * Math.PI * 0.6 - 0.3;
@@ -2179,7 +2179,7 @@ export class ThreeDragonRenderer {
         });
         for (let i = 0; i < 6; i++) {
           const spark = new THREE.Mesh(
-            new THREE.SphereGeometry(s * 0.04, 4, 3),
+            new THREE.SphereGeometry(s * 0.04, 16, 12),
             sparkMat,
           );
           spark.position.set(
@@ -3116,7 +3116,7 @@ export class ThreeDragonRenderer {
         // Vertical resonance rings around body
         for (let ri = 0; ri < 3; ri++) {
           const vRing = new THREE.Mesh(
-            new THREE.TorusGeometry(s * (0.35 + ri * 0.1), s * 0.008, 6, 20),
+            new THREE.TorusGeometry(s * (0.35 + ri * 0.1), s * 0.008, 12, 20),
             ringMat.clone(),
           );
           vRing.position.set(s * 1.0 - ri * s * 0.8, s * 0.1, 0);
@@ -3536,7 +3536,7 @@ export class ThreeDragonRenderer {
         // === Ember particles rising from body ===
         const emberMat = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
         for (let i = 0; i < 8; i++) {
-          const ember = new THREE.Mesh(new THREE.SphereGeometry(s * 0.03, 4, 3), emberMat);
+          const ember = new THREE.Mesh(new THREE.SphereGeometry(s * 0.03, 16, 12), emberMat);
           ember.position.set(
             (Math.random() - 0.5) * s * 2.5,
             s * 0.5 + Math.random() * s * 0.8,
@@ -3554,12 +3554,12 @@ export class ThreeDragonRenderer {
           side: THREE.DoubleSide,
         });
         for (let i = 1; i < segmentCount; i++) {
-          const halo = new THREE.Mesh(new THREE.TorusGeometry(s * 0.2, s * 0.03, 6, 12), haloMat.clone());
+          const halo = new THREE.Mesh(new THREE.TorusGeometry(s * 0.2, s * 0.03, 12, 12), haloMat.clone());
           halo.position.set(-s * 0.45 * i + s * 0.22, s * 0.3, 0);
           halo.rotation.y = Math.PI / 2;
           group.add(halo);
           // Secondary smaller inner halo
-          const halo2 = new THREE.Mesh(new THREE.TorusGeometry(s * 0.12, s * 0.02, 6, 10), haloMat.clone());
+          const halo2 = new THREE.Mesh(new THREE.TorusGeometry(s * 0.12, s * 0.02, 12, 10), haloMat.clone());
           halo2.position.set(-s * 0.45 * i + s * 0.22, s * 0.3, 0);
           halo2.rotation.y = Math.PI / 2;
           halo2.rotation.x = 0.3;
@@ -5354,12 +5354,12 @@ export class ThreeDragonRenderer {
         }
 
         // === Arcane energy crackling between eyes (glowing arcs) ===
-        const arcaneRing = new THREE.Mesh(new THREE.TorusGeometry(s * 0.55, s * 0.02, 6, 16), arcaneMat);
+        const arcaneRing = new THREE.Mesh(new THREE.TorusGeometry(s * 0.55, s * 0.02, 12, 16), arcaneMat);
         arcaneRing.rotation.x = Math.PI / 4;
         arcaneRing.name = "ring";
         group.add(arcaneRing);
         // Smaller energy arc
-        const arcaneRing2 = new THREE.Mesh(new THREE.TorusGeometry(s * 0.4, s * 0.015, 6, 12), arcaneMat.clone());
+        const arcaneRing2 = new THREE.Mesh(new THREE.TorusGeometry(s * 0.4, s * 0.015, 12, 12), arcaneMat.clone());
         arcaneRing2.rotation.z = Math.PI / 3;
         arcaneRing2.rotation.x = -Math.PI / 6;
         arcaneRing2.name = "ring2";
@@ -5519,7 +5519,7 @@ export class ThreeDragonRenderer {
           depthWrite: false,
         });
         for (let ir = 0; ir < 4; ir++) {
-          const irisRingGeo = new THREE.TorusGeometry(s * (0.05 + ir * 0.04), s * 0.005, 6, 16);
+          const irisRingGeo = new THREE.TorusGeometry(s * (0.05 + ir * 0.04), s * 0.005, 12, 16);
           const irisRingMesh = new THREE.Mesh(irisRingGeo, irisRingMat.clone());
           irisRingMesh.position.set(s * 0.56, s * 0.05, 0);
           irisRingMesh.rotation.y = Math.PI / 2;
@@ -5948,7 +5948,7 @@ export class ThreeDragonRenderer {
         // Rune circles orbiting around the base
         const runeGlowMat = new THREE.MeshBasicMaterial({ color: enemy.glowColor, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
         for (let i = 0; i < 3; i++) {
-          const runeRing = new THREE.Mesh(new THREE.TorusGeometry(s * (0.8 + i * 0.15), s * 0.02, 4, 16), runeGlowMat);
+          const runeRing = new THREE.Mesh(new THREE.TorusGeometry(s * (0.8 + i * 0.15), s * 0.02, 10, 16), runeGlowMat);
           runeRing.position.y = s * 0.15 + i * s * 0.12;
           runeRing.rotation.x = Math.PI / 2;
           runeRing.rotation.z = i * 0.6;
@@ -6219,7 +6219,7 @@ export class ThreeDragonRenderer {
           const rcY = s * 0.8 + i * s * 0.7;
           const rcRadius = s * (0.55 - i * 0.06);
           const runeCircle = new THREE.Mesh(
-            new THREE.TorusGeometry(rcRadius, s * 0.015, 4, 20),
+            new THREE.TorusGeometry(rcRadius, s * 0.015, 10, 20),
             i % 2 === 0 ? runeCircleMat : runeCircleAltMat,
           );
           runeCircle.position.y = rcY;
@@ -6615,7 +6615,7 @@ export class ThreeDragonRenderer {
         for (const side of [-1, 1]) {
           // Main ward circle
           const wardCircle = new THREE.Mesh(
-            new THREE.TorusGeometry(s * 0.12, s * 0.01, 4, 12),
+            new THREE.TorusGeometry(s * 0.12, s * 0.01, 10, 12),
             runeWardMat,
           );
           wardCircle.position.set(s * 0.15, s * 0.65, side * s * 0.87);
@@ -6635,7 +6635,7 @@ export class ThreeDragonRenderer {
         }
         // Front plow rune ward
         const frontWard = new THREE.Mesh(
-          new THREE.TorusGeometry(s * 0.15, s * 0.012, 4, 12),
+          new THREE.TorusGeometry(s * 0.15, s * 0.012, 10, 12),
           runeWardMat,
         );
         frontWard.position.set(s * 0.05, s * 0.45, s * 0.67);
@@ -6663,12 +6663,12 @@ export class ThreeDragonRenderer {
             const legZ = -s * 0.5 + i * s * 0.3;
             const legSpread = s * 0.7 + i * s * 0.05;
             // Hydraulic cylinder on upper leg
-            const hydraulicCyl = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.02, s * 0.02, s * 0.2, 6), pistonMat);
+            const hydraulicCyl = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.02, s * 0.02, s * 0.2, 12), pistonMat);
             hydraulicCyl.position.set(side * (legSpread + s * 0.04), s * 0.45, legZ + s * 0.04);
             hydraulicCyl.rotation.z = side * 0.4;
             group.add(hydraulicCyl);
             // Piston rod inside cylinder
-            const pistonRod = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.01, s * 0.01, s * 0.15, 6), hydraulicMat);
+            const pistonRod = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.01, s * 0.01, s * 0.15, 12), hydraulicMat);
             pistonRod.position.set(side * (legSpread + s * 0.08), s * 0.35, legZ + s * 0.04);
             pistonRod.rotation.z = side * 0.5;
             group.add(pistonRod);
@@ -6678,7 +6678,7 @@ export class ThreeDragonRenderer {
             bracket.position.set(side * (legSpread + s * 0.12), s * 0.28, legZ);
             group.add(bracket);
             // Lower hydraulic line
-            const lowerHydraulic = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.015, s * 0.015, s * 0.15, 6), pistonMat.clone());
+            const lowerHydraulic = new THREE.Mesh(new THREE.CylinderGeometry(s * 0.015, s * 0.015, s * 0.15, 12), pistonMat.clone());
             lowerHydraulic.position.set(side * (legSpread + s * 0.15), s * 0.15, legZ - s * 0.03);
             lowerHydraulic.rotation.z = side * -0.2;
             group.add(lowerHydraulic);
@@ -6733,7 +6733,7 @@ export class ThreeDragonRenderer {
           }
           // Chain dragging from each leg
           for (let c = 0; c < 5; c++) {
-            const chainLink = new THREE.Mesh(new THREE.TorusGeometry(s * 0.04, s * 0.012, 4, 6), chainMat);
+            const chainLink = new THREE.Mesh(new THREE.TorusGeometry(s * 0.04, s * 0.012, 10, 6), chainMat);
             chainLink.position.set(s * 0.15, s * 0.15 + c * s * 0.08, side * s * 0.55);
             chainLink.rotation.x = c * 0.5;
             chainLink.rotation.z = Math.PI / 2;
@@ -6821,13 +6821,13 @@ export class ThreeDragonRenderer {
         hammerFace.position.set(0, s * 0.42, -s * 1.5);
         group.add(hammerFace);
         // Rune brand on hammer
-        const hammerRune = new THREE.Mesh(new THREE.TorusGeometry(s * 0.12, s * 0.02, 4, 6), runeBrandMat);
+        const hammerRune = new THREE.Mesh(new THREE.TorusGeometry(s * 0.12, s * 0.02, 10, 6), runeBrandMat);
         hammerRune.position.set(0, s * 0.45, -s * 1.52);
         hammerRune.rotation.x = Math.PI / 2;
         group.add(hammerRune);
         // Chain wrapped around hammer arm
         for (let c = 0; c < 4; c++) {
-          const chainLink = new THREE.Mesh(new THREE.TorusGeometry(s * 0.22, s * 0.015, 4, 8), chainMat);
+          const chainLink = new THREE.Mesh(new THREE.TorusGeometry(s * 0.22, s * 0.015, 10, 8), chainMat);
           chainLink.position.set(0, s * 1.0 + c * s * 0.2, -s * 1.15);
           chainLink.rotation.y = Math.PI / 2;
           group.add(chainLink);
@@ -6854,7 +6854,7 @@ export class ThreeDragonRenderer {
         cannonBarrel.position.set(0, s * 0.95, s * 1.65);
         group.add(cannonBarrel);
         // Cannon muzzle ring
-        const muzzleRing = new THREE.Mesh(new THREE.TorusGeometry(s * 0.13, s * 0.025, 6, 10), metalArmMat.clone());
+        const muzzleRing = new THREE.Mesh(new THREE.TorusGeometry(s * 0.13, s * 0.025, 12, 10), metalArmMat.clone());
         muzzleRing.position.set(0, s * 0.95, s * 2.15);
         group.add(muzzleRing);
         // Energy glow in cannon bore
@@ -6864,7 +6864,7 @@ export class ThreeDragonRenderer {
         group.add(boreGlow);
         // Chain hanging from cannon arm
         for (let c = 0; c < 3; c++) {
-          const chainLink = new THREE.Mesh(new THREE.TorusGeometry(s * 0.05, s * 0.012, 4, 6), chainMat);
+          const chainLink = new THREE.Mesh(new THREE.TorusGeometry(s * 0.05, s * 0.012, 10, 6), chainMat);
           chainLink.position.set(s * 0.2, s * 0.65 - c * s * 0.1, s * 1.0);
           chainLink.rotation.z = c * 0.4;
           group.add(chainLink);
@@ -6930,7 +6930,7 @@ export class ThreeDragonRenderer {
           group.add(runeBrand);
         }
         // Large rune circle on back
-        const backRune = new THREE.Mesh(new THREE.TorusGeometry(s * 0.35, s * 0.025, 4, 8), runeBrandMat);
+        const backRune = new THREE.Mesh(new THREE.TorusGeometry(s * 0.35, s * 0.025, 10, 8), runeBrandMat);
         backRune.position.set(0, s * 1.8, -s * 0.72);
 
         // --- Additional crack detail with lava/energy visible ---
@@ -7799,7 +7799,7 @@ export class ThreeDragonRenderer {
         // Arms
         for (const side of [-1, 1]) {
           const arm = new THREE.Mesh(
-            new THREE.CylinderGeometry(s * 0.3, s * 0.4, s * 2.5, 6),
+            new THREE.CylinderGeometry(s * 0.3, s * 0.4, s * 2.5, 12),
             bodyMat.clone(),
           );
           arm.position.set(0, s * 0.5, side * s * 1.5);
@@ -7839,7 +7839,7 @@ export class ThreeDragonRenderer {
         }
 
         // Storm crown
-        const crownGeo = new THREE.TorusGeometry(s * 0.9, s * 0.08, 6, 12);
+        const crownGeo = new THREE.TorusGeometry(s * 0.9, s * 0.08, 12, 12);
         const crownMat = new THREE.MeshBasicMaterial({
           color: 0x00ccff,
           transparent: true,
@@ -7855,7 +7855,7 @@ export class ThreeDragonRenderer {
         // Lightning crackling arcs
         const sparkMat2 = new THREE.MeshBasicMaterial({ color: 0x44eeff, transparent: true, opacity: 0.5 });
         for (let i = 0; i < 6; i++) {
-          const spark = new THREE.Mesh(new THREE.SphereGeometry(s * 0.08, 4, 3), sparkMat2.clone());
+          const spark = new THREE.Mesh(new THREE.SphereGeometry(s * 0.08, 16, 12), sparkMat2.clone());
           spark.position.set(
             (Math.random() - 0.5) * s * 2,
             s * 0.5 + Math.random() * s * 2.5,
@@ -7928,7 +7928,7 @@ export class ThreeDragonRenderer {
         });
         for (let i = 0; i < 6; i++) {
           const ridge = new THREE.Mesh(
-            new THREE.SphereGeometry(s * 0.15, 5, 3),
+            new THREE.SphereGeometry(s * 0.15, 12, 10),
             scaleRidgeMat.clone(),
           );
           ridge.scale.set(1.2, 0.4, 1.5);
@@ -7939,7 +7939,7 @@ export class ThreeDragonRenderer {
         // Three heads with necks, jaws, teeth, and glowing eyes
         for (let i = -1; i <= 1; i++) {
           // Neck — segmented feel
-          const neckGeo = new THREE.CylinderGeometry(s * 0.18, s * 0.3, s * 2.2, 6);
+          const neckGeo = new THREE.CylinderGeometry(s * 0.18, s * 0.3, s * 2.2, 12);
           neckGeo.rotateZ(-Math.PI / 4 + i * 0.3);
           const neck = new THREE.Mesh(neckGeo, bodyMat.clone());
           neck.position.set(s * 1.3, s * 1 + i * s * 0.3, i * s * 0.65);
@@ -7948,7 +7948,7 @@ export class ThreeDragonRenderer {
           // Neck rings / bands
           for (let r = 0; r < 3; r++) {
             const ring = new THREE.Mesh(
-              new THREE.TorusGeometry(s * 0.22, s * 0.03, 4, 6),
+              new THREE.TorusGeometry(s * 0.22, s * 0.03, 10, 6),
               scaleRidgeMat.clone(),
             );
             const t = r / 3;
@@ -7979,14 +7979,14 @@ export class ThreeDragonRenderer {
           group.add(hydHead);
 
           // Upper jaw / snout
-          const snoutGeo2 = new THREE.ConeGeometry(s * 0.12, s * 0.4, 4);
+          const snoutGeo2 = new THREE.ConeGeometry(s * 0.12, s * 0.4, 10);
           snoutGeo2.rotateZ(-Math.PI / 2);
           const snout2 = new THREE.Mesh(snoutGeo2, headMat2.clone());
           snout2.position.set(headX + s * 0.45, headY + s * 0.05, headZ);
           group.add(snout2);
 
           // Lower jaw
-          const jawGeo2 = new THREE.ConeGeometry(s * 0.10, s * 0.35, 4);
+          const jawGeo2 = new THREE.ConeGeometry(s * 0.10, s * 0.35, 10);
           jawGeo2.rotateZ(-Math.PI / 2);
           const jawMat2 = new THREE.MeshPhongMaterial({
             color: 0x005533,
@@ -8002,7 +8002,7 @@ export class ThreeDragonRenderer {
           const hydToothMat = new THREE.MeshPhongMaterial({ color: 0xccddcc, specular: 0xffffff, shininess: 80 });
           for (let t = 0; t < 3; t++) {
             const tooth = new THREE.Mesh(
-              new THREE.ConeGeometry(s * 0.025, s * 0.08, 3),
+              new THREE.ConeGeometry(s * 0.025, s * 0.08, 8),
               hydToothMat,
             );
             tooth.position.set(
@@ -8016,7 +8016,7 @@ export class ThreeDragonRenderer {
 
           // Mouth glow
           const mGlow = new THREE.Mesh(
-            new THREE.SphereGeometry(s * 0.08, 5, 3),
+            new THREE.SphereGeometry(s * 0.08, 12, 10),
             new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.5, depthWrite: false }),
           );
           mGlow.position.set(headX + s * 0.2, headY - s * 0.05, headZ);
@@ -8183,7 +8183,7 @@ export class ThreeDragonRenderer {
           eyeSocket.scale.set(s * 0.09, s * 0.07, s * 0.07);
           eyeSocket.position.set(s * 1.0, s * 0.35, z);
           group.add(eyeSocket);
-          const eyeLight = new THREE.Mesh(new THREE.SphereGeometry(s * 0.04, 4, 3), eyeGlowMat);
+          const eyeLight = new THREE.Mesh(new THREE.SphereGeometry(s * 0.04, 16, 12), eyeGlowMat);
           eyeLight.position.set(s * 1.03, s * 0.35, z);
           group.add(eyeLight);
         }
@@ -8741,11 +8741,11 @@ export class ThreeDragonRenderer {
           opacity: 0.45,
           side: THREE.DoubleSide,
         });
-        const ringGeo1 = new THREE.TorusGeometry(s * 1.5, s * 0.06, 6, 32);
+        const ringGeo1 = new THREE.TorusGeometry(s * 1.5, s * 0.06, 12, 32);
         const ring1 = new THREE.Mesh(ringGeo1, ringGlowMat);
         ring1.name = "ring1";
         group.add(ring1);
-        const ringGeo2 = new THREE.TorusGeometry(s * 1.8, s * 0.04, 6, 32);
+        const ringGeo2 = new THREE.TorusGeometry(s * 1.8, s * 0.04, 12, 32);
         const ring2 = new THREE.Mesh(ringGeo2, ringGlowMat.clone());
         ring2.rotation.x = Math.PI / 2;
         ring2.name = "ring2";
@@ -10030,7 +10030,7 @@ export class ThreeDragonRenderer {
       aura.name = "projAura";
       group.add(aura);
       // Orbiting energy ring
-      const ringGeo = new THREE.TorusGeometry(size * 1.2, size * 0.06, 6, 16);
+      const ringGeo = new THREE.TorusGeometry(size * 1.2, size * 0.06, 12, 16);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0x66aaff,
         transparent: true,
@@ -11066,7 +11066,7 @@ export class ThreeDragonRenderer {
         } else if (h.type === "crystal_shard") {
           // Falling shard
           const shard = new THREE.Mesh(
-            new THREE.ConeGeometry(1, 4, 4),
+            new THREE.ConeGeometry(1, 4, 10),
             mat,
           );
           shard.rotation.x = Math.PI; // point down

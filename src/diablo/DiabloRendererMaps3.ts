@@ -227,7 +227,7 @@ export function buildDragonsSanctum(mctx: MapBuildContext, w: number, d: number)
       }
       // Crossed bone decoration
       for (const bRot of [-0.4, 0.4]) {
-        const crossBone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.6, 6),
+        const crossBone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.6, 12),
           new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
         crossBone.position.set(0, -0.25, 0.08);
         crossBone.rotation.z = bRot;
@@ -412,7 +412,7 @@ export function buildDragonsSanctum(mctx: MapBuildContext, w: number, d: number)
       // Woven ring layers
       for (let nr = 0; nr < 5; nr++) {
         const ringR = nestR - nr * 0.15;
-        const nestRing = new THREE.Mesh(new THREE.TorusGeometry(ringR, 0.03 + Math.random() * 0.02, 6, 16),
+        const nestRing = new THREE.Mesh(new THREE.TorusGeometry(ringR, 0.03 + Math.random() * 0.02, 12, 16),
           new THREE.MeshStandardMaterial({ color: 0x4a3a1a, roughness: 0.95 }));
         nestRing.rotation.x = -Math.PI / 2;
         nestRing.position.y = nr * 0.04;
@@ -421,7 +421,7 @@ export function buildDragonsSanctum(mctx: MapBuildContext, w: number, d: number)
       // Cross-woven strands
       for (let ns = 0; ns < 6; ns++) {
         const strandAng = (ns / 6) * Math.PI * 2;
-        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, nestR * 1.8, 4),
+        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, nestR * 1.8, 10),
           new THREE.MeshStandardMaterial({ color: 0x3a2a10, roughness: 0.95 }));
         strand.rotation.z = Math.PI / 2;
         strand.rotation.y = strandAng;
@@ -461,17 +461,17 @@ export function buildDragonsSanctum(mctx: MapBuildContext, w: number, d: number)
       rGuard.position.set(-0.25, 0.6, 0.03);
       rackGrp.add(rGuard);
       // Axe
-      const rAxeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 6), rackMat);
+      const rAxeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.7, 12), rackMat);
       rAxeHandle.position.set(0.1, 1.0, 0.03);
       rackGrp.add(rAxeHandle);
       const rAxeHead = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.02), wpMat);
       rAxeHead.position.set(0.1, 1.35, 0.03);
       rackGrp.add(rAxeHead);
       // Spear
-      const rSpear = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.5, 6), rackMat);
+      const rSpear = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.5, 12), rackMat);
       rSpear.position.set(0.35, 1.0, 0.03);
       rackGrp.add(rSpear);
-      const rSpearTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 4), wpMat);
+      const rSpearTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 10), wpMat);
       rSpearTip.position.set(0.35, 1.8, 0.03);
       rackGrp.add(rSpearTip);
       const wrAng = (i / 6) * Math.PI * 2 + 0.3;
@@ -1111,7 +1111,7 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
       const oasisReedGrp = new THREE.Group();
       for (let rb = 0; rb < 3 + Math.floor(Math.random() * 3); rb++) {
         const oasisReedH = 0.8 + Math.random() * 1.0;
-        const oasisReedStalk = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, oasisReedH, 6), oasisReedMat);
+        const oasisReedStalk = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, oasisReedH, 12), oasisReedMat);
         oasisReedStalk.position.set((Math.random() - 0.5) * 0.2, oasisReedH / 2, (Math.random() - 0.5) * 0.2);
         oasisReedStalk.rotation.x = (Math.random() - 0.5) * 0.15;
         oasisReedStalk.rotation.z = (Math.random() - 0.5) * 0.15;
@@ -1460,7 +1460,7 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
       for (let db = 0; db < driedShrubBranchCount; db++) {
         const driedShrubH = 0.3 + Math.random() * 0.5;
         const driedShrubBranch = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.01, 0.025, driedShrubH, 6), driedShrubBranchMat,
+          new THREE.CylinderGeometry(0.01, 0.025, driedShrubH, 12), driedShrubBranchMat,
         );
         driedShrubBranch.position.set(
           (Math.random() - 0.5) * 0.2, driedShrubH / 2, (Math.random() - 0.5) * 0.2,
@@ -1470,7 +1470,7 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
         driedShrubGrp.add(driedShrubBranch);
         for (let st = 0; st < 2; st++) {
           const driedShrubTwig = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.005, 0.01, driedShrubH * 0.5, 4), driedShrubTwigMat,
+            new THREE.CylinderGeometry(0.005, 0.01, driedShrubH * 0.5, 10), driedShrubTwigMat,
           );
           driedShrubTwig.position.set(
             driedShrubBranch.position.x + (Math.random() - 0.5) * 0.1,
@@ -1688,7 +1688,7 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
       const obeliskMesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, obeliskH, 0.5), ruinMat);
       obeliskMesh.position.y = 0.7 + obeliskH / 2;
       shrine.add(obeliskMesh);
-      const pyramidion = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 4), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.3, metalness: 0.5 }));
+      const pyramidion = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 10), new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.3, metalness: 0.5 }));
       pyramidion.position.y = 0.7 + obeliskH + 0.3;
       pyramidion.rotation.y = Math.PI / 4;
       shrine.add(pyramidion);
@@ -2526,7 +2526,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         const stemH = 0.15 + Math.random() * 0.2;
         const flowerGrp = new THREE.Group();
         // Stem
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, stemH, 6), stemMat);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, stemH, 12), stemMat);
         stem.position.y = stemH * 0.5;
         flowerGrp.add(stem);
         // Flower head — multiple small petals around center
@@ -2596,7 +2596,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         const rootAngle = (r / rootCount) * Math.PI * 2 + Math.random() * 0.5;
         const rootLen = 0.4 + Math.random() * 0.6;
         const root = new THREE.Mesh(
-          new THREE.CylinderGeometry(trunkRBot * 0.25, trunkRBot * 0.1, rootLen, 6),
+          new THREE.CylinderGeometry(trunkRBot * 0.25, trunkRBot * 0.1, rootLen, 12),
           barkMat,
         );
         root.position.set(Math.cos(rootAngle) * trunkRBot * 0.7, rootLen * 0.2, Math.sin(rootAngle) * trunkRBot * 0.7);
@@ -2611,7 +2611,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         const brAng = (b / branchCount) * Math.PI * 2 + Math.random() * 0.8;
         const brLen = 1.0 + Math.random() * 1.5;
         const branch = new THREE.Mesh(
-          new THREE.CylinderGeometry(trunkRTop * 0.3, trunkRTop * 0.7, brLen, 6),
+          new THREE.CylinderGeometry(trunkRTop * 0.3, trunkRTop * 0.7, brLen, 12),
           barkMat,
         );
         branch.position.set(
@@ -2789,7 +2789,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         baleGroup.add(bale);
         // Twine bands
         for (const tx of [-0.2, 0.2]) {
-          const band = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.012, 6, 14), twineMat);
+          const band = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.012, 12, 14), twineMat);
           band.position.x = tx;
           band.rotation.y = Math.PI / 2;
           baleGroup.add(band);
@@ -2815,7 +2815,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         }
         // Straw wisps
         for (let sw = 0; sw < 3; sw++) {
-          const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.002, 0.06, 3), hayLightMat);
+          const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.002, 0.06, 8), hayLightMat);
           straw.position.set((Math.random() - 0.5) * 0.4, 0.15, (Math.random() - 0.5) * 0.3);
           straw.rotation.z = Math.random() * Math.PI;
           baleGroup.add(straw);
@@ -2930,11 +2930,11 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       // Flowers (small spheres)
       const flowerMats = [flowerRedMat, flowerYellowMat, flowerPinkMat];
       for (let fi = 0; fi < 5; fi++) {
-        const fl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), flowerMats[fi % 3]);
+        const fl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), flowerMats[fi % 3]);
         fl.position.set(farmX + wx - 0.3 + fi * 0.15, 1.98, farmZ + 2.6);
         mctx.scene.add(fl);
         // Tiny green leaf
-        const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), greenMat);
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), greenMat);
         leaf.position.set(farmX + wx - 0.3 + fi * 0.15, 1.92, farmZ + 2.6);
         mctx.scene.add(leaf);
       }
@@ -3030,7 +3030,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     mctx.scene.add(chimneyCap);
     // Smoke puffs
     for (let si = 0; si < 5; si++) {
-      const smokeS = new THREE.Mesh(new THREE.SphereGeometry(0.12 + si * 0.04, 6, 6), smokeMat);
+      const smokeS = new THREE.Mesh(new THREE.SphereGeometry(0.12 + si * 0.04, 12, 10), smokeMat);
       smokeS.position.set(farmX + 1.5 + (Math.random() - 0.5) * 0.3, 6.0 + si * 0.4, farmZ - 1.0 + (Math.random() - 0.5) * 0.3);
       mctx.scene.add(smokeS);
     }
@@ -3112,15 +3112,15 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     mctx.scene.add(hayloftHay);
 
     // Weathervane on top of barn
-    const wvPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 6), metalMat);
+    const wvPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 12), metalMat);
     wvPole.position.set(barnX, 7.1, barnZ);
     mctx.scene.add(wvPole);
-    const wvArrow = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6), metalMat);
+    const wvArrow = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 12), metalMat);
     wvArrow.position.set(barnX, 7.6, barnZ);
     wvArrow.rotation.z = Math.PI / 2;
     mctx.scene.add(wvArrow);
     // Arrow tip
-    const wvTip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 4), metalMat);
+    const wvTip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 10), metalMat);
     wvTip.position.set(barnX + 0.45, 7.6, barnZ);
     wvTip.rotation.z = -Math.PI / 2;
     mctx.scene.add(wvTip);
@@ -3146,10 +3146,10 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     siloRoof.position.set(siloX, 6.75, siloZ);
     mctx.scene.add(siloRoof);
     // Ladder on silo
-    const ladderL = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 6), timberMat);
+    const ladderL = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 12), timberMat);
     ladderL.position.set(siloX + 1.0, 3.0, siloZ + 0.55);
     mctx.scene.add(ladderL);
-    const ladderR = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 6), timberMat);
+    const ladderR = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6, 12), timberMat);
     ladderR.position.set(siloX + 1.0, 3.0, siloZ - 0.55);
     mctx.scene.add(ladderR);
     // Ladder rungs
@@ -3192,7 +3192,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       nestBox.position.set(coopX + 1.1, 0.6, coopZ - 0.3 + nb * 0.5);
       mctx.scene.add(nestBox);
       // Hay in nest
-      const nestHay = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), hayMat);
+      const nestHay = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), hayMat);
       nestHay.position.set(coopX + 1.1, 0.75, coopZ - 0.3 + nb * 0.5);
       mctx.scene.add(nestHay);
     }
@@ -3228,7 +3228,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     wellRoofR.rotation.z = -0.45;
     mctx.scene.add(wellRoofR);
     // Rope (thin cylinder from beam down)
-    const wellRope = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.8, 4), ropeMat);
+    const wellRope = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.8, 10), ropeMat);
     wellRope.position.set(wellX, 1.9, wellZ);
     mctx.scene.add(wellRope);
     // Bucket (small cylinder)
@@ -3236,7 +3236,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     wellBucket.position.set(wellX, 1.0, wellZ);
     mctx.scene.add(wellBucket);
     // Bucket handle
-    const bucketHandle = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.015, 6, 10, Math.PI), metalMat);
+    const bucketHandle = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.015, 12, 10, Math.PI), metalMat);
     bucketHandle.position.set(wellX, 1.15, wellZ);
     mctx.scene.add(bucketHandle);
 
@@ -3286,15 +3286,15 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     shedDoor.position.set(shedX, 0.75, shedZ + 1.01);
     mctx.scene.add(shedDoor);
     // Garden tools leaning against wall (thin cylinders at angles)
-    const toolCyl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.0, 6), woodMat);
+    const toolCyl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.0, 12), woodMat);
     toolCyl1.position.set(shedX + 1.05, 1.0, shedZ + 0.3);
     toolCyl1.rotation.z = -0.2;
     mctx.scene.add(toolCyl1);
-    const toolCyl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.8, 6), woodMat);
+    const toolCyl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.8, 12), woodMat);
     toolCyl2.position.set(shedX + 1.05, 0.9, shedZ - 0.2);
     toolCyl2.rotation.z = -0.25;
     mctx.scene.add(toolCyl2);
-    const toolCyl3 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.9, 6), woodMat);
+    const toolCyl3 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.9, 12), woodMat);
     toolCyl3.position.set(shedX + 1.05, 0.95, shedZ - 0.6);
     toolCyl3.rotation.z = -0.18;
     mctx.scene.add(toolCyl3);
@@ -3477,7 +3477,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
           for (let l = 0; l < layerCount; l++) {
             const layerY = rock.position.y + (l + 0.3) * rh * yScale * 0.25;
             const layer = new THREE.Mesh(
-              new THREE.TorusGeometry(rh * 0.65 + l * 0.02, 0.015, 4, 20),
+              new THREE.TorusGeometry(rh * 0.65 + l * 0.02, 0.015, 10, 20),
               rockDarkMat,
             );
             layer.position.set(rock.position.x, layerY, rock.position.z);
@@ -3668,7 +3668,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     for (let row = 0; row < 10; row++) {
       const mortarY = wmY + 0.5 + row * 0.55;
       const rowRadius = 2 - (row / 10) * 0.5; // tapers with the cylinder
-      const mortar = new THREE.Mesh(new THREE.TorusGeometry(rowRadius, 0.015, 6, 24), wmMortarMat);
+      const mortar = new THREE.Mesh(new THREE.TorusGeometry(rowRadius, 0.015, 12, 24), wmMortarMat);
       mortar.position.set(wmX, mortarY, wmZ);
       mortar.rotation.x = Math.PI / 2;
       mctx.scene.add(mortar);
@@ -3738,7 +3738,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     // Roof ridge beams
     for (let rb = 0; rb < 8; rb++) {
       const rbAngle = (rb / 8) * Math.PI * 2;
-      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 6), wmDoorMat);
+      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 12), wmDoorMat);
       ridge.position.set(wmX + Math.cos(rbAngle) * 1, wmY + 7, wmZ + Math.sin(rbAngle) * 1);
       ridge.rotation.z = Math.cos(rbAngle) * 0.45;
       ridge.rotation.x = Math.sin(rbAngle) * 0.45;
@@ -4018,7 +4018,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     for (let row = 0; row < 8; row++) {
       const mY = 0.4 + row * 0.55;
       const rowR = 1.8 - (row / 8) * 0.6;
-      const mortar = new THREE.Mesh(new THREE.TorusGeometry(rowR, 0.012, 6, 20), wm2MortarMat);
+      const mortar = new THREE.Mesh(new THREE.TorusGeometry(rowR, 0.012, 12, 20), wm2MortarMat);
       mortar.position.set(wm2X, mY, wm2Z);
       mortar.rotation.x = Math.PI / 2;
       mctx.scene.add(mortar);
@@ -4138,7 +4138,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         cartGroup.add(wheel);
         // Wheel spokes (cross pattern)
         for (let sp = 0; sp < 4; sp++) {
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, wheelR * 1.8, 4), wheelMat);
+          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, wheelR * 1.8, 10), wheelMat);
           spoke.position.set(wx, wheelR, wz);
           spoke.rotation.set(0, 0, (sp / 4) * Math.PI);
           spoke.rotation.y = Math.PI / 2;
@@ -4152,7 +4152,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       }
     }
     // Handle (pull bar)
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6), woodMat);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 12), woodMat);
     handle.position.set(1.7, cartBedY - 0.1, 0);
     handle.rotation.z = Math.PI / 2 + 0.2;
     cartGroup.add(handle);
@@ -5222,7 +5222,7 @@ export function buildWhisperingMarsh(mctx: MapBuildContext, w: number, d: number
         lilyPad.position.set(Math.cos(lpAng) * lpDist, 0.062, Math.sin(lpAng) * lpDist);
         lilyPadCluster.add(lilyPad);
         // Curled edge (thin ring on one side)
-        const curl = new THREE.Mesh(new THREE.TorusGeometry(lpR, 0.008, 6, 12, Math.PI * 0.4), lilyMat);
+        const curl = new THREE.Mesh(new THREE.TorusGeometry(lpR, 0.008, 12, 12, Math.PI * 0.4), lilyMat);
         curl.rotation.x = -Math.PI / 2;
         curl.position.set(Math.cos(lpAng) * lpDist + lpR * 0.5, 0.07, Math.sin(lpAng) * lpDist);
         curl.rotation.z = Math.random() * Math.PI;
@@ -5632,7 +5632,7 @@ export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: numbe
     const wmY = getTerrainHeight(wmX, wmZ, 1.2);
     const wmBody = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 3), wallMat);
     wmBody.position.set(wmX, wmY + 2, wmZ); mctx.scene.add(wmBody);
-    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(3, 2, 4), thatchMat);
+    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(3, 2, 10), thatchMat);
     wmRoof.position.set(wmX, wmY + 5, wmZ); wmRoof.rotation.y = Math.PI / 4; mctx.scene.add(wmRoof);
     // Water wheel
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 });
@@ -5664,7 +5664,7 @@ export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: numbe
       const fGroup = new THREE.Group();
       const fLen = 5 + Math.floor(Math.random() * 5);
       for (let p = 0; p < fLen; p++) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.8, 6), fenceMat);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.8, 12), fenceMat);
         post.position.set(p * 1.2, 0.4, 0); fGroup.add(post);
         if (p < fLen - 1) {
           const rail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.04), fenceMat);
@@ -5685,7 +5685,7 @@ export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: numbe
       const sy = getTerrainHeight(sx, sz, 1.2);
       // Posts
       for (const px of [-0.8, 0.8]) for (const pz of [-0.5, 0.5]) {
-        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 6), woodMat);
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 12), woodMat);
         p.position.set(sx + px, sy + 1, sz + pz); mctx.scene.add(p);
       }
       // Awning
@@ -5709,7 +5709,7 @@ export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: numbe
     const flowerColors = [0xff6688, 0xffdd44, 0xcc88ff, 0xff8844];
     for (let i = 0; i < 50; i++) {
       const fx = (Math.random() - 0.5) * w * 0.8, fz = (Math.random() - 0.5) * d * 0.8;
-      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4),
+      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10),
         new THREE.MeshStandardMaterial({ color: flowerColors[i % flowerColors.length] }));
       flower.position.set(fx, getTerrainHeight(fx, fz, 1.2) + 0.15, fz); mctx.scene.add(flower);
     }
@@ -5718,10 +5718,10 @@ export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: numbe
     const wellY = getTerrainHeight(-3, -3, 1.2);
     const wellBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.8, 12), stoneMat);
     wellBase.position.set(-3, wellY + 0.4, -3); mctx.scene.add(wellBase);
-    const wellRoof = new THREE.Mesh(new THREE.ConeGeometry(1, 0.8, 4), thatchMat);
+    const wellRoof = new THREE.Mesh(new THREE.ConeGeometry(1, 0.8, 10), thatchMat);
     wellRoof.position.set(-3, wellY + 2, -3); wellRoof.rotation.y = Math.PI / 4; mctx.scene.add(wellRoof);
     for (const side of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6), woodMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 12), woodMat);
       post.position.set(-3 + side * 0.6, wellY + 1.25, -3); mctx.scene.add(post);
     }
 

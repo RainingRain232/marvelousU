@@ -361,14 +361,14 @@ export class GuinevereRenderer {
     this._playerGroup.add(this._playerBody);
 
     // Head
-    const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
+    const headGeo = new THREE.SphereGeometry(0.35, 16, 12);
     const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.6 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.y = 2.5;
     this._playerGroup.add(head);
 
     // Crown
-    const crownGeo = new THREE.TorusGeometry(0.3, 0.06, 4, 8);
+    const crownGeo = new THREE.TorusGeometry(0.3, 0.06, 10, 8);
     const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.5, metalness: 0.8 });
     this._playerCrown = new THREE.Mesh(crownGeo, crownMat);
     this._playerCrown.position.y = 2.85;
@@ -376,14 +376,14 @@ export class GuinevereRenderer {
     this._playerGroup.add(this._playerCrown);
 
     // Staff
-    const staffGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 6);
+    const staffGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 12);
     const staffMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.5 });
     this._playerStaff = new THREE.Mesh(staffGeo, staffMat);
     this._playerStaff.position.set(0.6, 1.5, 0);
     this._playerGroup.add(this._playerStaff);
 
     // Staff orb
-    const orbGeo = new THREE.SphereGeometry(0.2, 8, 8);
+    const orbGeo = new THREE.SphereGeometry(0.2, 16, 12);
     const orbMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x88ccff, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 });
     const orb = new THREE.Mesh(orbGeo, orbMat);
     orb.position.set(0.6, 2.8, 0);
@@ -401,7 +401,7 @@ export class GuinevereRenderer {
   }
 
   private _buildParticles(): void {
-    const geo = new THREE.SphereGeometry(0.15, 4, 4);
+    const geo = new THREE.SphereGeometry(0.15, 12, 10);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
     this._particleInstancedMesh = new THREE.InstancedMesh(geo, mat, this._maxParticles);
     this._particleInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -602,7 +602,7 @@ export class GuinevereRenderer {
     const colors = PLANT_COLORS[plant.type];
 
     // Stem
-    const stemGeo = new THREE.CylinderGeometry(0.08, 0.12, 1, 6);
+    const stemGeo = new THREE.CylinderGeometry(0.08, 0.12, 1, 12);
     const stemMat = new THREE.MeshStandardMaterial({ color: colors.stem, roughness: 0.7 });
     const stem = new THREE.Mesh(stemGeo, stemMat);
     stem.position.y = 0.5;
@@ -678,7 +678,7 @@ export class GuinevereRenderer {
         stemMat.emissiveIntensity = 0.3;
         // Add turret marker if not present
         if (!group.getObjectByName("turretMarker")) {
-          const markerGeo = new THREE.ConeGeometry(0.15, 0.3, 4);
+          const markerGeo = new THREE.ConeGeometry(0.15, 0.3, 10);
           const markerMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
           const marker = new THREE.Mesh(markerGeo, markerMat);
           marker.name = "turretMarker";
@@ -769,7 +769,7 @@ export class GuinevereRenderer {
           this._stagTrails.set(enemy.id, trail);
         }
         // Spawn a dust puff behind the stag
-        const dustGeo = new THREE.SphereGeometry(0.3, 4, 4);
+        const dustGeo = new THREE.SphereGeometry(0.3, 12, 10);
         const dustMat = new THREE.MeshBasicMaterial({ color: 0x886644, transparent: true, opacity: 0.5 });
         const dust = new THREE.Mesh(dustGeo, dustMat);
         dust.position.set(
@@ -854,7 +854,7 @@ export class GuinevereRenderer {
     switch (enemy.type) {
       case "wisp": {
         const core = new THREE.Mesh(
-          new THREE.SphereGeometry(0.5, 8, 6),
+          new THREE.SphereGeometry(0.5, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0x88ddff, emissive: 0x44aaff, emissiveIntensity: 0.8, transparent: true, opacity: 0.8 })
         );
         core.position.y = 1;
@@ -862,7 +862,7 @@ export class GuinevereRenderer {
         // Trail wisps
         for (let i = 0; i < 3; i++) {
           const trail = new THREE.Mesh(
-            new THREE.SphereGeometry(0.2, 6, 4),
+            new THREE.SphereGeometry(0.2, 12, 10),
             new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.5 })
           );
           trail.position.set(Math.sin(i * TAU / 3) * 0.5, 0.8, Math.cos(i * TAU / 3) * 0.5);
@@ -880,7 +880,7 @@ export class GuinevereRenderer {
         // Eyes
         for (const sx of [-0.3, 0.3]) {
           const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 6, 4),
+            new THREE.SphereGeometry(0.12, 12, 10),
             new THREE.MeshBasicMaterial({ color: 0xff44ff })
           );
           eye.position.set(sx, 0.6, 0.6);
@@ -889,7 +889,7 @@ export class GuinevereRenderer {
         // Legs
         for (let i = 0; i < 4; i++) {
           const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.06, 0.06, 0.5, 4),
+            new THREE.CylinderGeometry(0.06, 0.06, 0.5, 10),
             new THREE.MeshStandardMaterial({ color: 0x442266 })
           );
           leg.position.set(i < 2 ? -0.5 : 0.5, 0.1, i % 2 === 0 ? 0.3 : -0.3);
@@ -908,7 +908,7 @@ export class GuinevereRenderer {
         // Antlers
         for (const sx of [-0.4, 0.4]) {
           const antler = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 1.2, 4),
+            new THREE.ConeGeometry(0.1, 1.2, 10),
             new THREE.MeshStandardMaterial({ color: 0x554433, metalness: 0.3 })
           );
           antler.position.set(sx, 2, 0.3);
@@ -918,7 +918,7 @@ export class GuinevereRenderer {
         // Legs
         for (let i = 0; i < 4; i++) {
           const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 1, 4),
+            new THREE.CylinderGeometry(0.08, 0.08, 1, 10),
             new THREE.MeshStandardMaterial({ color: 0x332211 })
           );
           leg.position.set(i < 2 ? -0.35 : 0.35, 0.15, i % 2 === 0 ? 0.6 : -0.6);
@@ -951,14 +951,14 @@ export class GuinevereRenderer {
       case "shambler": {
         // Bulky mushroom body
         const shBody = new THREE.Mesh(
-          new THREE.SphereGeometry(0.7, 8, 6),
+          new THREE.SphereGeometry(0.7, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0x556633, roughness: 0.8, emissive: 0x224411, emissiveIntensity: 0 })
         );
         shBody.position.y = 0.7;
         group.add(shBody);
         // Mushroom cap
         const cap = new THREE.Mesh(
-          new THREE.SphereGeometry(0.5, 8, 6),
+          new THREE.SphereGeometry(0.5, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0x338866, emissive: 0x22aa66, emissiveIntensity: 0.3, roughness: 0.5 })
         );
         cap.position.y = 1.4;
@@ -967,7 +967,7 @@ export class GuinevereRenderer {
         // Spore dots
         for (let sp = 0; sp < 5; sp++) {
           const spore = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 4, 4),
+            new THREE.SphereGeometry(0.08, 12, 10),
             new THREE.MeshBasicMaterial({ color: 0xaaff88 })
           );
           const a = (sp / 5) * TAU;
@@ -977,7 +977,7 @@ export class GuinevereRenderer {
         // Stubby legs
         for (let l = 0; l < 3; l++) {
           const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.1, 0.1, 0.4, 4),
+            new THREE.CylinderGeometry(0.1, 0.1, 0.4, 10),
             new THREE.MeshStandardMaterial({ color: 0x443322 })
           );
           const a = (l / 3) * TAU;
@@ -996,7 +996,7 @@ export class GuinevereRenderer {
         group.add(body);
         // Head
         const head = new THREE.Mesh(
-          new THREE.SphereGeometry(0.6, 8, 6),
+          new THREE.SphereGeometry(0.6, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x440066, emissiveIntensity: 0.5 })
         );
         head.position.y = 3.3;
@@ -1004,14 +1004,14 @@ export class GuinevereRenderer {
         // Eyes
         for (const sx of [-0.2, 0.2]) {
           const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.15, 6, 4),
+            new THREE.SphereGeometry(0.15, 12, 10),
             new THREE.MeshBasicMaterial({ color: 0xff0044 })
           );
           eye.position.set(sx, 3.5, 0.4);
           group.add(eye);
         }
         // Crown of thorns
-        const crownGeo = new THREE.TorusGeometry(0.5, 0.08, 4, 8);
+        const crownGeo = new THREE.TorusGeometry(0.5, 0.08, 10, 8);
         const crown = new THREE.Mesh(crownGeo, new THREE.MeshStandardMaterial({ color: 0x442200, metalness: 0.6 }));
         crown.position.y = 3.8;
         crown.rotation.x = Math.PI / 2;
@@ -1019,7 +1019,7 @@ export class GuinevereRenderer {
         // Arms / tendrils
         for (const sx of [-1, 1]) {
           const arm = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.08, 2, 4),
+            new THREE.CylinderGeometry(0.15, 0.08, 2, 10),
             new THREE.MeshStandardMaterial({ color: 0x220033 })
           );
           arm.position.set(sx * 1.2, 2, 0);
@@ -1071,12 +1071,12 @@ export class GuinevereRenderer {
         for (let i = 0; i < count; i++) {
           const offset = (i - count / 2) * (GUIN.THORN_WALL_LENGTH / count);
           const height = 2 + Math.random() * 1.5;
-          const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, height, 5), thornMat);
+          const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, height, 10), thornMat);
           pillar.position.set(Math.sin(wall.yaw + Math.PI / 2) * offset, height / 2, Math.cos(wall.yaw + Math.PI / 2) * offset);
           group.add(pillar);
           // Spikes
           for (let j = 0; j < 3; j++) {
-            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 4), spikeMat);
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 10), spikeMat);
             spike.position.copy(pillar.position);
             spike.position.y = 0.5 + j * 0.6;
             spike.position.x += (Math.random() - 0.5) * 0.4;
@@ -1106,7 +1106,7 @@ export class GuinevereRenderer {
       let mesh = this._projectileMeshes.get(proj.id);
       if (!mesh) {
         const color = proj.fromEnemy ? 0xaaff44 : 0x88ccff;
-        const geo = new THREE.SphereGeometry(0.3, 6, 4);
+        const geo = new THREE.SphereGeometry(0.3, 12, 10);
         const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
         mesh = new THREE.Mesh(geo, mat);
         this._projectileMeshes.set(proj.id, mesh);
@@ -1697,7 +1697,7 @@ export class GuinevereRenderer {
     const p = state.player;
     if (p.moonbeamCharging && p.moonbeamChargeTime > 0.05) {
       if (!this._chargeOrb) {
-        const geo = new THREE.SphereGeometry(0.15, 8, 8);
+        const geo = new THREE.SphereGeometry(0.15, 16, 12);
         const mat = new THREE.MeshBasicMaterial({
           color: 0xaaddff, transparent: true, opacity: 0.8,
         });

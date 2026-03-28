@@ -25,7 +25,7 @@ export class CraftParticles {
 
   /* Shared geometries ---------------------------------------------------- */
   private boxGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-  private sphereGeo = new THREE.SphereGeometry(0.06, 6, 6);
+  private sphereGeo = new THREE.SphereGeometry(0.06, 12, 10);
   private xpSphereGeo = new THREE.SphereGeometry(0.12, 8, 8);
 
   constructor() {

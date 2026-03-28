@@ -757,7 +757,7 @@ export class TekkenFighterRenderer {
 
         // Knuckle wrinkle detail (thin torus ring at finger joint)
         const knuckleWrinkle = new THREE.Mesh(
-          new THREE.TorusGeometry(0.006, 0.001, 6, 10),
+          new THREE.TorusGeometry(0.006, 0.001, 12, 10),
           this._skinMat,
         );
         knuckleWrinkle.position.set(
@@ -1059,7 +1059,7 @@ export class TekkenFighterRenderer {
         for (let cx = 0; cx < 3; cx++) {
           for (let cy = 0; cy < 3; cy++) {
             const chainRing = new THREE.Mesh(
-              new THREE.TorusGeometry(0.008, 0.002, 6, 10),
+              new THREE.TorusGeometry(0.008, 0.002, 12, 10),
               chainMailMat,
             );
             chainRing.position.set(
@@ -1088,7 +1088,7 @@ export class TekkenFighterRenderer {
         for (const hand of [this._leftHand, this._rightHand]) {
           for (let gk = 0; gk < 4; gk++) {
             const fingerGuard = new THREE.Mesh(
-              new THREE.ConeGeometry(0.007, 0.02, 6),
+              new THREE.ConeGeometry(0.007, 0.02, 12),
               metalMat,
             );
             fingerGuard.position.set(
@@ -1122,7 +1122,7 @@ export class TekkenFighterRenderer {
         for (const hand of [this._leftHand, this._rightHand]) {
           for (let k = 0; k < 3; k++) {
             const spike = new THREE.Mesh(
-              new THREE.ConeGeometry(0.01, 0.04, 4),
+              new THREE.ConeGeometry(0.01, 0.04, 10),
               metalMat,
             );
             spike.position.set(
@@ -1140,7 +1140,7 @@ export class TekkenFighterRenderer {
         for (const clav of [this._leftClavicle, this._rightClavicle]) {
           for (let s = 0; s < 3; s++) {
             const shoulderSpike = new THREE.Mesh(
-              new THREE.ConeGeometry(0.015, 0.08, 4),
+              new THREE.ConeGeometry(0.015, 0.08, 10),
               metalMat,
             );
             shoulderSpike.position.set(
@@ -1241,7 +1241,7 @@ export class TekkenFighterRenderer {
 
         // Tooth necklace (row of small cone teeth hanging from torus around neck)
         const toothNecklaceRing = new THREE.Mesh(
-          new THREE.TorusGeometry(NECK_RADIUS * 2.5, 0.005, 6, 16),
+          new THREE.TorusGeometry(NECK_RADIUS * 2.5, 0.005, 12, 16),
           makeMat(0x553322, 0.1, 0.7),
         );
         toothNecklaceRing.rotation.x = Math.PI / 2;
@@ -1251,7 +1251,7 @@ export class TekkenFighterRenderer {
         for (let ti = 0; ti < 8; ti++) {
           const toothAngle = (ti / 8) * Math.PI * 2;
           const tooth = new THREE.Mesh(
-            new THREE.ConeGeometry(0.005, 0.018, 4),
+            new THREE.ConeGeometry(0.005, 0.018, 10),
             toothMat,
           );
           tooth.position.set(
@@ -1267,7 +1267,7 @@ export class TekkenFighterRenderer {
         for (const forearm of [this._leftForearm, this._rightForearm]) {
           for (let wi = 0; wi < 3; wi++) {
             const wristChain = new THREE.Mesh(
-              new THREE.TorusGeometry(LIMB_THICKNESS * 1.15, 0.004, 6, 10),
+              new THREE.TorusGeometry(LIMB_THICKNESS * 1.15, 0.004, 12, 10),
               metalMat,
             );
             wristChain.rotation.x = Math.PI / 2;
@@ -1281,7 +1281,7 @@ export class TekkenFighterRenderer {
         for (const clav of [this._leftClavicle, this._rightClavicle]) {
           for (let es = 0; es < 2; es++) {
             const extraSpike = new THREE.Mesh(
-              new THREE.ConeGeometry(0.01, 0.05, 4),
+              new THREE.ConeGeometry(0.01, 0.05, 10),
               metalMat,
             );
             extraSpike.position.set(
@@ -1409,7 +1409,7 @@ export class TekkenFighterRenderer {
         for (const foot of [this._leftFoot, this._rightFoot]) {
           for (let fw = 0; fw < 2; fw++) {
             const footWrap = new THREE.Mesh(
-              new THREE.TorusGeometry(FOOT_LEN * 0.2, 0.006, 6, 12),
+              new THREE.TorusGeometry(FOOT_LEN * 0.2, 0.006, 12, 12),
               wrapMat,
             );
             footWrap.rotation.x = Math.PI / 2;
@@ -1440,7 +1440,7 @@ export class TekkenFighterRenderer {
           color: 0xddaa22, metalness: 0.6, roughness: 0.35,
         });
         const robeEdge = new THREE.Mesh(
-          new THREE.TorusGeometry(LOWER_TORSO_WIDTH * 0.58, 0.008, 6, 20),
+          new THREE.TorusGeometry(LOWER_TORSO_WIDTH * 0.58, 0.008, 12, 20),
           robeEdgeMat,
         );
         robeEdge.rotation.x = Math.PI / 2;
@@ -1561,7 +1561,7 @@ export class TekkenFighterRenderer {
         // Helmet wings/horns (2 small curved cones on helmet sides)
         for (const side of [-1, 1]) {
           const helmetWing = new THREE.Mesh(
-            new THREE.ConeGeometry(0.015, 0.08, 6),
+            new THREE.ConeGeometry(0.015, 0.08, 12),
             goldMat,
           );
           helmetWing.position.set(
@@ -1709,7 +1709,7 @@ export class TekkenFighterRenderer {
 
         // Poison vial on thigh strap (small sphere + cylinder)
         const vialStrap = new THREE.Mesh(
-          new THREE.TorusGeometry(LIMB_THICKNESS * 1.3, 0.005, 6, 12),
+          new THREE.TorusGeometry(LIMB_THICKNESS * 1.3, 0.005, 12, 12),
           darkMat,
         );
         vialStrap.rotation.x = Math.PI / 2;
@@ -1802,7 +1802,7 @@ export class TekkenFighterRenderer {
         // Horned helmet – two cone meshes pointing up and out
         for (const side of [-1, 1]) {
           const horn = new THREE.Mesh(
-            new THREE.ConeGeometry(0.02, 0.14, 6),
+            new THREE.ConeGeometry(0.02, 0.14, 12),
             makeMat(0xccbb88, 0.3, 0.5),
           );
           horn.position.set(

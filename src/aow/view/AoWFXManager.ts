@@ -63,7 +63,7 @@ export class AoWFXManager {
       transparent: true,
       opacity: 0.4,
     });
-    const inner = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), innerMat);
+    const inner = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), innerMat);
     core.add(inner);
 
     // Point light
@@ -304,7 +304,7 @@ export class AoWFXManager {
 
     // Central ice spike
     const spike = new THREE.Mesh(
-      new THREE.ConeGeometry(0.08, 0.4, 4),
+      new THREE.ConeGeometry(0.08, 0.4, 10),
       iceMat,
     );
     spike.position.y = 0.5;

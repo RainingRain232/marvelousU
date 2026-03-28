@@ -438,7 +438,7 @@ export class GargoyleRenderer {
     // Roof ridge ornaments
     for (let i = 0; i < 8; i++) {
       const z = -hl + 3 + i * (GARG.CATHEDRAL_LENGTH - 6) / 7;
-      const ornament = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.2, 4), sD);
+      const ornament = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.2, 10), sD);
       ornament.position.set(0, h + 9.5, z);
       this._cathedralGroup.add(ornament);
     }
@@ -512,7 +512,7 @@ export class GargoyleRenderer {
     // Rose window frame rings
     const ringMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.6, metalness: 0.3 });
     for (const r of [2.0, 3.0]) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.08, 6, 24), ringMat);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.08, 12, 24), ringMat);
       ring.position.set(0, h * 0.7, -hl - 0.2); ring.rotation.x = Math.PI / 2;
       this._cathedralGroup.add(ring);
     }
@@ -561,14 +561,14 @@ export class GargoyleRenderer {
         this._cathedralGroup.add(arch);
 
         // Pinnacle on pier
-        const pinnacle = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2, 4), sD);
+        const pinnacle = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2, 10), sD);
         pinnacle.position.set(side * (hw + 5), 15, z);
         this._cathedralGroup.add(pinnacle);
       }
     }
 
     // ---- Torch sconces on walls ----
-    const torchGeo = new THREE.CylinderGeometry(0.06, 0.1, 0.6, 5);
+    const torchGeo = new THREE.CylinderGeometry(0.06, 0.1, 0.6, 10);
     for (let i = 0; i < 6; i++) {
       const z = -hl + 5 + i * (GARG.CATHEDRAL_LENGTH - 10) / 5;
       for (const side of [-1, 1]) {
@@ -579,7 +579,7 @@ export class GargoyleRenderer {
 
         // Flame mesh (emissive sphere)
         const flame = new THREE.Mesh(
-          new THREE.SphereGeometry(0.15, 6, 6),
+          new THREE.SphereGeometry(0.15, 12, 10),
           new THREE.MeshBasicMaterial({ color: COL.TORCH_FLAME }),
         );
         flame.position.set(side * (hw + 0.8), h * 0.45 + 0.4, z);
@@ -661,7 +661,7 @@ export class GargoyleRenderer {
       }
       // Moss patch
       if (Math.random() < 0.4) {
-        const mPatch = new THREE.Mesh(new THREE.SphereGeometry(0.3, 4, 4), moss);
+        const mPatch = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), moss);
         mPatch.position.set(0.2, 0.1, 0.1); mPatch.scale.y = 0.3;
         group.add(mPatch);
       }
@@ -675,7 +675,7 @@ export class GargoyleRenderer {
       const radius = 28 + Math.random() * 60;
       const group = new THREE.Group();
       const trunkH = 5 + Math.random() * 5;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.55, trunkH, 6), tree);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.55, trunkH, 12), tree);
       trunk.position.y = trunkH / 2; trunk.castShadow = true;
       trunk.rotation.z = (Math.random() - 0.5) * 0.15;
       group.add(trunk);
@@ -683,7 +683,7 @@ export class GargoyleRenderer {
       // Branches
       for (let b = 0; b < 5 + Math.floor(Math.random() * 4); b++) {
         const bLen = 1.5 + Math.random() * 2.5;
-        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.12, bLen, 4), tree);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.12, bLen, 10), tree);
         const bAngle = Math.random() * Math.PI * 2;
         const bH = 2 + Math.random() * (trunkH - 2);
         branch.position.set(Math.cos(bAngle) * 0.6, bH, Math.sin(bAngle) * 0.6);
@@ -707,7 +707,7 @@ export class GargoyleRenderer {
       this._scene.add(bar);
       // Spikes
       for (let s = -1; s <= 1; s++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.5, 4), fenceMat);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.5, 10), fenceMat);
         spike.position.set(
           Math.cos(a) * r + Math.cos(a + Math.PI / 2) * s * 0.8,
           2.0,
@@ -718,7 +718,7 @@ export class GargoyleRenderer {
     }
 
     // Perch markers
-    const perchGeo = new THREE.SphereGeometry(0.35, 8, 8);
+    const perchGeo = new THREE.SphereGeometry(0.35, 16, 12);
     const perchMat = new THREE.MeshBasicMaterial({ color: COL.PERCH_GLOW, transparent: true, opacity: 0.5 });
     this._perchMarkers = [];
     this._perchBeams = [];
@@ -729,7 +729,7 @@ export class GargoyleRenderer {
       this._perchMarkers.push(marker);
 
       // Vertical light beam for each perch
-      const beamGeo = new THREE.CylinderGeometry(0.08, 0.08, 6, 4);
+      const beamGeo = new THREE.CylinderGeometry(0.08, 0.08, 6, 10);
       const beamMat = new THREE.MeshBasicMaterial({
         color: COL.PERCH_GLOW, transparent: true, opacity: 0.1, depthWrite: false,
       });
@@ -773,7 +773,7 @@ export class GargoyleRenderer {
 
     // Horns (curved)
     for (const side of [-1, 1]) {
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.6, 5), dark);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.6, 10), dark);
       horn.position.set(side * 0.28, 1.5, -0.05);
       horn.rotation.z = side * 0.5; horn.rotation.x = -0.2;
       this._playerMesh.add(horn);
@@ -782,7 +782,7 @@ export class GargoyleRenderer {
     // Eyes
     this._playerEyeMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff4400, emissiveIntensity: 3 });
     for (const side of [-1, 1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), this._playerEyeMat);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), this._playerEyeMat);
       eye.position.set(side * 0.16, 1.2, 0.35);
       this._playerMesh.add(eye);
     }
@@ -797,7 +797,7 @@ export class GargoyleRenderer {
       this._playerMesh.add(forearm);
       // Claws
       for (let c = -1; c <= 1; c++) {
-        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.2, 3), dark);
+        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.2, 8), dark);
         claw.position.set(side * 0.9 + c * 0.06, -0.65, 0.15);
         claw.rotation.x = 0.3;
         this._playerMesh.add(claw);
@@ -825,7 +825,7 @@ export class GargoyleRenderer {
       // Wing finger bones
       const boneMat = new THREE.MeshStandardMaterial({ color: 0x3a4a5a, roughness: 0.8 });
       for (let b = 0; b < 3; b++) {
-        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 1.5 + b * 0.4, 3), boneMat);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 1.5 + b * 0.4, 8), boneMat);
         bone.position.set(side * -(0.8 + b * 0.5), 0.5 + b * 0.15, -0.15);
         bone.rotation.z = side * (0.3 + b * 0.15);
         bone.rotation.x = 0.1;
@@ -834,11 +834,11 @@ export class GargoyleRenderer {
     }
 
     // Tail
-    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.12, 1.8, 5), dark);
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.12, 1.8, 10), dark);
     tail.position.set(0, -0.3, -0.7); tail.rotation.x = -0.7;
     this._playerMesh.add(tail);
     // Tail spike
-    const tailSpike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 4), dark);
+    const tailSpike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 10), dark);
     tailSpike.position.set(0, -0.5, -1.4); tailSpike.rotation.x = -1.2;
     this._playerMesh.add(tailSpike);
 
@@ -848,7 +848,7 @@ export class GargoyleRenderer {
       foot.position.set(side * 0.35, -0.95, 0.1);
       this._playerMesh.add(foot);
       for (let t = -1; t <= 1; t++) {
-        const talon = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 3), dark);
+        const talon = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 8), dark);
         talon.position.set(side * 0.35 + t * 0.1, -1.0, 0.35);
         talon.rotation.x = 0.5;
         this._playerMesh.add(talon);
@@ -864,7 +864,7 @@ export class GargoyleRenderer {
   // ======================================================================
 
   private _buildParticleSystem(): void {
-    const geo = new THREE.SphereGeometry(0.15, 4, 4);
+    const geo = new THREE.SphereGeometry(0.15, 12, 10);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     this._particleMesh = new THREE.InstancedMesh(geo, mat, 800);
     this._particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -873,7 +873,7 @@ export class GargoyleRenderer {
   }
 
   private _buildSoulOrbSystem(): void {
-    const geo = new THREE.SphereGeometry(0.25, 8, 8);
+    const geo = new THREE.SphereGeometry(0.25, 16, 12);
     const mat = new THREE.MeshBasicMaterial({ color: COL.SOUL_PURPLE });
     this._soulOrbMesh = new THREE.InstancedMesh(geo, mat, 50);
     this._soulOrbMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -882,7 +882,7 @@ export class GargoyleRenderer {
   }
 
   private _buildHealthOrbSystem(): void {
-    const geo = new THREE.SphereGeometry(0.3, 8, 8);
+    const geo = new THREE.SphereGeometry(0.3, 16, 12);
     const mat = new THREE.MeshBasicMaterial({ color: 0x44ff44 });
     this._healthOrbMesh = new THREE.InstancedMesh(geo, mat, 20);
     this._healthOrbMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -891,7 +891,7 @@ export class GargoyleRenderer {
   }
 
   private _buildProjectileSystem(): void {
-    const geo = new THREE.SphereGeometry(0.2, 6, 6);
+    const geo = new THREE.SphereGeometry(0.2, 12, 10);
     const mat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
     this._projectileMesh = new THREE.InstancedMesh(geo, mat, 30);
     this._projectileMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -1048,7 +1048,7 @@ export class GargoyleRenderer {
 
   private _buildFireParticles(): void {
     // Separate instanced mesh with additive blending for fire glow
-    const geo = new THREE.SphereGeometry(0.12, 4, 4);
+    const geo = new THREE.SphereGeometry(0.12, 12, 10);
     const mat = new THREE.MeshBasicMaterial({
       color: 0xff6622, transparent: true, opacity: 0.8,
       blending: THREE.AdditiveBlending, depthWrite: false,
@@ -1093,13 +1093,13 @@ export class GargoyleRenderer {
     mesh.add(body);
 
     // Head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), mat);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12), mat);
     head.position.y = 0.9; head.name = "head";
     mesh.add(head);
 
     // Eyes
     for (const s of [-1, 1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4), eyeMat);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), eyeMat);
       eye.position.set(s * 0.12, 0.95, 0.28);
       mesh.add(eye);
     }
@@ -1108,13 +1108,13 @@ export class GargoyleRenderer {
     if (demon.type === "imp") {
       // Spiky back
       for (let i = 0; i < 3; i++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 3), dark);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 8), dark);
         spike.position.set(0, 0.3 + i * 0.25, -0.35);
         spike.rotation.x = -0.5;
         mesh.add(spike);
       }
       // Tail
-      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 0.8, 4), dark);
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 0.8, 10), dark);
       tail.position.set(0, -0.3, -0.4); tail.rotation.x = -0.6;
       mesh.add(tail);
     }
@@ -1122,7 +1122,7 @@ export class GargoyleRenderer {
     if (demon.type === "fiend") {
       // Horns
       for (const s of [-1, 1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 4), dark);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 10), dark);
         horn.position.set(s * 0.2, 1.3, 0); horn.rotation.z = s * 0.35;
         mesh.add(horn);
       }
@@ -1137,14 +1137,14 @@ export class GargoyleRenderer {
     if (demon.type === "brute") {
       // Horns
       for (const s of [-1, 1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.6, 4), dark);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.6, 10), dark);
         horn.position.set(s * 0.25, 1.35, 0); horn.rotation.z = s * 0.3;
         mesh.add(horn);
       }
       // Massive shoulders
       const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x442211, roughness: 0.7 });
       for (const s of [-1, 1]) {
-        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 6), shoulderMat);
+        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), shoulderMat);
         shoulder.position.set(s * 0.55, 0.6, 0); shoulder.scale.y = 0.7;
         mesh.add(shoulder);
       }
@@ -1153,7 +1153,7 @@ export class GargoyleRenderer {
         const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.9, 0.3), mat);
         arm.position.set(s * 0.65, -0.1, 0.1);
         mesh.add(arm);
-        const fist = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 6), mat);
+        const fist = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), mat);
         fist.position.set(s * 0.65, -0.6, 0.1);
         mesh.add(fist);
       }
@@ -1170,7 +1170,7 @@ export class GargoyleRenderer {
 
       // Inner glow
       const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 8, 8),
+        new THREE.SphereGeometry(0.5, 16, 12),
         new THREE.MeshBasicMaterial({ color: COL.WRAITH_COLOR, transparent: true, opacity: 0.15 }),
       );
       glow.name = "wraithGlow";
@@ -1183,13 +1183,13 @@ export class GargoyleRenderer {
     if (demon.type === "hellion") {
       // Horns (large, curved)
       for (const s of [-1, 1]) {
-        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.8, 5), dark);
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.8, 10), dark);
         horn.position.set(s * 0.3, 1.4, -0.1); horn.rotation.z = s * 0.25; horn.rotation.x = -0.2;
         mesh.add(horn);
       }
       // Fire crown
       const fireMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 3 });
-      const crown = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.08, 6, 16), fireMat);
+      const crown = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.08, 12, 16), fireMat);
       crown.position.y = 1.5; crown.rotation.x = Math.PI / 2;
       mesh.add(crown);
 
@@ -1223,13 +1223,13 @@ export class GargoyleRenderer {
 
       // Staff
       const staffMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.8 });
-      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 4), staffMat);
+      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 10), staffMat);
       staff.position.set(0.5, 0.3, 0);
       mesh.add(staff);
 
       // Staff orb (glowing green)
       const orbMat = new THREE.MeshStandardMaterial({ color: 0x44ff88, emissive: 0x22cc66, emissiveIntensity: 2 });
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), orbMat);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), orbMat);
       orb.position.set(0.5, 1.35, 0);
       orb.name = "necroOrb";
       mesh.add(orb);

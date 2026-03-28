@@ -584,14 +584,14 @@ export class SewerSplashGame {
     this._playerGroup.add(body);
 
     // Head
-    const headGeo = new THREE.SphereGeometry(0.22, 10, 8);
+    const headGeo = new THREE.SphereGeometry(0.22, 16, 12);
     const headMat = new THREE.MeshStandardMaterial({ color: 0x887766 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.set(0, 0.7, -0.35);
     this._playerGroup.add(head);
 
     // Snout
-    const snoutGeo = new THREE.ConeGeometry(0.1, 0.2, 6);
+    const snoutGeo = new THREE.ConeGeometry(0.1, 0.2, 12);
     const snoutMat = new THREE.MeshStandardMaterial({ color: 0xaa8877 });
     const snout = new THREE.Mesh(snoutGeo, snoutMat);
     snout.rotation.x = Math.PI / 2;
@@ -649,7 +649,7 @@ export class SewerSplashGame {
 
     // Eyes (beady)
     for (const side of [-1, 1]) {
-      const eyeGeo = new THREE.SphereGeometry(0.04, 6, 6);
+      const eyeGeo = new THREE.SphereGeometry(0.04, 12, 10);
       const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0x331111, emissiveIntensity: 0.5 });
       const eye = new THREE.Mesh(eyeGeo, eyeMat);
       eye.position.set(side * 0.12, 0.76, -0.5);
@@ -657,7 +657,7 @@ export class SewerSplashGame {
     }
 
     // Tiny crown (because this is a heroic rat)
-    const crownGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.1, 6);
+    const crownGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.1, 12);
     const crownMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.8, roughness: 0.2, emissive: 0xaa8800, emissiveIntensity: 0.3 });
     const crown = new THREE.Mesh(crownGeo, crownMat);
     crown.position.set(0, 0.95, -0.3);
@@ -666,7 +666,7 @@ export class SewerSplashGame {
     // Crown points
     for (let i = 0; i < 5; i++) {
       const angle = (i / 5) * Math.PI * 2;
-      const pointGeo = new THREE.ConeGeometry(0.03, 0.08, 4);
+      const pointGeo = new THREE.ConeGeometry(0.03, 0.08, 10);
       const pointMesh = new THREE.Mesh(pointGeo, crownMat);
       pointMesh.position.set(Math.sin(angle) * 0.12, 1.03, -0.3 + Math.cos(angle) * 0.12);
       this._playerGroup.add(pointMesh);
@@ -725,7 +725,7 @@ export class SewerSplashGame {
         bracket.position.set(side * (TUNNEL_RADIUS - 0.3), 0.5, tz);
         group.add(bracket);
 
-        const flameGeo = new THREE.SphereGeometry(0.15, 6, 6);
+        const flameGeo = new THREE.SphereGeometry(0.15, 12, 10);
         const flameMat = new THREE.MeshStandardMaterial({
           color: theme.torchColor,
           emissive: theme.torchColor,
@@ -823,14 +823,14 @@ export class SewerSplashGame {
           const sz = zStart - 3 - i * 7;
           const side = i % 2 === 0 ? -1 : 1;
           // Skull (sphere + jaw)
-          const skullGeo = new THREE.SphereGeometry(0.15, 6, 6);
+          const skullGeo = new THREE.SphereGeometry(0.15, 12, 10);
           const skullMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa });
           const skull = new THREE.Mesh(skullGeo, skullMat);
           skull.position.set(side * (TUNNEL_RADIUS - 0.2), 0, sz);
           group.add(skull);
           // Eye sockets (dark spheres)
           for (const es of [-1, 1]) {
-            const eyeGeo = new THREE.SphereGeometry(0.04, 4, 4);
+            const eyeGeo = new THREE.SphereGeometry(0.04, 12, 10);
             const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
             const eye = new THREE.Mesh(eyeGeo, eyeMat);
             eye.position.set(side * (TUNNEL_RADIUS - 0.25) + es * 0.06, 0.04, sz - 0.12);
@@ -858,7 +858,7 @@ export class SewerSplashGame {
           const mz = zStart - 5 - i * 9;
           const side = i % 2 === 0 ? -1 : 1;
           // Glowing mushroom
-          const stemGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.2, 6);
+          const stemGeo = new THREE.CylinderGeometry(0.04, 0.05, 0.2, 12);
           const stemMat = new THREE.MeshStandardMaterial({ color: 0x445566 });
           const stem = new THREE.Mesh(stemGeo, stemMat);
           stem.position.set(side * (TUNNEL_RADIUS - 0.5), -TUNNEL_RADIUS + 1.1, mz);
@@ -981,7 +981,7 @@ export class SewerSplashGame {
         mesh.position.y = PLAYER_Y_BASE + 0.3;
         group.add(mesh);
         // Drip
-        const dripGeo = new THREE.SphereGeometry(0.06, 4, 4);
+        const dripGeo = new THREE.SphereGeometry(0.06, 12, 10);
         const dripMat = new THREE.MeshStandardMaterial({ color: 0x44aa44, emissive: 0x226622, emissiveIntensity: 0.5, transparent: true, opacity: 0.7 });
         const drip = new THREE.Mesh(dripGeo, dripMat);
         drip.position.set(0, PLAYER_Y_BASE - 0.1, 0);
@@ -1026,7 +1026,7 @@ export class SewerSplashGame {
         mesh.position.y = PLAYER_Y_BASE + 0.5;
         group.add(mesh);
         // Toxic symbol (green ring)
-        const ringGeo = new THREE.TorusGeometry(0.2, 0.03, 6, 12);
+        const ringGeo = new THREE.TorusGeometry(0.2, 0.03, 12, 12);
         const ringMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 1.5 });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.position.set(0, PLAYER_Y_BASE + 0.5, -0.46);
@@ -1036,7 +1036,7 @@ export class SewerSplashGame {
       case "chain": {
         // Hanging chain — duck under
         for (let c = 0; c < 8; c++) {
-          const linkGeo = new THREE.TorusGeometry(0.08, 0.025, 6, 8);
+          const linkGeo = new THREE.TorusGeometry(0.08, 0.025, 12, 8);
           const linkMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7 });
           const link = new THREE.Mesh(linkGeo, linkMat);
           link.position.y = PLAYER_Y_BASE + 2.5 - c * 0.2;
@@ -1054,7 +1054,7 @@ export class SewerSplashGame {
         rampMesh.position.y = PLAYER_Y_BASE + 0.1;
         group.add(rampMesh);
         // Arrow markings
-        const arrowGeo = new THREE.ConeGeometry(0.12, 0.3, 3);
+        const arrowGeo = new THREE.ConeGeometry(0.12, 0.3, 8);
         const arrowMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xaa8800, emissiveIntensity: 0.8 });
         for (let a = 0; a < 3; a++) {
           const arrow = new THREE.Mesh(arrowGeo, arrowMat);
@@ -1113,7 +1113,7 @@ export class SewerSplashGame {
     switch (type) {
       case "cheese": {
         // Cheese wedge
-        const geo = new THREE.CylinderGeometry(0.2, 0.25, 0.15, 6);
+        const geo = new THREE.CylinderGeometry(0.2, 0.25, 0.15, 12);
         const mat = new THREE.MeshStandardMaterial({
           color: 0xFFCC00,
           emissive: 0x886600,
@@ -1124,7 +1124,7 @@ export class SewerSplashGame {
         group.add(mesh);
         // Holes
         for (let h = 0; h < 3; h++) {
-          const hGeo = new THREE.SphereGeometry(0.04, 4, 4);
+          const hGeo = new THREE.SphereGeometry(0.04, 12, 10);
           const hMat = new THREE.MeshStandardMaterial({ color: 0xCC9900 });
           const hole = new THREE.Mesh(hGeo, hMat);
           hole.position.set(
@@ -1189,7 +1189,7 @@ export class SewerSplashGame {
         break;
       }
       case "splash_bomb": {
-        const geo = new THREE.SphereGeometry(0.25, 10, 8);
+        const geo = new THREE.SphereGeometry(0.25, 16, 12);
         const mat = new THREE.MeshStandardMaterial({
           color: 0x22ffaa,
           emissive: 0x11cc66,
@@ -1199,7 +1199,7 @@ export class SewerSplashGame {
         });
         group.add(new THREE.Mesh(geo, mat));
         // Sparkle ring
-        const ringGeo = new THREE.TorusGeometry(0.35, 0.02, 6, 16);
+        const ringGeo = new THREE.TorusGeometry(0.35, 0.02, 12, 16);
         const ringMat = new THREE.MeshStandardMaterial({ color: 0x88ffcc, emissive: 0x44cc88, emissiveIntensity: 1 });
         group.add(new THREE.Mesh(ringGeo, ringMat));
         const light = new THREE.PointLight(0x22ffaa, 0.8, 5, 2);
@@ -1214,11 +1214,11 @@ export class SewerSplashGame {
           color: 0xff2244, emissive: 0xcc1122, emissiveIntensity: 1.2,
         });
         for (const sx of [-0.08, 0.08]) {
-          const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), hMat);
+          const lobe = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), hMat);
           lobe.position.set(sx, 0.06, 0);
           heartGroup.add(lobe);
         }
-        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.2, 6), hMat);
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.2, 12), hMat);
         tip.rotation.x = Math.PI;
         tip.position.set(0, -0.1, 0);
         heartGroup.add(tip);
@@ -1263,7 +1263,7 @@ export class SewerSplashGame {
           );
           group.add(rat);
           // Eyes
-          const eyeGeo = new THREE.SphereGeometry(0.03, 4, 4);
+          const eyeGeo = new THREE.SphereGeometry(0.03, 12, 10);
           const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 2 });
           const eye = new THREE.Mesh(eyeGeo, eyeMat);
           eye.position.set(rat.position.x, PLAYER_Y_BASE + 0.25, rat.position.z - 0.12);
@@ -1272,7 +1272,7 @@ export class SewerSplashGame {
         break;
       }
       case "slime": {
-        const sGeo = new THREE.SphereGeometry(0.5, 10, 8);
+        const sGeo = new THREE.SphereGeometry(0.5, 16, 12);
         const sMat = new THREE.MeshStandardMaterial({
           color: 0x33cc33,
           emissive: 0x116611,
@@ -1287,12 +1287,12 @@ export class SewerSplashGame {
         group.add(slime);
         // Eyes
         for (const side of [-1, 1]) {
-          const eyeGeo = new THREE.SphereGeometry(0.08, 6, 6);
+          const eyeGeo = new THREE.SphereGeometry(0.08, 12, 10);
           const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
           const eye = new THREE.Mesh(eyeGeo, eyeMat);
           eye.position.set(side * 0.18, PLAYER_Y_BASE + 0.55, -0.35);
           group.add(eye);
-          const pupilGeo = new THREE.SphereGeometry(0.04, 4, 4);
+          const pupilGeo = new THREE.SphereGeometry(0.04, 12, 10);
           const pupilMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
           const pupil = new THREE.Mesh(pupilGeo, pupilMat);
           pupil.position.set(side * 0.18, PLAYER_Y_BASE + 0.55, -0.42);
@@ -1317,7 +1317,7 @@ export class SewerSplashGame {
         group.add(snout);
         // Eyes
         for (const side of [-1, 1]) {
-          const eyeGeo = new THREE.SphereGeometry(0.08, 6, 6);
+          const eyeGeo = new THREE.SphereGeometry(0.08, 12, 10);
           const eyeMat = new THREE.MeshStandardMaterial({ color: 0xccaa00, emissive: 0x886600, emissiveIntensity: 1 });
           const eye = new THREE.Mesh(eyeGeo, eyeMat);
           eye.position.set(side * 0.25, PLAYER_Y_BASE + 0.35, -0.5);
@@ -1325,7 +1325,7 @@ export class SewerSplashGame {
         }
         // Teeth
         for (let t = 0; t < 6; t++) {
-          const tGeo = new THREE.ConeGeometry(0.03, 0.1, 4);
+          const tGeo = new THREE.ConeGeometry(0.03, 0.1, 10);
           const tMat = new THREE.MeshStandardMaterial({ color: 0xeeeecc });
           const tooth = new THREE.Mesh(tGeo, tMat);
           tooth.rotation.x = Math.PI;
@@ -1419,7 +1419,7 @@ export class SewerSplashGame {
         head.position.set(0, PLAYER_Y_BASE + 1, -4);
         group.add(head);
         for (const side of [-1, 1]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12),
             new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2 }));
           eye.position.set(side * 0.7, PLAYER_Y_BASE + 1.5, -5.2);
           group.add(eye);
@@ -1429,7 +1429,7 @@ export class SewerSplashGame {
         maw.position.set(0, PLAYER_Y_BASE + 0.3, -5.5);
         group.add(maw);
         for (let t = 0; t < 8; t++) {
-          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 4),
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 10),
             new THREE.MeshStandardMaterial({ color: 0xddddbb }));
           tooth.rotation.x = Math.PI;
           tooth.position.set(-0.6 + t * 0.17, PLAYER_Y_BASE + 0.55, -5.9);
@@ -1467,14 +1467,14 @@ export class SewerSplashGame {
         // Toxic bubbles (smaller spheres orbiting)
         for (let i = 0; i < 6; i++) {
           const angle = (i / 6) * Math.PI * 2;
-          const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 8, 8),
+          const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 16, 12),
             new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x44cc44, emissiveIntensity: 1, transparent: true, opacity: 0.6 }));
           bubble.position.set(Math.cos(angle) * 1.8, PLAYER_Y_BASE + 0.8 + Math.sin(angle) * 0.5, -4 + Math.sin(angle) * 1.5);
           group.add(bubble);
         }
         // Toxic eyes (3 eyes scattered on body)
         for (let i = 0; i < 3; i++) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12),
             new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xcc00cc, emissiveIntensity: 2 }));
           eye.position.set(-0.6 + i * 0.6, PLAYER_Y_BASE + 1.6, -5);
           group.add(eye);
@@ -1522,14 +1522,14 @@ export class SewerSplashGame {
         }
         // Red eyes
         for (const side of [-1, 1]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12),
             new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff0000, emissiveIntensity: 3 }));
           eye.position.set(side * 1, PLAYER_Y_BASE + 1.4, -5.5);
           group.add(eye);
         }
         // Massive teeth (jaws)
         for (let t = 0; t < 10; t++) {
-          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 4),
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 10),
             new THREE.MeshStandardMaterial({ color: 0xeeeecc }));
           tooth.rotation.x = Math.PI;
           tooth.position.set(-1 + t * 0.22, PLAYER_Y_BASE + 0.15, -6);
@@ -1562,7 +1562,7 @@ export class SewerSplashGame {
         // Stacked blob tower
         for (let i = 0; i < 4; i++) {
           const r = 1.3 - i * 0.2;
-          const blob = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), slimeMat);
+          const blob = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), slimeMat);
           blob.scale.set(1, 0.7, 1);
           blob.position.set(Math.sin(i * 1.2) * 0.3, PLAYER_Y_BASE + i * 0.8 + 0.5, -4);
           group.add(blob);
@@ -1570,12 +1570,12 @@ export class SewerSplashGame {
         // Absorbed creature faces (small spheres with eyes)
         for (let i = 0; i < 5; i++) {
           const angle = (i / 5) * Math.PI * 2;
-          const face = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6),
+          const face = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10),
             new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xcccccc, emissiveIntensity: 1 }));
           face.position.set(Math.cos(angle) * 1.1, PLAYER_Y_BASE + 0.5 + i * 0.5, -4 + Math.sin(angle) * 0.8);
           group.add(face);
           // Tiny pupil
-          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4),
+          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10),
             new THREE.MeshStandardMaterial({ color: 0x000000 }));
           pupil.position.copy(face.position);
           pupil.position.z -= 0.15;
@@ -3475,7 +3475,7 @@ export class SewerSplashGame {
     // Magnet upgrade → spinning magnet particles
     const magnetLvl = this._getUpgrade("magnet_dur");
     if (magnetLvl > 0) {
-      const ringGeo = new THREE.TorusGeometry(0.6 + magnetLvl * 0.1, 0.02, 4, 12);
+      const ringGeo = new THREE.TorusGeometry(0.6 + magnetLvl * 0.1, 0.02, 10, 12);
       const ringMat = new THREE.MeshStandardMaterial({
         color: 0xff3333, emissive: 0xcc0000, emissiveIntensity: 0.5,
         transparent: true, opacity: 0.3,

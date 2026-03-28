@@ -208,7 +208,7 @@ export class AoWHexRenderer {
 
       // Trunk
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(scale * 0.25, scale * 0.35, scale * 2, 5),
+        new THREE.CylinderGeometry(scale * 0.25, scale * 0.35, scale * 2, 10),
         trunkMat,
       );
       trunk.position.set(tx, 0.3 + scale, tz);
@@ -229,7 +229,7 @@ export class AoWHexRenderer {
 
       // Lower wider cone
       const lower = new THREE.Mesh(
-        new THREE.ConeGeometry(scale * 1.4, scale * 2, 6),
+        new THREE.ConeGeometry(scale * 1.4, scale * 2, 12),
         treeMat,
       );
       lower.position.y = 0;
@@ -238,7 +238,7 @@ export class AoWHexRenderer {
 
       // Upper narrow cone
       const upper = new THREE.Mesh(
-        new THREE.ConeGeometry(scale * 0.9, scale * 1.6, 6),
+        new THREE.ConeGeometry(scale * 0.9, scale * 1.6, 12),
         treeMat,
       );
       upper.position.y = scale * 0.9;
@@ -267,18 +267,18 @@ export class AoWHexRenderer {
     });
 
     // Main peak
-    const peak = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.2, 5), rockMat);
+    const peak = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.2, 10), rockMat);
     peak.position.y = 0.9;
     peak.castShadow = true;
     group.add(peak);
 
     // Snow cap
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.3, 5), snowMat);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.3, 10), snowMat);
     cap.position.y = 1.35;
     group.add(cap);
 
     // Secondary peak
-    const peak2 = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 4), rockMat);
+    const peak2 = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 10), rockMat);
     peak2.position.set(0.3, 0.7, 0.2);
     peak2.castShadow = true;
     group.add(peak2);
@@ -439,7 +439,7 @@ export class AoWHexRenderer {
       const bx = (Math.random() - 0.5) * 0.5;
       const bz = (Math.random() - 0.5) * 0.5;
       const size = 0.04 + Math.random() * 0.05;
-      const bubble = new THREE.Mesh(new THREE.SphereGeometry(size, 6, 6), bubbleMat);
+      const bubble = new THREE.Mesh(new THREE.SphereGeometry(size, 12, 10), bubbleMat);
       bubble.position.set(bx, 0.32, bz);
       group.add(bubble);
       this._swampBubbles.push(bubble);
@@ -449,7 +449,7 @@ export class AoWHexRenderer {
     if (Math.random() > 0.4) {
       const stumpMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, flatShading: true, roughness: 0.95 });
       const stump = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.04, 0.06, 0.3, 5),
+        new THREE.CylinderGeometry(0.04, 0.06, 0.3, 10),
         stumpMat,
       );
       stump.position.set((Math.random() - 0.5) * 0.4, 0.45, (Math.random() - 0.5) * 0.4);
@@ -479,7 +479,7 @@ export class AoWHexRenderer {
       const sx = (Math.random() - 0.5) * 0.5;
       const sz = (Math.random() - 0.5) * 0.5;
       const mound = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 5, 4),
+        new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 12, 10),
         snowMat,
       );
       mound.position.set(sx, 0.3, sz);
@@ -515,7 +515,7 @@ export class AoWHexRenderer {
       const flowerColors = [0xcc4466, 0xdddd44, 0xaa66cc, 0xffaa44];
       const fc = flowerColors[Math.floor(Math.random() * flowerColors.length)];
       const flowerMat = new THREE.MeshBasicMaterial({ color: fc });
-      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4), flowerMat);
+      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), flowerMat);
       flower.position.set((Math.random() - 0.5) * 0.5, 0.38, (Math.random() - 0.5) * 0.5);
       group.add(flower);
     }
@@ -550,7 +550,7 @@ export class AoWHexRenderer {
     });
     for (let i = 0; i < 3; i++) {
       const blade = new THREE.Mesh(
-        new THREE.ConeGeometry(0.025, 0.15, 3),
+        new THREE.ConeGeometry(0.025, 0.15, 8),
         grassMat,
       );
       blade.position.set((Math.random() - 0.5) * 0.5, 0.37, (Math.random() - 0.5) * 0.5);
@@ -574,7 +574,7 @@ export class AoWHexRenderer {
       const r = 0.25;
       const h = 0.2 + Math.random() * 0.3;
       const col = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.08, h, 6),
+        new THREE.CylinderGeometry(0.06, 0.08, h, 12),
         grailMat,
       );
       col.position.set(Math.cos(angle) * r, 0.3 + h / 2, Math.sin(angle) * r);
@@ -604,7 +604,7 @@ export class AoWHexRenderer {
       transparent: true,
       opacity: 0.15,
     });
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), haloMat);
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12), haloMat);
     halo.position.y = 0.9;
     group.add(halo);
 
@@ -627,7 +627,7 @@ export class AoWHexRenderer {
       const r = 0.25;
       const h = 0.2 + Math.random() * 0.3;
       const col = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.08, h, 6),
+        new THREE.CylinderGeometry(0.06, 0.08, h, 12),
         ruinMat,
       );
       col.position.set(Math.cos(angle) * r, 0.3 + h / 2, Math.sin(angle) * r);
@@ -658,7 +658,7 @@ export class AoWHexRenderer {
 
     // Obelisk
     const obelisk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.08, 0.6, 4),
+      new THREE.CylinderGeometry(0.05, 0.08, 0.6, 10),
       shrineMat,
     );
     obelisk.position.y = 0.6;
@@ -671,7 +671,7 @@ export class AoWHexRenderer {
       transparent: true,
       opacity: 0.5,
     });
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), glowMat);
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), glowMat);
     glow.position.y = 0.95;
     group.add(glow);
     this._shrineGlows.push(glow);
@@ -682,7 +682,7 @@ export class AoWHexRenderer {
       transparent: true,
       opacity: 0.1,
     });
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 6), haloMat);
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), haloMat);
     halo.position.y = 0.95;
     group.add(halo);
 
@@ -725,7 +725,7 @@ export class AoWHexRenderer {
       roughness: 0.85,
     });
     const wallRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.38, 0.03, 6, 12),
+      new THREE.TorusGeometry(0.38, 0.03, 12, 12),
       wallMat,
     );
     wallRing.position.y = 0.52;
@@ -740,7 +740,7 @@ export class AoWHexRenderer {
       roughness: 0.6,
     });
     const tower = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.15, 0.5, 6),
+      new THREE.CylinderGeometry(0.12, 0.15, 0.5, 12),
       towerMat,
     );
     tower.position.y = 0.75;
@@ -753,7 +753,7 @@ export class AoWHexRenderer {
       flatShading: true,
       roughness: 0.7,
     });
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.2, 6), roofMat);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.2, 12), roofMat);
     roof.position.y = 1.1;
     group.add(roof);
 
@@ -762,7 +762,7 @@ export class AoWHexRenderer {
       const angle = (Math.PI / 2) * i;
       const r2 = 0.3;
       const sideTower = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.08, 0.35, 5),
+        new THREE.CylinderGeometry(0.06, 0.08, 0.35, 10),
         towerMat,
       );
       sideTower.position.set(Math.cos(angle) * r2, 0.55, Math.sin(angle) * r2);
@@ -770,7 +770,7 @@ export class AoWHexRenderer {
       group.add(sideTower);
 
       const sideRoof = new THREE.Mesh(
-        new THREE.ConeGeometry(0.1, 0.12, 5),
+        new THREE.ConeGeometry(0.1, 0.12, 10),
         roofMat,
       );
       sideRoof.position.set(Math.cos(angle) * r2, 0.8, Math.sin(angle) * r2);
@@ -910,7 +910,7 @@ export class AoWHexRenderer {
 
     // Ambient floating particles (fireflies, dust motes)
     if (!this._ambientParticles) {
-      const geo = new THREE.SphereGeometry(0.03, 4, 3);
+      const geo = new THREE.SphereGeometry(0.03, 16, 12);
       const mat = new THREE.MeshBasicMaterial({ color: 0xffeeaa, transparent: true, opacity: 0.6 });
       this._ambientParticles = new THREE.InstancedMesh(geo, mat, this._particleCount);
       this._sceneManager.scene.add(this._ambientParticles);

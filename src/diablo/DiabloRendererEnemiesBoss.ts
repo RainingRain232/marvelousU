@@ -63,7 +63,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           ribBack.rotation.x = Math.PI / 2;
           group.add(ribBack);
           if (r < 7) {
-            const ribSinew = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.1, 6), sinewMat);
+            const ribSinew = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.1, 12), sinewMat);
             ribSinew.position.set(ribRadius * 0.7, 1.04 + r * 0.115, 0.1);
             ribSinew.rotation.x = Math.PI / 2 - 0.3;
             group.add(ribSinew);
@@ -85,7 +85,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           proc.rotation.x = 0.35;
           group.add(proc);
           for (const side of [-1, 1]) {
-            const transProc = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.035, 6), boneDarkMat);
+            const transProc = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.035, 12), boneDarkMat);
             transProc.position.set(side * 0.04, 0.88 + v * 0.12, -0.12);
             transProc.rotation.z = Math.PI / 2;
             group.add(transProc);
@@ -115,7 +115,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         group.add(snout);
         // Nasal cavity — two dark nostrils
         for (const nx of [-0.025, 0.025]) {
-          const nasal = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), new THREE.MeshStandardMaterial({ color: 0x0a0a0a }));
+          const nasal = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), new THREE.MeshStandardMaterial({ color: 0x0a0a0a }));
           nasal.scale.z = 0.4;
           nasal.position.set(nx, 1.94, 0.35);
           group.add(nasal);
@@ -141,14 +141,14 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Blood stains around mouth (dense)
         for (let bs = 0; bs < 6; bs++) {
-          const stain = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), bloodMat);
+          const stain = new THREE.Mesh(new THREE.SphereGeometry(0.014, 16, 12), bloodMat);
           stain.position.set((bs - 2.5) * 0.03, 1.86 + (bs % 2) * 0.025, 0.28);
           stain.scale.set(1.6, 0.4, 0.4);
           group.add(stain);
         }
         // Blood smears on chest
         for (let bch = 0; bch < 3; bch++) {
-          const smear = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), bloodDarkMat);
+          const smear = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), bloodDarkMat);
           smear.scale.set(2.0, 0.3, 0.3);
           smear.position.set((bch - 1) * 0.1, 1.5 - bch * 0.1, 0.12);
           smear.rotation.z = (bch - 1) * 0.5;
@@ -212,13 +212,13 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           }
           // Moss/lichen on antlers (tiny green spheres)
           for (let mo = 0; mo < 5; mo++) {
-            const moss = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), mossGreenMat);
+            const moss = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), mossGreenMat);
             moss.position.set(ax * (1.0 + mo * 0.1), 2.35 + mo * 0.08, mo % 2 === 0 ? 0.04 : -0.03);
             group.add(moss);
           }
           // Hanging tendons from antlers
           for (let te = 0; te < 3; te++) {
-            const tendon = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.002, 0.08 + te * 0.03, 6), sinewMat);
+            const tendon = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.002, 0.08 + te * 0.03, 12), sinewMat);
             tendon.position.set(ax * (1.2 + te * 0.12), 2.44 + te * 0.07, 0.06);
             tendon.rotation.x = 0.15;
             group.add(tendon);
@@ -256,7 +256,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           upperArm.rotation.z = ax < 0 ? 0.15 : -0.15;
           wdArmGroup.add(upperArm);
           for (let ams = 0; ams < 2; ams++) {
-            const armSinew = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.38, 6), sinewMat);
+            const armSinew = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.38, 12), sinewMat);
             armSinew.position.set(ax * 0.06 * (ams + 1), -0.22, 0.015);
             armSinew.rotation.z = ax < 0 ? 0.1 : -0.1;
             wdArmGroup.add(armSinew);
@@ -294,7 +294,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           thigh.rotation.x = 0.2;
           wdLegGroup.add(thigh);
           for (let lms = 0; lms < 2; lms++) {
-            const legSinew = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.3, 6), sinewMat);
+            const legSinew = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.3, 12), sinewMat);
             legSinew.position.set((lms - 0.5) * 0.04, -0.18, 0.02);
             legSinew.rotation.x = 0.18;
             wdLegGroup.add(legSinew);
@@ -315,7 +315,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const split = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.044, 0.09), boneDarkMat);
           split.position.set(0, -0.78, -0.14);
           wdLegGroup.add(split);
-          const dewclaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.05, 6), boneDarkMat);
+          const dewclaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.05, 12), boneDarkMat);
           dewclaw.position.set(0, -0.75, -0.22);
           dewclaw.rotation.x = -0.6;
           wdLegGroup.add(dewclaw);
@@ -323,7 +323,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Victim bone fragments near feet
         for (let bf = 0; bf < 4; bf++) {
-          const boneFrag = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.006, 0.06 + bf * 0.02, 6), boneDarkMat);
+          const boneFrag = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.006, 0.06 + bf * 0.02, 12), boneDarkMat);
           boneFrag.position.set((bf - 1.5) * 0.14, 0.04, 0.15 + bf * 0.04);
           boneFrag.rotation.z = bf % 2 === 0 ? 0.6 : -0.4;
           boneFrag.rotation.x = 0.3;
@@ -353,7 +353,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Blood drips from claw tips
         for (let cd = 0; cd < 3; cd++) {
-          const clawDrip = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.04, 6), bloodMat);
+          const clawDrip = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.04, 12), bloodMat);
           clawDrip.position.set(cd % 2 === 0 ? -0.38 : 0.38, 0.48 - cd * 0.05, 0.1);
           clawDrip.rotation.x = Math.PI;
           group.add(clawDrip);
@@ -411,7 +411,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           tatter.rotation.y = ang;
           tatter.rotation.x = 0.3 + (e % 3) * 0.1;
           bqHover.add(tatter);
-          const tatterEnergy = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), runeGlowMat);
+          const tatterEnergy = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), runeGlowMat);
           tatterEnergy.position.set(Math.sin(ang) * 0.44, 0.02, Math.cos(ang) * 0.44);
           bqHover.add(tatterEnergy);
         }
@@ -435,7 +435,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
             const nextAng = ((rs + 1) / 8) * Math.PI * 2;
             const midX = (Math.sin(ang) + Math.sin(nextAng)) * 0.275;
             const midZ = (Math.cos(ang) + Math.cos(nextAng)) * 0.275;
-            const energyLine = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.43, 6), runeGlowMat);
+            const energyLine = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.43, 12), runeGlowMat);
             energyLine.position.set(midX, 0.1, midZ);
             energyLine.rotation.y = ang + Math.PI / 16;
             energyLine.rotation.z = Math.PI / 2;
@@ -452,7 +452,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         bqHover.add(bqWaist);
         // Spectral jewelry chains across chest
         for (let jc = 0; jc < 3; jc++) {
-          const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.32 - jc * 0.06, 6), crownMat);
+          const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.32 - jc * 0.06, 12), crownMat);
           chain.position.set(0, 1.62 - jc * 0.06, 0.14);
           chain.rotation.z = Math.PI / 2;
           bqHover.add(chain);
@@ -495,7 +495,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
             finger.position.set(ax * 0.68 + (f - 2) * 0.014, -0.33 + f * 0.008, 0.07);
             finger.rotation.x = 0.2;
             bqArmGroup.add(finger);
-            const fingerEnergy = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 4), runeGlowMat);
+            const fingerEnergy = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 10), runeGlowMat);
             fingerEnergy.position.set(ax * 0.68 + (f - 2) * 0.014, -0.42 + f * 0.008, 0.08);
             bqArmGroup.add(fingerEnergy);
           }
@@ -552,7 +552,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Spectral tears trailing from eyes
         for (const ex of [-0.055, 0.055]) {
           for (let te = 0; te < 2; te++) {
-            const tear = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 4), tearMat);
+            const tear = new THREE.Mesh(new THREE.SphereGeometry(0.009, 12, 10), tearMat);
             tear.scale.set(0.5, 1.5, 0.5);
             tear.position.set(ex, 1.84 - te * 0.04, 0.155);
             bqHover.add(tear);
@@ -568,7 +568,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           strand.rotation.z = Math.cos(h * 0.8) * 0.3;
           bqHover.add(strand);
           if (h % 3 === 0) {
-            const strandEnergy = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), hairEnergyMat);
+            const strandEnergy = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), hairEnergyMat);
             strandEnergy.position.set(Math.sin(ang) * (0.14 + strandLen * 0.3), 1.78 + strandLen * 0.4 - h * 0.015, -0.04 + Math.cos(ang) * 0.12);
             bqHover.add(strandEnergy);
           }
@@ -580,7 +580,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         bqHover.add(crownBase);
         for (let fi = 0; fi < 8; fi++) {
           const fiAng = (fi / 8) * Math.PI * 2;
-          const filigree = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.06, 6), crownMat);
+          const filigree = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.06, 12), crownMat);
           filigree.position.set(Math.sin(fiAng) * 0.13, 2.0, Math.cos(fiAng) * 0.13);
           filigree.rotation.x = 0.4;
           filigree.rotation.y = fiAng;
@@ -636,12 +636,12 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           );
           wisp.position.set(Math.sin(ang) * (0.52 + (sw % 3) * 0.06), 0.75 + sw * 0.2, Math.cos(ang) * (0.52 + (sw % 3) * 0.06));
           bqHover.add(wisp);
-          const wispTrail = new THREE.Mesh(new THREE.CylinderGeometry(wispSize * 0.5, 0.002, 0.08, 6), new THREE.MeshStandardMaterial({ color: 0x9977cc, emissive: 0x6644aa, emissiveIntensity: 0.6, transparent: true, opacity: 0.3 }));
+          const wispTrail = new THREE.Mesh(new THREE.CylinderGeometry(wispSize * 0.5, 0.002, 0.08, 12), new THREE.MeshStandardMaterial({ color: 0x9977cc, emissive: 0x6644aa, emissiveIntensity: 0.6, transparent: true, opacity: 0.3 }));
           wispTrail.position.set(Math.sin(ang) * (0.52 + (sw % 3) * 0.06), 0.71 + sw * 0.2, Math.cos(ang) * (0.52 + (sw % 3) * 0.06));
           bqHover.add(wispTrail);
           if (sw % 3 === 0) {
             for (const fe of [-0.01, 0.01]) {
-              const faceEye = new THREE.Mesh(new THREE.SphereGeometry(0.005, 5, 4), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+              const faceEye = new THREE.Mesh(new THREE.SphereGeometry(0.005, 12, 10), new THREE.MeshStandardMaterial({ color: 0x000000 }));
               faceEye.position.set(Math.sin(ang) * (0.52 + (sw % 3) * 0.06) + fe, 0.755 + sw * 0.2, Math.cos(ang) * (0.52 + (sw % 3) * 0.06) + 0.02);
               bqHover.add(faceEye);
             }
@@ -752,7 +752,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           tasset.rotation.y = ang;
           group.add(tasset);
           // Chain link between tassets
-          const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.005, 6, 10), chainMat);
+          const chainLink = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.005, 12, 10), chainMat);
           chainLink.position.set(Math.sin(ang + 0.52) * 0.22, 0.82, Math.cos(ang + 0.52) * 0.12);
           chainLink.rotation.y = ang;
           group.add(chainLink);
@@ -785,7 +785,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
             padSkull.position.set(sx * 0.75, 1.78, 0.15);
             group.add(padSkull);
             for (const pex of [-0.02, 0.02]) {
-              const pskEye = new THREE.Mesh(new THREE.SphereGeometry(0.01, 10, 8), dkGlowMat);
+              const pskEye = new THREE.Mesh(new THREE.SphereGeometry(0.01, 16, 12), dkGlowMat);
               pskEye.position.set(sx * 0.75 + pex, 1.785, 0.19);
               group.add(pskEye);
             }
@@ -853,7 +853,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Necromantic flame rising from helm (cone shapes)
         for (let nf = 0; nf < 3; nf++) {
-          const helmFlame = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 6), necroFlameMat);
+          const helmFlame = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.1, 12), necroFlameMat);
           helmFlame.position.set((nf - 1) * 0.04, 2.12, 0.04);
           helmFlame.rotation.z = (nf - 1) * 0.2;
           group.add(helmFlame);
@@ -958,7 +958,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           shieldSkull.position.set(-0.22, -0.38, 0.13);
           dkLaGroup.add(shieldSkull);
           for (const sex of [-0.018, 0.018]) {
-            const shSkEye = new THREE.Mesh(new THREE.SphereGeometry(0.009, 8, 6), dkGlowMat);
+            const shSkEye = new THREE.Mesh(new THREE.SphereGeometry(0.009, 16, 12), dkGlowMat);
             shSkEye.position.set(-0.22 + sex, -0.37, 0.155);
             dkLaGroup.add(shSkEye);
           }
@@ -1005,7 +1005,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           sabaton.position.set(0, -0.72, 0.03);
           dkLegGroup.add(sabaton);
           // Pointed toe extension
-          const sabatonToe = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 6), dkArmorDarkMat);
+          const sabatonToe = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.07, 12), dkArmorDarkMat);
           sabatonToe.rotation.x = -Math.PI / 2;
           sabatonToe.position.set(0, -0.72, 0.11);
           dkLegGroup.add(sabatonToe);
@@ -1017,7 +1017,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const wispRadius = aw < 6 ? 0.6 : 0.35;
           const wispY = aw < 6 ? 0.7 + aw * 0.25 : 1.8 + (aw - 6) * 0.2;
           const wispAngle = (aw / 10) * Math.PI * 2;
-          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.028 + (aw % 3) * 0.008, 10, 8), new THREE.MeshStandardMaterial({ color: 0x44ffaa, emissive: 0x22cc88, emissiveIntensity: 1.2, transparent: true, opacity: 0.45 }));
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.028 + (aw % 3) * 0.008, 16, 12), new THREE.MeshStandardMaterial({ color: 0x44ffaa, emissive: 0x22cc88, emissiveIntensity: 1.2, transparent: true, opacity: 0.45 }));
           wisp.position.set(Math.sin(wispAngle) * wispRadius, wispY, Math.cos(wispAngle) * wispRadius * 0.75);
           group.add(wisp);
         }
@@ -1055,7 +1055,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           trophySkull.position.set(tx, ty, tz);
           group.add(trophySkull);
           // Hanging string
-          const trophyString = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.1, 4), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0 }));
+          const trophyString = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.1, 10), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0 }));
           trophyString.position.set(tx, ty + 0.06, tz);
           group.add(trophyString);
         }
@@ -1066,7 +1066,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         ];
         for (const [fx, fy, fz] of flameJointOffsets) {
           for (let fl = 0; fl < 3; fl++) {
-            const jFlame = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.08 - fl * 0.015, 5), necroFlameMat);
+            const jFlame = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.08 - fl * 0.015, 10), necroFlameMat);
             jFlame.position.set(fx + (fl - 1) * 0.025, fy + 0.04 + fl * 0.04, fz);
             jFlame.rotation.z = (fl - 1) * 0.3;
             group.add(jFlame);
@@ -1179,7 +1179,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           group.add(vent);
           // Stack of embers above vent
           for (let ve = 0; ve < 3; ve++) {
-            const ventEmber = new THREE.Mesh(new THREE.SphereGeometry(0.025 - ve * 0.006, 8, 6), magmaMat);
+            const ventEmber = new THREE.Mesh(new THREE.SphereGeometry(0.025 - ve * 0.006, 16, 12), magmaMat);
             ventEmber.position.set(vx, vy + 0.1 + ve * 0.065, vz);
             group.add(ventEmber);
           }
@@ -1228,7 +1228,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           elbowJoint.position.set(ax * 0.16, -0.65, 0);
           ttArmGroup.add(elbowJoint);
           // Elbow lava drip
-          const elbowDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.008, 0.12, 6), titanLava);
+          const elbowDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.008, 0.12, 12), titanLava);
           elbowDrip.position.set(ax * 0.16, -0.78, 0);
           ttArmGroup.add(elbowDrip);
           const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.19, 0.52, 16), titanRock);
@@ -1256,7 +1256,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           }
           // Lava dripping from fists
           for (let fd = 0; fd < 2; fd++) {
-            const fistDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.006, 0.1 + fd * 0.04, 6), titanLava);
+            const fistDrip = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.006, 0.1 + fd * 0.04, 12), titanLava);
             fistDrip.position.set(ax * 0.32 + (fd - 0.5) * 0.1, -1.65, 0.08);
             ttArmGroup.add(fistDrip);
           }
@@ -1331,14 +1331,14 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Lava pool bubbles
         for (let bb = 0; bb < 8; bb++) {
           const bubbleAng = (bb / 8) * Math.PI * 2;
-          const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.04 + (bb % 3) * 0.015, 8, 6), magmaMat);
+          const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.04 + (bb % 3) * 0.015, 16, 12), magmaMat);
           bubble.position.set(Math.sin(bubbleAng) * 0.5, 0.04, Math.cos(bubbleAng) * 0.4);
           group.add(bubble);
         }
         // 18 ember particles — varying sizes, creating heat cloud
         for (let em = 0; em < 18; em++) {
           const emberSize = 0.01 + (em % 4) * 0.01;
-          const ember = new THREE.Mesh(new THREE.SphereGeometry(emberSize, 8, 6), titanLavaBright);
+          const ember = new THREE.Mesh(new THREE.SphereGeometry(emberSize, 16, 12), titanLavaBright);
           ember.position.set(
             (em % 7 - 3) * 0.22,
             0.4 + em * 0.18,
@@ -1363,7 +1363,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Ash particles — 12 tiny grey spheres drifting around
         for (let ap = 0; ap < 12; ap++) {
-          const ash = new THREE.Mesh(new THREE.SphereGeometry(0.015 + (ap % 3) * 0.008, 6, 4), ashMat);
+          const ash = new THREE.Mesh(new THREE.SphereGeometry(0.015 + (ap % 3) * 0.008, 12, 10), ashMat);
           ash.position.set(
             (ap % 5 - 2) * 0.28,
             1.2 + ap * 0.2,
@@ -1522,7 +1522,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Void energy trails leaking from eye
         for (let et = 0; et < 5; et++) {
-          const trailPiece = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.001, 0.12 + et * 0.04, 6), voidGlowDim);
+          const trailPiece = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.001, 0.12 + et * 0.04, 12), voidGlowDim);
           trailPiece.position.set((et - 2) * 0.04, 1.78 - et * 0.06, 0.46);
           trailPiece.rotation.z = 0.6 + et * 0.15;
           veHover.add(trailPiece);
@@ -1548,7 +1548,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           foreArmPlate.rotation.z = ax < 0 ? 0.8 : -0.8;
           veArmGroup.add(foreArmPlate);
           for (let f = 0; f < 5; f++) {
-            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.14, 6), voidGlowDim);
+            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.14, 12), voidGlowDim);
             finger.position.set(ax * 0.65 + (f - 2) * 0.022, -0.5, 0.08);
             finger.rotation.x = 0.25;
             veArmGroup.add(finger);
@@ -1568,7 +1568,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
             veArmGroup.add(scepterShaft);
             for (let sh = 0; sh < 6; sh++) {
               const shAng = (sh / 6) * Math.PI * 2;
-              const sArm = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.003, 0.1, 6), voidGlow);
+              const sArm = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.003, 0.1, 12), voidGlow);
               sArm.position.set(ax * 0.85 + Math.sin(shAng) * 0.055, -0.15 + Math.cos(shAng) * 0.055, 0.1);
               sArm.rotation.z = shAng;
               veArmGroup.add(sArm);
@@ -1599,7 +1599,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           tSeg2.rotation.z = Math.sin(tAng) * 0.7;
           tSeg2.rotation.x = Math.cos(tAng) * 0.5;
           veHover.add(tSeg2);
-          const tSeg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.004, 0.22, 6), voidGlowDim);
+          const tSeg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.004, 0.22, 12), voidGlowDim);
           tSeg3.position.set(Math.sin(tAng) * (tR + 0.24), 0.25, Math.cos(tAng) * (tR + 0.24));
           tSeg3.rotation.z = Math.sin(tAng) * 0.9;
           tSeg3.rotation.x = Math.cos(tAng) * 0.65;
@@ -1607,7 +1607,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const tipGlow = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 8), voidGlow);
           tipGlow.position.set(Math.sin(tAng) * (tR + 0.35), 0.12, Math.cos(tAng) * (tR + 0.35));
           veHover.add(tipGlow);
-          const tendrilTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.001, 0.1, 6), voidGlowDim);
+          const tendrilTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.001, 0.1, 12), voidGlowDim);
           tendrilTrail.position.set(Math.sin(tAng) * (tR + 0.4), 0.08, Math.cos(tAng) * (tR + 0.4));
           veHover.add(tendrilTrail);
         }
@@ -1630,7 +1630,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const pB = veOrbPositions[(ob + 2) % 10];
           const beamMid = pA.clone().add(pB).multiplyScalar(0.5);
           const beamDist = pA.distanceTo(pB);
-          const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, beamDist, 6), voidGlowDim);
+          const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, beamDist, 12), voidGlowDim);
           beam.position.copy(beamMid);
           beam.lookAt(pB);
           beam.rotateX(Math.PI / 2);
@@ -1645,7 +1645,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           arc.rotation.z = vlAng * 0.6;
           arc.rotation.x = vlAng * 0.3;
           veHover.add(arc);
-          const arcBranch = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.001, arcLen * 0.5, 6), new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x8822ee, emissiveIntensity: 1.8, transparent: true, opacity: 0.75 }));
+          const arcBranch = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.001, arcLen * 0.5, 12), new THREE.MeshStandardMaterial({ color: 0xaa44ff, emissive: 0x8822ee, emissiveIntensity: 1.8, transparent: true, opacity: 0.75 }));
           arcBranch.position.set(Math.sin(vlAng) * 0.55, 1.5 + vl * 0.12 + 0.15, Math.cos(vlAng) * 0.55);
           arcBranch.rotation.z = vlAng * 0.8;
           arcBranch.rotation.x = -vlAng * 0.4;
@@ -1730,7 +1730,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           spine.position.set(0, 1.58 + Math.sin(ds * 0.35) * 0.04, -0.75 + ds * 0.16);
           group.add(spine);
           if (ds % 3 === 0) {
-            const spineTip = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 6), purpleGlowDim);
+            const spineTip = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 12), purpleGlowDim);
             spineTip.position.set(0, 1.58 + Math.sin(ds * 0.35) * 0.04 + spineH, -0.75 + ds * 0.16);
             group.add(spineTip);
           }
@@ -1776,7 +1776,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Head crest (row of spines along skull top)
         for (let hc = 0; hc < 5; hc++) {
-          const crestSpine = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.07 + hc * 0.01, 6), scaleMat);
+          const crestSpine = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.07 + hc * 0.01, 12), scaleMat);
           crestSpine.position.set(0, 2.52, 1.55 - hc * 0.1);
           group.add(crestSpine);
         }
@@ -1790,7 +1790,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Upper teeth (10, varying sizes)
         for (let ft = 0; ft < 10; ft++) {
           const fangH = 0.06 + (ft % 3) * 0.025;
-          const fang = new THREE.Mesh(new THREE.ConeGeometry(0.01, fangH, 6), new THREE.MeshStandardMaterial({ color: 0xddddee }));
+          const fang = new THREE.Mesh(new THREE.ConeGeometry(0.01, fangH, 12), new THREE.MeshStandardMaterial({ color: 0xddddee }));
           fang.position.set((ft - 4.5) * 0.035, 0.04, 0.2);
           fang.rotation.x = Math.PI;
           jawGroup.add(fang);
@@ -1798,7 +1798,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Lower teeth (10, varying sizes)
         for (let lt = 0; lt < 10; lt++) {
           const ltH = 0.05 + (lt % 3) * 0.02;
-          const lTooth = new THREE.Mesh(new THREE.ConeGeometry(0.009, ltH, 6), new THREE.MeshStandardMaterial({ color: 0xccccdd }));
+          const lTooth = new THREE.Mesh(new THREE.ConeGeometry(0.009, ltH, 12), new THREE.MeshStandardMaterial({ color: 0xccccdd }));
           lTooth.position.set((lt - 4.5) * 0.035, -0.1, 0.2);
           jawGroup.add(lTooth);
         }
@@ -1823,7 +1823,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           hornMid.rotation.z = hx > 0 ? -0.35 : 0.35;
           group.add(hornMid);
           // Small rear horns
-          const hornRear = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.09, 6), shadowDarkMat);
+          const hornRear = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.09, 12), shadowDarkMat);
           hornRear.position.set(hx * 0.6, 2.38, 1.08);
           hornRear.rotation.x = 0.8;
           group.add(hornRear);
@@ -1846,7 +1846,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           group.add(slit);
           // Shadow trails streaming behind eyes
           for (let st = 0; st < 4; st++) {
-            const shadowTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.008 - st * 0.001, 0.003, 0.1 + st * 0.04, 6), purpleGlowDim);
+            const shadowTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.008 - st * 0.001, 0.003, 0.1 + st * 0.04, 12), purpleGlowDim);
             shadowTrail.position.set(ex, 2.34 - st * 0.02, 1.48 - st * 0.06);
             shadowTrail.rotation.x = 0.5;
             group.add(shadowTrail);
@@ -1910,7 +1910,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           swTailGroup.add(tailSeg);
           // Dorsal spines on tail
           if (ts < 6) {
-            const tSpine = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.07 + ts * 0.01, 6), shadowDarkMat);
+            const tSpine = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.07 + ts * 0.01, 12), shadowDarkMat);
             tSpine.position.set(0, 0.08, -ts * 0.2);
             tSpine.position.y -= ts * 0.04;
             swTailGroup.add(tSpine);
@@ -1927,7 +1927,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         swTailGroup.add(spadeCenter);
         // Spade prongs
         for (const px of [-0.1, 0.1]) {
-          const prong = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 6), shadowDarkMat);
+          const prong = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 12), shadowDarkMat);
           prong.position.set(px, -0.36, -1.96);
           prong.rotation.x = Math.PI / 2;
           prong.rotation.z = px > 0 ? 0.4 : -0.4;
@@ -1944,7 +1944,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
             thigh.position.y = -0.21;
             swLegGroup.add(thigh);
             // Knee joint sphere
-            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), scaleMat);
+            const knee = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), scaleMat);
             knee.position.y = -0.44;
             swLegGroup.add(knee);
             const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.42, 12), shadowMat);
@@ -1980,10 +1980,10 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         for (let sw = 0; sw < 12; sw++) {
           const wispAng = (sw / 12) * Math.PI * 2;
           const wispR = 0.5 + (sw % 3) * 0.3;
-          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), purpleGlowDim);
+          const wisp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 12), purpleGlowDim);
           wisp.position.set(Math.sin(wispAng) * wispR, 0.8 + Math.sin(wispAng * 2) * 0.6, Math.cos(wispAng) * wispR);
           group.add(wisp);
-          const wispTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.002, 0.1, 6), purpleGlowDim);
+          const wispTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.002, 0.1, 12), purpleGlowDim);
           wispTrail.position.copy(wisp.position);
           wispTrail.position.y -= 0.06;
           group.add(wispTrail);
@@ -1998,7 +1998,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Shadow drips under wings
         for (let sd = 0; sd < 6; sd++) {
           const sdSide = sd < 3 ? -1 : 1;
-          const shadowDrip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.07, 6), new THREE.MeshStandardMaterial({ color: 0x110011, transparent: true, opacity: 0.45 }));
+          const shadowDrip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.07, 12), new THREE.MeshStandardMaterial({ color: 0x110011, transparent: true, opacity: 0.45 }));
           shadowDrip.position.set(sdSide * (0.4 + (sd % 3) * 0.22), 1.35, 0.1 + (sd % 2) * 0.2);
           shadowDrip.rotation.x = Math.PI;
           group.add(shadowDrip);
@@ -2116,7 +2116,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Ab detail
         for (let ab = 0; ab < 3; ab++) {
           for (const abx of [-0.07, 0.07]) {
-            const abMuscle = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), djinnDarkMat);
+            const abMuscle = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), djinnDarkMat);
             abMuscle.scale.set(0.8, 0.55, 0.5);
             abMuscle.position.set(abx, 1.5 - ab * 0.1, 0.22);
             djHover.add(abMuscle);
@@ -2218,7 +2218,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
             scimitarBlade.rotation.z = ax * 0.35;
             djArmGroup.add(scimitarBlade);
             // Blade tip
-            const bladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 6), goldMat);
+            const bladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 12), goldMat);
             bladeTip.position.set(ax * 0.52, -0.72, 0.1);
             bladeTip.rotation.z = ax * 0.5;
             djArmGroup.add(bladeTip);
@@ -2233,7 +2233,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
               djArmGroup.add(guardGem);
             }
             // Pommel gem
-            const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), new THREE.MeshStandardMaterial({ color: 0x44aaff, emissive: 0x2288dd, emissiveIntensity: 1.2 }));
+            const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), new THREE.MeshStandardMaterial({ color: 0x44aaff, emissive: 0x2288dd, emissiveIntensity: 1.2 }));
             pommel.position.set(ax * 0.46, -0.08, 0.1);
             djArmGroup.add(pommel);
           }
@@ -2253,7 +2253,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           }
           // Pointed fingers (5)
           for (let f = 0; f < 5; f++) {
-            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.09, 6), djinnMat);
+            const finger = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.09, 12), djinnMat);
             finger.position.set(ax * 0.4 + (f - 2) * 0.016, -0.38, 0.08);
             finger.rotation.x = 0.2;
             djArmGroup.add(finger);
@@ -2312,14 +2312,14 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // === BEARD MADE OF FLOWING SAND (thin sand-colored cylinders) ===
         for (let bd = 0; bd < 8; bd++) {
           const bdAng = -Math.PI / 6 + (bd / 7) * (Math.PI / 3);
-          const beardStrand = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.12 + bd * 0.01, 6), djinnDarkMat);
+          const beardStrand = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.12 + bd * 0.01, 12), djinnDarkMat);
           beardStrand.position.set(Math.sin(bdAng) * 0.1, 1.88 - bd * 0.008, Math.cos(bdAng) * 0.14);
           beardStrand.rotation.z = bdAng * 0.4;
           beardStrand.rotation.x = 0.2;
           djHover.add(beardStrand);
         }
         // Beard tip
-        const beardTip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 6), djinnDarkMat);
+        const beardTip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 12), djinnDarkMat);
         beardTip.position.set(0, 1.83, 0.1);
         beardTip.rotation.x = 0.25;
         djHover.add(beardTip);
@@ -2334,7 +2334,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           djHover.add(eye);
           // Sand trails behind eyes
           for (let es = 0; es < 3; es++) {
-            const eyeSandTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.006 - es * 0.001, 0.002, 0.07 + es * 0.03, 6), djinnGlowDim);
+            const eyeSandTrail = new THREE.Mesh(new THREE.CylinderGeometry(0.006 - es * 0.001, 0.002, 0.07 + es * 0.03, 12), djinnGlowDim);
             eyeSandTrail.position.set(ex, 2.04 - es * 0.02, 0.12 - es * 0.04);
             eyeSandTrail.rotation.x = 0.4;
             djHover.add(eyeSandTrail);
@@ -2345,13 +2345,13 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         for (let gl = 0; gl < 6; gl++) {
           const glAng = (gl / 6) * Math.PI * 2;
           const glLen = 0.5 + (gl % 3) * 0.15;
-          const goldenArc = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.002, glLen, 6), new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffbb00, emissiveIntensity: 2.5, transparent: true, opacity: 0.8 }));
+          const goldenArc = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.002, glLen, 12), new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffbb00, emissiveIntensity: 2.5, transparent: true, opacity: 0.8 }));
           goldenArc.position.set(Math.sin(glAng) * 0.38, 0.5 + gl * 0.14, Math.cos(glAng) * 0.38);
           goldenArc.rotation.z = glAng * 0.7;
           goldenArc.rotation.x = glAng * 0.35;
           djHover.add(goldenArc);
           // Lightning branch
-          const arcBranch = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.001, glLen * 0.45, 4), new THREE.MeshStandardMaterial({ color: 0xffee55, emissive: 0xffdd22, emissiveIntensity: 2.0, transparent: true, opacity: 0.65 }));
+          const arcBranch = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.001, glLen * 0.45, 10), new THREE.MeshStandardMaterial({ color: 0xffee55, emissive: 0xffdd22, emissiveIntensity: 2.0, transparent: true, opacity: 0.65 }));
           arcBranch.position.set(Math.sin(glAng) * 0.5, 0.5 + gl * 0.14 + 0.12, Math.cos(glAng) * 0.5);
           arcBranch.rotation.z = glAng * 1.0;
           arcBranch.rotation.x = -glAng * 0.45;
@@ -2372,7 +2372,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           relic.rotation.set(relicAng, relicAng * 0.5, relicAng * 0.3);
           djHover.add(relic);
           // Relic glow aura
-          const relicAura = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.8, transparent: true, opacity: 0.3 }));
+          const relicAura = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 0.8, transparent: true, opacity: 0.3 }));
           relicAura.position.set(relicTypes[rl].pos[0], relicTypes[rl].pos[1], relicTypes[rl].pos[2]);
           djHover.add(relicAura);
         }
@@ -2514,11 +2514,11 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         group.add(muzzle);
         // Nostrils (flared with steam)
         for (const nx of [-0.04, 0.04]) {
-          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshStandardMaterial({ color: 0x331111 }));
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), new THREE.MeshStandardMaterial({ color: 0x331111 }));
           nostril.position.set(nx, 2.14, 0.6);
           group.add(nostril);
           // Steam
-          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 6), new THREE.MeshStandardMaterial({
+          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 12), new THREE.MeshStandardMaterial({
             color: 0xcccccc, transparent: true, opacity: 0.2
           }));
           steam.position.set(nx, 2.12, 0.65);
@@ -2556,7 +2556,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           spike.position.set(Math.sin(ang) * 0.15, 2.47, 0.35 + Math.cos(ang) * 0.15);
           group.add(spike);
           if (isMain) {
-            const gem = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), gemMat);
+            const gem = new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 12), gemMat);
             gem.position.set(Math.sin(ang) * 0.15, 2.44, 0.35 + Math.cos(ang) * 0.15);
             group.add(gem);
           }
@@ -2564,12 +2564,12 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Fierce glowing eyes
         const skEyeMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 2.0 });
         for (const ex of [-0.065, 0.065]) {
-          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshStandardMaterial({
+          const eyeGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), new THREE.MeshStandardMaterial({
             color: 0xff6622, emissive: 0xff3300, emissiveIntensity: 1.0, transparent: true, opacity: 0.5
           }));
           eyeGlow.position.set(ex, 2.24, 0.48);
           group.add(eyeGlow);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), skEyeMat);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 12), skEyeMat);
           eye.position.set(ex, 2.24, 0.5);
           group.add(eye);
         }
@@ -2579,7 +2579,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         beardMain.rotation.x = 0.2;
         group.add(beardMain);
         // Beard bead
-        const beardBead = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 6), goldMat);
+        const beardBead = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 12), goldMat);
         beardBead.position.set(0, 1.97, 0.5);
         group.add(beardBead);
         // War hammer (massive, ornate) - added to right arm group
@@ -2611,7 +2611,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         hamRune.position.set(0.13, 0.29, 0);
         skRaGroup.add(hamRune);
         // Hammer pommel
-        const hamPommel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), goldMat);
+        const hamPommel = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 12), goldMat);
         hamPommel.position.set(0.13, -1.14, 0);
         skRaGroup.add(hamPommel);
         // Beast legs (powerful, muscular with hooves)
@@ -2667,7 +2667,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
         group.add(skTailGroup);
         // Dust cloud at hooves
         for (let dc = 0; dc < 6; dc++) {
-          const dust = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshStandardMaterial({
+          const dust = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshStandardMaterial({
             color: 0x998866, transparent: true, opacity: 0.2
           }));
           dust.position.set(
@@ -2976,7 +2976,7 @@ export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const aura = new THREE.Mesh(new THREE.SphereGeometry(0.9, 46, 39), emissiveMat);
           aura.position.y = 1.2;
           group.add(aura);
-          const innerAura = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), new THREE.MeshPhysicalMaterial({
+          const innerAura = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), new THREE.MeshPhysicalMaterial({
             color: eyeColor, emissive: eyeColor, emissiveIntensity: 0.3,
             transparent: true, opacity: 0.15, transmission: 0.6,
           }));

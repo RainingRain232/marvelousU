@@ -1017,7 +1017,7 @@ export class LakeOfAvalonGame {
     this._boatGroup.add(hull);
 
     // Bow (front taper)
-    const bowGeo = new THREE.ConeGeometry(0.8, 1.2, 4);
+    const bowGeo = new THREE.ConeGeometry(0.8, 1.2, 10);
     bowGeo.rotateX(-Math.PI / 2);
     const bow = new THREE.Mesh(bowGeo, hullMat);
     bow.position.set(0, 0.25, -2.1);
@@ -1032,7 +1032,7 @@ export class LakeOfAvalonGame {
     this._boatGroup.add(rail);
 
     // Magical lantern at bow
-    const lanternGeo = new THREE.SphereGeometry(0.2, 8, 8);
+    const lanternGeo = new THREE.SphereGeometry(0.2, 16, 12);
     const lanternMat = new THREE.MeshBasicMaterial({ color: 0x44ddff });
     const lantern = new THREE.Mesh(lanternGeo, lanternMat);
     lantern.position.set(0, 0.8, -2.0);
@@ -1053,7 +1053,7 @@ export class LakeOfAvalonGame {
     this._boatGroup.add(body);
 
     // Head
-    const headGeo = new THREE.SphereGeometry(0.22, 8, 8);
+    const headGeo = new THREE.SphereGeometry(0.22, 16, 12);
     const headMat = new THREE.MeshStandardMaterial({ color: 0xddbb99, roughness: 0.6 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.set(0, 2.1, 0);
@@ -1061,7 +1061,7 @@ export class LakeOfAvalonGame {
     this._boatGroup.add(head);
 
     // Staff (spell casting)
-    const staffGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 6);
+    const staffGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 12);
     const staffMat = new THREE.MeshStandardMaterial({ color: 0x886644 });
     const staff = new THREE.Mesh(staffGeo, staffMat);
     staff.position.set(0.35, 1.6, -0.2);
@@ -1069,7 +1069,7 @@ export class LakeOfAvalonGame {
     this._boatGroup.add(staff);
 
     // Staff orb (element-reactive)
-    const orbGeo = new THREE.SphereGeometry(0.14, 8, 8);
+    const orbGeo = new THREE.SphereGeometry(0.14, 16, 12);
     const orbMat = new THREE.MeshBasicMaterial({ color: 0x9966ff });
     const orb = new THREE.Mesh(orbGeo, orbMat);
     orb.position.set(0.35, 2.5, -0.55);
@@ -1169,7 +1169,7 @@ export class LakeOfAvalonGame {
     // Broken columns
     for (let i = 0; i < 3; i++) {
       const height = 2 + Math.random() * 3;
-      const colGeo = new THREE.CylinderGeometry(0.3, 0.4, height, 6);
+      const colGeo = new THREE.CylinderGeometry(0.3, 0.4, height, 12);
       const col = new THREE.Mesh(colGeo, ruinMat);
       const a = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
       const r = islandRadius * 0.4;
@@ -1179,7 +1179,7 @@ export class LakeOfAvalonGame {
       parent.add(col);
     }
     // Arch fragment
-    const archGeo = new THREE.TorusGeometry(1.5, 0.2, 6, 8, Math.PI * 0.6);
+    const archGeo = new THREE.TorusGeometry(1.5, 0.2, 12, 8, Math.PI * 0.6);
     const arch = new THREE.Mesh(archGeo, ruinMat);
     arch.position.set(0, 3, 0);
     arch.rotation.y = Math.random() * Math.PI;
@@ -1191,7 +1191,7 @@ export class LakeOfAvalonGame {
     const glowColors = [0x22ff88, 0x44ccff, 0x8844ff, 0xffaa22];
     for (let i = 0; i < 4 + Math.floor(Math.random() * 4); i++) {
       const color = glowColors[i % glowColors.length];
-      const stemGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.4, 5);
+      const stemGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.4, 10);
       const stemMat = new THREE.MeshStandardMaterial({ color: 0x888866 });
       const capGeo = new THREE.SphereGeometry(0.15, 6, 4, 0, Math.PI * 2, 0, Math.PI * 0.6);
       const capMat = new THREE.MeshStandardMaterial({
@@ -1213,7 +1213,7 @@ export class LakeOfAvalonGame {
   }
 
   private _addGhostTree(parent: THREE.Group, _islandRadius: number): void {
-    const trunkGeo = new THREE.CylinderGeometry(0.15, 0.35, 4, 6);
+    const trunkGeo = new THREE.CylinderGeometry(0.15, 0.35, 4, 12);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x443344, roughness: 0.95 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.set(0, 2.5, 0);
@@ -1222,7 +1222,7 @@ export class LakeOfAvalonGame {
 
     // Branches
     for (let i = 0; i < 5; i++) {
-      const bGeo = new THREE.CylinderGeometry(0.02, 0.08, 1.5, 4);
+      const bGeo = new THREE.CylinderGeometry(0.02, 0.08, 1.5, 10);
       const bMat = new THREE.MeshStandardMaterial({ color: 0x554455 });
       const branch = new THREE.Mesh(bGeo, bMat);
       const a = (i / 5) * Math.PI * 2;
@@ -1233,7 +1233,7 @@ export class LakeOfAvalonGame {
     }
 
     // Ghost leaves (transparent emissive)
-    const leafGeo = new THREE.SphereGeometry(1.5, 8, 6);
+    const leafGeo = new THREE.SphereGeometry(1.5, 16, 12);
     const leafMat = new THREE.MeshStandardMaterial({
       color: 0x88aacc, emissive: 0x224466, emissiveIntensity: 0.3,
       transparent: true, opacity: 0.15, depthWrite: false,
@@ -1339,7 +1339,7 @@ export class LakeOfAvalonGame {
         const px = isl.x + Math.cos(angle) * dist;
         const pz = isl.z + Math.sin(angle) * dist;
 
-        const pillarGeo = new THREE.CylinderGeometry(0.3, 0.1, 6, 6, 1, true);
+        const pillarGeo = new THREE.CylinderGeometry(0.3, 0.1, 6, 12, 1, true);
         const pillarMat = new THREE.MeshBasicMaterial({
           color: 0x22aacc, transparent: true, opacity: 0.08,
           side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
@@ -1375,7 +1375,7 @@ export class LakeOfAvalonGame {
   private _buildBoatSail(): void {
     if (!this._boatGroup) return;
     // Mast
-    const mastGeo = new THREE.CylinderGeometry(0.04, 0.05, 3.5, 6);
+    const mastGeo = new THREE.CylinderGeometry(0.04, 0.05, 3.5, 12);
     const mastMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.9 });
     const mast = new THREE.Mesh(mastGeo, mastMat);
     mast.position.set(0, 2.0, -0.5);
@@ -1801,7 +1801,7 @@ export class LakeOfAvalonGame {
     const spellColor = this._excaliburGranted ? 0xffdd44 : elem.color;
     const sizeBoost = this._excaliburGranted ? 1.5 : 1.0;
 
-    const geo = new THREE.SphereGeometry(elem.size * sizeBoost, 8, 8);
+    const geo = new THREE.SphereGeometry(elem.size * sizeBoost, 16, 12);
     const mat = new THREE.MeshBasicMaterial({ color: spellColor });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(b.x + dx * 2, 1.5, b.z + dz * 2);
@@ -1814,7 +1814,7 @@ export class LakeOfAvalonGame {
     // Element-specific projectile visuals
     if (this._currentElement === "fire") {
       // Fire: large flame cone + inner glow
-      const trailGeo = new THREE.ConeGeometry(0.2, 1.2, 6);
+      const trailGeo = new THREE.ConeGeometry(0.2, 1.2, 12);
       trailGeo.rotateX(Math.PI / 2);
       const trailMat = new THREE.MeshBasicMaterial({
         color: 0xff4400, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false,
@@ -1823,7 +1823,7 @@ export class LakeOfAvalonGame {
       trail.position.z = 0.6;
       mesh.add(trail);
       // Outer heat haze
-      const hazeGeo = new THREE.SphereGeometry(0.5, 6, 6);
+      const hazeGeo = new THREE.SphereGeometry(0.5, 12, 10);
       const hazeMat = new THREE.MeshBasicMaterial({
         color: 0xff8800, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false,
       });
@@ -1837,7 +1837,7 @@ export class LakeOfAvalonGame {
       const crystal = new THREE.Mesh(crystalGeo, crystalMat);
       mesh.add(crystal);
       // Frost mist
-      const mistGeo = new THREE.SphereGeometry(0.35, 6, 6);
+      const mistGeo = new THREE.SphereGeometry(0.35, 12, 10);
       const mistMat = new THREE.MeshBasicMaterial({
         color: 0x66ccff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false,
       });
@@ -1851,14 +1851,14 @@ export class LakeOfAvalonGame {
       const boltGeo2 = new THREE.BoxGeometry(0.08, 1.5, 0.08);
       mesh.add(new THREE.Mesh(boltGeo2, boltMat));
       // Electric aura
-      const auraGeo = new THREE.SphereGeometry(0.3, 6, 6);
+      const auraGeo = new THREE.SphereGeometry(0.3, 12, 10);
       const auraMat = new THREE.MeshBasicMaterial({
         color: 0xffff44, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false,
       });
       mesh.add(new THREE.Mesh(auraGeo, auraMat));
     } else {
       // Arcane: mystical swirl ring
-      const ringGeo = new THREE.TorusGeometry(elem.size * sizeBoost * 1.2, 0.03, 4, 12);
+      const ringGeo = new THREE.TorusGeometry(elem.size * sizeBoost * 1.2, 0.03, 10, 12);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0xbb88ff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false,
       });
@@ -1899,7 +1899,7 @@ export class LakeOfAvalonGame {
         echoDelay--;
         if (echoDelay > 0) { requestAnimationFrame(echoCheck); return; }
         if (!echoScene || self._gameOver || self._paused) return;
-        const eGeo = new THREE.SphereGeometry(elem.size * 0.7, 6, 6);
+        const eGeo = new THREE.SphereGeometry(elem.size * 0.7, 12, 10);
         const eMat = new THREE.MeshBasicMaterial({ color: spellColor, transparent: true, opacity: 0.6 });
         const eMesh = new THREE.Mesh(eGeo, eMat);
         eMesh.position.set(b.x + echoDx * 2, 1.5, b.z + echoDz * 2);
@@ -1920,7 +1920,7 @@ export class LakeOfAvalonGame {
         const spreadAngle = this._aimAngle + spread * 0.2;
         const sdx = Math.sin(spreadAngle);
         const sdz = -Math.cos(spreadAngle);
-        const sGeo = new THREE.SphereGeometry(elem.size * 0.7, 6, 6);
+        const sGeo = new THREE.SphereGeometry(elem.size * 0.7, 12, 10);
         const sMat = new THREE.MeshBasicMaterial({ color: 0xffff44 });
         const sMesh = new THREE.Mesh(sGeo, sMat);
         sMesh.position.set(b.x + sdx * 2, 1.5, b.z + sdz * 2);
@@ -2119,12 +2119,12 @@ export class LakeOfAvalonGame {
     if (kind === "wisp") {
       // Glowing orb
       const core = new THREE.Mesh(
-        new THREE.SphereGeometry(def.size * 0.4, 8, 8),
+        new THREE.SphereGeometry(def.size * 0.4, 16, 12),
         new THREE.MeshBasicMaterial({ color: def.color }),
       );
       group.add(core);
       const halo = new THREE.Mesh(
-        new THREE.SphereGeometry(def.size * 0.7, 8, 8),
+        new THREE.SphereGeometry(def.size * 0.7, 16, 12),
         new THREE.MeshBasicMaterial({ color: def.emissive, transparent: true, opacity: 0.3, depthWrite: false }),
       );
       group.add(halo);
@@ -2134,7 +2134,7 @@ export class LakeOfAvalonGame {
       // Segmented body
       for (let s = 0; s < 5; s++) {
         const seg = new THREE.Mesh(
-          new THREE.SphereGeometry(def.size * (1 - s * 0.15) * 0.5, 6, 6),
+          new THREE.SphereGeometry(def.size * (1 - s * 0.15) * 0.5, 12, 10),
           new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.3, roughness: 0.4 }),
         );
         seg.position.z = s * 0.8;
@@ -2146,7 +2146,7 @@ export class LakeOfAvalonGame {
       for (let s = 0; s < 8; s++) {
         const r = def.size * 0.3 * (1 - s * 0.1);
         const seg = new THREE.Mesh(
-          new THREE.CylinderGeometry(r, r * 1.1, 0.6, 6),
+          new THREE.CylinderGeometry(r, r * 1.1, 0.6, 12),
           new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.2, roughness: 0.5 }),
         );
         seg.position.y = s * 0.5;
@@ -2160,16 +2160,16 @@ export class LakeOfAvalonGame {
         color: def.color, emissive: def.emissive, emissiveIntensity: 0.4,
         transparent: true, opacity: 0.7, depthWrite: false,
       });
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 1.5, 6), bodyMat);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 1.5, 12), bodyMat);
       torso.position.y = 1;
       group.add(torso);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 6), bodyMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), bodyMat);
       head.position.y = 2;
       group.add(head);
       // Glowing eyes
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
       for (let e = 0; e < 2; e++) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4), eyeMat);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), eyeMat);
         eye.position.set(e === 0 ? -0.12 : 0.12, 2.05, -0.25);
         group.add(eye);
       }
@@ -2179,20 +2179,20 @@ export class LakeOfAvalonGame {
         color: def.color, emissive: def.emissive, emissiveIntensity: 0.5,
         transparent: true, opacity: 0.85,
       });
-      const robe = new THREE.Mesh(new THREE.ConeGeometry(0.8, 2.2, 6), witchMat);
+      const robe = new THREE.Mesh(new THREE.ConeGeometry(0.8, 2.2, 12), witchMat);
       robe.position.y = 1.1;
       group.add(robe);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 6, 6), witchMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), witchMat);
       head.position.y = 2.5;
       group.add(head);
       // Staff
-      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 4),
+      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 10),
         new THREE.MeshStandardMaterial({ color: 0x664488 }));
       staff.position.set(0.4, 1.8, -0.3);
       staff.rotation.x = -0.2;
       group.add(staff);
       // Staff orb
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6),
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10),
         new THREE.MeshBasicMaterial({ color: 0xff44ff }));
       orb.position.set(0.4, 3.0, -0.6);
       group.add(orb);
@@ -2207,20 +2207,20 @@ export class LakeOfAvalonGame {
       });
       for (let s = 0; s < 8; s++) {
         const r = def.size * (1 - s * 0.08) * 0.4;
-        const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 6, 6), levMat);
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), levMat);
         seg.position.z = s * 1.2;
         seg.castShadow = true;
         group.add(seg);
       }
       // Jaw / head
-      const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.5, 6),
+      const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.5, 12),
         new THREE.MeshStandardMaterial({ color: 0x334466, emissive: 0x112244, emissiveIntensity: 0.3 }));
       jaw.position.set(0, 0, -1.0);
       jaw.rotation.x = -Math.PI / 2;
       group.add(jaw);
       // Glowing eyes
       for (let i = 0; i < 2; i++) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 4, 4),
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10),
           new THREE.MeshBasicMaterial({ color: 0xff2222 }));
         eye.position.set(i === 0 ? -0.3 : 0.3, 0.2, -0.5);
         group.add(eye);
@@ -2240,12 +2240,12 @@ export class LakeOfAvalonGame {
       hull.position.y = 0.5;
       group.add(hull);
       // Bow
-      const bow = new THREE.Mesh(new THREE.ConeGeometry(1, 1.5, 4), shipMat);
+      const bow = new THREE.Mesh(new THREE.ConeGeometry(1, 1.5, 10), shipMat);
       bow.position.set(0, 0.5, -2.5);
       bow.rotation.x = -Math.PI / 2;
       group.add(bow);
       // Mast
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4, 4),
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4, 10),
         new THREE.MeshStandardMaterial({ color: 0x556677 }));
       mast.position.set(0, 3, 0);
       group.add(mast);
@@ -2273,7 +2273,7 @@ export class LakeOfAvalonGame {
       body.castShadow = true;
       group.add(body);
       // Head (helmet)
-      const helm = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 6), armorMat);
+      const helm = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), armorMat);
       helm.position.y = 2.2;
       group.add(helm);
       // Shield
@@ -3339,13 +3339,13 @@ export class LakeOfAvalonGame {
     group.add(robe);
 
     // Head
-    const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
+    const headGeo = new THREE.SphereGeometry(0.35, 16, 12);
     const head = new THREE.Mesh(headGeo, bodyMat);
     head.position.y = 3.3;
     group.add(head);
 
     // Hair
-    const hairGeo = new THREE.ConeGeometry(0.5, 1.5, 6);
+    const hairGeo = new THREE.ConeGeometry(0.5, 1.5, 12);
     const hairMat = new THREE.MeshStandardMaterial({
       color: 0xccccff, emissive: 0x6666aa, emissiveIntensity: 0.4,
       transparent: true, opacity: 0.5, depthWrite: false,
@@ -3356,7 +3356,7 @@ export class LakeOfAvalonGame {
     group.add(hair);
 
     // Arms extended holding sword
-    const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.5, 6);
+    const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.5, 12);
     for (let a = 0; a < 2; a++) {
       const arm = new THREE.Mesh(armGeo, bodyMat);
       arm.position.set(a === 0 ? -0.5 : 0.5, 2.8, -0.8);
@@ -3376,7 +3376,7 @@ export class LakeOfAvalonGame {
     const guard = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.08), bladeMat);
     guard.position.y = 0;
     swordGroup.add(guard);
-    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 6),
+    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 12),
       new THREE.MeshStandardMaterial({ color: 0x886633 }));
     hilt.position.y = -0.25;
     swordGroup.add(hilt);
@@ -3471,7 +3471,7 @@ export class LakeOfAvalonGame {
 
   private _spawnParticle(x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, color: number, size: number): void {
     if (!this._scene || this._particles.length > 500) return;
-    const geo = new THREE.SphereGeometry(size, 4, 4);
+    const geo = new THREE.SphereGeometry(size, 12, 10);
     const mat = new THREE.MeshBasicMaterial({
       color, transparent: true, opacity: 0.9, depthWrite: false,
       blending: THREE.AdditiveBlending, // glow effect
@@ -3991,7 +3991,7 @@ export class LakeOfAvalonGame {
 
   private _spawnImpactRing(x: number, z: number, color: number, maxRadius: number): void {
     if (!this._scene) return;
-    const ringGeo = new THREE.TorusGeometry(0.5, 0.15, 4, 24);
+    const ringGeo = new THREE.TorusGeometry(0.5, 0.15, 10, 24);
     ringGeo.rotateX(-Math.PI / 2);
     const ringMat = new THREE.MeshBasicMaterial({
       color, transparent: true, opacity: 0.7,
@@ -4164,7 +4164,7 @@ export class LakeOfAvalonGame {
     const dist = Math.hypot(dx, dz) || 1;
 
     // Spawn a spectral bolt toward player
-    const boltGeo = new THREE.SphereGeometry(0.2, 6, 6);
+    const boltGeo = new THREE.SphereGeometry(0.2, 12, 10);
     const boltMat = new THREE.MeshBasicMaterial({ color: 0xff44ff });
     const bolt = new THREE.Mesh(boltGeo, boltMat);
     bolt.position.set(e.x, 2, e.z);
@@ -4196,7 +4196,7 @@ export class LakeOfAvalonGame {
       const sdx = Math.sin(baseAngle) * 18;
       const sdz = -Math.cos(baseAngle) * 18;
 
-      const ballGeo = new THREE.SphereGeometry(0.25, 6, 6);
+      const ballGeo = new THREE.SphereGeometry(0.25, 12, 10);
       const ballMat = new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.7 });
       const ball = new THREE.Mesh(ballGeo, ballMat);
       ball.position.set(e.x, 1.5, e.z);
@@ -4270,21 +4270,21 @@ export class LakeOfAvalonGame {
       metalness: 0.9, roughness: 0.1,
     });
     for (let i = 0; i < 6; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 4), crownMat);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 10), crownMat);
       const a = (i / 6) * Math.PI * 2;
       spike.position.set(Math.cos(a) * 0.5, 4.3, Math.sin(a) * 0.5);
       group.add(spike);
     }
 
     // Helmet
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), kingMat);
+    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), kingMat);
     helm.position.y = 3.8;
     group.add(helm);
 
     // Glowing eyes
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00ff44 });
     for (let i = 0; i < 2; i++) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 4), eyeMat);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), eyeMat);
       eye.position.set(i === 0 ? -0.2 : 0.2, 3.9, -0.5);
       group.add(eye);
     }
@@ -4301,7 +4301,7 @@ export class LakeOfAvalonGame {
 
     // Aura rings
     for (let r = 0; r < 3; r++) {
-      const auraGeo = new THREE.TorusGeometry(3 + r, 0.08, 4, 20);
+      const auraGeo = new THREE.TorusGeometry(3 + r, 0.08, 10, 20);
       auraGeo.rotateX(-Math.PI / 2);
       const auraMat = new THREE.MeshBasicMaterial({
         color: 0x00ff44, transparent: true, opacity: 0.3 - r * 0.08, depthWrite: false,
@@ -4464,7 +4464,7 @@ export class LakeOfAvalonGame {
     boss.mesh.scale.setScalar(2.0);
 
     // Boss crown/aura
-    const auraGeo = new THREE.TorusGeometry(2, 0.1, 6, 16);
+    const auraGeo = new THREE.TorusGeometry(2, 0.1, 12, 16);
     auraGeo.rotateX(-Math.PI / 2);
     const auraMat = new THREE.MeshBasicMaterial({
       color: 0xff4444, transparent: true, opacity: 0.5, depthWrite: false,
@@ -4644,7 +4644,7 @@ export class LakeOfAvalonGame {
 
       // Concentric spinning rings
       for (let r = 0; r < 4; r++) {
-        const ringGeo = new THREE.TorusGeometry(2 + r * 2, 0.15, 4, 24);
+        const ringGeo = new THREE.TorusGeometry(2 + r * 2, 0.15, 10, 24);
         ringGeo.rotateX(-Math.PI / 2);
         const ringMat = new THREE.MeshBasicMaterial({
           color: 0x2288aa, transparent: true, opacity: 0.25 - r * 0.05, depthWrite: false,
@@ -4874,7 +4874,7 @@ export class LakeOfAvalonGame {
 
     // Expanding ring visual
     if (this._scene) {
-      const ringGeo = new THREE.TorusGeometry(novaRadius, 0.3, 6, 32);
+      const ringGeo = new THREE.TorusGeometry(novaRadius, 0.3, 12, 32);
       ringGeo.rotateX(-Math.PI / 2);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0x66ccff, transparent: true, opacity: 0.7, depthWrite: false,
@@ -4995,7 +4995,7 @@ export class LakeOfAvalonGame {
     group.add(new THREE.Line(boltGeo, boltMat));
 
     // Impact flash
-    const flashGeo = new THREE.SphereGeometry(2, 8, 8);
+    const flashGeo = new THREE.SphereGeometry(2, 16, 12);
     const flashMat = new THREE.MeshBasicMaterial({
       color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false,
     });

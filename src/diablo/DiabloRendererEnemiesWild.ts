@@ -78,14 +78,14 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         snoutTip.position.set(0, 1.36, 0.34);
         group.add(snoutTip);
         for (const nx of [-0.03, 0.03]) {
-          const nostril = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.015, 6), scaleDetailMat);
+          const nostril = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.015, 12), scaleDetailMat);
           nostril.position.set(nx, 1.38, 0.33);
           nostril.rotation.x = Math.PI / 2;
           group.add(nostril);
         }
         // Upper teeth row
         for (let t = 0; t < 6; t++) {
-          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.035, 6), bellyMat);
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.035, 12), bellyMat);
           tooth.position.set(-0.08 + t * 0.032, 1.28, 0.2 + (t % 2) * 0.05);
           group.add(tooth);
         }
@@ -112,7 +112,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           lowerJaw.position.set(0, -0.04, 0.06);
           dkwJawGroup.add(lowerJaw);
           for (let jt = 0; jt < 5; jt++) {
-            const jTooth = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.032, 6), bellyMat);
+            const jTooth = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.032, 12), bellyMat);
             jTooth.position.set(-0.08 + jt * 0.04, 0.0, 0.05 + (jt % 2) * 0.04);
             jTooth.rotation.z = Math.PI;
             dkwJawGroup.add(jTooth);
@@ -189,7 +189,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // 3 cone claws per hand
         for (let cl = 0; cl < 3; cl++) {
           const clawAng = (cl - 1) * 0.35;
-          const laClaw = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.055, 6), clawMat);
+          const laClaw = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.055, 12), clawMat);
           laClaw.position.set(-0.24 + Math.sin(clawAng) * 0.05, -0.78, 0.04);
           laClaw.rotation.x = -0.5;
           laClaw.rotation.z = clawAng;
@@ -205,7 +205,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           group.add(pauldron);
           // Spikes on pauldron
           for (let sp = 0; sp < 3; sp++) {
-            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.06, 6), clawMat);
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.06, 12), clawMat);
             spike.position.set(pax + (sp - 1) * 0.04, 1.3, paz);
             group.add(spike);
           }
@@ -238,7 +238,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           // 3 claws per foot
           for (let cl = 0; cl < 3; cl++) {
             const cang = (cl - 1) * 0.3;
-            const footClaw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.05, 6), clawMat);
+            const footClaw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.05, 12), clawMat);
             footClaw.position.set(Math.sin(cang) * 0.04, -0.68, 0.06);
             footClaw.rotation.x = -0.5;
             footClaw.rotation.z = cang;
@@ -392,7 +392,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         group.add(necklace);
         for (let nt = 0; nt < 8; nt++) {
           const ntAng = (nt / 8) * Math.PI * 2;
-          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.035, 6), boneMat);
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.035, 12), boneMat);
           tooth.position.set(Math.cos(ntAng) * 0.12, 1.02, Math.sin(ntAng) * 0.12);
           group.add(tooth);
         }
@@ -422,7 +422,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           wpRaGroup.add(raHand);
           for (let cl = 0; cl < 3; cl++) {
             const ca = (cl - 1) * 0.3;
-            const wpClaw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.045, 6), clawMatWP);
+            const wpClaw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.045, 12), clawMatWP);
             wpClaw.position.set(0.18 + Math.sin(ca) * 0.04, -0.62, 0.03);
             wpClaw.rotation.x = -0.5;
             wpClaw.rotation.z = ca;
@@ -460,7 +460,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           wpRaGroup.add(flameAura);
           // Incense smoke wisps (2 thin semi-transparent cones rising from staff)
           for (let sw = 0; sw < 2; sw++) {
-            const smokeWisp = new THREE.Mesh(new THREE.ConeGeometry(0.016 - sw * 0.004, 0.14 + sw * 0.04, 6), smokeMat);
+            const smokeWisp = new THREE.Mesh(new THREE.ConeGeometry(0.016 - sw * 0.004, 0.14 + sw * 0.04, 12), smokeMat);
             smokeWisp.position.set(0.28 + (sw - 0.5) * 0.06, 0.85 + sw * 0.06, 0.02);
             wpRaGroup.add(smokeWisp);
           }
@@ -489,7 +489,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           wpLaGroup.add(laHand);
           for (let cl = 0; cl < 3; cl++) {
             const ca = (cl - 1) * 0.3;
-            const wpClaw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.045, 6), clawMatWP);
+            const wpClaw = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.045, 12), clawMatWP);
             wpClaw.position.set(-0.18 + Math.sin(ca) * 0.04, -0.62, 0.03);
             wpClaw.rotation.x = -0.5;
             wpClaw.rotation.z = ca;
@@ -527,7 +527,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           wpLegGroup.add(foot);
           for (let cl = 0; cl < 3; cl++) {
             const ca = (cl - 1) * 0.28;
-            const footClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 6), clawMatWP);
+            const footClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 12), clawMatWP);
             footClaw.position.set(Math.sin(ca) * 0.03, -0.43, 0.04);
             footClaw.rotation.x = -0.45;
             footClaw.rotation.z = ca;
@@ -625,7 +625,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           jawTip.position.set(0, -0.04, 0.24);
           jawGroup.add(jawTip);
           for (let t = 0; t < 6; t++) {
-            const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.04, 6), bellyMat);
+            const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.04, 12), bellyMat);
             tooth.position.set(-0.1 + t * 0.04, 0.0, 0.06 + (t % 2) * 0.08);
             tooth.rotation.z = Math.PI;
             jawGroup.add(tooth);
@@ -634,7 +634,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Upper teeth
         for (let t = 0; t < 6; t++) {
-          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.04, 6), bellyMat);
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.04, 12), bellyMat);
           tooth.position.set(-0.1 + t * 0.04, 0.86, 0.58 + (t % 2) * 0.08);
           group.add(tooth);
         }
@@ -721,7 +721,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           drakeLegGroup.add(foot);
           for (let cl = 0; cl < 3; cl++) {
             const clawAng = (cl - 1) * 0.35;
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.06, 6), clawMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.06, 12), clawMat);
             claw.position.set(Math.sin(clawAng) * 0.04, -0.48, 0.06 + Math.cos(clawAng) * 0.02);
             claw.rotation.x = -0.4;
             claw.rotation.z = clawAng;
@@ -757,12 +757,12 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           spadeBase.position.set(0, -0.22, -0.88);
           spadeBase.rotation.x = -Math.PI / 2 + 0.3;
           drakeTailGroup.add(spadeBase);
-          const spadeL = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 6), clawMat);
+          const spadeL = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 12), clawMat);
           spadeL.position.set(-0.06, -0.22, -0.95);
           spadeL.rotation.z = -0.5;
           spadeL.rotation.x = -Math.PI / 2 + 0.2;
           drakeTailGroup.add(spadeL);
-          const spadeR = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 6), clawMat);
+          const spadeR = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 12), clawMat);
           spadeR.position.set(0.06, -0.22, -0.95);
           spadeR.rotation.z = 0.5;
           spadeR.rotation.x = -Math.PI / 2 + 0.2;
@@ -808,7 +808,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Back ridge of tiny spines (9 small cones from neck to tail)
         for (let sp = 0; sp < 9; sp++) {
-          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.016 - sp * 0.001, 0.055 - sp * 0.003, 6), whelpScaleMat);
+          const spine = new THREE.Mesh(new THREE.ConeGeometry(0.016 - sp * 0.001, 0.055 - sp * 0.003, 12), whelpScaleMat);
           spine.position.set(0, 0.72 - sp * 0.04, -0.05 - sp * 0.05);
           spine.rotation.x = 0.15 + sp * 0.04;
           group.add(spine);
@@ -838,7 +838,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         group.add(whelpSnout);
         // Tiny nostrils
         for (const nx of [-0.025, 0.025]) {
-          const nostril = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.012, 6), whelpScaleMat);
+          const nostril = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.012, 12), whelpScaleMat);
           nostril.position.set(nx, 0.755, 0.395);
           nostril.rotation.x = Math.PI / 2;
           group.add(nostril);
@@ -872,7 +872,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           jaw.position.set(0, -0.03, 0.04);
           whelpJawGroup.add(jaw);
           for (let jt = 0; jt < 4; jt++) {
-            const jTooth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.025, 6), whelpBellyMat);
+            const jTooth = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.025, 12), whelpBellyMat);
             jTooth.position.set(-0.05 + jt * 0.033, 0.0, 0.04 + (jt % 2) * 0.03);
             jTooth.rotation.z = Math.PI;
             whelpJawGroup.add(jTooth);
@@ -910,7 +910,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           secBone.rotation.x = 0.2;
           whelpWingGroup.add(secBone);
           // Small wing claws at tips
-          const wingClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 6), whelpClawMat);
+          const wingClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 12), whelpClawMat);
           wingClaw.position.set(wx * 0.36, 0.08, -0.04);
           wingClaw.rotation.z = wx < 0 ? 1.2 : -1.2;
           whelpWingGroup.add(wingClaw);
@@ -944,7 +944,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           whelpLegGroup.add(foot);
           for (let cl = 0; cl < 3; cl++) {
             const ca = (cl - 1) * 0.28;
-            const footClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 6), whelpClawMat);
+            const footClaw = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 12), whelpClawMat);
             footClaw.position.set(Math.sin(ca) * 0.025, -0.39, 0.03);
             footClaw.rotation.x = -0.45;
             footClaw.rotation.z = ca;
@@ -974,12 +974,12 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           spadeTip.position.set(0, -0.12, -0.56);
           spadeTip.rotation.x = -Math.PI / 2 + 0.25;
           whelpTailGroup.add(spadeTip);
-          const spadeL2 = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.065, 6), whelpHornMat);
+          const spadeL2 = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.065, 12), whelpHornMat);
           spadeL2.position.set(-0.04, -0.12, -0.62);
           spadeL2.rotation.z = -0.45;
           spadeL2.rotation.x = -Math.PI / 2 + 0.2;
           whelpTailGroup.add(spadeL2);
-          const spadeR2 = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.065, 6), whelpHornMat);
+          const spadeR2 = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.065, 12), whelpHornMat);
           spadeR2.position.set(0.04, -0.12, -0.62);
           spadeR2.rotation.z = 0.45;
           spadeR2.rotation.x = -Math.PI / 2 + 0.2;
@@ -1127,7 +1127,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         }
         // Upper teeth row
         for (let t = 0; t < 8; t++) {
-          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.055, 6), boneMat);
+          const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.055, 12), boneMat);
           tooth.position.set(-0.16 + t * 0.045, -0.1, 0.2 + (t % 2) * 0.06);
           elderHeadGroup.add(tooth);
         }
@@ -1145,7 +1145,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           jawTip.position.set(0, -0.05, 0.36);
           elderJawGroup.add(jawTip);
           for (let jt = 0; jt < 8; jt++) {
-            const jTooth = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.048, 6), boneMat);
+            const jTooth = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.048, 12), boneMat);
             jTooth.position.set(-0.16 + jt * 0.045, -0.02, 0.06 + (jt % 2) * 0.06);
             jTooth.rotation.z = Math.PI;
             elderJawGroup.add(jTooth);
@@ -1264,7 +1264,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           clubSpike.rotation.x = -Math.PI / 2 + 0.22;
           elderTailGroup.add(clubSpike);
           for (const csx of [-0.065, 0.065]) {
-            const sideSpike = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.1, 6), hornMatED);
+            const sideSpike = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.1, 12), hornMatED);
             sideSpike.position.set(csx, -0.38, -1.22);
             sideSpike.rotation.z = csx < 0 ? -0.7 : 0.7;
             sideSpike.rotation.x = -Math.PI / 2 + 0.2;
@@ -1509,7 +1509,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
             scLegGroup.add(footClaw);
             // Hair bristles (3 cones per leg)
             for (let br = 0; br < 3; br++) {
-              const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.004, 0.022, 6), shellMat);
+              const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.004, 0.022, 12), shellMat);
               bristle.position.set(side * (0.13 + br * 0.02), -0.16 - br * 0.06, (br - 1) * 0.02);
               bristle.rotation.z = side * (0.8 + br * 0.2);
               scLegGroup.add(bristle);
@@ -1641,7 +1641,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Beard stubble (small dark dots)
         for (let bs = 0; bs < 8; bs++) {
           const ang = (bs / 8) * Math.PI * 0.9 + Math.PI * 0.55;
-          const stubble = new THREE.Mesh(new THREE.SphereGeometry(0.007, 6, 4), darkMat);
+          const stubble = new THREE.Mesh(new THREE.SphereGeometry(0.007, 12, 10), darkMat);
           stubble.position.set(Math.cos(ang) * 0.095, 1.3, Math.sin(ang) * 0.095 + 0.07);
           group.add(stubble);
         }
@@ -1728,7 +1728,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
             leftArmGroup.add(finger);
           }
           // Ring on finger
-          const lRing = new THREE.Mesh(new THREE.TorusGeometry(0.009, 0.003, 6, 12), goldTrimMat);
+          const lRing = new THREE.Mesh(new THREE.TorusGeometry(0.009, 0.003, 12, 12), goldTrimMat);
           lRing.rotation.x = Math.PI / 2;
           lRing.position.set(-0.027, -0.445, 0.01);
           leftArmGroup.add(lRing);
@@ -1791,7 +1791,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
             rightArmGroup.add(finger2);
           }
           // Ring right
-          const rRing = new THREE.Mesh(new THREE.TorusGeometry(0.009, 0.003, 6, 12), goldTrimMat);
+          const rRing = new THREE.Mesh(new THREE.TorusGeometry(0.009, 0.003, 12, 12), goldTrimMat);
           rRing.rotation.x = Math.PI / 2;
           rRing.position.set(0.036, -0.445, 0.01);
           rightArmGroup.add(rRing);
@@ -1833,7 +1833,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           // Tassel on pommel (thin cylinder strips)
           for (let ts = 0; ts < 4; ts++) {
             const ang = (ts / 4) * Math.PI * 2;
-            const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.001, 0.055, 6), new THREE.MeshStandardMaterial({ color: 0xcc3333 }));
+            const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.001, 0.055, 12), new THREE.MeshStandardMaterial({ color: 0xcc3333 }));
             tassel.position.set(0.12 + Math.cos(ang) * 0.012, -0.69, Math.sin(ang) * 0.012);
             rightArmGroup.add(tassel);
           }
@@ -2073,7 +2073,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           swHoverGroup.add(tendril);
           // Barbed tip (small cone)
           if (ten % 2 === 0) {
-            const barb = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.025, 6), wurmDarkMat);
+            const barb = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.025, 12), wurmDarkMat);
             barb.position.set(
               wHead.position.x + Math.cos(ang) * 0.36,
               wHead.position.y + Math.sin(ang) * 0.36,
@@ -2151,7 +2151,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         // Sand cylinder strips swirling between layers
         for (let cs = 0; cs < 8; cs++) {
           const cAng = (cs / 8) * Math.PI * 2;
-          const strip = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.005, 0.4, 6), new THREE.MeshStandardMaterial({ color: 0xd4b880, transparent: true, opacity: 0.35 }));
+          const strip = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.005, 0.4, 12), new THREE.MeshStandardMaterial({ color: 0xd4b880, transparent: true, opacity: 0.35 }));
           strip.position.set(Math.cos(cAng) * 0.28, 0.62, Math.sin(cAng) * 0.28);
           strip.rotation.z = cAng * 0.3;
           dwHover.add(strip);
@@ -2168,7 +2168,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           dwHover.add(tatter);
           // Sand particle at tip (every other)
           if (e % 2 === 0) {
-            const tipPart = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), wraithDarkMat);
+            const tipPart = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 10), wraithDarkMat);
             tipPart.position.set(Math.sin(ang) * 0.33, 0.18 - len * 0.5, Math.cos(ang) * 0.33);
             dwHover.add(tipPart);
           }
@@ -2240,7 +2240,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         jaw.rotation.x = 0.18;
         dwHover.add(jaw);
         for (let jt = 0; jt < 8; jt++) {
-          const jawTooth = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.022, 6), new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.3 }));
+          const jawTooth = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.022, 12), new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.3 }));
           jawTooth.position.set(-0.035 + jt * 0.01, 1.265, 0.12);
           jawTooth.rotation.x = -Math.PI;
           dwHover.add(jawTooth);
@@ -2273,7 +2273,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           dwArmGroup.add(armRing);
           // 5 finger bones per hand
           for (let f = 0; f < 5; f++) {
-            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.085, 6), boneMat);
+            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.003, 0.085, 12), boneMat);
             finger.position.set(ax * 0.4 + (f - 2) * 0.016, -0.32, 0.12);
             finger.rotation.x = -0.45;
             finger.rotation.z = (f - 2) * 0.08;
@@ -2934,7 +2934,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           group.add(eye);
           for (let v = 0; v < 4; v++) {
             const veinAngle = (v / 4) * Math.PI * 2;
-            const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.022, 4), bloodshotMat);
+            const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.022, 10), bloodshotMat);
             vein.position.set(ex + Math.sin(veinAngle) * 0.028, 0.555 + Math.cos(veinAngle) * 0.018, 0.573);
             vein.rotation.z = veinAngle + Math.PI / 2;
             group.add(vein);
@@ -3077,7 +3077,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         collar.position.y = 1.22;
         group.add(collar);
         for (let ft = 0; ft < 8; ft++) {
-          const furTuft = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.055, 6), furTrimMat);
+          const furTuft = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.055, 12), furTrimMat);
           const ang = (ft / 8) * Math.PI * 2;
           furTuft.position.set(Math.sin(ang) * 0.18, 1.26, Math.cos(ang) * 0.18);
           furTuft.rotation.x = Math.sin(ang) * 0.5;
@@ -3137,7 +3137,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         necklace.position.y = 1.3;
         group.add(necklace);
         for (let nt = 0; nt < 6; nt++) {
-          const nTooth = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.025, 6), boneMat);
+          const nTooth = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.025, 12), boneMat);
           const ntAng = ((nt - 2.5) / 5) * Math.PI * 0.7;
           nTooth.position.set(Math.sin(ntAng) * 0.1, 1.27, Math.cos(ntAng) * 0.1);
           nTooth.rotation.x = Math.PI;
@@ -3154,7 +3154,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         chinPaint.position.set(0, 1.34, 0.13);
         group.add(chinPaint);
         // Nose ring (tiny torus)
-        const noseRing = new THREE.Mesh(new THREE.TorusGeometry(0.008, 0.003, 6, 12), metalMat);
+        const noseRing = new THREE.Mesh(new THREE.TorusGeometry(0.008, 0.003, 12, 12), metalMat);
         noseRing.position.set(0, 1.38, 0.15);
         noseRing.rotation.x = Math.PI / 2;
         group.add(noseRing);
@@ -3207,7 +3207,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           leftArmGroup.add(leftArmWrap);
           // Hand with 3 finger hints
           for (let f = 0; f < 3; f++) {
-            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.006, 0.04, 6), skinMat);
+            const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.006, 0.04, 12), skinMat);
             finger.position.set(-0.024 + (f - 1) * 0.015, -0.41, 0.01);
             leftArmGroup.add(finger);
           }
@@ -3247,7 +3247,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           rightArmGroup.add(rightArmWrap);
           // Hand with 3 finger hints
           for (let f = 0; f < 3; f++) {
-            const fingerR = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.006, 0.04, 6), skinMat);
+            const fingerR = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.006, 0.04, 12), skinMat);
             fingerR.position.set(0.024 + (f - 1) * 0.015, -0.41, 0.01);
             rightArmGroup.add(fingerR);
           }
@@ -3296,7 +3296,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           legGroup.add(kWrap);
           // 4 wraps along leg
           for (let w = 0; w < 4; w++) {
-            const legWrap = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.007, 6, 14), leatherDarkMat);
+            const legWrap = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.007, 12, 14), leatherDarkMat);
             legWrap.rotation.x = Math.PI / 2;
             legWrap.position.set(0, -0.3 - w * 0.03, 0);
             legGroup.add(legWrap);
@@ -3305,7 +3305,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           const moccasin = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.04, 0.11), leatherDarkMat);
           moccasin.position.set(0, -0.475, 0.02);
           legGroup.add(moccasin);
-          const moccFur = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12, Math.PI), furTrimMat);
+          const moccFur = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 12, 12, Math.PI), furTrimMat);
           moccFur.rotation.x = -Math.PI / 2;
           moccFur.position.set(0, -0.453, 0.02);
           legGroup.add(moccFur);
@@ -3330,7 +3330,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         group.add(pouch);
         // Trophy hanging bones (2 small shapes on belt)
         for (let tr = 0; tr < 2; tr++) {
-          const trophyBone = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 6), boneMat);
+          const trophyBone = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 12), boneMat);
           trophyBone.position.set(-0.1 + tr * 0.08, 0.68, 0.12);
           trophyBone.rotation.x = 0.3;
           group.add(trophyBone);
@@ -3425,7 +3425,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         jawGrp.add(upperBeak);
         // Beak serration bumps along upper edge
         for (let bs = 0; bs < 4; bs++) {
-          const bump = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 4), beakMat);
+          const bump = new THREE.Mesh(new THREE.SphereGeometry(0.006, 12, 10), beakMat);
           bump.position.set(0, 0.01, 0.02 + bs * 0.025);
           jawGrp.add(bump);
         }
@@ -3437,7 +3437,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
         lowerBeak.position.set(0, -0.03, 0.01);
         jawGrp.add(lowerBeak);
         // Tongue hint inside beak
-        const tongue = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 6), tongueMat);
+        const tongue = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.04, 12), tongueMat);
         tongue.rotation.x = -Math.PI / 2 + 0.3;
         tongue.position.set(0, -0.01, 0.02);
         jawGrp.add(tongue);
@@ -3543,7 +3543,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           thigh.position.y = -0.08;
           hawkLegGroup.add(thigh);
           for (let tf2 = 0; tf2 < 7; tf2++) {
-            const trouser = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.045, 6), featherLightMat);
+            const trouser = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.045, 12), featherLightMat);
             const ang = (tf2 / 7) * Math.PI * 2;
             trouser.position.set(Math.sin(ang) * 0.055, -0.04, Math.cos(ang) * 0.055);
             trouser.rotation.x = Math.cos(ang) * 0.5;
@@ -3556,7 +3556,7 @@ export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THRE
           hawkLegGroup.add(tarsus);
           // 6 scale rings on tarsus
           for (let sr = 0; sr < 6; sr++) {
-            const scaleRing = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.004, 6, 14), beakMat);
+            const scaleRing = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.004, 12, 14), beakMat);
             scaleRing.rotation.x = Math.PI / 2;
             scaleRing.position.set(0, -0.15 + sr * (-0.04), 0.02);
             hawkLegGroup.add(scaleRing);

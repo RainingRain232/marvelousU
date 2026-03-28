@@ -925,7 +925,7 @@ function buildCharacterMesh(look: ClassAppearance, scale = 1.0): THREE.Group {
     group.add(halo);
   }
   if (look.hasBow) {
-    const bowCurve = new THREE.TorusGeometry(0.3, 0.012, 6, 12, Math.PI);
+    const bowCurve = new THREE.TorusGeometry(0.3, 0.012, 12, 12, Math.PI);
     const bow = new THREE.Mesh(bowCurve, mat(0x664422));
     bow.position.set(-0.35, 1.3, -0.1);
     bow.rotation.z = Math.PI * 0.5;
@@ -933,7 +933,7 @@ function buildCharacterMesh(look: ClassAppearance, scale = 1.0): THREE.Group {
   }
   if (look.hasDaggers) {
     for (const side of [-1, 1]) {
-      const blade = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.2, 4), mat(0xaaaaaa));
+      const blade = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.2, 10), mat(0xaaaaaa));
       blade.position.set(side * 0.28, 0.9, 0.1);
       blade.rotation.x = Math.PI;
       group.add(blade);
@@ -1062,7 +1062,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
       fuller.position.set(wx, wy + 0.22, 0);
       parent.add(fuller);
       // Blade tip (tapered)
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.06, 4), metalMat);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.06, 10), metalMat);
       tip.position.set(wx, wy + 0.45, 0);
       tip.castShadow = true;
       parent.add(tip);
@@ -1082,7 +1082,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
       parent.add(hilt);
       // Hilt wrap bands
       for (let i = 0; i < 4; i++) {
-        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.003, 4, 8), wrapMat);
+        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.015, 0.003, 10, 8), wrapMat);
         wrap.position.set(wx, wy - 0.09 + i * 0.02, 0);
         wrap.rotation.x = Math.PI / 2;
         parent.add(wrap);
@@ -1126,13 +1126,13 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
       parent.add(bowCurve);
       // Nock tips
       for (const dy of [-0.3, 0.3]) {
-        const nock = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 4), armorMat(look.accentColor));
+        const nock = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 10), armorMat(look.accentColor));
         nock.position.set(wx, wy + 0.15 + dy, 0.05 + 0.3);
         parent.add(nock);
       }
       // Bowstring
       const stringMat = new THREE.MeshPhysicalMaterial({ color: 0xddddcc, roughness: 0.4, metalness: 0.0 });
-      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.58, 6), stringMat);
+      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.58, 12), stringMat);
       string.position.set(wx, wy + 0.15, 0.05);
       parent.add(string);
       // Grip wrap
@@ -1152,7 +1152,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
       parent.add(staff);
       // Knots/bumps on staff
       for (let i = 0; i < 3; i++) {
-        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), staffMat);
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 10), staffMat);
         knot.position.set(wx + (i % 2 === 0 ? 0.01 : -0.01), wy + 0.15 + i * 0.2, 0.01);
         parent.add(knot);
       }
@@ -1163,7 +1163,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
       // Orb cradle (twisted metal prongs)
       for (let i = 0; i < 3; i++) {
         const a = (i * Math.PI * 2) / 3;
-        const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.1, 4), armorMat(look.accentColor));
+        const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.1, 10), armorMat(look.accentColor));
         prong.position.set(wx + Math.cos(a) * 0.025, wy + 0.7, Math.sin(a) * 0.025);
         prong.rotation.x = Math.cos(a) * 0.3;
         prong.rotation.z = Math.sin(a) * 0.3;
@@ -1177,7 +1177,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
     } else if (look.hasWeapon === "dual") {
       for (const dx of [-1, 1]) {
         // Tapered dagger blade
-        const dagger = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.22, 4), metalMat);
+        const dagger = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.22, 10), metalMat);
         dagger.position.set(dx * Math.abs(wx), wy + 0.12, 0);
         dagger.castShadow = true;
         parent.add(dagger);
@@ -1186,7 +1186,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
         dGuard.position.set(dx * Math.abs(wx), wy, 0);
         parent.add(dGuard);
         // Dagger hilt
-        const dHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.06, 6), hiltMat);
+        const dHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, 0.06, 12), hiltMat);
         dHilt.position.set(dx * Math.abs(wx), wy - 0.04, 0);
         parent.add(dHilt);
       }
@@ -1203,7 +1203,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
     shield.castShadow = true;
     parent.add(shield);
     // Outer rim (thicker torus)
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.012, 6, 16), shieldMat);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.012, 12, 16), shieldMat);
     rim.position.set(sx - 0.025, sy, 0.15);
     parent.add(rim);
     // Shield boss (center bulge)
@@ -1217,7 +1217,7 @@ function buildEnemyMesh(look: EnemyAppearance): THREE.Group {
     // Decorative rivets around rim
     for (let i = 0; i < 8; i++) {
       const a = (i * Math.PI * 2) / 8;
-      const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.006, 4, 3), armorMat(look.accentColor));
+      const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.006, 10, 8), armorMat(look.accentColor));
       rivet.position.set(sx - 0.025 + Math.cos(a) * 0.1, sy + Math.sin(a) * 0.1, 0.165);
       parent.add(rivet);
     }
@@ -1267,7 +1267,7 @@ function buildMerlinMesh(): THREE.Group {
   }, 1.05);
   const starMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xaaaaff, emissiveIntensity: 2 });
   for (let i = 0; i < 12; i++) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.01, 4, 4), starMat);
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.01, 12, 10), starMat);
     s.position.set((Math.random() - 0.5) * 0.3, 0.8 + Math.random() * 0.6, (Math.random() - 0.5) * 0.15);
     g.add(s);
   }
@@ -1424,7 +1424,7 @@ function buildTree(seed: number): THREE.Group {
   for (let b = 0; b < 3; b++) {
     const bAngle = seededRandom(seed * 7 + b * 31) * Math.PI * 2;
     const bH = height * (0.4 + seededRandom(seed * 11 + b * 17) * 0.4);
-    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.4, 4), branchMat);
+    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.4, 10), branchMat);
     branch.position.set(Math.cos(bAngle) * trunkR * 0.8, bH, Math.sin(bAngle) * trunkR * 0.8);
     branch.rotation.z = (Math.cos(bAngle) > 0 ? 1 : -1) * 1.0;
     branch.rotation.y = bAngle;
@@ -1470,7 +1470,7 @@ function buildBush(): THREE.Group {
   const g = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: 0x2a5a1a, roughness: 0.9 });
   for (let i = 0; i < 3; i++) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.2, 6, 6), mat);
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.2, 12, 10), mat);
     s.position.set((Math.random() - 0.5) * 0.3, 0.25, (Math.random() - 0.5) * 0.3);
     s.castShadow = true; g.add(s);
   }
@@ -1512,7 +1512,7 @@ function buildCamelotCastle(): THREE.Group {
   };
   // great hall + roof
   addMesh(new THREE.BoxGeometry(12, 6, 8), stone, 0, 3, 0);
-  addMesh(new THREE.ConeGeometry(7.5, 3, 4), roof, 0, 7.5, 0, Math.PI / 4, false);
+  addMesh(new THREE.ConeGeometry(7.5, 3, 10), roof, 0, 7.5, 0, Math.PI / 4, false);
   // 4 corner towers with battlements
   for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as [number, number][]) {
     addMesh(new THREE.CylinderGeometry(1.5, 1.8, 10, 8), stone, sx * 8, 5, sz * 6);
@@ -1531,7 +1531,7 @@ function buildCamelotCastle(): THREE.Group {
     color: 0x3a1a08, roughness: 0.85, metalness: 0.1,
   }), 0, 1.75, -6.2);
   // gate arch
-  addMesh(new THREE.TorusGeometry(1.3, 0.3, 6, 8, Math.PI), stone, 0, 3.5, -6.2);
+  addMesh(new THREE.TorusGeometry(1.3, 0.3, 12, 8, Math.PI), stone, 0, 3.5, -6.2);
   // banners on front towers
   for (const sx of [-1, 1]) {
     const banner = new THREE.Mesh(
@@ -1599,7 +1599,7 @@ function buildRuin(): THREE.Group {
     w.position.set(Math.cos(a) * 3, h / 2, Math.sin(a) * 3); w.rotation.y = a + Math.PI / 2;
     w.castShadow = true; g.add(w);
   }
-  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.5, 6), mat);
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.5, 12), mat);
   col.position.set(1, 0.2, 0); col.rotation.z = Math.PI / 2 + 0.1; g.add(col);
   return g;
 }
@@ -1652,7 +1652,7 @@ function buildCaveEntrance(): THREE.Group {
   const add = (geo: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0) => {
     const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, 0); g.add(m);
   };
-  add(new THREE.TorusGeometry(2, 0.5, 6, 8, Math.PI), 0, 2, 0, Math.PI / 2);
+  add(new THREE.TorusGeometry(2, 0.5, 12, 8, Math.PI), 0, 2, 0, Math.PI / 2);
   add(new THREE.PlaneGeometry(4, 6), 0, 0.01, -3, -Math.PI / 2);
   add(new THREE.PlaneGeometry(4, 6), 0, 3.5, -3, Math.PI / 2);
   for (const s of [-1, 1]) add(new THREE.PlaneGeometry(6, 3.5), s * 2, 1.75, -3, 0, s * Math.PI / 2);
@@ -2204,7 +2204,7 @@ function buildQuestMarker(): THREE.Group {
   const d = new THREE.Mesh(new THREE.OctahedronGeometry(0.15, 0),
     new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffaa00, emissiveIntensity: 1.5 }));
   g.add(d);
-  const p = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.5, 4),
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.5, 10),
     new THREE.MeshStandardMaterial({ color: 0xffdd00 }));
   p.position.y = -0.35; g.add(p);
   return g;
@@ -2415,7 +2415,7 @@ export class ArthurianRPGRenderer {
 
       // Add a small mesh for the torch holder
       const torchPole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.025, 0.8, 6),
+        new THREE.CylinderGeometry(0.02, 0.025, 0.8, 12),
         new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.9 }),
       );
       torchPole.position.copy(pos).add(v3(0, -0.4, 0));

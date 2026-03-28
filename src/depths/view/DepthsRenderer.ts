@@ -585,7 +585,7 @@ export class DepthsRenderer {
     this._scene.add(this._playerGroup);
 
     // Sword slash trail arc
-    const slashGeo = new THREE.TorusGeometry(1.2, 0.06, 4, 16, Math.PI * 0.8);
+    const slashGeo = new THREE.TorusGeometry(1.2, 0.06, 10, 16, Math.PI * 0.8);
     this._slashTrailMat = new THREE.MeshStandardMaterial({
       color: 0x88ccff, emissive: 0x44aaff, emissiveIntensity: 3,
       transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
@@ -595,7 +595,7 @@ export class DepthsRenderer {
     this._scene.add(this._slashTrail);
 
     // Shockwave ring (charged attack)
-    const shockGeo = new THREE.TorusGeometry(1, 0.15, 6, 32);
+    const shockGeo = new THREE.TorusGeometry(1, 0.15, 12, 32);
     this._shockwaveMat = new THREE.MeshStandardMaterial({
       color: 0xffaa22, emissive: 0xffcc44, emissiveIntensity: 3,
       transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
@@ -1705,7 +1705,7 @@ export class DepthsRenderer {
         shaft.scale.set(0.04, 1.2, 0.04);
         harpGroup.add(shaft);
         // Pointed tip
-        const tipGeo = new THREE.ConeGeometry(0.06, 0.25, 6);
+        const tipGeo = new THREE.ConeGeometry(0.06, 0.25, 12);
         const tip = new THREE.Mesh(tipGeo, shaftMat);
         tip.position.y = 0.7;
         harpGroup.add(tip);
@@ -2167,7 +2167,7 @@ export class DepthsRenderer {
           color: 0xdd88ff, emissive: 0xcc66ee, emissiveIntensity: 2.0,
           transparent: true, opacity: 0.6, side: THREE.DoubleSide,
         });
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 4, 12), ringMat);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 10, 12), ringMat);
         projGroup.add(ring);
         // Glow
         const gl = new THREE.PointLight(0xaa44cc, 0.6, 4);
@@ -2204,7 +2204,7 @@ export class DepthsRenderer {
       for (let r = 0; r < 4; r++) {
         const radius = 1 + r * 1.2;
         const tubeRadius = 0.08 + r * 0.04;
-        const ringGeo = new THREE.TorusGeometry(radius, tubeRadius, 6, 32);
+        const ringGeo = new THREE.TorusGeometry(radius, tubeRadius, 12, 32);
         const opacity = 0.5 - r * 0.1;
         const ringMat = new THREE.MeshStandardMaterial({
           color: 0x3355aa, emissive: 0x2244aa, emissiveIntensity: 0.6 + r * 0.2,
@@ -2288,7 +2288,7 @@ export class DepthsRenderer {
 
         // Outer ring for legendary
         if (rarity === "legendary") {
-          const ringGeo = new THREE.TorusGeometry(0.7, 0.04, 6, 16);
+          const ringGeo = new THREE.TorusGeometry(0.7, 0.04, 12, 16);
           const ringMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.5 });
           const ring = new THREE.Mesh(ringGeo, ringMat);
           ring.rotation.x = Math.PI / 2;

@@ -163,11 +163,11 @@ export class SettlersRenderer {
   private _healthBarBuildBgGeo = new THREE.PlaneGeometry(1.2, 0.08);
   private _healthBarBuildFgGeo = new THREE.PlaneGeometry(1.2, 0.08);
   private _healthBarBgMat = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.7 });
-  private _dotGeo = new THREE.SphereGeometry(0.04, 6, 4);
+  private _dotGeo = new THREE.SphereGeometry(0.04, 12, 10);
   private _dotMats = new Map<number, THREE.MeshBasicMaterial>();
-  private _glowGeo = new THREE.SphereGeometry(0.15, 8, 6);
-  private _combatFlashGeo = new THREE.SphereGeometry(0.15, 8, 6);
-  private _smokeGeo = new THREE.SphereGeometry(0.18, 8, 6);
+  private _glowGeo = new THREE.SphereGeometry(0.15, 16, 12);
+  private _combatFlashGeo = new THREE.SphereGeometry(0.15, 16, 12);
+  private _smokeGeo = new THREE.SphereGeometry(0.18, 16, 12);
 
   // Resize handler reference (for cleanup)
   private _resizeHandler: (() => void) | null = null;
@@ -1144,7 +1144,7 @@ export class SettlersRenderer {
         g.add(trunk);
 
         // Multi-sphere canopy
-        const canopyGeo = new THREE.SphereGeometry(s * 1.4, 8, 6);
+        const canopyGeo = new THREE.SphereGeometry(s * 1.4, 16, 12);
         const canopy = new THREE.Mesh(canopyGeo, leafLight);
         canopy.position.y = s * 2.8;
         canopy.scale.set(1, 0.8, 1);
@@ -1152,7 +1152,7 @@ export class SettlersRenderer {
         g.add(canopy);
 
         // Secondary smaller sphere
-        const canopy2Geo = new THREE.SphereGeometry(s * 0.9, 6, 5);
+        const canopy2Geo = new THREE.SphereGeometry(s * 0.9, 12, 10);
         const canopy2 = new THREE.Mesh(canopy2Geo, leafMid);
         canopy2.position.set(s * 0.6, s * 2.4, s * 0.3);
         canopy2.castShadow = true;
@@ -1164,7 +1164,7 @@ export class SettlersRenderer {
         trunk.position.y = s * 1.5;
         g.add(trunk);
 
-        const canopyGeo = new THREE.SphereGeometry(s * 1.0, 6, 5);
+        const canopyGeo = new THREE.SphereGeometry(s * 1.0, 12, 10);
         const canopy = new THREE.Mesh(canopyGeo, leafLight);
         canopy.position.y = s * 3.2;
         canopy.scale.set(0.8, 1.2, 0.8);
@@ -1268,7 +1268,7 @@ export class SettlersRenderer {
 
         // Occasional flower
         if (rnd > 0.88) {
-          const flowerGeo = new THREE.SphereGeometry(0.06, 4, 3);
+          const flowerGeo = new THREE.SphereGeometry(0.06, 16, 12);
           const flowerMat = new THREE.MeshBasicMaterial({
             color: flowerColors[Math.floor(rnd * 100) % flowerColors.length],
           });
@@ -1297,7 +1297,7 @@ export class SettlersRenderer {
       [Deposit.FISH]: 0x5599bb,
     };
 
-    const depositGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 6);
+    const depositGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 12);
 
     for (let tz = 0; tz < map.height; tz++) {
       for (let tx = 0; tx < map.width; tx++) {
@@ -1925,18 +1925,18 @@ export class SettlersRenderer {
   // Helper: chimney with cap and smoke opening
   private _addChimney(g: THREE.Group, x: number, baseY: number, z: number, r: number, h: number): void {
     // Main shaft (slightly tapered)
-    const chimneyGeo = new THREE.CylinderGeometry(r * 0.85, r, h, 6);
+    const chimneyGeo = new THREE.CylinderGeometry(r * 0.85, r, h, 12);
     const chimney = new THREE.Mesh(chimneyGeo, this._chimneyMat);
     chimney.position.set(x, baseY + h * 0.5, z);
     chimney.castShadow = true;
     g.add(chimney);
     // Chimney cap (wider ring at top)
-    const capGeo = new THREE.CylinderGeometry(r * 1.1, r * 1.1, h * 0.08, 6);
+    const capGeo = new THREE.CylinderGeometry(r * 1.1, r * 1.1, h * 0.08, 12);
     const cap = new THREE.Mesh(capGeo, this._chimneyMat);
     cap.position.set(x, baseY + h * 1.0, z);
     g.add(cap);
     // Dark interior
-    const innerGeo = new THREE.CylinderGeometry(r * 0.6, r * 0.6, 0.02, 6);
+    const innerGeo = new THREE.CylinderGeometry(r * 0.6, r * 0.6, 0.02, 12);
     const inner = new THREE.Mesh(innerGeo, new THREE.MeshBasicMaterial({ color: 0x111111 }));
     inner.position.set(x, baseY + h * 1.01, z);
     g.add(inner);
@@ -2133,7 +2133,7 @@ export class SettlersRenderer {
       for (let row = 0; row < 5; row++) {
         const ringY = towerH * (0.1 + row * 0.18);
         const ringR = towerR * (1.05 - row * 0.03);
-        const ringGeo = new THREE.TorusGeometry(ringR, 0.015, 4, 12);
+        const ringGeo = new THREE.TorusGeometry(ringR, 0.015, 10, 12);
         const ring = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ color: 0x777770, roughness: 0.95 }));
         ring.position.y = ringY;
         ring.rotation.x = Math.PI * 0.5;
@@ -2157,7 +2157,7 @@ export class SettlersRenderer {
       }
 
       // Walkway ring at top
-      const walkwayGeo = new THREE.TorusGeometry(towerR * 0.92, towerR * 0.12, 4, 12);
+      const walkwayGeo = new THREE.TorusGeometry(towerR * 0.92, towerR * 0.12, 10, 12);
       const walkway = new THREE.Mesh(walkwayGeo, this._stoneMat.clone());
       (walkway.material as THREE.MeshStandardMaterial).transparent = true;
       walkway.position.y = towerH;
@@ -2650,7 +2650,7 @@ export class SettlersRenderer {
       g.add(barrel);
       // Barrel hoops
       for (let h2 = 0; h2 < 2; h2++) {
-        const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.005, 4, 8), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+        const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.005, 10, 8), new THREE.MeshStandardMaterial({ color: 0x444444 }));
         hoop.position.set(fw * 0.42, 0.03 + h2 * 0.06, fh * 0.2);
         hoop.rotation.x = Math.PI * 0.5;
         g.add(hoop);
@@ -2907,7 +2907,7 @@ export class SettlersRenderer {
         g.add(skin);
         // Bow
         const bowMat = new THREE.MeshStandardMaterial({ color: woodCol, roughness: 0.85 });
-        const bow = new THREE.Mesh(new THREE.TorusGeometry(fw * 0.08, 0.008, 4, 8, Math.PI * 1.2), bowMat);
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(fw * 0.08, 0.008, 10, 8, Math.PI * 1.2), bowMat);
         bow.position.set(-fw * 0.32, fw * 0.22, fh * 0.32);
         bow.rotation.z = 0.3;
         g.add(bow);
@@ -3102,7 +3102,7 @@ export class SettlersRenderer {
           g.add(barrel);
           // Barrel hoops
           for (let h2 = 0; h2 < 2; h2++) {
-            const hoop = new THREE.Mesh(new THREE.TorusGeometry(fw * 0.068, 0.005, 4, 8),
+            const hoop = new THREE.Mesh(new THREE.TorusGeometry(fw * 0.068, 0.005, 10, 8),
               new THREE.MeshStandardMaterial({ color: 0x444444 }));
             hoop.position.set(fw * (0.32 + b * 0.15), fw * (0.03 + h2 * 0.06), -fh * 0.25);
             hoop.rotation.x = Math.PI * 0.5;
@@ -3111,7 +3111,7 @@ export class SettlersRenderer {
         }
         // Tankard on bench
         const mugMat = new THREE.MeshStandardMaterial({ color: 0xaa8844, roughness: 0.8 });
-        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.013, 0.04, 6), mugMat);
+        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.013, 0.04, 12), mugMat);
         mug.position.set(-fw * 0.35, fw * 0.14, fh * 0.38);
         g.add(mug);
         // Steam from vat (semi-transparent wisps above barrels)
@@ -3228,7 +3228,7 @@ export class SettlersRenderer {
           g.add(sword);
         } else {
           // Shield on wall
-          const shieldGeo = new THREE.CylinderGeometry(fw * 0.06, fw * 0.06, 0.01, 6);
+          const shieldGeo = new THREE.CylinderGeometry(fw * 0.06, fw * 0.06, 0.01, 12);
           const shieldMat = new THREE.MeshStandardMaterial({ color: 0x886633, metalness: 0.2 });
           const shield = new THREE.Mesh(shieldGeo, shieldMat);
           shield.rotation.x = Math.PI * 0.5;
@@ -3745,7 +3745,7 @@ export class SettlersRenderer {
     // ===================================================================
     // ALL ROADS: Edge grass/weeds - small green cones along outer edges
     // ===================================================================
-    const grassGeo = new THREE.ConeGeometry(0.04, 0.12, 4);
+    const grassGeo = new THREE.ConeGeometry(0.04, 0.12, 10);
     const grassMat = new THREE.MeshStandardMaterial({ color: 0x4a8a2a, roughness: 0.9 });
     const grassSpacing = SB.TILE_SIZE * 2; // every ~2 tiles
     let grassCount = 0;
@@ -4016,9 +4016,9 @@ export class SettlersRenderer {
       group.add(centerMesh);
 
       // Milestone markers - small stone pillars at start and end
-      const milestoneGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.2, 6);
+      const milestoneGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.2, 12);
       const milestoneMat = new THREE.MeshStandardMaterial({ color: 0xc0c0b8, roughness: 0.7 });
-      const milestoneCapGeo = new THREE.SphereGeometry(0.05, 6, 4);
+      const milestoneCapGeo = new THREE.SphereGeometry(0.05, 12, 10);
       for (const ptIdx of [0, points.length - 1]) {
         const pt = points[ptIdx];
         const { px, pz } = perps[ptIdx];
@@ -4034,7 +4034,7 @@ export class SettlersRenderer {
 
     // For stone and paved roads, add small border stones along edges
     if (quality !== "dirt" && points.length >= 2) {
-      const stoneGeo = new THREE.SphereGeometry(0.06, 4, 3);
+      const stoneGeo = new THREE.SphereGeometry(0.06, 16, 12);
       const stoneMat = new THREE.MeshStandardMaterial({
         color: quality === "paved" ? 0xaaaaaa : 0x888880,
         roughness: 0.9,
@@ -4242,7 +4242,7 @@ export class SettlersRenderer {
     body.add(collar);
 
     // === NECK ===
-    const neckGeo = new THREE.CylinderGeometry(h * 0.055, h * 0.06, h * 0.06, 6);
+    const neckGeo = new THREE.CylinderGeometry(h * 0.055, h * 0.06, h * 0.06, 12);
     const neck = new THREE.Mesh(neckGeo, skinMat);
     neck.position.y = h * 0.74;
     body.add(neck);
@@ -4253,7 +4253,7 @@ export class SettlersRenderer {
     headGroup.position.y = h * 0.86;
 
     // Head (slightly elongated sphere)
-    const headGeo = new THREE.SphereGeometry(h * 0.09, 10, 8);
+    const headGeo = new THREE.SphereGeometry(h * 0.09, 16, 12);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.scale.set(1.0, 1.1, 0.95);
     headGroup.add(head);
@@ -4267,7 +4267,7 @@ export class SettlersRenderer {
 
     // Ears
     for (let side = -1; side <= 1; side += 2) {
-      const earGeo = new THREE.SphereGeometry(h * 0.02, 5, 4);
+      const earGeo = new THREE.SphereGeometry(h * 0.02, 12, 10);
       const ear = new THREE.Mesh(earGeo, skinShadow);
       ear.position.set(side * h * 0.085, -h * 0.01, 0);
       ear.scale.set(0.6, 1.0, 0.8);
@@ -4278,7 +4278,7 @@ export class SettlersRenderer {
     for (let side = -1; side <= 1; side += 2) {
       // Eye white
       const eyeW = new THREE.Mesh(
-        new THREE.SphereGeometry(h * 0.022, 6, 4),
+        new THREE.SphereGeometry(h * 0.022, 12, 10),
         new THREE.MeshBasicMaterial({ color: 0xf8f4f0 }),
       );
       eyeW.position.set(side * h * 0.04, h * 0.01, h * 0.065);
@@ -4286,14 +4286,14 @@ export class SettlersRenderer {
       headGroup.add(eyeW);
       // Iris
       const iris = new THREE.Mesh(
-        new THREE.SphereGeometry(h * 0.012, 5, 4),
+        new THREE.SphereGeometry(h * 0.012, 12, 10),
         new THREE.MeshBasicMaterial({ color: 0x4477aa }),
       );
       iris.position.set(side * h * 0.04, h * 0.01, h * 0.075);
       headGroup.add(iris);
       // Pupil
       const pupil = new THREE.Mesh(
-        new THREE.SphereGeometry(h * 0.006, 4, 3),
+        new THREE.SphereGeometry(h * 0.006, 16, 12),
         new THREE.MeshBasicMaterial({ color: 0x111111 }),
       );
       pupil.position.set(side * h * 0.04, h * 0.01, h * 0.08);
@@ -4307,7 +4307,7 @@ export class SettlersRenderer {
     }
 
     // Nose (small wedge)
-    const noseGeo = new THREE.ConeGeometry(h * 0.015, h * 0.03, 4);
+    const noseGeo = new THREE.ConeGeometry(h * 0.015, h * 0.03, 10);
     const nose = new THREE.Mesh(noseGeo, skinShadow);
     nose.position.set(0, -h * 0.005, h * 0.085);
     nose.rotation.x = Math.PI * 0.5;
@@ -4339,7 +4339,7 @@ export class SettlersRenderer {
     brim.rotation.x = 0.05; // slight forward droop
     headGroup.add(brim);
     // Hat band (ribbon)
-    const bandGeo = new THREE.TorusGeometry(h * 0.085, h * 0.01, 4, 12);
+    const bandGeo = new THREE.TorusGeometry(h * 0.085, h * 0.01, 10, 12);
     const band = new THREE.Mesh(bandGeo, new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.8 }));
     band.position.y = h * 0.1;
     band.rotation.x = Math.PI * 0.5;
@@ -4349,7 +4349,7 @@ export class SettlersRenderer {
 
     // === SHOULDERS (round pads) ===
     for (let side = -1; side <= 1; side += 2) {
-      const shoulderGeo = new THREE.SphereGeometry(h * 0.06, 6, 5);
+      const shoulderGeo = new THREE.SphereGeometry(h * 0.06, 12, 10);
       const shoulder = new THREE.Mesh(shoulderGeo, tunicMat);
       shoulder.position.set(side * h * 0.19, h * 0.68, 0);
       shoulder.scale.set(1.0, 0.7, 0.9);
@@ -4362,24 +4362,24 @@ export class SettlersRenderer {
       armGroup.name = side === -1 ? "leftArm" : "rightArm";
       armGroup.position.set(side * h * 0.22, h * 0.66, 0);
       // Upper arm (sleeve)
-      const uaGeo = new THREE.CylinderGeometry(h * 0.045, h * 0.05, h * 0.16, 6);
+      const uaGeo = new THREE.CylinderGeometry(h * 0.045, h * 0.05, h * 0.16, 12);
       const upperArm = new THREE.Mesh(uaGeo, tunicMat);
       upperArm.position.y = -h * 0.08;
       upperArm.rotation.z = side * 0.12;
       armGroup.add(upperArm);
       // Sleeve cuff
-      const cuffGeo = new THREE.CylinderGeometry(h * 0.048, h * 0.045, h * 0.02, 6);
+      const cuffGeo = new THREE.CylinderGeometry(h * 0.048, h * 0.045, h * 0.02, 12);
       const cuff = new THREE.Mesh(cuffGeo, tunicDkMat);
       cuff.position.y = -h * 0.16;
       armGroup.add(cuff);
       // Forearm (skin)
-      const faGeo = new THREE.CylinderGeometry(h * 0.032, h * 0.04, h * 0.14, 6);
+      const faGeo = new THREE.CylinderGeometry(h * 0.032, h * 0.04, h * 0.14, 12);
       const forearm = new THREE.Mesh(faGeo, skinMat);
       forearm.position.y = -h * 0.24;
       forearm.rotation.z = side * 0.08;
       armGroup.add(forearm);
       // Wrist
-      const wristGeo = new THREE.SphereGeometry(h * 0.025, 5, 4);
+      const wristGeo = new THREE.SphereGeometry(h * 0.025, 12, 10);
       const wrist = new THREE.Mesh(wristGeo, skinMat);
       wrist.position.y = -h * 0.31;
       armGroup.add(wrist);
@@ -4389,7 +4389,7 @@ export class SettlersRenderer {
       hand.position.y = -h * 0.34;
       armGroup.add(hand);
       // Thumb
-      const thumbGeo = new THREE.SphereGeometry(h * 0.012, 4, 3);
+      const thumbGeo = new THREE.SphereGeometry(h * 0.012, 16, 12);
       const thumb = new THREE.Mesh(thumbGeo, skinMat);
       thumb.position.set(side * h * 0.025, -h * 0.33, h * 0.01);
       armGroup.add(thumb);
@@ -4402,17 +4402,17 @@ export class SettlersRenderer {
       legGroup.name = side === -1 ? "leftLeg" : "rightLeg";
       legGroup.position.set(side * h * 0.08, h * 0.32, 0);
       // Thigh
-      const thighGeo = new THREE.CylinderGeometry(h * 0.055, h * 0.05, h * 0.16, 6);
+      const thighGeo = new THREE.CylinderGeometry(h * 0.055, h * 0.05, h * 0.16, 12);
       const thigh = new THREE.Mesh(thighGeo, pantMat);
       thigh.position.y = -h * 0.04;
       legGroup.add(thigh);
       // Knee joint
-      const kneeGeo = new THREE.SphereGeometry(h * 0.04, 5, 4);
+      const kneeGeo = new THREE.SphereGeometry(h * 0.04, 12, 10);
       const knee = new THREE.Mesh(kneeGeo, pantMat);
       knee.position.y = -h * 0.12;
       legGroup.add(knee);
       // Shin
-      const shinGeo = new THREE.CylinderGeometry(h * 0.04, h * 0.045, h * 0.14, 6);
+      const shinGeo = new THREE.CylinderGeometry(h * 0.04, h * 0.045, h * 0.14, 12);
       const shin = new THREE.Mesh(shinGeo, pantMat);
       shin.position.y = -h * 0.2;
       legGroup.add(shin);
@@ -4427,7 +4427,7 @@ export class SettlersRenderer {
       sole.position.set(0, -h * 0.35, h * 0.01);
       legGroup.add(sole);
       // Boot cuff (folded leather top)
-      const bootCuffGeo = new THREE.CylinderGeometry(h * 0.048, h * 0.05, h * 0.02, 6);
+      const bootCuffGeo = new THREE.CylinderGeometry(h * 0.048, h * 0.05, h * 0.02, 12);
       const bootCuff = new THREE.Mesh(bootCuffGeo, new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 }));
       bootCuff.position.y = -h * 0.24;
       legGroup.add(bootCuff);
@@ -4458,7 +4458,7 @@ export class SettlersRenderer {
     bundle.scale.set(0.9, 1.1, 0.7);
     body.add(bundle);
     // Bundle tie (rope)
-    const ropeGeo = new THREE.TorusGeometry(h * 0.08, h * 0.005, 4, 8);
+    const ropeGeo = new THREE.TorusGeometry(h * 0.08, h * 0.005, 10, 8);
     const rope = new THREE.Mesh(ropeGeo, new THREE.MeshStandardMaterial({ color: 0x8b7748, roughness: 0.9 }));
     rope.position.set(0, h * 0.55, -h * 0.16);
     rope.rotation.y = Math.PI * 0.5;
@@ -4564,19 +4564,19 @@ export class SettlersRenderer {
     g.add(body);
 
     // Torso
-    const torsoGeo = new THREE.CylinderGeometry(h * 0.14, h * 0.17, h * 0.28, 6);
+    const torsoGeo = new THREE.CylinderGeometry(h * 0.14, h * 0.17, h * 0.28, 12);
     const torso = new THREE.Mesh(torsoGeo, tunicMat);
     torso.position.y = h * 0.55;
     body.add(torso);
 
     // Head
-    const headGeo = new THREE.SphereGeometry(h * 0.08, 8, 6);
+    const headGeo = new THREE.SphereGeometry(h * 0.08, 16, 12);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.position.y = h * 0.82;
     body.add(head);
 
     // Left leg
-    const legGeo = new THREE.CylinderGeometry(h * 0.05, h * 0.045, h * 0.22, 5);
+    const legGeo = new THREE.CylinderGeometry(h * 0.05, h * 0.045, h * 0.22, 10);
     const leftLeg = new THREE.Mesh(legGeo, pantMat);
     leftLeg.name = "leftLeg";
     leftLeg.position.set(-h * 0.07, h * 0.25, 0);
@@ -4770,7 +4770,7 @@ export class SettlersRenderer {
       pauldron.position.set(side * h * 0.26, h * 0.7, 0);
       g.add(pauldron);
       // Pauldron rim
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(h * 0.065, h * 0.008, 4, 8, Math.PI),
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(h * 0.065, h * 0.008, 10, 8, Math.PI),
         armorDkMat);
       rim.position.set(side * h * 0.26, h * 0.67, 0);
       rim.rotation.x = Math.PI * 0.5;
@@ -4910,7 +4910,7 @@ export class SettlersRenderer {
     g.add(boss);
 
     // Shield rim
-    const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(h * 0.13, h * 0.008, 4, 8),
+    const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(h * 0.13, h * 0.008, 10, 8),
       armorDkMat);
     shieldRim.position.set(-h * 0.38, h * 0.5, h * 0.04);
     g.add(shieldRim);
@@ -5131,7 +5131,7 @@ export class SettlersRenderer {
 
     // Bow (held in left hand)
     const bowMat = new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.7 });
-    const bowStave = new THREE.Mesh(new THREE.TorusGeometry(h * 0.2, h * 0.012, 4, 12, Math.PI * 0.85),
+    const bowStave = new THREE.Mesh(new THREE.TorusGeometry(h * 0.2, h * 0.012, 10, 12, Math.PI * 0.85),
       bowMat);
     bowStave.name = "sword"; // reuse animation hook name
     bowStave.position.set(-h * 0.34, h * 0.5, h * 0.08);
