@@ -255,9 +255,151 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(180,20,20,0.35));
   `;
-  // Detailed gargoyle behind the health orb with claws gripping the sides
+  // Gargoyle pixel art behind the health orb (processed from gargoylered.png)
   const hpCreature = document.createElement("div");
   hpCreature.style.cssText = `position:absolute;width:220px;height:220px;top:-35px;left:-35px;pointer-events:none;z-index:-3;`;
+
+  // Load and process the gargoyle image — remove background via hue detection
+  // mpCreature is declared later, so we store ref to update it in the callback
+  let _mpCreatureRef: HTMLDivElement | null = null;
+  const _gargImg = new Image();
+  _gargImg.src = 'src/diablo/gargoylered.png';
+  _gargImg.onload = () => {
+    const mpCreature = _mpCreatureRef;
+    function _rgb2hsl(r: number, g: number, b: number): [number, number, number] {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h = 0, s = 0;
+      const l = (max + min) / 2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+      }
+      return [h * 360, s, l];
+    }
+    function _processGargoyle(sourceImg: HTMLImageElement, isMana: boolean): string {
+      const c = document.createElement('canvas');
+      const ctx = c.getContext('2d', { willReadFrequently: true })!;
+      const w = sourceImg.width, h = sourceImg.height;
+      c.width = w; c.height = h;
+      ctx.drawImage(sourceImg, 0, 0);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+
+      // Classify pixels as background by hue
+      const isBg = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        const r = data[i*4], g = data[i*4+1], b = data[i*4+2];
+        const [hue, sat] = _rgb2hsl(r, g, b);
+        const brightness = (r + g + b) / 3;
+        if (brightness < 30) isBg[i] = 1;
+        else if (hue > 190 && hue < 265 && brightness < 160 && sat > 0.08) isBg[i] = 1;
+        else if (brightness > 210 && sat < 0.15) isBg[i] = 1;
+        else if (hue > 180 && hue < 270 && brightness < 90 && sat > 0.05) isBg[i] = 1;
+      }
+
+      // Flood fill from edges through bg pixels
+      const edgeConn = new Uint8Array(w * h);
+      const queue: number[] = [];
+      for (let x = 0; x < w; x++) {
+        if (isBg[x]) { edgeConn[x] = 1; queue.push(x); }
+        const bI = (h-1)*w+x;
+        if (isBg[bI]) { edgeConn[bI] = 1; queue.push(bI); }
+      }
+      for (let y = 0; y < h; y++) {
+        const lI = y*w;
+        if (isBg[lI]) { edgeConn[lI] = 1; queue.push(lI); }
+        const rI = y*w+(w-1);
+        if (isBg[rI]) { edgeConn[rI] = 1; queue.push(rI); }
+      }
+      let head = 0;
+      while (head < queue.length) {
+        const idx = queue[head++];
+        const x = idx % w, y = (idx - x) / w;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x+dx, ny = y+dy;
+          if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+          const nI = ny*w+nx;
+          if (!edgeConn[nI] && isBg[nI]) { edgeConn[nI] = 1; queue.push(nI); }
+        }
+      }
+
+      // Clean up edge artifacts
+      for (let pass = 0; pass < 2; pass++) {
+        for (let y = 1; y < h-1; y++) for (let x = 1; x < w-1; x++) {
+          const idx = y*w+x;
+          if (edgeConn[idx]) continue;
+          let bgN = 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+            if (!(dx===0&&dy===0) && edgeConn[(y+dy)*w+(x+dx)]) bgN++;
+          if (bgN >= 7) edgeConn[idx] = 1;
+        }
+      }
+
+      // Apply transparency
+      for (let i = 0; i < w*h; i++) if (edgeConn[i]) data[i*4+3] = 0;
+
+      // Soften edges
+      const alpha = new Uint8Array(w*h);
+      for (let i = 0; i < w*h; i++) alpha[i] = data[i*4+3];
+      for (let y = 1; y < h-1; y++) for (let x = 1; x < w-1; x++) {
+        const idx = y*w+x;
+        if (alpha[idx] === 0) continue;
+        let tN = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+          if (!(dx===0&&dy===0) && alpha[(y+dy)*w+(x+dx)]===0) tN++;
+        if (tN >= 3) data[idx*4+3] = Math.floor(data[idx*4+3]*0.5);
+        else if (tN >= 1) data[idx*4+3] = Math.floor(data[idx*4+3]*0.8);
+      }
+
+      // For mana: shift red/warm tones to blue/cool
+      if (isMana) {
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i+3] === 0) continue;
+          const r = data[i], g = data[i+1], b = data[i+2];
+          const [hue] = _rgb2hsl(r, g, b);
+          if (hue < 40 || hue > 330) {
+            data[i]   = Math.min(255, Math.floor(b * 0.6 + 15));
+            data[i+1] = Math.min(255, Math.floor(g * 0.7 + r * 0.1));
+            data[i+2] = Math.min(255, Math.floor(r * 0.85 + 20));
+          } else {
+            data[i]   = Math.floor(r * 0.82);
+            data[i+1] = Math.floor(g * 0.85);
+            data[i+2] = Math.min(255, Math.floor(b * 1.15 + 10));
+          }
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return c.toDataURL('image/png');
+    }
+
+    // Health gargoyle
+    const hpUrl = _processGargoyle(_gargImg, false);
+    hpCreature.innerHTML = '';
+    const hpImg = document.createElement('img');
+    hpImg.src = hpUrl;
+    hpImg.style.cssText = 'width:270px;height:270px;position:absolute;top:-14px;left:-14px;pointer-events:none;image-rendering:pixelated;';
+    hpCreature.appendChild(hpImg);
+    hpCreature.style.cssText = 'position:absolute;width:270px;height:270px;top:-50px;left:-40px;pointer-events:none;z-index:3;';
+
+    // Mana gargoyle
+    if (mpCreature) {
+      const mpUrl = _processGargoyle(_gargImg, true);
+      mpCreature.innerHTML = '';
+      const mpImg = document.createElement('img');
+      mpImg.src = mpUrl;
+      mpImg.style.cssText = 'width:270px;height:270px;position:absolute;top:-14px;left:-14px;pointer-events:none;image-rendering:pixelated;transform:scaleX(-1);';
+      mpCreature.appendChild(mpImg);
+      mpCreature.style.cssText = 'position:absolute;width:270px;height:270px;top:-50px;left:-40px;pointer-events:none;z-index:3;';
+    }
+  };
+
+  // Fallback SVG in case image doesn't load
   hpCreature.innerHTML = `<svg viewBox="0 0 220 220" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="hpGG" cx="50%" cy="48%"><stop offset="0%" stop-color="#18120c"/><stop offset="70%" stop-color="#0e0a06"/><stop offset="100%" stop-color="#060402"/></radialGradient>
@@ -711,9 +853,10 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     display:flex;align-items:center;justify-content:center;
     filter:drop-shadow(0 0 12px rgba(30,30,200,0.35));
   `;
-  // Detailed gargoyle behind the mana orb with claws (blue-tinted)
+  // Detailed gargoyle behind the mana orb (pixel art, processed from same image)
   const mpCreature = document.createElement("div");
   mpCreature.style.cssText = `position:absolute;width:220px;height:220px;top:-35px;left:-35px;pointer-events:none;z-index:-3;`;
+  _mpCreatureRef = mpCreature;
   mpCreature.innerHTML = `<svg viewBox="0 0 220 220" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="mpGG" cx="50%" cy="48%"><stop offset="0%" stop-color="#0c1018"/><stop offset="70%" stop-color="#06080e"/><stop offset="100%" stop-color="#020406"/></radialGradient>
