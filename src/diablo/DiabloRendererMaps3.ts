@@ -2454,10 +2454,13 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     mctx.hemiLight.groundColor.setHex(0x445522);
     const hw = w / 2, hd = d / 2;
 
-    const grassDarkMat = new THREE.MeshStandardMaterial({ color: 0x448822, roughness: 0.85 });
-    const grassLightMat = new THREE.MeshStandardMaterial({ color: 0x66bb44, roughness: 0.85 });
+    const grassDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a7a1e, roughness: 0.88 });
+    const grassMidMat = new THREE.MeshStandardMaterial({ color: 0x4e9930, roughness: 0.85 });
+    const grassLightMat = new THREE.MeshStandardMaterial({ color: 0x66bb44, roughness: 0.82 });
     const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.9 });
-    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.8 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6e, roughness: 0.82, metalness: 0.03 });
+    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x5a5a50, roughness: 0.9, metalness: 0.02 });
+    const stoneLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a8a, roughness: 0.78, metalness: 0.05 });
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 });
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa22, roughness: 0.5, transparent: true, opacity: 0.7, depthWrite: false });
     const flowerColors = [0xff6688, 0xffdd44, 0xcc88ff, 0xff8844, 0x88ddff, 0xffaacc];
@@ -2466,42 +2469,96 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     const hayMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.9 });
     const roofMat = new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.8 });
 
-    // ── Gently rolling hills (flat ground patches for color variation) ──
-    for (let i = 0; i < 25; i++) {
-      const sx = 12 + Math.random() * 20;
-      const sy = 0.06 + Math.random() * 0.08;
-      const sz = 12 + Math.random() * 20;
+    // ── Gently rolling hills (layered ground patches for natural color variation) ──
+    const hillMats = [grassDarkMat, grassMidMat, grassLightMat];
+    for (let i = 0; i < 35; i++) {
+      const sx = 10 + Math.random() * 25;
+      const sy = 0.04 + Math.random() * 0.08;
+      const sz = 10 + Math.random() * 25;
       const hill = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 14, 10),
-        i % 2 === 0 ? grassDarkMat : grassLightMat,
+        new THREE.SphereGeometry(1, 20, 16),
+        hillMats[i % 3],
       );
       hill.scale.set(sx, sy, sz);
-      const hx = (Math.random() - 0.5) * w * 0.9;
-      const hz = (Math.random() - 0.5) * d * 0.9;
-      hill.position.set(hx, getTerrainHeight(hx, hz, 1.4) + sy * 0.3, hz);
+      hill.rotation.y = Math.random() * Math.PI;
+      const hx = (Math.random() - 0.5) * w * 0.95;
+      const hz = (Math.random() - 0.5) * d * 0.95;
+      hill.position.set(hx, getTerrainHeight(hx, hz, 1.4) + sy * 0.25, hz);
+      hill.receiveShadow = true;
       mctx.scene.add(hill);
     }
 
-    // ── Wildflower patches ──
-    for (let i = 0; i < 80; i++) {
-      const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-      const flower = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12 + Math.random() * 0.15, 20, 20),
-        new THREE.MeshStandardMaterial({ color, roughness: 0.4 }),
-      );
-      flower.position.set(
-        (Math.random() - 0.5) * w * 0.85,
-        0.15 + Math.random() * 0.1,
-        (Math.random() - 0.5) * d * 0.85,
-      );
-      mctx.scene.add(flower);
-      // Stem
-      const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.015, 0.02, 0.2, 16),
-        new THREE.MeshStandardMaterial({ color: 0x337722 }),
-      );
-      stem.position.set(flower.position.x, 0.05, flower.position.z);
-      mctx.scene.add(stem);
+    // ── Grass clump tufts scattered on ground ──
+    const grassTuftMat = new THREE.MeshStandardMaterial({ color: 0x5aaa35, roughness: 0.8, side: THREE.DoubleSide });
+    const grassTuftDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a8820, roughness: 0.85, side: THREE.DoubleSide });
+    for (let i = 0; i < 200; i++) {
+      const gx = (Math.random() - 0.5) * w * 0.9;
+      const gz = (Math.random() - 0.5) * d * 0.9;
+      const gy = getTerrainHeight(gx, gz, 1.4);
+      const tuftGroup = new THREE.Group();
+      const bladeCount = 4 + Math.floor(Math.random() * 5);
+      for (let b = 0; b < bladeCount; b++) {
+        const bladeH = 0.15 + Math.random() * 0.25;
+        const blade = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.04, bladeH),
+          Math.random() > 0.4 ? grassTuftMat : grassTuftDarkMat,
+        );
+        blade.position.set((Math.random() - 0.5) * 0.12, bladeH * 0.5, (Math.random() - 0.5) * 0.12);
+        blade.rotation.y = Math.random() * Math.PI;
+        blade.rotation.x = (Math.random() - 0.5) * 0.4;
+        tuftGroup.add(blade);
+      }
+      tuftGroup.position.set(gx, gy, gz);
+      mctx.scene.add(tuftGroup);
+    }
+
+    // ── Wildflower patches (clustered, with petals and leaves) ──
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0x337722, roughness: 0.8 });
+    const flowerLeafMat = new THREE.MeshStandardMaterial({ color: 0x44882a, roughness: 0.7, side: THREE.DoubleSide });
+    for (let i = 0; i < 30; i++) {
+      // Each patch has several flowers clustered together
+      const patchX = (Math.random() - 0.5) * w * 0.85;
+      const patchZ = (Math.random() - 0.5) * d * 0.85;
+      const clusterSize = 3 + Math.floor(Math.random() * 5);
+      for (let f = 0; f < clusterSize; f++) {
+        const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+        const fx = patchX + (Math.random() - 0.5) * 2;
+        const fz = patchZ + (Math.random() - 0.5) * 2;
+        const fy = getTerrainHeight(fx, fz, 1.4);
+        const stemH = 0.15 + Math.random() * 0.2;
+        const flowerGrp = new THREE.Group();
+        // Stem
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, stemH, 6), stemMat);
+        stem.position.y = stemH * 0.5;
+        flowerGrp.add(stem);
+        // Flower head — multiple small petals around center
+        const petalCount = 4 + Math.floor(Math.random() * 3);
+        const petalR = 0.04 + Math.random() * 0.03;
+        const flowerMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4 });
+        for (let p = 0; p < petalCount; p++) {
+          const pAngle = (p / petalCount) * Math.PI * 2;
+          const petal = new THREE.Mesh(new THREE.SphereGeometry(petalR, 8, 6), flowerMat);
+          petal.position.set(Math.cos(pAngle) * petalR * 1.2, stemH + 0.02, Math.sin(pAngle) * petalR * 1.2);
+          petal.scale.set(1, 0.5, 1);
+          flowerGrp.add(petal);
+        }
+        // Center
+        const center = new THREE.Mesh(
+          new THREE.SphereGeometry(petalR * 0.6, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0xffdd44, roughness: 0.5 }),
+        );
+        center.position.y = stemH + 0.03;
+        flowerGrp.add(center);
+        // Small leaf on stem
+        if (Math.random() > 0.4) {
+          const lf = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.03), flowerLeafMat);
+          lf.position.set(0.03, stemH * 0.4, 0);
+          lf.rotation.z = -0.4;
+          flowerGrp.add(lf);
+        }
+        flowerGrp.position.set(fx, fy, fz);
+        mctx.scene.add(flowerGrp);
+      }
     }
 
     // ── Deciduous trees (scattered, polished) ──
@@ -3330,86 +3387,162 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     gatePostB.position.set(farmX + Math.cos(gateAngleB) * fenceR, 0.8, farmZ + Math.sin(gateAngleB) * fenceR);
     mctx.scene.add(gatePostB);
 
-    // ── Rock outcrops (polished with moss, layering, and pebbles) ──
-    const rockDarkMat = new THREE.MeshStandardMaterial({ color: 0x6a6a5f, roughness: 0.9 });
-    const rockLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a88, roughness: 0.85, metalness: 0.05 });
-    const rockMossMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.8, transparent: true, opacity: 0.8 });
+    // ── Rock outcrops (realistic with varied geometry, moss, lichen, cracks) ──
+    const rockDarkMat = new THREE.MeshStandardMaterial({ color: 0x5a5a50, roughness: 0.92, metalness: 0.02 });
+    const rockMidMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6e, roughness: 0.88, metalness: 0.03 });
+    const rockLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a88, roughness: 0.82, metalness: 0.05 });
+    const rockMossMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.75, transparent: true, opacity: 0.85 });
+    const lichenMat = new THREE.MeshStandardMaterial({ color: 0x8aaa5a, roughness: 0.7, transparent: true, opacity: 0.6 });
     const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6a, roughness: 0.9 });
+    const pebbleLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a8a, roughness: 0.85 });
+    const crackMat = new THREE.MeshStandardMaterial({ color: 0x3a3a32, roughness: 0.95 });
 
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 18; i++) {
       const rockGroup = new THREE.Group();
-      const cnt = 2 + Math.floor(Math.random() * 3);
-      const rockMats = [stoneMat, rockDarkMat, rockLightMat];
+      const cnt = 2 + Math.floor(Math.random() * 4);
+      const rockMats = [stoneMat, stoneDarkMat, stoneLightMat, rockDarkMat, rockMidMat, rockLightMat];
 
       for (let r = 0; r < cnt; r++) {
-        const rh = 0.5 + Math.random() * 1.8;
+        const rh = 0.4 + Math.random() * 1.8;
+        // Use higher subdivision for smoother, more natural shapes
+        const subdivLevel = rh > 1.0 ? 3 : 2;
         const rock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(rh, 2),
+          new THREE.DodecahedronGeometry(rh, subdivLevel),
           rockMats[Math.floor(Math.random() * rockMats.length)],
         );
-        const yScale = 0.4 + Math.random() * 0.5;
-        rock.scale.set(0.7 + Math.random() * 0.6, yScale, 0.7 + Math.random() * 0.6);
-        rock.position.set((Math.random() - 0.5) * 2, rh * yScale * 0.35, (Math.random() - 0.5) * 2);
-        rock.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
+        // Varied squashing for more natural shapes — wider than tall
+        const yScale = 0.3 + Math.random() * 0.45;
+        const xScale = 0.7 + Math.random() * 0.8;
+        const zScale = 0.7 + Math.random() * 0.8;
+        rock.scale.set(xScale, yScale, zScale);
+        rock.position.set((Math.random() - 0.5) * 2.5, rh * yScale * 0.3, (Math.random() - 0.5) * 2.5);
+        rock.rotation.set(Math.random() * 0.25, Math.random() * Math.PI, Math.random() * 0.25);
         rock.castShadow = true;
+        rock.receiveShadow = true;
         rockGroup.add(rock);
 
-        // Moss patches on top of larger rocks
-        if (rh > 0.8 && Math.random() > 0.3) {
-          const mossR = rh * 0.5 + Math.random() * rh * 0.3;
+        // Moss patches on top (draped over, more organic shape)
+        if (rh > 0.7 && Math.random() > 0.25) {
+          const mossR = rh * 0.45 + Math.random() * rh * 0.25;
           const moss = new THREE.Mesh(
-            new THREE.SphereGeometry(mossR, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.SphereGeometry(mossR, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
             rockMossMat,
           );
-          moss.position.set(rock.position.x, rock.position.y + rh * yScale * 0.3, rock.position.z);
+          moss.position.set(rock.position.x + (Math.random() - 0.5) * 0.3, rock.position.y + rh * yScale * 0.28, rock.position.z + (Math.random() - 0.5) * 0.3);
+          moss.rotation.y = Math.random() * Math.PI;
           rockGroup.add(moss);
+        }
+
+        // Lichen spots (small flat discs on rock faces)
+        if (rh > 0.6 && Math.random() > 0.4) {
+          const lichenCount = 1 + Math.floor(Math.random() * 3);
+          for (let lc = 0; lc < lichenCount; lc++) {
+            const lichen = new THREE.Mesh(
+              new THREE.CircleGeometry(0.08 + Math.random() * 0.12, 8),
+              lichenMat,
+            );
+            const lAngle = Math.random() * Math.PI * 2;
+            lichen.position.set(
+              rock.position.x + Math.cos(lAngle) * rh * xScale * 0.4,
+              rock.position.y + rh * yScale * 0.1 + Math.random() * rh * yScale * 0.3,
+              rock.position.z + Math.sin(lAngle) * rh * zScale * 0.4,
+            );
+            lichen.rotation.set(Math.random() * 0.5, lAngle, 0);
+            lichen.lookAt(rock.position.x, rock.position.y + 2, rock.position.z);
+            rockGroup.add(lichen);
+          }
+        }
+
+        // Crack lines on larger rocks
+        if (rh > 1.0) {
+          const crackCount = 1 + Math.floor(Math.random() * 2);
+          for (let c = 0; c < crackCount; c++) {
+            const crackLen = rh * 0.5 + Math.random() * rh * 0.4;
+            const crack = new THREE.Mesh(
+              new THREE.BoxGeometry(0.015, crackLen, 0.005),
+              crackMat,
+            );
+            const cAngle = Math.random() * Math.PI * 2;
+            crack.position.set(
+              rock.position.x + Math.cos(cAngle) * rh * xScale * 0.35,
+              rock.position.y,
+              rock.position.z + Math.sin(cAngle) * rh * zScale * 0.35,
+            );
+            crack.rotation.set(Math.random() * 0.4, cAngle, Math.random() * 0.3);
+            rockGroup.add(crack);
+          }
         }
 
         // Sedimentary layer lines on larger rocks
         if (rh > 1.0) {
-          const layerCount = 1 + Math.floor(Math.random() * 2);
+          const layerCount = 2 + Math.floor(Math.random() * 2);
           for (let l = 0; l < layerCount; l++) {
-            const layerY = rock.position.y + (l + 0.5) * rh * yScale * 0.3;
+            const layerY = rock.position.y + (l + 0.3) * rh * yScale * 0.25;
             const layer = new THREE.Mesh(
-              new THREE.TorusGeometry(rh * 0.7, 0.02, 4, 16),
+              new THREE.TorusGeometry(rh * 0.65 + l * 0.02, 0.015, 4, 20),
               rockDarkMat,
             );
             layer.position.set(rock.position.x, layerY, rock.position.z);
-            layer.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.2;
+            layer.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 0.15;
+            layer.rotation.z = (Math.random() - 0.5) * 0.1;
             rockGroup.add(layer);
           }
         }
       }
 
-      // Scattered pebbles around base (5-8)
-      const pebbleCount = 5 + Math.floor(Math.random() * 4);
+      // Scattered pebbles around base (6-12, varied sizes and colors)
+      const pebbleCount = 6 + Math.floor(Math.random() * 7);
       for (let p = 0; p < pebbleCount; p++) {
+        const pSize = 0.04 + Math.random() * 0.12;
         const pebble = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.1, 1),
-          pebbleMat,
+          new THREE.DodecahedronGeometry(pSize, pSize > 0.08 ? 2 : 1),
+          Math.random() > 0.5 ? pebbleMat : pebbleLightMat,
         );
-        pebble.position.set(
-          (Math.random() - 0.5) * 3.5,
-          0.03,
-          (Math.random() - 0.5) * 3.5,
-        );
-        pebble.scale.y = 0.5 + Math.random() * 0.3;
+        const pAngle = Math.random() * Math.PI * 2;
+        const pDist = 1 + Math.random() * 2.5;
+        pebble.position.set(Math.cos(pAngle) * pDist, pSize * 0.3, Math.sin(pAngle) * pDist);
+        pebble.scale.y = 0.35 + Math.random() * 0.3;
+        pebble.rotation.y = Math.random() * Math.PI;
         rockGroup.add(pebble);
       }
 
+      // Small plants growing from cracks at base
+      if (Math.random() > 0.4) {
+        const plantCount = 1 + Math.floor(Math.random() * 3);
+        for (let pl = 0; pl < plantCount; pl++) {
+          const plAngle = Math.random() * Math.PI * 2;
+          const plDist = 0.5 + Math.random() * 1.0;
+          const plantGroup = new THREE.Group();
+          const blades = 3 + Math.floor(Math.random() * 3);
+          for (let b = 0; b < blades; b++) {
+            const bladeH = 0.15 + Math.random() * 0.2;
+            const blade = new THREE.Mesh(
+              new THREE.PlaneGeometry(0.04, bladeH),
+              grassTuftMat,
+            );
+            blade.position.set((Math.random() - 0.5) * 0.08, bladeH * 0.5, (Math.random() - 0.5) * 0.08);
+            blade.rotation.y = Math.random() * Math.PI;
+            blade.rotation.x = (Math.random() - 0.5) * 0.5;
+            plantGroup.add(blade);
+          }
+          plantGroup.position.set(Math.cos(plAngle) * plDist, 0, Math.sin(plAngle) * plDist);
+          rockGroup.add(plantGroup);
+        }
+      }
+
       // Ground shadow disc
-      const shadowR = cnt * 0.8 + 0.5;
+      const shadowR = cnt * 0.9 + 0.6;
       const shadow = new THREE.Mesh(
-        new THREE.CircleGeometry(shadowR, 12),
-        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12, depthWrite: false }),
+        new THREE.CircleGeometry(shadowR, 16),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.1, depthWrite: false }),
       );
       shadow.rotation.x = -Math.PI / 2;
       shadow.position.y = 0.01;
       rockGroup.add(shadow);
 
-      const roX = (Math.random() - 0.5) * w * 0.85;
-      const roZ = (Math.random() - 0.5) * d * 0.85;
-      rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4) - 0.15, roZ);
+      const roX = (Math.random() - 0.5) * w * 0.88;
+      const roZ = (Math.random() - 0.5) * d * 0.88;
+      rockGroup.position.set(roX, getTerrainHeight(roX, roZ, 1.4) - 0.12, roZ);
       mctx.scene.add(rockGroup);
     }
 

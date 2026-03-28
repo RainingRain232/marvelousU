@@ -1318,13 +1318,8 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
       <linearGradient id="fhBone" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#d4c8a8"/><stop offset="100%" stop-color="#a89870"/></linearGradient>
       <linearGradient id="fhDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8a7a60"/><stop offset="100%" stop-color="#5a4a30"/></linearGradient>
     </defs>
-    <!-- Mounting bracket (attaches to skill bar) -->
-    <rect x="58" y="30" width="18" height="50" rx="3" fill="#3a2a1a" stroke="#5a4a2a" stroke-width="1"/>
-    <rect x="60" y="35" width="4" height="8" rx="1" fill="#8b6914" opacity="0.6"/>
-    <rect x="60" y="50" width="4" height="8" rx="1" fill="#8b6914" opacity="0.6"/>
-    <rect x="60" y="65" width="4" height="8" rx="1" fill="#8b6914" opacity="0.6"/>
     <!-- Arm bone (horizontal spar) -->
-    <path d="M 22 52 Q 40 50 58 48 Q 62 48 62 52 Q 62 56 58 56 Q 40 56 22 54 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.8"/>
+    <path d="M 22 52 Q 40 50 50 48 Q 54 48 54 52 Q 54 56 50 56 Q 40 56 22 54 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.8"/>
     <!-- Shoulder joint -->
     <circle cx="22" cy="53" r="4" fill="#c4b898" stroke="#8a7a60" stroke-width="0.8"/>
     <!-- Sternum (breastbone) -->
