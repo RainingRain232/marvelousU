@@ -1570,9 +1570,17 @@ export function showInventory(ctx: ScreenContext): void {
             cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
             text-shadow:0 1px 3px rgba(0,0,0,0.5);
           ">STASH</button>
+          <button id="inv-socket-rune-btn" style="
+            padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
+            background:linear-gradient(180deg,rgba(40,20,50,0.95),rgba(25,10,35,0.95));
+            border:2px solid #7a4a8a;border-radius:8px;color:#bb88dd;
+            cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            text-shadow:0 1px 3px rgba(0,0,0,0.5);
+          ">SOCKET RUNE</button>
           <div style="color:#888;font-size:13px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
         </div>
         <div style="margin-top:10px;color:#666;font-size:13px;text-align:center;display:flex;gap:20px;justify-content:center;flex-wrap:wrap;">
+          <span><span style="color:#bb88dd;">Socket Rune:</span> Left-click a rune, hover a socketed item, press <span style="display:inline-block;background:rgba(40,20,50,0.8);border:1px solid #7a4a8a;border-radius:4px;padding:1px 8px;font-family:monospace;color:#bb88dd;">SOCKET RUNE</span></span>
           <span>Hover item + <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:1px 8px;font-family:monospace;color:#ff8844;">Y</span> to destroy</span>
           <span>Press <span style="color:#aaa;">I</span> or <span style="color:#aaa;">Escape</span> to close</span>
         </div>
@@ -1722,6 +1730,27 @@ export function showInventory(ctx: ScreenContext): void {
     });
     stashBtn.addEventListener("click", () => {
       ctx.showStash();
+    });
+  }
+
+  // Socket Rune button (not yet functional — placeholder)
+  const socketBtn = ctx.menuEl.querySelector("#inv-socket-rune-btn") as HTMLButtonElement | null;
+  if (socketBtn) {
+    socketBtn.addEventListener("mouseenter", () => {
+      socketBtn.style.borderColor = "#bb88dd";
+      socketBtn.style.boxShadow = "0 0 15px rgba(187,136,221,0.3)";
+      socketBtn.style.background = "rgba(50,20,60,0.95)";
+    });
+    socketBtn.addEventListener("mouseleave", () => {
+      socketBtn.style.borderColor = "#7a4a8a";
+      socketBtn.style.boxShadow = "none";
+      socketBtn.style.background = "rgba(40,20,50,0.9)";
+    });
+    socketBtn.addEventListener("click", () => {
+      // TODO: implement rune socketing
+      // Flow: player left-clicks a rune in inventory (selecting it),
+      // hovers over a socketed item, then clicks this button to insert
+      // the rune into the first empty socket.
     });
   }
 }
