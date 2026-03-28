@@ -212,15 +212,55 @@ export function updateEnemies(s: EchoState, dt: number): void {
     e.x = clamp(e.x, e.radius, s.arenaW - e.radius);
     e.y = clamp(e.y, e.radius, s.arenaH - e.radius);
 
-    // Attack (shoot at target)
+    // Attack (shoot at target — bosses have special patterns)
     e.attackTimer -= dt;
     if (e.attackTimer <= 0 && td < 250) {
-      e.attackTimer = B.ENEMY_ATTACK_INTERVAL;
-      s.bullets.push({
-        x: e.x, y: e.y,
-        vx: Math.cos(a) * B.ENEMY_PROJ_SPEED, vy: Math.sin(a) * B.ENEMY_PROJ_SPEED,
-        radius: 3, damage: 1, color: B.COLOR_ENEMY_PROJ, life: 3, fromPlayer: false, fromGhost: false,
-      });
+      if (e.isBoss) {
+        // Boss attack patterns: cycle between 3 patterns
+        const pattern = Math.floor(s.time * 0.5) % 3;
+        e.attackTimer = B.BOSS_ATTACK_INTERVAL;
+        if (pattern === 0) {
+          // Spiral burst: 8 bullets in a ring
+          for (let bi = 0; bi < 8; bi++) {
+            const ba = (bi / 8) * Math.PI * 2 + s.time * 2;
+            s.bullets.push({
+              x: e.x, y: e.y,
+              vx: Math.cos(ba) * B.BOSS_PROJ_SPEED, vy: Math.sin(ba) * B.BOSS_PROJ_SPEED,
+              radius: 4, damage: 1, color: B.BOSS_COLOR, life: 2.5, fromPlayer: false, fromGhost: false,
+            });
+          }
+          spawnParticles(s, e.x, e.y, 6, B.BOSS_COLOR);
+        } else if (pattern === 1) {
+          // Triple shot: 3 bullets in a spread toward player
+          for (let bi = -1; bi <= 1; bi++) {
+            const spreadA = a + bi * 0.35;
+            s.bullets.push({
+              x: e.x, y: e.y,
+              vx: Math.cos(spreadA) * B.BOSS_PROJ_SPEED * 1.2, vy: Math.sin(spreadA) * B.BOSS_PROJ_SPEED * 1.2,
+              radius: 4, damage: 1, color: B.BOSS_COLOR, life: 2, fromPlayer: false, fromGhost: false,
+            });
+          }
+        } else {
+          // Shotgun: 5 bullets in tight cone
+          for (let bi = 0; bi < 5; bi++) {
+            const spreadA = a + (bi - 2) * 0.15;
+            const speedVar = B.BOSS_PROJ_SPEED * (0.8 + Math.random() * 0.4);
+            s.bullets.push({
+              x: e.x, y: e.y,
+              vx: Math.cos(spreadA) * speedVar, vy: Math.sin(spreadA) * speedVar,
+              radius: 3, damage: 1, color: B.BOSS_COLOR, life: 1.8, fromPlayer: false, fromGhost: false,
+            });
+          }
+        }
+      } else if (!e.isRusher) {
+        // Normal enemy: single shot
+        e.attackTimer = B.ENEMY_ATTACK_INTERVAL;
+        s.bullets.push({
+          x: e.x, y: e.y,
+          vx: Math.cos(a) * B.ENEMY_PROJ_SPEED, vy: Math.sin(a) * B.ENEMY_PROJ_SPEED,
+          radius: 3, damage: 1, color: B.COLOR_ENEMY_PROJ, life: 3, fromPlayer: false, fromGhost: false,
+        });
+      }
     }
 
     // Collision with player
@@ -456,6 +496,17 @@ export function applyLoopUpgrade(s: EchoState, choice: number): void {
       s.maxHp = B.PLAYER_HP + s.upgradeMaxHp * B.UPGRADE_MAX_HP;
       s.hp = Math.min(s.maxHp, s.hp + B.UPGRADE_MAX_HP);
       spawnFloatingText(s, s.arenaW / 2, s.arenaH / 2, "+MAX HP", B.COLOR_HP);
+      break;
+    case 4:
+      // Piercing: heal 1 HP on kill (vampiric)
+      s.upgradeMaxHp++; // reuse field — each level = more sustain
+      s.hp = Math.min(s.maxHp, s.hp + 1);
+      spawnFloatingText(s, s.arenaW / 2, s.arenaH / 2, "+VAMPIRIC (heal on kill)", B.COLOR_DANGER);
+      break;
+    case 5:
+      // Ghost power: all ghosts deal +1 damage
+      s.upgradeBulletSize++; // reuse — affects ghost bullets too
+      spawnFloatingText(s, s.arenaW / 2, s.arenaH / 2, "+GHOST POWER", B.COLOR_LOOP);
       break;
   }
   s.screenFlashColor = B.COLOR_LOOP; s.screenFlashTimer = B.FLASH_DURATION;

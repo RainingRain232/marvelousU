@@ -68,7 +68,7 @@ export class EchoGame {
       }
       if (s.phase === EchoPhase.LOOP_COMPLETE) {
         // Upgrade selection
-        if (e.code >= "Digit1" && e.code <= "Digit4") {
+        if (e.code >= "Digit1" && e.code <= "Digit6") {
           applyLoopUpgrade(s, parseInt(e.code.charAt(5)) - 1);
           startNextLoop(s); playLoopStart();
           e.preventDefault(); return;

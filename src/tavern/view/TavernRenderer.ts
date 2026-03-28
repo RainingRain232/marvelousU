@@ -6,6 +6,7 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { TavernState } from "../state/TavernState";
 import { TavernPhase } from "../state/TavernState";
 import { SUIT_COLORS, SUIT_SYMBOLS, VALUE_NAMES, cardScore, TavernConfig, type Card } from "../config/TavernConfig";
+import { cardsRemaining, getCountHint, getTrueCount } from "../systems/CardSystem";
 
 const CW = TavernConfig.CARD_WIDTH;
 const CH = TavernConfig.CARD_HEIGHT;
@@ -126,6 +127,16 @@ export class TavernRenderer {
     // Action buttons
     const btnY = sh * 0.78;
     if (state.phase === TavernPhase.BETTING) {
+      // Card counting hint & deck info
+      const remaining = cardsRemaining(state);
+      const tc = getTrueCount(state);
+      const tcColor = tc >= 1 ? 0x44cc44 : tc <= -1 ? 0xff6644 : 0x888877;
+      this._addText(`Deck: ${remaining} cards | Count: ${tc >= 0 ? "+" : ""}${tc.toFixed(1)}`, cx, btnY - 40, { fontSize: 9, fill: tcColor }, true);
+      this._addText(getCountHint(state), cx, btnY - 26, { fontSize: 8, fill: 0x887766, fontStyle: "italic" }, true);
+      // Streak display
+      if (state.streak >= 2) {
+        this._addText(`\u{1F525} ${state.streak}x Win Streak${state.streak >= 3 ? " — bonus active!" : ""}`, cx, btnY - 54, { fontSize: 9, fill: 0xff8844, fontWeight: "bold" }, true);
+      }
       // Dynamic bet options including all-in
       const minB = Math.min(state.opponent.minBet, state.gold);
       const betOptions = new Set<number>();

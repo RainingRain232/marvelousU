@@ -59,6 +59,12 @@ export interface HuntState {
   // Player danger
   playerHp: number;
   maxPlayerHp: number;
+  playerVX: number;
+  playerVY: number;
+  // Stealth
+  playerStealth: number; // 0-1, reduced by moving, increased by standing still
+  // Trophy
+  trophySpawned: boolean;
   // Environment
   trees: { x: number; y: number; r: number }[];
   wind: number;
@@ -100,6 +106,10 @@ export function createHuntState(bowIndex = 0): HuntState {
     bestStreak: 0,
     playerHp: 5,
     maxPlayerHp: 5,
+    playerVX: 0,
+    playerVY: 0,
+    playerStealth: 1,
+    trophySpawned: false,
     trees: generateTrees(),
     wind: 0,
     windTimer: 5,

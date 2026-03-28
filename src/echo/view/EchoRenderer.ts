@@ -654,7 +654,7 @@ export class EchoRenderer {
       show2(this._stats, sw / 2, sh * 0.35);
       this._stats.text = `${s.ghosts.length} ghost${s.ghosts.length > 1 ? "s" : ""} will fight with you\n\nChoose an upgrade for the next loop:`;
       show2(this._prompt, sw / 2, sh * 0.55);
-      this._prompt.text = `[1] Fire Rate (${s.upgradeFireRate})   [2] Bullet Power (${s.upgradeBulletSize})\n[3] Move Speed (${s.upgradeSpeed})   [4] +Max HP (${s.upgradeMaxHp})\n\nor SPACE to skip`;
+      this._prompt.text = `[1] Fire Rate (${s.upgradeFireRate})   [2] Bullet Power (${s.upgradeBulletSize})\n[3] Move Speed (${s.upgradeSpeed})   [4] +Max HP (${s.upgradeMaxHp})\n[5] Vampiric (heal on kill)   [6] Ghost Power\n\nor SPACE to skip`;
       this._prompt.alpha = 0.7 + 0.3 * Math.sin(s.time * 3);
     }
     if (s.phase === EchoPhase.DEAD) {

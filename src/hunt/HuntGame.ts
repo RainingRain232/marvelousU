@@ -25,6 +25,8 @@ export class HuntGame {
   private _bowIndex = 0;
   private _pauseMenu: Container | null = null;
   private _paused = false;
+  private _keys = new Set<string>();
+  private _keyUpHandler: ((e: KeyboardEvent) => void) | null = null;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -37,6 +39,7 @@ export class HuntGame {
   destroy(): void {
     if (this._tickerCb) { viewManager.app.ticker.remove(this._tickerCb); this._tickerCb = null; }
     if (this._keyHandler) { window.removeEventListener("keydown", this._keyHandler); this._keyHandler = null; }
+    if (this._keyUpHandler) { window.removeEventListener("keyup", this._keyUpHandler); this._keyUpHandler = null; }
     this._removePointers();
     this._renderer.destroy();
     viewManager.removeFromLayer("ui", this._renderer.container);
@@ -102,8 +105,13 @@ export class HuntGame {
         if (this._paused) this._hidePauseMenu(); else this._showPauseMenu();
         return;
       }
+      this._keys.add(e.key.toLowerCase());
+    };
+    this._keyUpHandler = (e: KeyboardEvent) => {
+      this._keys.delete(e.key.toLowerCase());
     };
     window.addEventListener("keydown", this._keyHandler);
+    window.addEventListener("keyup", this._keyUpHandler);
 
     this._tickerCb = (ticker: Ticker) => this._update(ticker.deltaMS / 1000);
     viewManager.app.ticker.add(this._tickerCb);
@@ -111,6 +119,21 @@ export class HuntGame {
 
   private _update(dt: number): void {
     if (this._paused) return;
+    // WASD player movement
+    const moveSpeed = 80;
+    let mvx = 0, mvy = 0;
+    if (this._keys.has("w") || this._keys.has("arrowup")) mvy -= 1;
+    if (this._keys.has("s") || this._keys.has("arrowdown")) mvy += 1;
+    if (this._keys.has("a") || this._keys.has("arrowleft")) mvx -= 1;
+    if (this._keys.has("d") || this._keys.has("arrowright")) mvx += 1;
+    if (mvx !== 0 || mvy !== 0) {
+      const len = Math.sqrt(mvx * mvx + mvy * mvy);
+      this._state.playerVX = (mvx / len) * moveSpeed;
+      this._state.playerVY = (mvy / len) * moveSpeed;
+    } else {
+      this._state.playerVX = 0;
+      this._state.playerVY = 0;
+    }
     updateHunt(this._state, dt);
     this._renderer.draw(this._state, this._sw, this._sh);
 

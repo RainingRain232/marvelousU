@@ -431,6 +431,13 @@ function resolveRound(state: TavernState, result: "win" | "lose" | "push" | "bla
     state.log.push(txt);
   }
 
+  // Streak bonus: consecutive wins beyond threshold earn flat bonus
+  if ((result === "win" || result === "blackjack") && state.streak >= TavernConfig.STREAK_BONUS_THRESHOLD) {
+    const streakBonus = TavernConfig.STREAK_BONUS_GOLD * (state.streak - TavernConfig.STREAK_BONUS_THRESHOLD + 1);
+    payout += streakBonus;
+    state.announcements.push({ text: `\u{1F525} ${state.streak}x Streak! +${streakBonus}g`, color: 0xff8844, timer: 2 });
+  }
+
   state.gold = state.gold - state.currentBet + payout;
   state.totalWinnings += payout - state.currentBet;
   if (state.streak > state.bestStreak) state.bestStreak = state.streak;
@@ -450,4 +457,33 @@ function resolveRound(state: TavernState, result: "win" | "lose" | "push" | "bla
 /** Get number of cards remaining in deck */
 export function cardsRemaining(state: TavernState): number {
   return state.deck.length - state.deckIndex;
+}
+
+/** Hi-Lo running count for card counting: +1 for 2-6, 0 for 7-9, -1 for 10-A */
+export function getRunningCount(state: TavernState): number {
+  let count = 0;
+  for (let i = 0; i < state.deckIndex; i++) {
+    const v = state.deck[i].value;
+    if (v >= 2 && v <= 6) count++;
+    else if (v === 1 || v >= 10) count--;
+  }
+  return count;
+}
+
+/** True count = running count / decks remaining */
+export function getTrueCount(state: TavernState): number {
+  const remaining = cardsRemaining(state);
+  if (remaining <= 0) return 0;
+  const decksLeft = remaining / 52;
+  return decksLeft > 0 ? getRunningCount(state) / decksLeft : 0;
+}
+
+/** Hint based on true count: positive = favorable, negative = unfavorable */
+export function getCountHint(state: TavernState): string {
+  const tc = getTrueCount(state);
+  if (tc >= 3) return "The deck favors you heavily — bet big!";
+  if (tc >= 1) return "The deck is slightly in your favor.";
+  if (tc <= -3) return "The deck favors the dealer — bet cautiously.";
+  if (tc <= -1) return "The deck is slightly against you.";
+  return "The deck is neutral.";
 }

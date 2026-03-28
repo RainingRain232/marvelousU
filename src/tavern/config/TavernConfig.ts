@@ -59,6 +59,8 @@ export const TavernConfig = {
   WIN_PAYOUT: 2.0,
   PUSH_PAYOUT: 1.0, // get bet back
   MAX_ROUNDS: 10,
+  STREAK_BONUS_THRESHOLD: 3, // consecutive wins needed for bonus
+  STREAK_BONUS_GOLD: 10, // flat bonus per win beyond threshold
 } as const;
 
 export function createDeck(): Card[] {

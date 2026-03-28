@@ -185,10 +185,23 @@ export class AlchemistGame {
         return;
       }
       if (this._state.phase !== AlchemistPhase.PLAYING) return;
-      // Power-up keys
+      // Power-up keys (use existing stock)
       if (e.key === "q" || e.key === "Q") useShuffle(this._state);
       if (e.key === "w" || e.key === "W") useTimeExtension(this._state);
       if (e.key === "e" || e.key === "E") useMagnet(this._state);
+      // Buy power-ups with gold (1=shuffle 20g, 2=time 15g, 3=magnet 25g)
+      if (e.key === "1" && this._state.gold >= 20) {
+        this._state.gold -= 20; this._state.shufflesRemaining++;
+        this._state.announcements.push({ text: "Bought Shuffle! (-20g)", color: 0xffaa44, timer: 1.5 });
+      }
+      if (e.key === "2" && this._state.gold >= 15) {
+        this._state.gold -= 15; this._state.timeExtensions++;
+        this._state.announcements.push({ text: "Bought Time +30s! (-15g)", color: 0x44ccff, timer: 1.5 });
+      }
+      if (e.key === "3" && this._state.gold >= 25) {
+        this._state.gold -= 25; this._state.magnetsRemaining++;
+        this._state.announcements.push({ text: "Bought Magnet! (-25g)", color: 0xaa44ff, timer: 1.5 });
+      }
     };
     window.addEventListener("keydown", this._keyHandler);
 
@@ -281,6 +294,33 @@ export class AlchemistGame {
         }
       }
       this._state.curseTimer = Math.max(15, 30 - this._state.tier * 5);
+    }
+
+    // Difficulty events at time milestones
+    const elapsed = this._state.elapsedTime;
+    const limit = this._state.timeLimit;
+    // At 50% time: customer patience decreases
+    if (elapsed > limit * 0.5 && elapsed - dt <= limit * 0.5) {
+      this._state.announcements.push({ text: "\u26A0 Customers grow impatient!", color: 0xff8844, timer: 2.5 });
+    }
+    // At 75% time: rush hour — faster customer spawns
+    if (elapsed > limit * 0.75 && elapsed - dt <= limit * 0.75) {
+      this._state.announcements.push({ text: "\u{1F525} RUSH HOUR! Orders incoming!", color: 0xff4422, timer: 3 });
+    }
+    // Scale customer patience and spawn rate based on elapsed time
+    const timeFraction = Math.min(1, elapsed / limit);
+    const patienceMult = 1 - timeFraction * 0.3; // customers 30% less patient by end
+    for (const cust of this._state.customers) {
+      if (!cust.served && !cust.left) {
+        // Faster patience drain in second half
+        if (timeFraction > 0.5) {
+          cust.patience -= dt * 0.2; // extra drain
+        }
+      }
+    }
+    // Faster spawns in rush hour
+    if (timeFraction > 0.75) {
+      this._state.customerTimer -= dt * 0.5; // 50% faster customer spawns
     }
 
     // Update announcements & particles

@@ -165,6 +165,54 @@ const patternFinale: PatternFn = (c, r, cols, rows) => {
   return BrickType.STRONG;
 };
 
+// ---- Pattern 11: Spiral ---------------------------------------------------
+const patternSpiral: PatternFn = (c, r, cols, rows) => {
+  const cx = (cols - 1) / 2, cy = (rows - 1) / 2;
+  const angle = Math.atan2(r - cy, c - cx);
+  const dist = Math.sqrt((c - cx) ** 2 + (r - cy) ** 2);
+  const spiralVal = (angle + dist * 0.5) % (Math.PI / 2);
+  if (spiralVal < Math.PI / 4) return dist < 2 ? BrickType.GOLD : BrickType.NORMAL;
+  return BrickType.STRONG;
+};
+
+// ---- Pattern 12: Explosive Maze -------------------------------------------
+const patternMaze: PatternFn = (c, r, cols) => {
+  if (c % 3 === 0 && r % 2 === 0) return BrickType.METAL;
+  if (c % 3 === 1 && r % 2 === 1) return BrickType.EXPLOSIVE;
+  if ((c + r) % 4 === 0) return BrickType.GOLD;
+  return Math.random() < 0.6 ? BrickType.NORMAL : null;
+};
+
+// ---- Pattern 13: Bullseye -------------------------------------------------
+const patternBullseye: PatternFn = (c, r, cols, rows) => {
+  const cx = (cols - 1) / 2, cy = (rows - 1) / 2;
+  const dist = Math.sqrt((c - cx) ** 2 + ((r - cy) * 1.5) ** 2);
+  if (dist < 1.5) return BrickType.GOLD;
+  if (dist < 3) return BrickType.EXPLOSIVE;
+  if (dist < 4.5) return BrickType.METAL;
+  if (dist < 6) return BrickType.STRONG;
+  return BrickType.NORMAL;
+};
+
+// ---- Pattern 14: Zigzag Fortress ------------------------------------------
+const patternZigzag: PatternFn = (c, r, cols) => {
+  const shifted = (r % 2 === 0) ? c : cols - 1 - c;
+  if (shifted < 2) return BrickType.METAL;
+  if (r % 3 === 0) return BrickType.STRONG;
+  return BrickType.NORMAL;
+};
+
+// ---- Pattern 15: Endgame Chaos --------------------------------------------
+const patternEndgame: PatternFn = (c, r, cols, rows) => {
+  const cx = (cols - 1) / 2, cy = (rows - 1) / 2;
+  if ((c + r) % 2 === 0) {
+    if (Math.abs(c - cx) < 2 && Math.abs(r - cy) < 2) return BrickType.GOLD;
+    return BrickType.METAL;
+  }
+  if (c === 0 || c === cols - 1) return BrickType.EXPLOSIVE;
+  return BrickType.STRONG;
+};
+
 const PATTERNS: PatternFn[] = [
   patternFullGrid,    // level 1
   patternCheckerboard,// level 2
@@ -176,6 +224,11 @@ const PATTERNS: PatternFn[] = [
   patternBorder,      // level 8
   patternScatter,     // level 9
   patternFinale,      // level 10
+  patternSpiral,      // level 11
+  patternMaze,        // level 12
+  patternBullseye,    // level 13
+  patternZigzag,      // level 14
+  patternEndgame,     // level 15
 ];
 
 export function generateLevel(state: BreakerState, level: number): void {

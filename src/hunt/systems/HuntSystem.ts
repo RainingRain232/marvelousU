@@ -56,13 +56,14 @@ export function shootArrow(state: HuntState): void {
   state.drawProgress = 0;
   state.isDrawing = false;
 
-  // Startle nearby prey
+  // Startle nearby prey (stealth reduces startle radius)
+  const stealthFactor = 1 - state.playerStealth * 0.5; // high stealth = smaller startle radius
   for (const prey of state.prey) {
     if (!prey.alive) continue;
     const dx = prey.x - state.playerX, dy = prey.y - state.playerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const def = PREY[prey.type];
-    if (dist < 200 * def.awareness) {
+    if (dist < 200 * def.awareness * stealthFactor) {
       prey.startled = true;
       prey.startledTimer = HuntConfig.STARTLED_DURATION;
       prey.angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.5; // flee away from player
@@ -92,6 +93,37 @@ function startleNearbyPrey(state: HuntState, ax: number, ay: number): void {
 
 export function updateHunt(state: HuntState, dt: number): void {
   state.elapsedTime += dt;
+
+  // Player movement
+  state.playerX += state.playerVX * dt;
+  state.playerY += state.playerVY * dt;
+  state.playerX = Math.max(10, Math.min(HuntConfig.FIELD_WIDTH - 10, state.playerX));
+  state.playerY = Math.max(10, Math.min(HuntConfig.FIELD_HEIGHT - 10, state.playerY));
+
+  // Stealth: standing still increases stealth, moving decreases it
+  const isMoving = Math.abs(state.playerVX) > 1 || Math.abs(state.playerVY) > 1;
+  if (isMoving) {
+    state.playerStealth = Math.max(0, state.playerStealth - 0.8 * dt);
+  } else {
+    state.playerStealth = Math.min(1, state.playerStealth + 0.3 * dt);
+  }
+
+  // Trophy spawn: rare golden stag appears once per game in round 2+
+  if (!state.trophySpawned && state.round >= 1 && state.elapsedTime > 30 && Math.random() < 0.002) {
+    state.trophySpawned = true;
+    const edge = Math.floor(Math.random() * 4);
+    let tx = 0, ty = 0;
+    if (edge === 0) { tx = Math.random() * HuntConfig.FIELD_WIDTH; ty = -10; }
+    else if (edge === 1) { tx = HuntConfig.FIELD_WIDTH + 10; ty = Math.random() * HuntConfig.FIELD_HEIGHT; }
+    else if (edge === 2) { tx = Math.random() * HuntConfig.FIELD_WIDTH; ty = HuntConfig.FIELD_HEIGHT + 10; }
+    else { tx = -10; ty = Math.random() * HuntConfig.FIELD_HEIGHT; }
+    state.prey.push({
+      id: `prey_${state.preyIdCounter++}`, type: "stag", x: tx, y: ty,
+      hp: 2, speed: 90, angle: Math.atan2(HuntConfig.FIELD_HEIGHT / 2 - ty, HuntConfig.FIELD_WIDTH / 2 - tx),
+      turnTimer: 2, startled: false, startledTimer: 0, alive: true, aggressive: false, attackCooldown: 99,
+    });
+    state.announcements.push({ text: "\u2605 ROYAL STAG SPOTTED! \u2605", color: 0xffd700, timer: 3 });
+  }
 
   // Wind changes — stronger wind in later rounds
   state.windTimer -= dt;
@@ -152,6 +184,46 @@ export function updateHunt(state: HuntState, dt: number): void {
         speed = 0; // momentary stop while looking
         prey.turnTimer = 1.5 + Math.random() * 2;
       }
+    } else if (prey.type === "pheasant" && !prey.startled) {
+      // Pheasants peck at ground, barely moving
+      speed *= 0.3;
+      prey.turnTimer -= dt;
+      if (prey.turnTimer <= 0) { prey.angle += (Math.random() - 0.5) * 3; prey.turnTimer = 0.5 + Math.random() * 1; }
+    } else if (prey.type === "pheasant" && prey.startled) {
+      // Pheasants flush upward (move very fast in random direction)
+      speed = def.fleeSpeed * 2.0 * preySpeedMult;
+      // Emit feather particles
+      if (Math.random() < 0.3) {
+        state.particles.push({
+          x: prey.x + (Math.random() - 0.5) * 8, y: prey.y,
+          vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 20,
+          life: 0.5, maxLife: 0.5, color: 0x886644, size: 2,
+        });
+      }
+    } else if (prey.type === "fox" && !prey.startled) {
+      // Foxes are sneaky: they avoid the player if player stealth is low
+      const dxToPlayer = state.playerX - prey.x, dyToPlayer = state.playerY - prey.y;
+      const distToPlayer = Math.sqrt(dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer);
+      if (distToPlayer < 120 * (1 - state.playerStealth * 0.6)) {
+        // Slink away from player
+        prey.angle = Math.atan2(-dyToPlayer, -dxToPlayer) + (Math.random() - 0.5) * 0.5;
+        speed = def.speed * 1.3;
+      } else {
+        prey.turnTimer -= dt;
+        if (prey.turnTimer <= 0) { prey.angle += (Math.random() - 0.5) * 2; prey.turnTimer = 0.8 + Math.random() * 1.5; }
+      }
+    } else if (prey.type === "stag" && !prey.startled) {
+      // Royal stag: alert, fast direction changes, awareness of player
+      const dxToPlayer = state.playerX - prey.x, dyToPlayer = state.playerY - prey.y;
+      const distToPlayer = Math.sqrt(dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer);
+      if (distToPlayer < 150 * (1 - state.playerStealth * 0.5)) {
+        prey.startled = true;
+        prey.startledTimer = HuntConfig.STARTLED_DURATION * 1.5;
+        prey.angle = Math.atan2(-dyToPlayer, -dxToPlayer);
+        state.announcements.push({ text: "The stag senses you!", color: 0xddaa44, timer: 1.5 });
+      }
+      prey.turnTimer -= dt;
+      if (prey.turnTimer <= 0) { prey.angle += (Math.random() - 0.5) * 1.5; prey.turnTimer = 1.5 + Math.random() * 2; }
     } else if (prey.type === "deer" && prey.startled) {
       // Deer flee faster than base when startled
       speed = def.fleeSpeed * 1.4 * preySpeedMult;

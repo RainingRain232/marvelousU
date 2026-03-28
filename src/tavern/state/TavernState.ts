@@ -39,14 +39,26 @@ export interface TavernState {
   log: string[];
 }
 
+function loadBankroll(): number {
+  try {
+    const saved = parseInt(localStorage.getItem("tavern_bankroll") ?? "0");
+    return saved > 0 ? saved : TavernConfig.STARTING_GOLD;
+  } catch { return TavernConfig.STARTING_GOLD; }
+}
+
+export function saveBankroll(gold: number): void {
+  try { localStorage.setItem("tavern_bankroll", `${Math.max(TavernConfig.STARTING_GOLD, gold)}`); } catch { /* ignore */ }
+}
+
 export function createTavernState(opponentIndex: number): TavernState {
   const opp = OPPONENTS[Math.min(opponentIndex, OPPONENTS.length - 1)];
   const deck = shuffleDeck(createDeck(), Date.now() % 2147483647);
+  const bankroll = loadBankroll();
   return {
     phase: TavernPhase.BETTING,
     deck, deckIndex: 0,
     playerHand: [], dealerHand: [],
-    gold: TavernConfig.STARTING_GOLD,
+    gold: bankroll,
     currentBet: opp.minBet,
     round: 0,
     maxRounds: TavernConfig.MAX_ROUNDS,

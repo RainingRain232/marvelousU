@@ -1500,7 +1500,7 @@ export class EpsilonGame {
       { name: "Orbit Shield", desc: "+1 orbiting spell barrier", icon: "◎", color: "#aa88ff", apply: () => { p.orbitSpells++; } },
       { name: "Vampiric Orbs", desc: "XP orbs also heal 2 HP", icon: "♦", color: "#ff88aa", apply: () => { p.lifeSteal += 0.01; } },
       { name: "Passive Regen", desc: "Regen 1 HP every 2 sec", icon: "♻", color: "#44ff88", apply: () => { this._passiveRegen += 0.5; } },
-      { name: "Thorns Aura", desc: "Enemies take 5 damage when they hit you", icon: "⚘", color: "#ff66cc", apply: () => {} },
+      { name: "Thorns Aura", desc: "Enemies take 5 damage when they hit you", icon: "⚘", color: "#ff66cc", apply: () => { (p as any).thorns = ((p as any).thorns || 0) + 5; } },
     ];
     // pick 3 random
     const shuffled = all.sort(() => Math.random() - 0.5);
@@ -2268,8 +2268,9 @@ export class EpsilonGame {
         this._iFrames = 30;
         this._shakeIntensity = Math.max(this._shakeIntensity, 0.2);
         this._chromaticTarget = 0.05;
-        // thorns: damage enemy back
-        e.hp -= 5; e.hitFlash = 4;
+        // thorns: damage enemy back (scales with upgrade)
+        const thornsDmg = (p as any).thorns || 5;
+        e.hp -= thornsDmg; e.hitFlash = 4;
         if (this._damageFlashDiv) { this._damageFlashDiv.style.opacity = "1"; setTimeout(() => { if (this._damageFlashDiv) this._damageFlashDiv.style.opacity = "0"; }, 200); }
         this._playSound("hurt");
         // knockback enemy

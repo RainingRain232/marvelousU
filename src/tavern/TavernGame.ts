@@ -6,7 +6,7 @@ import { Ticker, Graphics, Container, Text, TextStyle } from "pixi.js";
 import { viewManager } from "@view/ViewManager";
 import { audioManager } from "@audio/AudioManager";
 
-import { createTavernState, TavernPhase } from "./state/TavernState";
+import { createTavernState, TavernPhase, saveBankroll } from "./state/TavernState";
 import type { TavernState } from "./state/TavernState";
 import { OPPONENTS } from "./config/TavernConfig";
 import { placeBet, playerHit, playerStand, playerDoubleDown, playerInsurance, playerSplit } from "./systems/CardSystem";
@@ -155,6 +155,7 @@ export class TavernGame {
     if (this._state.phase === TavernPhase.GAME_OVER) {
       // Auto-show results after delay
       if (!this._state.announcements.some(a => a.text.includes("SESSION"))) {
+        saveBankroll(this._state.gold);
         this._state.announcements.push({ text: "SESSION OVER", color: 0xffaa44, timer: 3 });
         setTimeout(() => this._showResults(), 2000);
       }
@@ -222,8 +223,8 @@ export class TavernGame {
       });
       makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
         clearContent();
-        const t = new Text({ text: "Medieval Blackjack at the tavern.\nGet as close to 21 as possible without going over.\nFace cards are worth 10, Aces are 1 or 11.\nBeat the dealer to win your bet.\nDouble down for bigger risk and reward.", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 } as any) });
-        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
+        const t = new Text({ text: "Medieval Blackjack at the tavern.\nGet as close to 21 as possible without going over.\nFace cards are worth 10, Aces are 1 or 11.\n\nSUIT POWERS (apply automatically):\n\u2694 Swords: +50% win bonus per sword card\n\u{1F6E1} Shields: -30% loss reduction per shield card\n\u{1F451} Crowns: +25% win bonus per crown card\n\u{1F3C6} Chalices: +5g flat bonus per chalice on wins\n\nWin 3+ hands in a row for streak bonuses!\nYour gold carries over between sessions.", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 18 } as any) });
+        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 60);
         contentContainer.addChild(t);
         makeBackBtn();
       });
