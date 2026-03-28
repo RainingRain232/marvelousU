@@ -135,7 +135,7 @@ type Difficulty = keyof typeof DIFFICULTY_SETTINGS;
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-type Phase = "title" | "countdown" | "racing" | "finish" | "results" | "paused";
+type Phase = "title" | "flyover" | "countdown" | "racing" | "finish" | "results" | "paused";
 type PowerUpType = "boost" | "shield" | "lightning" | "oil";
 
 interface TrackPoint {
@@ -961,6 +961,8 @@ export class ChariotGame {
   private _time = 0;
   private _raceTime = 0;
   private _countdownTimer = 0;
+  private _flyoverTimer = 0;
+  private _flyoverDuration = 4.0;
   private _pausedPhase: Phase = "racing";
   private _difficulty: Difficulty = "medium";
 
@@ -1236,7 +1238,7 @@ export class ChariotGame {
           window.dispatchEvent(new Event("chariotExit"));
           return;
         }
-        if (this._phase === "racing" || this._phase === "countdown") {
+        if (this._phase === "racing" || this._phase === "countdown" || this._phase === "flyover") {
           this._pausedPhase = this._phase;
           this._phase = "paused";
           this._pauseMenuIdx = 0;
@@ -1265,8 +1267,13 @@ export class ChariotGame {
         }
       }
 
+      // Skip flyover with Enter/Space
+      if (this._phase === "flyover" && (k === "enter" || k === " ")) {
+        this._flyoverTimer = 0; // will transition to countdown on next frame
+      }
+
       // dismiss tutorial on any key
-      if (this._tutorialOverlay.style.display === "block" && this._phase === "countdown") {
+      if (this._tutorialOverlay.style.display === "block" && (this._phase === "countdown" || this._phase === "flyover")) {
         this._dismissTutorial();
       }
 
@@ -1758,7 +1765,57 @@ export class ChariotGame {
     this._hudLapTimes.textContent = "";
     this._hudBoostVignette.style.opacity = "0";
     this._speedLinesCanvas.style.opacity = "0";
-    this._minimapCtx.clearRect(0, 0, 160, 160);
+
+    // Draw track preview on minimap
+    const previewTrack = generateTrack(def);
+    const ctx = this._minimapCtx;
+    const mw = 200, mh = 200;
+    ctx.clearRect(0, 0, mw, mh);
+    // Background
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 0, mw, mh);
+
+    let pMinX = Infinity, pMaxX = -Infinity, pMinZ = Infinity, pMaxZ = -Infinity;
+    for (const pt of previewTrack.points) {
+      if (pt.pos.x < pMinX) pMinX = pt.pos.x;
+      if (pt.pos.x > pMaxX) pMaxX = pt.pos.x;
+      if (pt.pos.z < pMinZ) pMinZ = pt.pos.z;
+      if (pt.pos.z > pMaxZ) pMaxZ = pt.pos.z;
+    }
+    const pRangeX = pMaxX - pMinX || 1, pRangeZ = pMaxZ - pMinZ || 1;
+    const pScale = Math.min((mw - 30) / pRangeX, (mh - 30) / pRangeZ);
+    const pOffX = (mw - pRangeX * pScale) / 2, pOffZ = (mh - pRangeZ * pScale) / 2;
+
+    // Track outline (thick)
+    ctx.strokeStyle = "rgba(100,80,50,0.5)";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    for (let i = 0; i < previewTrack.points.length; i++) {
+      const px = (previewTrack.points[i].pos.x - pMinX) * pScale + pOffX;
+      const py = (previewTrack.points[i].pos.z - pMinZ) * pScale + pOffZ;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.stroke();
+    // Track center (bright)
+    ctx.strokeStyle = "rgba(218,165,32,0.7)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < previewTrack.points.length; i++) {
+      const px = (previewTrack.points[i].pos.x - pMinX) * pScale + pOffX;
+      const py = (previewTrack.points[i].pos.z - pMinZ) * pScale + pOffZ;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath(); ctx.stroke();
+    // Start marker
+    const s0x = (previewTrack.points[0].pos.x - pMinX) * pScale + pOffX;
+    const s0z = (previewTrack.points[0].pos.z - pMinZ) * pScale + pOffZ;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(s0x - 3, s0z - 3, 6, 6);
+    // Label
+    ctx.fillStyle = "rgba(218,165,32,0.6)";
+    ctx.font = "bold 10px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("TRACK PREVIEW", mw / 2, mh - 5);
   }
 
   // ── race start ─────────────────────────────────────────────────────────────
@@ -1823,10 +1880,10 @@ export class ChariotGame {
     this._loadGhost();
     this._particles = [];
 
-    this._phase = "countdown";
-    this._countdownTimer = 3.5;
-    this._updateHUDCenter("3");
-    this._hudCenter.style.fontSize = "72px";
+    this._phase = "flyover";
+    this._flyoverTimer = this._flyoverDuration;
+    this._updateHUDCenter(this._track.name);
+    this._hudCenter.style.fontSize = "28px";
 
     // show tutorial on first play, opponent taunt after
     if (!this._tutorialShown) {
@@ -1941,12 +1998,12 @@ export class ChariotGame {
 
       rv.push(lc.x, lc.y, lc.z, lr.x, lr.y, lr.z, rr.x, rr.y, rr.z, rcpt.x, rcpt.y, rcpt.z);
 
-      // curb: alternating red/white
+      // curb: alternating red/white — brighter for visibility
       const cs = Math.floor(i / 4) % 2;
-      const cR = cs ? 0.8 : 1.0, cG = cs ? 0.1 : 1.0, cB = cs ? 0.1 : 1.0;
-      // road: subtle stripes
+      const cR = cs ? 0.9 : 1.0, cG = cs ? 0.15 : 0.95, cB = cs ? 0.15 : 0.95;
+      // road: lighter surface with clear stripe pattern
       const rs = Math.floor(i / 8) % 2;
-      const rR = rs ? 0.35 : 0.30, rG = rs ? 0.33 : 0.28, rB = rs ? 0.31 : 0.26;
+      const rR = rs ? 0.45 : 0.38, rG = rs ? 0.42 : 0.36, rB = rs ? 0.40 : 0.34;
 
       rc.push(cR, cG, cB, rR, rG, rB, rR, rG, rB, cR, cG, cB);
 
@@ -1975,11 +2032,11 @@ export class ChariotGame {
     rMesh.receiveShadow = true;
     this._trackMesh.add(rMesh);
 
-    // center line (dashed)
+    // center line (dashed — bright yellow for visibility)
     const centerVerts: number[] = [];
     const centerColors: number[] = [];
     const centerIdx: number[] = [];
-    const LINE_W = 0.15;
+    const LINE_W = 0.22;
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i];
       const isDash = Math.floor(i / 6) % 2 === 0;
@@ -2492,22 +2549,38 @@ export class ChariotGame {
       const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(lateralOff));
       pos.y = POWERUP_FLOAT_HEIGHT;
 
-      const geo = new THREE.OctahedronGeometry(0.6, 0);
+      const geo = new THREE.OctahedronGeometry(0.9, 1);
       const mat = new THREE.MeshLambertMaterial({
         color: POWERUP_COLORS[type], emissive: POWERUP_COLORS[type],
-        emissiveIntensity: 1.5, transparent: true, opacity: 0.85, toneMapped: false,
+        emissiveIntensity: 1.8, transparent: true, opacity: 0.9, toneMapped: false,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.copy(pos); this._scene.add(mesh);
 
-      // add glow ring around pickup
+      // Glow ring on ground (larger)
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(0.8, 1.1, 16),
-        new THREE.MeshStandardMaterial({ color: POWERUP_COLORS[type], emissive: POWERUP_COLORS[type], emissiveIntensity: 0.8, transparent: true, opacity: 0.5, side: THREE.DoubleSide, toneMapped: false })
+        new THREE.RingGeometry(1.2, 1.6, 20),
+        new THREE.MeshStandardMaterial({ color: POWERUP_COLORS[type], emissive: POWERUP_COLORS[type], emissiveIntensity: 1.0, transparent: true, opacity: 0.5, side: THREE.DoubleSide, toneMapped: false })
       );
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = -POWERUP_FLOAT_HEIGHT + 0.05;
       mesh.add(ring);
+
+      // Vertical light beam (visible from far away)
+      const beamGeo = new THREE.CylinderGeometry(0.08, 0.08, 5, 8);
+      const beamMat = new THREE.MeshBasicMaterial({
+        color: POWERUP_COLORS[type], transparent: true, opacity: 0.15, toneMapped: false,
+      });
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.y = 1.5;
+      mesh.add(beam);
+
+      // Outer glow sphere
+      const glowSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5, 12, 10),
+        new THREE.MeshBasicMaterial({ color: POWERUP_COLORS[type], transparent: true, opacity: 0.06, toneMapped: false })
+      );
+      mesh.add(glowSphere);
 
       let dist = 0;
       for (let j = 0; j < i && j < track.points.length - 1; j++) {
@@ -2534,6 +2607,34 @@ export class ChariotGame {
       return;
     }
     if (this._phase === "paused") return;
+
+    // Flyover: camera orbits the track showing the layout
+    if (this._phase === "flyover") {
+      this._flyoverTimer -= dt;
+      const t = 1 - this._flyoverTimer / this._flyoverDuration; // 0→1
+      // Fly along the track at ~1/3 of the way through
+      const trackLen = this._track.points.length;
+      const flyIdx = Math.floor(t * trackLen * 0.8) % trackLen;
+      const flyPt = this._track.points[flyIdx];
+      const lookIdx = (flyIdx + 20) % trackLen;
+      const lookPt = this._track.points[lookIdx];
+      // High-up cinematic camera
+      this._camera.position.set(
+        flyPt.pos.x + flyPt.right.x * 8,
+        flyPt.pos.y + 12,
+        flyPt.pos.z + flyPt.right.z * 8,
+      );
+      this._camera.lookAt(lookPt.pos.x, lookPt.pos.y + 1, lookPt.pos.z);
+      this._renderer.render(this._scene, this._camera);
+      // Transition to countdown
+      if (this._flyoverTimer <= 0) {
+        this._phase = "countdown";
+        this._countdownTimer = 3.5;
+        this._updateHUDCenter("3");
+        this._hudCenter.style.fontSize = "72px";
+      }
+      return;
+    }
 
     if (this._phase === "countdown") {
       const prevNum = Math.ceil(this._countdownTimer);
@@ -2900,6 +3001,19 @@ export class ChariotGame {
     // speed behavior by personality
     const speedMult = personality === "speedster" ? 1.05 : personality === "defensive" ? 0.92 : 1.0;
     if (racer.speed < MAX_SPEED * racer.aiSpeedFactor * speedMult) racer.speed += ACCEL * 0.9 * dt;
+
+    // Rubber-banding: AI adjusts speed based on distance to player
+    const player = this._player;
+    if (player && !player.finished) {
+      const distToPlayer = racer.trackProgress - player.trackProgress;
+      if (distToPlayer > 30) {
+        // AI is far ahead → slow down slightly (let player catch up)
+        racer.speed *= 0.995;
+      } else if (distToPlayer < -40) {
+        // AI is far behind → speed boost to keep race competitive
+        racer.speed = Math.min(MAX_SPEED * 1.1, racer.speed + ACCEL * 0.4 * dt);
+      }
+    }
 
     // brake behavior
     const brakeSensitivity = personality === "speedster" ? 0.7 : personality === "defensive" ? 0.35 : 0.5;
