@@ -5285,3 +5285,217 @@ export function buildWhisperingMarsh(mctx: MapBuildContext, w: number, d: number
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RIVERSIDE VILLAGE — peaceful hamlet with river, cottages, water mill
+// ═══════════════════════════════════════════════════════════════════════════
+export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: number): void {
+    mctx.scene.fog = new THREE.FogExp2(0x99bbaa, 0.006);
+    mctx.applyTerrainColors(0x3a7722, 0x55aa33, 1.2);
+    mctx.dirLight.color.setHex(0xffeedd);
+    mctx.dirLight.intensity = 1.5;
+    mctx.ambientLight.color.setHex(0x446633);
+    mctx.ambientLight.intensity = 0.6;
+    mctx.hemiLight.color.setHex(0xaacc88);
+    mctx.hemiLight.groundColor.setHex(0x445522);
+    const hw = w / 2, hd = d / 2;
+
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.8 });
+    const thatchMat = new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.9 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.75 });
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x3388aa, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6 });
+    const fenceMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa22, roughness: 0.5, transparent: true, opacity: 0.7 });
+    const barkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.9 });
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.95 });
+
+    // ── River (winding through the map) ──
+    const bankMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.92 });
+    const bedMat = new THREE.MeshStandardMaterial({ color: 0x3a5566, roughness: 0.4 });
+    let rx = -hw * 0.4, rz = -hd * 0.5, rAngle = 0.8;
+    for (let seg = 0; seg < 25; seg++) {
+      rAngle += (Math.random() - 0.5) * 0.3;
+      const segLen = 3 + Math.random() * 2;
+      const nx = rx + Math.cos(rAngle) * segLen, nz = rz + Math.sin(rAngle) * segLen;
+      const mx = (rx + nx) / 2, mz = (rz + nz) / 2;
+      const ty = getTerrainHeight(mx, mz, 1.2);
+      const sw = 2.5 + Math.sin(seg * 0.5) * 0.5;
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(sw, segLen + 0.5), waterMat);
+      water.rotation.x = -Math.PI / 2; water.rotation.z = -rAngle + Math.PI / 2;
+      water.position.set(mx, ty + 0.02, mz); mctx.scene.add(water);
+      const bed = new THREE.Mesh(new THREE.PlaneGeometry(sw + 0.6, segLen + 0.6), bedMat);
+      bed.rotation.x = -Math.PI / 2; bed.rotation.z = -rAngle + Math.PI / 2;
+      bed.position.set(mx, ty + 0.01, mz); mctx.scene.add(bed);
+      for (const side of [-1, 1]) {
+        const bOff = (sw / 2 + 0.3) * side;
+        const bank = new THREE.Mesh(new THREE.PlaneGeometry(0.6, segLen), bankMat);
+        bank.rotation.x = -Math.PI / 2; bank.rotation.z = -rAngle + Math.PI / 2;
+        bank.position.set(mx + Math.sin(rAngle) * bOff, ty + 0.015, mz - Math.cos(rAngle) * bOff);
+        mctx.scene.add(bank);
+      }
+      if (Math.random() > 0.6) {
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15, 1), stoneMat);
+        rock.position.set(mx + (Math.random() - 0.5) * sw * 0.5, ty + 0.08, mz + (Math.random() - 0.5) * sw * 0.5);
+        rock.scale.y = 0.5; mctx.scene.add(rock);
+      }
+      rx = nx; rz = nz;
+    }
+
+    // ── Stone bridge over river ──
+    const bX = 0, bZ = 0;
+    const bDeck = new THREE.Mesh(new THREE.BoxGeometry(6, 0.35, 3.5), stoneMat);
+    bDeck.position.set(bX, getTerrainHeight(bX, bZ, 1.2) + 1.0, bZ); mctx.scene.add(bDeck);
+    for (const rz2 of [-1.6, 1.6]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 0.2), stoneMat);
+      rail.position.set(bX, getTerrainHeight(bX, bZ, 1.2) + 1.5, bZ + rz2); mctx.scene.add(rail);
+    }
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.2, 8, 16, Math.PI), stoneMat);
+    arch.rotation.y = Math.PI / 2;
+    arch.position.set(bX, getTerrainHeight(bX, bZ, 1.2) + 0.1, bZ); mctx.scene.add(arch);
+    // Brick lines on bridge
+    for (let row = 0; row < 5; row++) {
+      const bl = new THREE.Mesh(new THREE.BoxGeometry(6.02, 0.02, 0.02), mortarMat);
+      bl.position.set(bX, getTerrainHeight(bX, bZ, 1.2) + 1.2, bZ - 1.2 + row * 0.6);
+      mctx.scene.add(bl);
+    }
+
+    // ── Cottages (8 small houses) ──
+    const cottagePositions: [number, number][] = [
+      [-20, -15], [-12, -20], [15, -18], [22, -10],
+      [-18, 15], [-8, 22], [12, 20], [25, 12],
+    ];
+    const roofColors = [0x884433, 0x664422, 0x553311, 0xaa7744];
+    for (let ci = 0; ci < cottagePositions.length; ci++) {
+      const [cx, cz] = cottagePositions[ci];
+      const cy = getTerrainHeight(cx, cz, 1.2);
+      const ch = 2.5 + Math.random() * 1;
+      const cw = 2.5 + Math.random(), cd = 2 + Math.random();
+      // Walls with mortar
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(cw, ch, cd), wallMat);
+      wall.position.set(cx, cy + ch / 2, cz); wall.castShadow = true; mctx.scene.add(wall);
+      for (let row = 0; row < Math.floor(ch / 0.4); row++) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(cw + 0.02, 0.015, 0.02), mortarMat);
+        m.position.set(cx, cy + 0.2 + row * 0.4, cz + cd / 2 + 0.02); mctx.scene.add(m);
+      }
+      // Thatched roof
+      const roofMat = new THREE.MeshStandardMaterial({ color: roofColors[ci % roofColors.length], roughness: 0.85 });
+      const roofH = 1.2 + Math.random() * 0.5;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(cw, cd) * 0.8, roofH, 4), roofMat);
+      roof.position.set(cx, cy + ch + roofH / 2, cz); roof.rotation.y = Math.PI / 4; mctx.scene.add(roof);
+      // Door
+      const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), new THREE.MeshStandardMaterial({ color: 0x4a3218 }));
+      door.position.set(cx, cy + 0.6, cz + cd / 2 + 0.02); mctx.scene.add(door);
+      // Window
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x88aacc, transparent: true, opacity: 0.5 }));
+      win.position.set(cx + cw * 0.3, cy + ch * 0.6, cz + cd / 2 + 0.02); mctx.scene.add(win);
+      // Chimney
+      if (ci % 2 === 0) {
+        const chim = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1, 0.3), stoneMat);
+        chim.position.set(cx - cw * 0.3, cy + ch + roofH * 0.5, cz); mctx.scene.add(chim);
+      }
+    }
+
+    // ── Water mill ──
+    const wmX = 8, wmZ = -5;
+    const wmY = getTerrainHeight(wmX, wmZ, 1.2);
+    const wmBody = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 3), wallMat);
+    wmBody.position.set(wmX, wmY + 2, wmZ); mctx.scene.add(wmBody);
+    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(3, 2, 4), thatchMat);
+    wmRoof.position.set(wmX, wmY + 5, wmZ); wmRoof.rotation.y = Math.PI / 4; mctx.scene.add(wmRoof);
+    // Water wheel
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 });
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.12, 8, 16), wheelMat);
+    wheel.position.set(wmX + 2.2, wmY + 1.5, wmZ); wheel.rotation.y = Math.PI / 2; mctx.scene.add(wheel);
+    for (let sp = 0; sp < 6; sp++) {
+      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.8, 0.06), wheelMat);
+      spoke.position.set(wmX + 2.2, wmY + 1.5, wmZ);
+      spoke.rotation.set(0, Math.PI / 2, (sp / 6) * Math.PI); mctx.scene.add(spoke);
+    }
+    // Mortar on mill
+    for (let row = 0; row < 6; row++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(4.02, 0.015, 0.02), mortarMat);
+      m.position.set(wmX, wmY + 0.5 + row * 0.65, wmZ + 1.52); mctx.scene.add(m);
+    }
+
+    // ── Trees (20) ──
+    for (let i = 0; i < 20; i++) {
+      const tx = (Math.random() - 0.5) * w * 0.85, tz = (Math.random() - 0.5) * d * 0.85;
+      const tH = 3 + Math.random() * 3;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, tH, 8), barkMat);
+      trunk.position.set(tx, getTerrainHeight(tx, tz, 1.2) + tH / 2, tz); mctx.scene.add(trunk);
+      const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.5 + Math.random(), 10, 8), leafMat);
+      canopy.position.set(tx, getTerrainHeight(tx, tz, 1.2) + tH + 0.5, tz); mctx.scene.add(canopy);
+    }
+
+    // ── Fences (6 runs) ──
+    for (let fi = 0; fi < 6; fi++) {
+      const fGroup = new THREE.Group();
+      const fLen = 5 + Math.floor(Math.random() * 5);
+      for (let p = 0; p < fLen; p++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.8, 6), fenceMat);
+        post.position.set(p * 1.2, 0.4, 0); fGroup.add(post);
+        if (p < fLen - 1) {
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.04), fenceMat);
+          rail.position.set(p * 1.2 + 0.6, 0.6, 0); fGroup.add(rail);
+          const rail2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.04), fenceMat);
+          rail2.position.set(p * 1.2 + 0.6, 0.35, 0); fGroup.add(rail2);
+        }
+      }
+      const fx = (Math.random() - 0.5) * w * 0.6, fz = (Math.random() - 0.5) * d * 0.6;
+      fGroup.position.set(fx, getTerrainHeight(fx, fz, 1.2), fz);
+      fGroup.rotation.y = Math.random() * Math.PI; mctx.scene.add(fGroup);
+    }
+
+    // ── Market stalls (4) ──
+    const stallColors = [0xcc3333, 0x33cc33, 0x3333cc, 0xcccc33];
+    for (let si = 0; si < 4; si++) {
+      const sx = -6 + si * 4, sz = 8;
+      const sy = getTerrainHeight(sx, sz, 1.2);
+      // Posts
+      for (const px of [-0.8, 0.8]) for (const pz of [-0.5, 0.5]) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2, 6), woodMat);
+        p.position.set(sx + px, sy + 1, sz + pz); mctx.scene.add(p);
+      }
+      // Awning
+      const awning = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.2),
+        new THREE.MeshStandardMaterial({ color: stallColors[si], side: THREE.DoubleSide }));
+      awning.position.set(sx, sy + 2, sz); awning.rotation.x = -0.2; mctx.scene.add(awning);
+      // Counter
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.06, 0.8), woodMat);
+      counter.position.set(sx, sy + 0.9, sz); mctx.scene.add(counter);
+    }
+
+    // ── Hay bales ──
+    for (let i = 0; i < 8; i++) {
+      const hx = (Math.random() - 0.5) * w * 0.6, hz = (Math.random() - 0.5) * d * 0.6;
+      const bale = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.6, 10), thatchMat);
+      bale.rotation.z = Math.PI / 2;
+      bale.position.set(hx, getTerrainHeight(hx, hz, 1.2) + 0.4, hz); mctx.scene.add(bale);
+    }
+
+    // ── Wildflowers ──
+    const flowerColors = [0xff6688, 0xffdd44, 0xcc88ff, 0xff8844];
+    for (let i = 0; i < 50; i++) {
+      const fx = (Math.random() - 0.5) * w * 0.8, fz = (Math.random() - 0.5) * d * 0.8;
+      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4),
+        new THREE.MeshStandardMaterial({ color: flowerColors[i % flowerColors.length] }));
+      flower.position.set(fx, getTerrainHeight(fx, fz, 1.2) + 0.15, fz); mctx.scene.add(flower);
+    }
+
+    // ── Well in village center ──
+    const wellY = getTerrainHeight(-3, -3, 1.2);
+    const wellBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.8, 12), stoneMat);
+    wellBase.position.set(-3, wellY + 0.4, -3); mctx.scene.add(wellBase);
+    const wellRoof = new THREE.Mesh(new THREE.ConeGeometry(1, 0.8, 4), thatchMat);
+    wellRoof.position.set(-3, wellY + 2, -3); wellRoof.rotation.y = Math.PI / 4; mctx.scene.add(wellRoof);
+    for (const side of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6), woodMat);
+      post.position.set(-3 + side * 0.6, wellY + 1.25, -3); mctx.scene.add(post);
+    }
+
+    // ── Building colliders ──
+    mctx.buildingColliders = cottagePositions.map(([x, z]) => [x, z, 2, 2] as [number, number, number, number]);
+    mctx.buildingColliders.push([wmX, wmZ, 3, 2.5]); // Mill
+    mctx.buildingColliders.push([-3, -3, 1.2, 1.2]); // Well
+}
+

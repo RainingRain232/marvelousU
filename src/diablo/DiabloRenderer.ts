@@ -32,7 +32,7 @@ import { RARITY_COLORS } from './DiabloTypes';
 import { createEnemyMesh } from './DiabloRendererEnemies';
 import { buildPlayerMesh, PlayerBuildContext } from './DiabloRendererPlayer';
 import { applyTimeOfDay as applyTimeOfDayImpl, TimeOfDayContext } from './DiabloRendererLighting';
-import { MapBuildContext, buildForest, buildElvenVillage, buildNecropolis, buildCamelot, buildVolcanicWastes, buildAbyssalRift, buildDragonsSanctum, buildSunscorchDesert, buildEmeraldGrasslands, buildWhisperingMarsh, buildCrystalCaverns, buildFrozenTundra, buildHauntedCathedral, buildThornwoodThicket, buildClockworkFoundry, buildCrimsonCitadel, buildStormspirePeak, buildShadowRealm, buildPrimordialAbyss, buildMoonlitGrove, buildCoralDepths, buildAncientLibrary, buildJadeTemple, buildAshenBattlefield, buildFungalDepths, buildObsidianFortress, buildCelestialRuins, buildInfernalThrone, buildAstralVoid, buildShatteredColosseum, buildPetrifiedGarden, buildSunkenCitadel, buildWyrmscarCanyon, buildPlaguerotSewers, buildEtherealSanctum, buildIronWastes, buildBlightedThrone, buildChronoLabyrinth, buildEldritchNexus, buildCityRuins, buildCity } from './DiabloRendererMaps';
+import { MapBuildContext, buildForest, buildElvenVillage, buildNecropolis, buildCamelot, buildVolcanicWastes, buildAbyssalRift, buildDragonsSanctum, buildSunscorchDesert, buildEmeraldGrasslands, buildRiversideVillage, buildWhisperingMarsh, buildCrystalCaverns, buildFrozenTundra, buildHauntedCathedral, buildThornwoodThicket, buildClockworkFoundry, buildCrimsonCitadel, buildStormspirePeak, buildShadowRealm, buildPrimordialAbyss, buildMoonlitGrove, buildCoralDepths, buildAncientLibrary, buildJadeTemple, buildAshenBattlefield, buildFungalDepths, buildObsidianFortress, buildCelestialRuins, buildInfernalThrone, buildAstralVoid, buildShatteredColosseum, buildPetrifiedGarden, buildSunkenCitadel, buildWyrmscarCanyon, buildPlaguerotSewers, buildEtherealSanctum, buildIronWastes, buildBlightedThrone, buildChronoLabyrinth, buildEldritchNexus, buildCityRuins, buildCity } from './DiabloRendererMaps';
 
 /** Compute terrain elevation at world (x, z). Amplitude kept moderate for isometric view. */
 export function getTerrainHeight(x: number, z: number, amplitude: number = 1.4): number {
@@ -1179,6 +1179,9 @@ export class DiabloRenderer {
         break;
       case DiabloMapId.EMERALD_GRASSLANDS:
         this._buildEmeraldGrasslands(cfg.width, cfg.depth);
+        break;
+      case DiabloMapId.RIVERSIDE_VILLAGE:
+        this._buildRiversideVillage(cfg.width, cfg.depth);
         break;
       case DiabloMapId.WHISPERING_MARSH:
         this._buildWhisperingMarsh(cfg.width, cfg.depth);
@@ -5185,6 +5188,7 @@ export class DiabloRenderer {
   //  EMERALD GRASSLANDS
   // ────────────────────────────────────────────────────────────────────────
   private _buildEmeraldGrasslands(w: number, d: number): void { buildEmeraldGrasslands(this._mapCtx(), w, d); }
+  private _buildRiversideVillage(w: number, d: number): void { buildRiversideVillage(this._mapCtx(), w, d); }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // WHISPERING MARSH - Swamp / wetland theme

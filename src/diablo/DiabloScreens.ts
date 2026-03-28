@@ -743,6 +743,13 @@ export function showMapSelect(ctx: ScreenContext): void {
       difficulty: "\u2B50",
     },
     {
+      id: DiabloMapId.RIVERSIDE_VILLAGE,
+      icon: "\uD83C\uDFE1",
+      name: "Riverside Village",
+      desc: "A once-peaceful hamlet along the Silverrun River. Bandits and river creatures menace the abandoned cottages.",
+      difficulty: "\u2B50",
+    },
+    {
       id: DiabloMapId.SHATTERED_COLOSSEUM,
       icon: "\uD83C\uDFDF\uFE0F",
       name: "Shattered Colosseum",
