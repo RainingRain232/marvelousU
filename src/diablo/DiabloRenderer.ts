@@ -7125,8 +7125,8 @@ export class DiabloRenderer {
 
     // Clean up destroying props
     for (const dp of this._destroyingProps) {
-      this._disposeObject3D(dp.mesh);
-      this._scene.remove(dp.mesh);
+      this._disposeObject3D(dp.obj);
+      this._scene.remove(dp.obj);
     }
     this._destroyingProps = [];
 
@@ -7147,8 +7147,8 @@ export class DiabloRenderer {
 
     // Clean up ambient motes
     for (const mote of this._ambientMotes) {
-      this._scene.remove(mote);
-      if (mote.material) (mote.material as THREE.Material).dispose();
+      this._scene.remove(mote.mesh);
+      if (mote.mesh.material) (mote.mesh.material as THREE.Material).dispose();
     }
     this._ambientMotes = [];
 

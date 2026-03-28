@@ -7904,11 +7904,6 @@ export class EagleFlightRenderer {
     });
     this._scene.clear();
 
-    if (this._composer) {
-      this._composer.renderTarget1.dispose();
-      this._composer.renderTarget2.dispose();
-    }
-
     this._renderer.dispose();
     if (this._canvas.parentElement) {
       this._canvas.parentElement.removeChild(this._canvas);

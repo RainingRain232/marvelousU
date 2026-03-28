@@ -640,7 +640,6 @@ export class AscentRenderer {
     }
 
     // --- Ambient particles that vary by altitude ---
-    const zoneIdx = Math.min(Math.floor(state.floor / B.ZONE_FLOORS), B.ZONES.length - 1);
     for (let ai = 0; ai < 15; ai++) {
       const ax = ((ai * 173 + time * 15) % (this._sw + 40)) - 20;
       const ay = ((ai * 291 + time * 20 + ai * ai * 7) % (this._sh + 40)) - 20;
