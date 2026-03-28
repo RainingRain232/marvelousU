@@ -3826,12 +3826,12 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     const poppyMat = new THREE.MeshStandardMaterial({ color: 0xee3322, roughness: 0.3 });
     const bluebellMat = new THREE.MeshStandardMaterial({ color: 0x5566dd, roughness: 0.4 });
     const lavenderMat = new THREE.MeshStandardMaterial({ color: 0x9966cc, roughness: 0.4 });
-    const stemMat = new THREE.MeshStandardMaterial({ color: 0x337722 });
+    const gardenStemMat = new THREE.MeshStandardMaterial({ color: 0x337722 });
     // Daisy clusters
     for (let i = 0; i < 35; i++) {
       const daisy = new THREE.Group();
       const stemH = 0.25 + Math.random() * 0.15;
-      const dStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, stemH, 16), stemMat);
+      const dStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, stemH, 16), gardenStemMat);
       dStem.position.y = stemH / 2;
       daisy.add(dStem);
       // Center
@@ -3856,7 +3856,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     for (let i = 0; i < 30; i++) {
       const poppy = new THREE.Group();
       const stemH = 0.3 + Math.random() * 0.2;
-      const pStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, stemH, 16), stemMat);
+      const pStem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.012, stemH, 16), gardenStemMat);
       pStem.position.y = stemH / 2;
       poppy.add(pStem);
       const poppyHead = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), poppyMat);
@@ -3875,7 +3875,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     for (let i = 0; i < 25; i++) {
       const bell = new THREE.Group();
       const bStemH = 0.2 + Math.random() * 0.15;
-      const bStem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, bStemH, 16), stemMat);
+      const bStem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, bStemH, 16), gardenStemMat);
       bStem.position.y = bStemH / 2;
       bell.add(bStem);
       const bellMat = i % 2 === 0 ? bluebellMat : lavenderMat;
