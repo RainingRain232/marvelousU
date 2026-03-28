@@ -2,6 +2,7 @@ import {
   DiabloState, DiabloEnemy, DiabloItem, DiabloLoot,
   DiabloMapId, GreaterRiftState, DamageType, EnemyState,
   EnemyBehavior, EnemyType, GRLeaderboardEntry,
+  RiftPylonType, RiftPylon,
 } from "./DiabloTypes";
 import { MAP_CONFIGS, ENEMY_DEFS, GREATER_RIFT_CONFIG } from "./DiabloConfig";
 
@@ -42,6 +43,10 @@ export function startGreaterRift(ctx: RiftContext, level: number): void {
   rift.xpMultiplier = 1 + level * cfg.xpScalePerLevel;
   rift.lootBonusMultiplier = 1 + level * cfg.lootScalePerLevel;
 
+  // Reset pylons
+  rift.pylons = [];
+  rift.activePylonBuff = null;
+
   // Start a random map
   const riftableMaps = Object.values(DiabloMapId).filter(
     id => id !== DiabloMapId.CAMELOT && id !== DiabloMapId.CITY && id !== DiabloMapId.CITY_RUINS
@@ -49,6 +54,29 @@ export function startGreaterRift(ctx: RiftContext, level: number): void {
   const randomMap = riftableMaps[Math.floor(Math.random() * riftableMaps.length)];
   ctx.state.currentMap = randomMap;
   ctx.startMap(randomMap);
+
+  // Spawn 1-3 pylons at random positions across the map
+  const mapCfg = MAP_CONFIGS[randomMap];
+  const halfW = mapCfg.width / 2 - 5;
+  const halfD = ((mapCfg as any).depth || mapCfg.width) / 2 - 5;
+  const numPylons = 1 + Math.floor(Math.random() * 3); // 1-3
+  const pylonTypes = Object.values(RiftPylonType);
+  const usedTypes: RiftPylonType[] = [];
+  for (let i = 0; i < numPylons; i++) {
+    let ptype: RiftPylonType;
+    do {
+      ptype = pylonTypes[Math.floor(Math.random() * pylonTypes.length)];
+    } while (usedTypes.includes(ptype) && usedTypes.length < pylonTypes.length);
+    usedTypes.push(ptype);
+    const px = (Math.random() * 2 - 1) * halfW;
+    const pz = (Math.random() * 2 - 1) * halfD;
+    rift.pylons.push({
+      id: `pylon-${ctx.genId()}`,
+      type: ptype,
+      x: px, y: 0, z: pz,
+      consumed: false,
+    });
+  }
 }
 
 export function updateGreaterRift(ctx: RiftContext, dt: number): void {

@@ -144,3 +144,72 @@ export function showSaveRecoveryPrompt(menuEl: HTMLDivElement): void {
     URL.revokeObjectURL(url);
   });
 }
+
+// ──────────────────────────────────────────────────────────────
+//  EXPORT SAVE TO FILE
+// ──────────────────────────────────────────────────────────────
+export function exportSaveToFile(): boolean {
+  const saveData = localStorage.getItem("diablo_save");
+  if (!saveData) return false;
+
+  const blob = new Blob([saveData], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.download = `diablo_save_${timestamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  return true;
+}
+
+// ──────────────────────────────────────────────────────────────
+//  IMPORT SAVE FROM FILE
+// ──────────────────────────────────────────────────────────────
+export function importSaveFromFile(onComplete: (success: boolean, message: string) => void): void {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.style.display = 'none';
+
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) { onComplete(false, 'No file selected'); return; }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = reader.result as string;
+        const data = JSON.parse(text);
+
+        // Basic validation — check for expected save structure
+        if (!data.player || !data.currentMap || data.version === undefined) {
+          onComplete(false, 'Invalid save file: missing required fields');
+          return;
+        }
+
+        // Backup current save before overwriting
+        const current = localStorage.getItem("diablo_save");
+        if (current) {
+          localStorage.setItem("diablo_save_backup", current);
+        }
+
+        localStorage.setItem("diablo_save", text);
+        onComplete(true, 'Save imported successfully! Reloading...');
+
+        // Reload after a brief delay so the user sees the message
+        setTimeout(() => location.reload(), 1500);
+      } catch (e) {
+        onComplete(false, `Failed to parse save file: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+    };
+    reader.onerror = () => {
+      onComplete(false, 'Failed to read file');
+    };
+    reader.readAsText(file);
+  });
+
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+}

@@ -756,6 +756,26 @@ export enum EnemyBehavior {
   FLANKER = 'FLANKER',
 }
 
+export enum EliteAffix {
+  MOLTEN = 'MOLTEN',
+  ARCANE = 'ARCANE',
+  FROZEN = 'FROZEN',
+  JAILER = 'JAILER',
+  VORTEX = 'VORTEX',
+  REFLECT_DAMAGE = 'REFLECT_DAMAGE',
+  THUNDERSTORM = 'THUNDERSTORM',
+}
+
+export const ELITE_AFFIX_COLORS: Record<EliteAffix, number> = {
+  [EliteAffix.MOLTEN]: 0xff4400,
+  [EliteAffix.ARCANE]: 0xaa00ff,
+  [EliteAffix.FROZEN]: 0x00aaff,
+  [EliteAffix.JAILER]: 0xffff00,
+  [EliteAffix.VORTEX]: 0xcc00cc,
+  [EliteAffix.REFLECT_DAMAGE]: 0xff8800,
+  [EliteAffix.THUNDERSTORM]: 0x4488ff,
+};
+
 export enum QuestType {
   KILL_COUNT = 'KILL_COUNT',
   KILL_SPECIFIC = 'KILL_SPECIFIC',
@@ -1340,6 +1360,11 @@ export interface DiabloEnemy {
   healTarget?: string | null;
   flankerAngle?: number;
   staggerTimer?: number;
+  // Elite affix fields
+  isElite?: boolean;
+  eliteAffixes?: EliteAffix[];
+  elitePackId?: string;
+  eliteAffixTimers?: Record<string, number>;
 }
 
 export interface DiabloProjectile {
@@ -1622,6 +1647,23 @@ export interface CraftingState {
 
 // ── Greater Rift System ──────────────────────────────────────
 
+export enum RiftPylonType {
+  POWER = 'POWER',
+  SPEED = 'SPEED',
+  CHANNELING = 'CHANNELING',
+  CONDUIT = 'CONDUIT',
+  SHIELD = 'SHIELD',
+}
+
+export interface RiftPylon {
+  id: string;
+  type: RiftPylonType;
+  x: number;
+  y: number;
+  z: number;
+  consumed: boolean;
+}
+
 export interface GreaterRiftData {
   level: number;
   state: GreaterRiftState;
@@ -1636,6 +1678,8 @@ export interface GreaterRiftData {
   currentKills: number;
   bestRiftLevel: number;
   keystones: number; // rift keystones in inventory
+  pylons: RiftPylon[];
+  activePylonBuff: { type: RiftPylonType; timer: number } | null;
 }
 
 export interface Bounty {
@@ -2253,6 +2297,8 @@ export function createDefaultState(): DiabloState {
       currentKills: 0,
       bestRiftLevel: 0,
       keystones: 3,
+      pylons: [],
+      activePylonBuff: null,
     },
     // Bounty system
     activeBounties: [],

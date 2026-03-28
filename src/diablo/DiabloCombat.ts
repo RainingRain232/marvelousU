@@ -13,6 +13,7 @@ import {
   RuneType, SkillRuneEffect,
   LegendaryEffectDef,
   ItemRarity,
+  EliteAffix, RiftPylonType,
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, MAP_CONFIGS, SKILL_BRANCHES, SKILL_RUNES,
@@ -662,6 +663,14 @@ export function updateProjectiles(ctx: CombatContext, dt: number): void {
           enemy.hp -= finalDmg;
           ctx.addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, "#ffff44");
 
+          // Elite affix: Reflect Damage on projectile hit
+          if (enemy.isElite && enemy.eliteAffixes?.includes(EliteAffix.REFLECT_DAMAGE)) {
+            const reflected = proj.damage * 0.25;
+            ctx.state.player.hp -= reflected;
+            ctx.addFloatingText(ctx.state.player.x, ctx.state.player.y + 2.5, ctx.state.player.z, `${Math.round(reflected)} REFLECTED`, '#ff8800');
+            if (ctx.state.player.hp <= 0) { ctx.state.player.hp = 0; ctx.triggerDeath(); }
+          }
+
           ctx.spawnHitParticles(enemy, proj.damageType);
           ctx.renderer.flashEnemy(enemy.id);
           ctx.renderer.spawnImpactEffect(enemy.x, enemy.y + 0.5, enemy.z, proj.damageType, false);
@@ -803,6 +812,10 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
   const legendaryBonusPct = getPassiveLegendaryBonusDamage(ctx);
   if (legendaryBonusPct > 0) baseDamage *= (1 + legendaryBonusPct / 100);
 
+  // Rift Pylon: Power buff (10x damage)
+  const pylonBuff = ctx.state.greaterRift.activePylonBuff;
+  if (pylonBuff && pylonBuff.type === RiftPylonType.POWER) baseDamage *= 10;
+
   // Crit check
   const isCrit = Math.random() < p.critChance;
   if (isCrit) baseDamage *= p.critDamage;
@@ -815,6 +828,15 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
 
   if (ctx.network.isConnected) {
     ctx.network.sendEnemyDamage(target.id, finalDamage);
+  }
+
+  // Elite affix: Reflect Damage
+  if (target.isElite && target.eliteAffixes?.includes(EliteAffix.REFLECT_DAMAGE)) {
+    const reflected = baseDamage * 0.30;
+    p.hp -= reflected;
+    ctx.addFloatingText(p.x, p.y + 2.5, p.z, `${Math.round(reflected)} REFLECTED`, '#ff8800');
+    ctx.renderer.spawnParticles(ParticleType.SPARK, p.x, p.y + 1, p.z, 4, ctx.state.particles);
+    if (p.hp <= 0) { p.hp = 0; ctx.triggerDeath(); return; }
   }
 
   // Map modifier: Thorns
@@ -945,16 +967,20 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
   } : baseDef;
 
   const cd = p.skillCooldowns.get(skillId) || 0;
-  if (cd > 0) {
+  const channelingBypass = ctx.state.greaterRift.activePylonBuff?.type === RiftPylonType.CHANNELING;
+  if (cd > 0 && !channelingBypass) {
     ctx.mutableState.queuedSkillIdx = idx; // Queue this skill
     return;
   }
   const branchMods = getSkillBranchModifiers(ctx, skillId);
   // Add rune extra projectiles to branch mods
   if (runeEffect?.extraProjectiles) branchMods.extraProjectiles += runeEffect.extraProjectiles;
-  if (p.mana < Math.ceil(def.manaCost * branchMods.manaCostMult)) return;
-
-  p.mana -= Math.ceil(def.manaCost * branchMods.manaCostMult);
+  // Rift Pylon: Channeling (no mana cost, no cooldowns)
+  const channelingActive = ctx.state.greaterRift.activePylonBuff?.type === RiftPylonType.CHANNELING;
+  if (!channelingActive) {
+    if (p.mana < Math.ceil(def.manaCost * branchMods.manaCostMult)) return;
+    p.mana -= Math.ceil(def.manaCost * branchMods.manaCostMult);
+  }
   ctx.playSound('skill');
 
   // Skill screen flash by damage type

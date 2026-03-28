@@ -8,6 +8,7 @@
 import {
   DiabloState, DiabloMapId, VendorType, DiabloVendor,
   GreaterRiftState, MultiplayerState, DamageType,
+  RiftPylonType,
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, ADVANCED_CRAFTING_RECIPES,
@@ -2681,7 +2682,8 @@ export function updateHUD(
     }
     const riftProgressInt = Math.floor(rift.progressBar);
     const riftTimeInt = Math.floor(rift.timeRemaining);
-    if (riftProgressInt !== hs.lastRiftProgress || riftTimeInt !== hs.lastRiftTime || rift.state !== hs.lastRiftState) {
+    const pylonTimer = rift.activePylonBuff ? Math.ceil(rift.activePylonBuff.timer) : -1;
+    if (riftProgressInt !== hs.lastRiftProgress || riftTimeInt !== hs.lastRiftTime || rift.state !== hs.lastRiftState || pylonTimer >= 0) {
       hs.lastRiftProgress = riftProgressInt;
       hs.lastRiftTime = riftTimeInt;
       hs.lastRiftState = rift.state;
@@ -2692,7 +2694,28 @@ export function updateHUD(
       const barFill = '\u2588'.repeat(Math.floor(barWidth / 10));
       const barEmpty = '\u2591'.repeat(20 - Math.floor(barWidth / 10));
       const stateLabel = rift.state === GreaterRiftState.BOSS_SPAWNED ? ' \u26A0 GUARDIAN!' : '';
-      hs.riftHud.innerHTML = `<span style="color:#ff8800">GR ${rift.level}</span> | ${timeStr} | [${barFill}${barEmpty}] ${riftProgressInt}%${stateLabel}`;
+      // Pylon buff indicator
+      let pylonLabel = '';
+      if (rift.activePylonBuff) {
+        const pylonNames: Record<RiftPylonType, string> = {
+          [RiftPylonType.POWER]: '\u2694 POWER',
+          [RiftPylonType.SPEED]: '\u26A1 SPEED',
+          [RiftPylonType.CHANNELING]: '\u2728 CHANNELING',
+          [RiftPylonType.CONDUIT]: '\u26A1 CONDUIT',
+          [RiftPylonType.SHIELD]: '\u26E8 SHIELD',
+        };
+        const pylonColors: Record<RiftPylonType, string> = {
+          [RiftPylonType.POWER]: '#ff4444',
+          [RiftPylonType.SPEED]: '#44ff44',
+          [RiftPylonType.CHANNELING]: '#aa44ff',
+          [RiftPylonType.CONDUIT]: '#4488ff',
+          [RiftPylonType.SHIELD]: '#ffd700',
+        };
+        const buffSecs = Math.ceil(rift.activePylonBuff.timer);
+        const bType = rift.activePylonBuff.type;
+        pylonLabel = ` | <span style="color:${pylonColors[bType]}">${pylonNames[bType]} ${buffSecs}s</span>`;
+      }
+      hs.riftHud.innerHTML = `<span style="color:#ff8800">GR ${rift.level}</span> | ${timeStr} | [${barFill}${barEmpty}] ${riftProgressInt}%${stateLabel}${pylonLabel}`;
     }
     hs.riftHud.style.display = 'block';
     if (rift.timeRemaining < 30) hs.riftHud.style.borderColor = '#ff2222';

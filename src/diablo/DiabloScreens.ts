@@ -3,6 +3,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import davinciBg from './davinci.jpg';
+import { exportSaveToFile, importSaveFromFile } from './DiabloSaveLoad';
 
 /** Shared fullscreen background style with davinci.jpg overlay for all menu/screen panels. */
 const SCREEN_BG = `background:rgba(0,0,0,0.88);background-image:url('${davinciBg}');background-size:cover;background-position:center;background-blend-mode:overlay;`;
@@ -444,6 +445,7 @@ export function showClassSelect(ctx: ScreenContext): void {
        <button id="diablo-cs-inventory" style="${menuBtnStyle}">INVENTORY</button>
        <button id="diablo-cs-character" style="${menuBtnStyle}">CHARACTER</button>`
     : "";
+  const importExportBtns = `<button id="diablo-cs-import" style="${menuBtnStyle}">&#8679; IMPORT SAVE</button>`;
 
   ctx.menuEl.innerHTML = `
     <style>
@@ -551,6 +553,7 @@ export function showClassSelect(ctx: ScreenContext): void {
       ${savedCharHtml}
       <div style="display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;">
         ${saveBtns}
+        ${importExportBtns}
         <button id="diablo-cs-controls" style="${menuBtnStyle}">CONTROLS</button>
         <button id="diablo-cs-exit" style="${exitBtnStyle}">EXIT</button>
       </div>
@@ -637,6 +640,8 @@ export function showClassSelect(ctx: ScreenContext): void {
   csHover("#diablo-cs-character", "#c8a84e", "rgba(200,168,78,0.3)", "rgba(50,40,20,0.95)", "#5a4a2a", "rgba(40,30,15,0.9)");
   // Load button (blue)
   csHover("#diablo-cs-load", "#68f", "rgba(100,100,255,0.3)", "rgba(30,30,50,0.95)", "#44a", "rgba(40,30,15,0.9)");
+  // Import button
+  csHover("#diablo-cs-import", "#c8a84e", "rgba(200,168,78,0.3)", "rgba(50,40,20,0.95)", "#5a4a2a", "rgba(40,30,15,0.9)");
   // Exit button (red)
   csHover("#diablo-cs-exit", "#e44", "rgba(255,80,80,0.3)", "rgba(50,20,20,0.95)", "#a44", "rgba(40,30,15,0.9)");
 
@@ -647,6 +652,21 @@ export function showClassSelect(ctx: ScreenContext): void {
   };
   csClick("#diablo-cs-load", () => ctx.loadGame());
   csClick("#diablo-cs-controls", () => { ctx.setPhaseBeforeOverlay(DiabloPhase.CLASS_SELECT); ctx.state.phase = DiabloPhase.INVENTORY; ctx.showControls(); });
+  csClick("#diablo-cs-import", () => {
+    importSaveFromFile((success, message) => {
+      const msgDiv = document.createElement('div');
+      msgDiv.style.cssText = `position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);z-index:300;
+        background:rgba(10,10,20,0.95);border:2px solid ${success ? '#44ff44' : '#ff4444'};
+        border-radius:8px;padding:16px 28px;color:${success ? '#44ff44' : '#ff4444'};
+        font-family:Georgia,serif;font-size:18px;text-align:center;pointer-events:none;`;
+      msgDiv.textContent = message;
+      document.body.appendChild(msgDiv);
+      if (!success) {
+        setTimeout(() => { msgDiv.style.opacity = '0'; msgDiv.style.transition = 'opacity 0.5s'; }, 2000);
+        setTimeout(() => msgDiv.remove(), 2500);
+      }
+    });
+  });
   csClick("#diablo-cs-exit", () => window.dispatchEvent(new CustomEvent("diabloExit")));
 
   // Stash/Inventory/Character need a loaded save to have meaningful data
@@ -1577,6 +1597,13 @@ export function showInventory(ctx: ScreenContext): void {
             cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
             text-shadow:0 1px 3px rgba(0,0,0,0.5);
           ">SOCKET RUNE</button>
+          <button id="inv-enchant-btn" style="
+            padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
+            background:linear-gradient(180deg,rgba(20,30,50,0.95),rgba(10,18,35,0.95));
+            border:2px solid #4a7aba;border-radius:8px;color:#88bbff;
+            cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
+            text-shadow:0 1px 3px rgba(0,0,0,0.5);
+          ">ENCHANT</button>
           <div style="color:#888;font-size:13px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
         </div>
         <div style="margin-top:10px;color:#666;font-size:13px;text-align:center;display:flex;gap:20px;justify-content:center;flex-wrap:wrap;">
@@ -1753,6 +1780,275 @@ export function showInventory(ctx: ScreenContext): void {
       // the rune into the first empty socket.
     });
   }
+
+  // Enchant button
+  const enchantBtn = ctx.menuEl.querySelector("#inv-enchant-btn") as HTMLButtonElement | null;
+  if (enchantBtn) {
+    enchantBtn.addEventListener("mouseenter", () => {
+      enchantBtn.style.borderColor = "#88bbff";
+      enchantBtn.style.boxShadow = "0 0 15px rgba(136,187,255,0.3)";
+      enchantBtn.style.background = "rgba(30,40,60,0.95)";
+    });
+    enchantBtn.addEventListener("mouseleave", () => {
+      enchantBtn.style.borderColor = "#4a7aba";
+      enchantBtn.style.boxShadow = "none";
+      enchantBtn.style.background = "rgba(20,30,50,0.95)";
+    });
+    enchantBtn.addEventListener("click", () => {
+      showEnchantingModal(ctx);
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  3b. Enchanting Modal (Mystic)
+// ════════════════════════════════════════════════════════════════════════════
+
+const ENCHANT_STAT_NAMES: Record<string, string> = {
+  strength: 'Strength', dexterity: 'Dexterity', intelligence: 'Intelligence',
+  vitality: 'Vitality', armor: 'Armor', critChance: 'Crit Chance',
+  critDamage: 'Crit Damage', attackSpeed: 'Attack Speed', moveSpeed: 'Move Speed',
+  fireResist: 'Fire Resist', iceResist: 'Ice Resist', lightningResist: 'Lightning Resist',
+  poisonResist: 'Poison Resist', lifeSteal: 'Life Steal', manaRegen: 'Mana Regen',
+  bonusDamage: 'Bonus Damage', bonusHealth: 'Bonus Health', bonusMana: 'Bonus Mana',
+};
+
+const ENCHANT_STAT_RANGES: Record<string, { min: number; max: number; perLevel: number }> = {
+  strength: { min: 3, max: 20, perLevel: 0.5 },
+  dexterity: { min: 3, max: 20, perLevel: 0.5 },
+  intelligence: { min: 3, max: 20, perLevel: 0.5 },
+  vitality: { min: 3, max: 20, perLevel: 0.5 },
+  armor: { min: 2, max: 15, perLevel: 0.3 },
+  critChance: { min: 0.01, max: 0.08, perLevel: 0.001 },
+  critDamage: { min: 0.05, max: 0.30, perLevel: 0.005 },
+  attackSpeed: { min: 0.02, max: 0.15, perLevel: 0.002 },
+  moveSpeed: { min: 0.1, max: 1.0, perLevel: 0.02 },
+  fireResist: { min: 2, max: 15, perLevel: 0.2 },
+  iceResist: { min: 2, max: 15, perLevel: 0.2 },
+  lightningResist: { min: 2, max: 15, perLevel: 0.2 },
+  poisonResist: { min: 2, max: 15, perLevel: 0.2 },
+  lifeSteal: { min: 0.01, max: 0.05, perLevel: 0.001 },
+  manaRegen: { min: 1, max: 8, perLevel: 0.1 },
+  bonusDamage: { min: 5, max: 30, perLevel: 0.8 },
+  bonusHealth: { min: 10, max: 60, perLevel: 1.5 },
+  bonusMana: { min: 5, max: 30, perLevel: 0.5 },
+};
+
+function getEnchantCost(itemLevel: number, rarity: ItemRarity): { gold: number; materials: number } {
+  const rarityMult: Record<ItemRarity, number> = {
+    [ItemRarity.COMMON]: 1, [ItemRarity.UNCOMMON]: 1.5, [ItemRarity.RARE]: 2.5,
+    [ItemRarity.EPIC]: 4, [ItemRarity.LEGENDARY]: 8, [ItemRarity.MYTHIC]: 15, [ItemRarity.DIVINE]: 25,
+  };
+  const mult = rarityMult[rarity] || 1;
+  return {
+    gold: Math.floor((50 + itemLevel * 10) * mult),
+    materials: Math.floor((2 + itemLevel * 0.3) * mult),
+  };
+}
+
+function rollEnchantStat(statKey: string, itemLevel: number): number {
+  const range = ENCHANT_STAT_RANGES[statKey];
+  if (!range) return 0;
+  const min = range.min + itemLevel * range.perLevel * 0.3;
+  const max = range.max + itemLevel * range.perLevel;
+  const val = min + Math.random() * (max - min);
+  // Round to appropriate precision
+  if (statKey === 'critChance' || statKey === 'critDamage' || statKey === 'attackSpeed' || statKey === 'lifeSteal') {
+    return Math.round(val * 1000) / 1000;
+  }
+  return Math.round(val * 10) / 10;
+}
+
+function formatStatValue(key: string, val: number): string {
+  if (key === 'critChance' || key === 'lifeSteal') return `${(val * 100).toFixed(1)}%`;
+  if (key === 'critDamage' || key === 'attackSpeed') return `${(val * 100).toFixed(0)}%`;
+  return `${val}`;
+}
+
+function showEnchantingModal(ctx: ScreenContext): void {
+  const p = ctx.state.player;
+
+  // Gather all enchantable items (equipped + inventory)
+  const items: { item: DiabloItem; source: string; index: number }[] = [];
+  const equipKeys = Object.keys(p.equipment) as (keyof typeof p.equipment)[];
+  for (const key of equipKeys) {
+    const item = p.equipment[key];
+    if (item && item.rarity !== ItemRarity.COMMON) {
+      items.push({ item, source: `equip:${key}`, index: -1 });
+    }
+  }
+  for (let i = 0; i < p.inventory.length; i++) {
+    const slot = p.inventory[i];
+    if (slot.item && slot.item.rarity !== ItemRarity.COMMON) {
+      items.push({ item: slot.item, source: 'inv', index: i });
+    }
+  }
+
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:150;display:flex;align-items:center;justify-content:center;pointer-events:auto;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:rgba(10,15,25,0.97);border:2px solid #4a7aba;border-radius:12px;padding:20px 28px;color:#ccc;font-family:Georgia,serif;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 0 30px rgba(68,136,255,0.3);';
+
+  let selectedItemIdx = -1;
+  let selectedStat = '';
+
+  const render = () => {
+    let html = `<h2 style="color:#88bbff;margin:0 0 12px;text-align:center;font-size:20px;">\uD83D\uDD2E Mystic Enchanting</h2>`;
+    html += `<p style="color:#888;font-size:13px;text-align:center;margin-bottom:14px;">Reroll one stat on an item. Choose an item, then select which stat to reroll.</p>`;
+    html += `<div style="color:#aaa;font-size:13px;text-align:center;margin-bottom:14px;">\uD83D\uDCB0 ${p.gold} Gold | \u2699 ${p.salvageMaterials} Materials</div>`;
+
+    // Item selection
+    html += `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;">`;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i].item;
+      const rCss = RARITY_CSS[it.rarity] || '';
+      const selected = i === selectedItemIdx;
+      html += `<div class="enchant-item" data-idx="${i}" style="
+        padding:6px 10px;border:2px solid ${selected ? '#88bbff' : '#333'};border-radius:6px;
+        background:${selected ? 'rgba(40,60,100,0.8)' : 'rgba(20,20,30,0.7)'};cursor:pointer;
+        font-size:12px;text-align:center;min-width:70px;transition:border-color 0.15s;
+      ">
+        <div style="font-size:14px;">${it.icon}</div>
+        <div style="${rCss}">${it.name.length > 12 ? it.name.substring(0, 12) + '..' : it.name}</div>
+        <div style="color:#666;font-size:11px;">Lv${it.level}</div>
+      </div>`;
+    }
+    html += `</div>`;
+
+    // Stat selection for chosen item
+    if (selectedItemIdx >= 0) {
+      const it = items[selectedItemIdx].item;
+      const cost = getEnchantCost(it.level, it.rarity);
+      const canAfford = p.gold >= cost.gold && p.salvageMaterials >= cost.materials;
+
+      html += `<div style="border:1px solid #3a5a7a;border-radius:8px;padding:12px;margin-bottom:12px;">`;
+      html += `<div style="color:#88bbff;font-weight:bold;margin-bottom:8px;">Select a stat to reroll on <span style="${RARITY_CSS[it.rarity] || ''}">${it.name}</span>:</div>`;
+      html += `<div style="color:#aaa;font-size:12px;margin-bottom:8px;">Cost: <span style="color:${canAfford ? '#ffd700' : '#ff4444'}">${cost.gold} gold + ${cost.materials} materials</span></div>`;
+
+      const statKeys = Object.keys(it.stats).filter(k => (it.stats as any)[k] !== undefined && (it.stats as any)[k] !== 0);
+      if (statKeys.length === 0) {
+        html += `<div style="color:#666;">This item has no stats to enchant.</div>`;
+      } else {
+        html += `<div style="display:flex;flex-direction:column;gap:4px;">`;
+        for (const key of statKeys) {
+          const val = (it.stats as any)[key];
+          const name = ENCHANT_STAT_NAMES[key] || key;
+          const isSelected = key === selectedStat;
+          html += `<div class="enchant-stat" data-stat="${key}" style="
+            display:flex;justify-content:space-between;align-items:center;
+            padding:6px 10px;border:1px solid ${isSelected ? '#88bbff' : '#333'};border-radius:4px;
+            background:${isSelected ? 'rgba(40,60,100,0.6)' : 'rgba(15,15,25,0.6)'};cursor:pointer;
+            transition:all 0.15s;
+          ">
+            <span style="color:#ddd;">${name}</span>
+            <span style="color:#88ff88;font-family:monospace;">${formatStatValue(key, val)}</span>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+      html += `</div>`;
+
+      // Enchant button
+      if (selectedStat && canAfford) {
+        html += `<div style="text-align:center;margin-top:12px;">
+          <button id="enchant-execute" style="
+            padding:10px 32px;font-size:16px;font-weight:bold;font-family:Georgia,serif;
+            background:linear-gradient(180deg,rgba(30,50,80,0.95),rgba(15,30,55,0.95));
+            border:2px solid #88bbff;border-radius:8px;color:#88bbff;cursor:pointer;
+            transition:all 0.2s;text-shadow:0 1px 3px rgba(0,0,0,0.5);letter-spacing:2px;
+          ">ENCHANT</button>
+        </div>`;
+      } else if (selectedStat && !canAfford) {
+        html += `<div style="text-align:center;color:#ff4444;margin-top:8px;">Not enough gold or materials</div>`;
+      }
+    }
+
+    if (items.length === 0) {
+      html += `<div style="color:#666;text-align:center;">No enchantable items (Common items cannot be enchanted)</div>`;
+    }
+
+    // Close button
+    html += `<div style="text-align:center;margin-top:14px;">
+      <button id="enchant-close" style="
+        padding:8px 24px;font-size:14px;background:rgba(40,30,20,0.9);
+        border:1px solid #555;border-radius:6px;color:#aaa;cursor:pointer;font-family:Georgia,serif;
+      ">Close</button>
+    </div>`;
+
+    panel.innerHTML = html;
+
+    // Bind events
+    panel.querySelectorAll('.enchant-item').forEach(el => {
+      el.addEventListener('click', () => {
+        selectedItemIdx = parseInt((el as HTMLElement).dataset.idx || '-1');
+        selectedStat = '';
+        render();
+      });
+    });
+    panel.querySelectorAll('.enchant-stat').forEach(el => {
+      el.addEventListener('click', () => {
+        selectedStat = (el as HTMLElement).dataset.stat || '';
+        render();
+      });
+    });
+    const execBtn = panel.querySelector('#enchant-execute');
+    if (execBtn) {
+      execBtn.addEventListener('click', () => {
+        const entry = items[selectedItemIdx];
+        if (!entry) return;
+        const it = entry.item;
+        const cost = getEnchantCost(it.level, it.rarity);
+        if (p.gold < cost.gold || p.salvageMaterials < cost.materials) return;
+
+        // Pay cost
+        p.gold -= cost.gold;
+        p.salvageMaterials -= cost.materials;
+
+        // Reroll the selected stat
+        const oldVal = (it.stats as any)[selectedStat];
+        const newVal = rollEnchantStat(selectedStat, it.level);
+        (it.stats as any)[selectedStat] = newVal;
+
+        // Recalculate player stats
+        ctx.recalculatePlayerStats();
+
+        // Show result as a brief flash
+        const resultDiv = document.createElement('div');
+        resultDiv.style.cssText = 'position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);z-index:200;background:rgba(10,20,40,0.95);border:2px solid #88bbff;border-radius:8px;padding:16px 28px;color:#fff;font-family:Georgia,serif;text-align:center;pointer-events:none;';
+        const name = ENCHANT_STAT_NAMES[selectedStat] || selectedStat;
+        const improved = newVal > oldVal;
+        resultDiv.innerHTML = `
+          <div style="font-size:14px;color:#88bbff;margin-bottom:6px;">${name} Rerolled!</div>
+          <div style="font-size:18px;">
+            <span style="color:#888;">${formatStatValue(selectedStat, oldVal)}</span>
+            <span style="color:#666;"> \u2192 </span>
+            <span style="color:${improved ? '#44ff44' : '#ff6644'};font-weight:bold;">${formatStatValue(selectedStat, newVal)}</span>
+          </div>
+        `;
+        document.body.appendChild(resultDiv);
+        setTimeout(() => { resultDiv.style.opacity = '0'; resultDiv.style.transition = 'opacity 0.5s'; }, 1200);
+        setTimeout(() => { resultDiv.remove(); }, 1800);
+
+        render();
+      });
+    }
+    const closeBtn = panel.querySelector('#enchant-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        overlay.remove();
+        ctx.showInventory(); // Refresh inventory display
+      });
+    }
+  };
+
+  overlay.appendChild(panel);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) { overlay.remove(); ctx.showInventory(); }
+  });
+  ctx.menuEl.appendChild(overlay);
+  render();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -3007,6 +3303,8 @@ export function showPauseMenu(ctx: ScreenContext): void {
               <button id="diablo-dailies-btn" style="${btnBase}">&#9733; CHALLENGES</button>
               <button id="diablo-save-btn" style="${saveBtn}">&#10004; SAVE GAME</button>
               ${loadBtnHtml}
+              <button id="diablo-export-btn" style="${btnBase}">&#8681; EXPORT SAVE</button>
+              <button id="diablo-import-btn" style="${btnBase}">&#8679; IMPORT SAVE</button>
               <button id="diablo-charselect-btn" style="${btnBase}">&#9733; CHAR SELECT</button>
               <button id="diablo-exit-btn" style="${exitBtn}">&#10008; EXIT</button>
             </div>
@@ -3020,7 +3318,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-bestiary-btn,#diablo-pets-btn,#diablo-dailies-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-bestiary-btn,#diablo-pets-btn,#diablo-dailies-btn,#diablo-charselect-btn,#diablo-export-btn,#diablo-import-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -3138,6 +3436,30 @@ export function showPauseMenu(ctx: ScreenContext): void {
     });
     ctx.menuEl.querySelector("#diablo-save-btn")!.addEventListener("click", () => {
       ctx.saveGame();
+    });
+    ctx.menuEl.querySelector("#diablo-export-btn")!.addEventListener("click", () => {
+      const ok = exportSaveToFile();
+      if (!ok) {
+        ctx.addFloatingText(ctx.state.player.x, ctx.state.player.y + 2, ctx.state.player.z, 'No save data to export', '#ff4444');
+      } else {
+        ctx.addFloatingText(ctx.state.player.x, ctx.state.player.y + 2, ctx.state.player.z, 'Save exported!', '#44ff44');
+      }
+    });
+    ctx.menuEl.querySelector("#diablo-import-btn")!.addEventListener("click", () => {
+      importSaveFromFile((success, message) => {
+        // Show result message as an overlay
+        const msgDiv = document.createElement('div');
+        msgDiv.style.cssText = `position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);z-index:300;
+          background:rgba(10,10,20,0.95);border:2px solid ${success ? '#44ff44' : '#ff4444'};
+          border-radius:8px;padding:16px 28px;color:${success ? '#44ff44' : '#ff4444'};
+          font-family:Georgia,serif;font-size:18px;text-align:center;pointer-events:none;`;
+        msgDiv.textContent = message;
+        document.body.appendChild(msgDiv);
+        if (!success) {
+          setTimeout(() => { msgDiv.style.opacity = '0'; msgDiv.style.transition = 'opacity 0.5s'; }, 2000);
+          setTimeout(() => msgDiv.remove(), 2500);
+        }
+      });
     });
     ctx.menuEl.querySelector("#diablo-exit-btn")!.addEventListener("click", () => {
       window.dispatchEvent(new CustomEvent("diabloExit"));

@@ -399,36 +399,58 @@ function saveBestTime(trackName: string, time: number): boolean {
 
 function generateTrack(def: (typeof TRACK_DEFS)[number]): TrackDef {
   const rng = mulberry32(def.seed);
-  const pts: THREE.Vector3[] = [];
-  const segCount = def.length;
-  const angleStep = (Math.PI * 2) / segCount;
 
-  for (let i = 0; i < segCount; i++) {
-    const baseAngle = angleStep * i;
-    const radius = 80 + (rng() - 0.5) * 40;
-    const x = Math.cos(baseAngle) * radius + (rng() - 0.5) * def.curves * 3;
-    const z = Math.sin(baseAngle) * radius + (rng() - 0.5) * def.curves * 3;
+  // Use fewer coarse control points for the base shape to avoid zigzag.
+  // The curves param controls how many gentle bends exist, not noise per point.
+  const coarseCount = 16 + Math.floor(def.curves * 0.8); // 24-30 control points
+  const coarsePts: THREE.Vector3[] = [];
+  const coarseAngleStep = (Math.PI * 2) / coarseCount;
+
+  for (let i = 0; i < coarseCount; i++) {
+    const baseAngle = coarseAngleStep * i;
+    // Smooth radius variation using low-frequency sine waves instead of per-point noise
+    const radiusNoise = Math.sin(baseAngle * 2 + rng() * Math.PI * 2) * 15
+                      + Math.sin(baseAngle * 3 + rng() * Math.PI * 2) * 10
+                      + (rng() - 0.5) * def.curves * 1.5;
+    const radius = 80 + radiusNoise;
+    const x = Math.cos(baseAngle) * radius;
+    const z = Math.sin(baseAngle) * radius;
     const y = Math.sin(baseAngle * 3 + rng() * 2) * def.hills * 8 + rng() * def.hills * 4;
-    pts.push(new THREE.Vector3(x, Math.max(0, y), z));
+    coarsePts.push(new THREE.Vector3(x, Math.max(0, y), z));
   }
 
-  // catmull-rom subdivision
-  const smoothed: THREE.Vector3[] = [];
-  for (let i = 0; i < pts.length; i++) {
-    const p0 = pts[(i - 1 + pts.length) % pts.length];
-    const p1 = pts[i];
-    const p2 = pts[(i + 1) % pts.length];
-    const p3 = pts[(i + 2) % pts.length];
+  // Catmull-Rom subdivision: interpolate coarse points into the target segment count
+  const targetCount = def.length;
+  const subsPerSeg = Math.ceil(targetCount / coarseCount);
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i < coarsePts.length; i++) {
+    const p0 = coarsePts[(i - 1 + coarsePts.length) % coarsePts.length];
+    const p1 = coarsePts[i];
+    const p2 = coarsePts[(i + 1) % coarsePts.length];
+    const p3 = coarsePts[(i + 2) % coarsePts.length];
 
-    for (let t = 0; t < 4; t++) {
-      const f = t / 4;
+    for (let t = 0; t < subsPerSeg; t++) {
+      const f = t / subsPerSeg;
       const tt = f * f;
       const ttt = tt * f;
       const x = 0.5 * (2 * p1.x + (-p0.x + p2.x) * f + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * tt + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * ttt);
       const y = 0.5 * (2 * p1.y + (-p0.y + p2.y) * f + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * tt + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * ttt);
       const z = 0.5 * (2 * p1.z + (-p0.z + p2.z) * f + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * tt + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * ttt);
-      smoothed.push(new THREE.Vector3(x, Math.max(0, y), z));
+      pts.push(new THREE.Vector3(x, Math.max(0, y), z));
     }
+  }
+
+  // Second smoothing pass: average each point with its neighbors to eliminate any remaining jitter
+  const smoothed: THREE.Vector3[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const prev = pts[(i - 1 + pts.length) % pts.length];
+    const curr = pts[i];
+    const next = pts[(i + 1) % pts.length];
+    smoothed.push(new THREE.Vector3(
+      (prev.x + curr.x * 2 + next.x) / 4,
+      Math.max(0, (prev.y + curr.y * 2 + next.y) / 4),
+      (prev.z + curr.z * 2 + next.z) / 4,
+    ));
   }
 
   const trackPoints: TrackPoint[] = [];

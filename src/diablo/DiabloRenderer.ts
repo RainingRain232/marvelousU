@@ -22,6 +22,8 @@ import {
   PetAIState,
   DungeonLayout,
   BossAbility,
+  EliteAffix, ELITE_AFFIX_COLORS,
+  RiftPylonType, RiftPylon, GreaterRiftState,
 } from './DiabloTypes';
 import { MAP_CONFIGS, BOSS_PHASE_CONFIGS } from './DiabloConfig';
 import { syncProjectiles, ProjectileSyncContext } from './DiabloRendererProjectiles';
@@ -54,6 +56,7 @@ export class DiabloRenderer {
   private _chestMeshes: Map<string, THREE.Group> = new Map();
   private _aoeMeshes: Map<string, THREE.Group> = new Map();
   private _vendorMeshes: Map<string, THREE.Group> = new Map();
+  private _pylonMeshes: Map<string, THREE.Group> = new Map();
   private _townfolkMeshes: Map<string, THREE.Group> = new Map();
   private _portalNpcMesh: THREE.Group | null = null;
   private _portalNpcId: string | null = null;
@@ -1093,6 +1096,7 @@ export class DiabloRenderer {
     for (const [, m] of this._chestMeshes) persistent.add(m);
     for (const [, m] of this._aoeMeshes) persistent.add(m);
     for (const [, m] of this._vendorMeshes) persistent.add(m);
+    for (const [, m] of this._pylonMeshes) persistent.add(m);
     for (const [, m] of this._townfolkMeshes) persistent.add(m);
     if (this._portalNpcMesh) persistent.add(this._portalNpcMesh);
     for (const [, m] of this._floatTextSprites) persistent.add(m);
@@ -3544,6 +3548,9 @@ export class DiabloRenderer {
     // -- Floating text --
     this._syncFloatingText(state, dt);
 
+    // -- Rift Pylons --
+    this._syncPylons(state);
+
     // -- Vendors (Camelot map) --
     if (state.currentMap === DiabloMapId.CAMELOT && state.vendors.length > 0) {
       this.syncVendors(state.vendors.map((v) => ({ id: v.id, type: v.type, x: v.x, z: v.z })));
@@ -3769,7 +3776,9 @@ export class DiabloRenderer {
           const tex = new THREE.CanvasTexture(canvas);
           const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
           hpSprite = new THREE.Sprite(mat);
-          hpSprite.scale.set(enemy.isBoss ? 3.0 : 1.5, enemy.isBoss ? 0.3 : 0.15, 1);
+          const hpW = enemy.isBoss ? 3.0 : enemy.isElite ? 2.0 : 1.5;
+          const hpH = enemy.isBoss ? 0.3 : enemy.isElite ? 0.2 : 0.15;
+          hpSprite.scale.set(hpW, hpH, 1);
           this._scene.add(hpSprite);
           this._enemyHpBars.set(enemy.id, hpSprite);
         }
@@ -3792,8 +3801,8 @@ export class DiabloRenderer {
           const hpColor = pct > 0.5 ? '#44ff44' : pct > 0.25 ? '#ffaa00' : '#ff3333';
           ctx.fillStyle = hpColor;
           ctx.fillRect(1, 1, Math.floor(62 * pct), 6);
-          // Border
-          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+          // Border — yellow for elites, white for normal
+          ctx.strokeStyle = enemy.isElite ? 'rgba(255,170,0,0.8)' : 'rgba(255,255,255,0.3)';
           ctx.strokeRect(0, 0, 64, 8);
           tex.needsUpdate = true;
         }
@@ -4067,6 +4076,17 @@ export class DiabloRenderer {
         const enrageBaseScale = enemy.scale || 1;
         const enrageScale = enrageBaseScale * (1.0 + Math.sin(this._time * 5) * 0.03 * glowFade);
         mesh.scale.setScalar(enrageScale);
+      } else if (enemy.isElite && enemy.eliteAffixes && enrageMats) {
+        // Elite enemy glow — pulsing color based on first affix
+        const affixColor = ELITE_AFFIX_COLORS[enemy.eliteAffixes[0]] || 0xffaa00;
+        const pulse = 0.25 + Math.sin(this._time * 4) * 0.15;
+        for (const m of enrageMats) {
+          m.emissive.setHex(affixColor);
+          m.emissiveIntensity = pulse;
+        }
+        // Slight scale pulse for elites
+        const eliteScale = (enemy.scale || 1) * (1.0 + Math.sin(this._time * 3) * 0.015);
+        mesh.scale.setScalar(eliteScale);
       } else if (enemy.isBoss && enrageMats) {
         // Reset emissive to normal when not glowing (prevents red leak)
         for (const m of enrageMats) {
@@ -4944,6 +4964,91 @@ export class DiabloRenderer {
           lidBand.rotation.x = -Math.PI * 0.6;
           lidBand.position.set(0, 0.75, -0.35);
         }
+      }
+    }
+  }
+
+  private _syncPylons(state: DiabloState): void {
+    const rift = state.greaterRift;
+    if (rift.state === GreaterRiftState.NOT_ACTIVE || !rift.pylons || rift.pylons.length === 0) {
+      // Clean up pylon meshes if rift ended
+      for (const [, mesh] of this._pylonMeshes) {
+        this._disposeObject3D(mesh);
+        this._scene.remove(mesh);
+      }
+      this._pylonMeshes.clear();
+      return;
+    }
+
+    const pylonColorMap: Record<RiftPylonType, number> = {
+      [RiftPylonType.POWER]: 0xff4444,
+      [RiftPylonType.SPEED]: 0x44ff44,
+      [RiftPylonType.CHANNELING]: 0xaa44ff,
+      [RiftPylonType.CONDUIT]: 0x4488ff,
+      [RiftPylonType.SHIELD]: 0xffd700,
+    };
+
+    for (const pylon of rift.pylons) {
+      if (pylon.consumed) {
+        const mesh = this._pylonMeshes.get(pylon.id);
+        if (mesh) {
+          this._disposeObject3D(mesh);
+          this._scene.remove(mesh);
+          this._pylonMeshes.delete(pylon.id);
+        }
+        continue;
+      }
+
+      let mesh = this._pylonMeshes.get(pylon.id);
+      if (!mesh) {
+        mesh = new THREE.Group();
+        const color = pylonColorMap[pylon.type] || 0xffffff;
+        const glowMat = new THREE.MeshStandardMaterial({
+          color, emissive: color, emissiveIntensity: 0.8,
+          transparent: true, opacity: 0.9, roughness: 0.3,
+        });
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.8 });
+
+        // Stone base
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.4, 8), stoneMat);
+        base.position.y = 0.2;
+        base.castShadow = true;
+        mesh.add(base);
+
+        // Crystal pillar
+        const crystal = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, 2.0, 6), glowMat);
+        crystal.position.y = 1.4;
+        crystal.castShadow = true;
+        crystal.name = 'pylon-crystal';
+        mesh.add(crystal);
+
+        // Top gem
+        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), glowMat);
+        gem.position.y = 2.7;
+        gem.name = 'pylon-gem';
+        mesh.add(gem);
+
+        // Point light
+        const light = new THREE.PointLight(color, 2, 8);
+        light.position.y = 2.5;
+        mesh.add(light);
+
+        mesh.position.set(pylon.x, pylon.y, pylon.z);
+        this._scene.add(mesh);
+        this._pylonMeshes.set(pylon.id, mesh);
+      }
+
+      // Animate: gem rotation and bob
+      const gem = mesh.getObjectByName('pylon-gem');
+      if (gem) {
+        gem.rotation.y = this._time * 2;
+        gem.position.y = 2.7 + Math.sin(this._time * 3) * 0.15;
+      }
+      const crystal = mesh.getObjectByName('pylon-crystal');
+      if (crystal) {
+        (crystal as THREE.Mesh).material = (crystal as THREE.Mesh).material;
+        const mat = (crystal as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        mat.emissiveIntensity = 0.6 + Math.sin(this._time * 4) * 0.3;
       }
     }
   }

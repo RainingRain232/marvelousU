@@ -24,7 +24,8 @@ import {
   SkillId, EnemyState, EnemyType, StatusEffect, TimeOfDay, DamageType,
   DiabloItem, DiabloEquipment, DiabloPotion, PotionType,
   VendorType, DiabloVendor, DiabloTownfolk, TownfolkRole, DiabloPortalNpc,
-  BossAbility, EnemyBehavior,
+  BossAbility, EnemyBehavior, EliteAffix, ELITE_AFFIX_COLORS,
+  RiftPylonType, RiftPylon,
   DiabloQuest, QuestType,
   TalentEffectType,
   ParticleType, Weather,
@@ -1552,6 +1553,8 @@ export class DiabloGame {
         this._updatePets(scaledDt);
         this._updateCraftingQueue(scaledDt);
         this._updateGreaterRift(scaledDt);
+        this._updateEliteAffixes(scaledDt);
+        this._updateRiftPylons(scaledDt);
         this._updatePetBuffs(scaledDt);
         this._updateMultiplayer(scaledDt);
         this._checkMapClear();
@@ -3046,6 +3049,15 @@ export class DiabloGame {
       }
     }
 
+    // Elite pack spawn every 15 kills (not on boss spawn)
+    if (!isBossSpawn && this._state.killCount > 0 && this._state.killCount % 15 === 0 && this._state.totalEnemiesSpawned > 5) {
+      const existingElite = this._state.enemies.find((e) => e.isElite && e.state !== EnemyState.DEAD && e.state !== EnemyState.DYING);
+      if (!existingElite) {
+        this._spawnElitePack(ex, ez, chosenType);
+        return;
+      }
+    }
+
     const def = ENEMY_DEFS[chosenType];
     if (!def) return;
 
@@ -3139,6 +3151,308 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  SPAWN ELITE PACK
+  // ──────────────────────────────────────────────────────────────
+  private _spawnElitePack(cx: number, cz: number, baseType: EnemyType): void {
+    const def = ENEMY_DEFS[baseType];
+    if (!def) return;
+
+    const packSize = 2 + Math.floor(Math.random() * 2); // 2-3
+    const allAffixes = Object.values(EliteAffix);
+    const numAffixes = 1 + Math.floor(Math.random() * 2); // 1-2
+    const affixes: EliteAffix[] = [];
+    while (affixes.length < numAffixes) {
+      const pick = allAffixes[Math.floor(Math.random() * allAffixes.length)];
+      if (!affixes.includes(pick)) affixes.push(pick);
+    }
+    const packId = this._genId();
+
+    const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
+    for (let i = 0; i < packSize; i++) {
+      const angle = (i / packSize) * Math.PI * 2;
+      const offsetDist = 2 + Math.random();
+      const ex = cx + Math.cos(angle) * offsetDist;
+      const ez = cz + Math.sin(angle) * offsetDist;
+
+      let hpMult = 2.5 * diffCfg.hpMult;
+      let dmgMult = 1.5 * diffCfg.damageMult;
+      for (const mod of this._state.activeMapModifiers) {
+        const modDef = MAP_MODIFIER_DEFS[mod];
+        if (modDef) { hpMult *= modDef.enemyHpMult; dmgMult *= modDef.enemyDamageMult; }
+      }
+
+      const enemy: DiabloEnemy = {
+        id: this._genId(),
+        type: baseType,
+        x: ex, y: getTerrainHeight(ex, ez), z: ez,
+        angle: Math.random() * Math.PI * 2,
+        hp: def.hp * hpMult,
+        maxHp: def.hp * hpMult,
+        damage: def.damage * dmgMult,
+        damageType: ENEMY_DAMAGE_TYPES[baseType] || DamageType.PHYSICAL,
+        armor: def.armor * 1.5 * diffCfg.armorMult,
+        speed: def.speed * diffCfg.speedMult * 1.1,
+        state: EnemyState.CHASE,
+        targetId: null,
+        attackTimer: 1.0,
+        attackRange: def.attackRange,
+        aggroRange: def.aggroRange * 1.5,
+        xpReward: Math.round(def.xpReward * 3 * diffCfg.xpMult),
+        lootTable: [],
+        deathTimer: 0,
+        stateTimer: 0,
+        patrolTarget: null,
+        statusEffects: [],
+        isBoss: false,
+        scale: def.scale * 1.15,
+        level: def.level + 3,
+        behavior: def.behavior,
+        // Elite fields
+        isElite: true,
+        eliteAffixes: [...affixes],
+        elitePackId: packId,
+        eliteAffixTimers: {},
+      };
+
+      // Greater Rift scaling
+      if (this._state.greaterRift.state !== GreaterRiftState.NOT_ACTIVE) {
+        enemy.hp *= this._state.greaterRift.enemyHpMultiplier;
+        enemy.maxHp = enemy.hp;
+        enemy.damage *= this._state.greaterRift.enemyDamageMultiplier;
+      }
+
+      this._state.enemies.push(enemy);
+      this._state.totalEnemiesSpawned++;
+    }
+
+    const affixNames = affixes.map(a => a.replace(/_/g, ' ')).join(' ');
+    this._addFloatingText(cx, getTerrainHeight(cx, cz) + 3, cz, `ELITE: ${affixNames}!`, '#ffaa00');
+    this._renderer.shakeCamera(0.2, 0.3);
+    this._playSound('boss_spawn');
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  UPDATE ELITE AFFIXES
+  // ──────────────────────────────────────────────────────────────
+  private _updateEliteAffixes(dt: number): void {
+    const p = this._state.player;
+    for (const enemy of this._state.enemies) {
+      if (!enemy.isElite || !enemy.eliteAffixes) continue;
+      if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+      if (!enemy.eliteAffixTimers) enemy.eliteAffixTimers = {};
+      const timers = enemy.eliteAffixTimers;
+
+      for (const affix of enemy.eliteAffixes) {
+        switch (affix) {
+          case EliteAffix.MOLTEN: {
+            timers['molten_trail'] = (timers['molten_trail'] || 0) - dt;
+            if (timers['molten_trail'] <= 0) {
+              timers['molten_trail'] = 0.8;
+              const aoe: DiabloAOE = {
+                id: this._genId(), x: enemy.x, y: 0, z: enemy.z,
+                radius: 1.5, damage: enemy.damage * 0.15,
+                damageType: DamageType.FIRE, duration: 4, timer: 0,
+                ownerId: enemy.id, tickInterval: 0.5, lastTickTimer: 0,
+                statusEffect: StatusEffect.BURNING,
+              };
+              this._state.aoeEffects.push(aoe);
+              this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 0.3, enemy.z, 3, this._state.particles);
+            }
+            break;
+          }
+          case EliteAffix.ARCANE: {
+            timers['arcane_angle'] = (timers['arcane_angle'] || 0) + dt * 1.2;
+            timers['arcane_dmg'] = (timers['arcane_dmg'] || 0) - dt;
+            // Rotating beam: check player collision with beam line
+            const beamLen = 5;
+            const bx = enemy.x + Math.cos(timers['arcane_angle']) * beamLen;
+            const bz = enemy.z + Math.sin(timers['arcane_angle']) * beamLen;
+            // Spawn particles along beam
+            for (let t = 0; t < 1; t += 0.2) {
+              const px = enemy.x + (bx - enemy.x) * t;
+              const pz = enemy.z + (bz - enemy.z) * t;
+              if (this._state.particles.length < 300) {
+                this._renderer.spawnParticles(ParticleType.SPARK, px, enemy.y + 0.5, pz, 1, this._state.particles);
+              }
+            }
+            if (timers['arcane_dmg'] <= 0) {
+              timers['arcane_dmg'] = 0.3;
+              // Point-to-line distance check
+              const dx = bx - enemy.x, dz = bz - enemy.z;
+              const t = Math.max(0, Math.min(1, ((p.x - enemy.x) * dx + (p.z - enemy.z) * dz) / (dx * dx + dz * dz)));
+              const closestX = enemy.x + t * dx, closestZ = enemy.z + t * dz;
+              const distToBeam = this._dist(p.x, p.z, closestX, closestZ);
+              if (distToBeam < 1.0 && p.invulnTimer <= 0) {
+                const dmg = enemy.damage * 0.25;
+                p.hp -= dmg;
+                this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(dmg)} ARCANE`, '#aa00ff');
+                if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); return; }
+              }
+            }
+            break;
+          }
+          case EliteAffix.FROZEN: {
+            timers['frozen_cd'] = (timers['frozen_cd'] || 4) - dt;
+            if (timers['frozen_cd'] <= 0) {
+              timers['frozen_cd'] = 4;
+              const aoe: DiabloAOE = {
+                id: this._genId(), x: enemy.x, y: 0, z: enemy.z,
+                radius: 3, damage: enemy.damage * 0.3,
+                damageType: DamageType.ICE, duration: 1.5, timer: 0,
+                ownerId: enemy.id, tickInterval: 1.5, lastTickTimer: 0,
+                statusEffect: StatusEffect.FROZEN,
+              };
+              this._state.aoeEffects.push(aoe);
+              this._renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 1, enemy.z, 10, this._state.particles);
+              this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, 'FREEZE!', '#00aaff');
+            }
+            break;
+          }
+          case EliteAffix.JAILER: {
+            timers['jailer_cd'] = (timers['jailer_cd'] || 6) - dt;
+            const distToP = this._dist(enemy.x, enemy.z, p.x, p.z);
+            if (timers['jailer_cd'] <= 0 && distToP < 15) {
+              timers['jailer_cd'] = 6;
+              if (p.invulnTimer <= 0) {
+                p.statusEffects.push({ effect: StatusEffect.STUNNED, duration: 1.5, source: 'JAILER' });
+                this._addFloatingText(p.x, p.y + 2.5, p.z, 'JAILED!', '#ffff00');
+                this._renderer.spawnParticles(ParticleType.LIGHTNING, p.x, p.y + 1, p.z, 8, this._state.particles);
+                this._renderer.shakeCamera(0.15, 0.2);
+              }
+            }
+            break;
+          }
+          case EliteAffix.VORTEX: {
+            timers['vortex_cd'] = (timers['vortex_cd'] || 5) - dt;
+            const distToP2 = this._dist(enemy.x, enemy.z, p.x, p.z);
+            if (timers['vortex_cd'] <= 0 && distToP2 < 20 && distToP2 > 3) {
+              timers['vortex_cd'] = 5;
+              if (p.invulnTimer <= 0) {
+                const pullAngle = Math.atan2(enemy.z - p.z, enemy.x - p.x);
+                p.x = enemy.x - Math.cos(pullAngle) * 2;
+                p.z = enemy.z - Math.sin(pullAngle) * 2;
+                this._addFloatingText(p.x, p.y + 2.5, p.z, 'VORTEX!', '#cc00cc');
+                this._renderer.spawnParticles(ParticleType.SPARK, p.x, p.y + 1, p.z, 6, this._state.particles);
+                this._renderer.shakeCamera(0.2, 0.3);
+              }
+            }
+            break;
+          }
+          case EliteAffix.THUNDERSTORM: {
+            timers['thunder_cd'] = (timers['thunder_cd'] || 3) - dt;
+            const distToP3 = this._dist(enemy.x, enemy.z, p.x, p.z);
+            if (timers['thunder_cd'] <= 0 && distToP3 < 25) {
+              timers['thunder_cd'] = 3;
+              if (p.invulnTimer <= 0) {
+                const dmg = enemy.damage * 0.4;
+                p.hp -= dmg;
+                this._addFloatingText(p.x, p.y + 2, p.z, `${Math.round(dmg)} LIGHTNING`, '#4488ff');
+                this._renderer.spawnParticles(ParticleType.LIGHTNING, p.x, p.y + 2, p.z, 12, this._state.particles);
+                this._renderer.shakeCamera(0.15, 0.2);
+                p.statusEffects.push({ effect: StatusEffect.SHOCKED, duration: 1, source: 'THUNDERSTORM' });
+                if (p.hp <= 0) { p.hp = 0; this._triggerDeath(); return; }
+              }
+            }
+            break;
+          }
+          // REFLECT_DAMAGE is passive — handled in DiabloCombat.ts
+        }
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  UPDATE RIFT PYLONS
+  // ──────────────────────────────────────────────────────────────
+  private _updateRiftPylons(dt: number): void {
+    const rift = this._state.greaterRift;
+    if (rift.state === GreaterRiftState.NOT_ACTIVE) return;
+
+    const p = this._state.player;
+
+    // Check player proximity to pylons
+    for (const pylon of rift.pylons) {
+      if (pylon.consumed) continue;
+      const dist = this._dist(p.x, p.z, pylon.x, pylon.z);
+      if (dist < 2.5) {
+        pylon.consumed = true;
+        rift.activePylonBuff = { type: pylon.type, timer: this._getPylonDuration(pylon.type) };
+        const pylonNames: Record<RiftPylonType, string> = {
+          [RiftPylonType.POWER]: 'POWER',
+          [RiftPylonType.SPEED]: 'SPEED',
+          [RiftPylonType.CHANNELING]: 'CHANNELING',
+          [RiftPylonType.CONDUIT]: 'CONDUIT',
+          [RiftPylonType.SHIELD]: 'SHIELD',
+        };
+        const pylonColors: Record<RiftPylonType, string> = {
+          [RiftPylonType.POWER]: '#ff4444',
+          [RiftPylonType.SPEED]: '#44ff44',
+          [RiftPylonType.CHANNELING]: '#aa44ff',
+          [RiftPylonType.CONDUIT]: '#4488ff',
+          [RiftPylonType.SHIELD]: '#ffd700',
+        };
+        this._addFloatingText(p.x, p.y + 3, p.z, `${pylonNames[pylon.type]} PYLON ACTIVATED!`, pylonColors[pylon.type]);
+        this._renderer.spawnParticles(ParticleType.LEVEL_UP, p.x, p.y + 1, p.z, 20, this._state.particles);
+        this._renderer.shakeCamera(0.3, 0.4);
+        this._playSound('level_up');
+      }
+    }
+
+    // Update active pylon buff timer
+    if (rift.activePylonBuff) {
+      rift.activePylonBuff.timer -= dt;
+
+      // Apply continuous pylon effects
+      switch (rift.activePylonBuff.type) {
+        case RiftPylonType.SPEED:
+          // Handled via moveSpeed multiplier in _processInput
+          break;
+        case RiftPylonType.CONDUIT: {
+          // Auto chain lightning every 0.5s
+          if (!this._conduitTimer) this._conduitTimer = 0;
+          this._conduitTimer -= dt;
+          if (this._conduitTimer <= 0) {
+            this._conduitTimer = 0.5;
+            for (const enemy of this._state.enemies) {
+              if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+              const dist = this._dist(p.x, p.z, enemy.x, enemy.z);
+              if (dist < 30) {
+                const dmg = enemy.maxHp * 0.25;
+                enemy.hp -= dmg;
+                this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(dmg)}`, '#4488ff');
+                this._renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 1, enemy.z, 4, this._state.particles);
+                if (enemy.hp <= 0) this._killEnemy(enemy);
+              }
+            }
+          }
+          break;
+        }
+        case RiftPylonType.SHIELD:
+          p.invulnTimer = Math.max(p.invulnTimer, 0.1); // Keep invuln refreshed
+          break;
+      }
+
+      if (rift.activePylonBuff.timer <= 0) {
+        this._addFloatingText(p.x, p.y + 2, p.z, 'Pylon buff expired', '#888888');
+        rift.activePylonBuff = null;
+        this._conduitTimer = 0;
+      }
+    }
+  }
+
+  private _conduitTimer: number = 0;
+
+  private _getPylonDuration(type: RiftPylonType): number {
+    switch (type) {
+      case RiftPylonType.POWER: return 30;
+      case RiftPylonType.SPEED: return 30;
+      case RiftPylonType.CHANNELING: return 30;
+      case RiftPylonType.CONDUIT: return 15;
+      case RiftPylonType.SHIELD: return 30;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  HELPER: Kill enemy
   // ──────────────────────────────────────────────────────────────
   private _killEnemy(enemy: DiabloEnemy): void {
@@ -3152,6 +3466,21 @@ export class DiabloGame {
     }
 
     this._renderer.spawnParticles(ParticleType.DUST, enemy.x, enemy.y + 0.5, enemy.z, 8 + Math.floor(Math.random() * 5), this._state.particles);
+
+    // Elite affix: Molten death explosion
+    if (enemy.isElite && enemy.eliteAffixes?.includes(EliteAffix.MOLTEN)) {
+      const moltenAoe: DiabloAOE = {
+        id: this._genId(), x: enemy.x, y: 0, z: enemy.z,
+        radius: 5, damage: enemy.maxHp * 0.2,
+        damageType: DamageType.FIRE, duration: 0.5, timer: 0,
+        ownerId: enemy.id, tickInterval: 0.5, lastTickTimer: 0,
+        statusEffect: StatusEffect.BURNING,
+      };
+      this._state.aoeEffects.push(moltenAoe);
+      this._renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 1, enemy.z, 30, this._state.particles);
+      this._renderer.shakeCamera(0.4, 0.4);
+      this._addFloatingText(enemy.x, enemy.y + 2, enemy.z, 'MOLTEN EXPLOSION!', '#ff4400');
+    }
 
     // Map modifier: Explosive death
     if (this._state.activeMapModifiers.includes(MapModifier.EXPLOSIVE_DEATH)) {
@@ -4163,6 +4492,13 @@ export class DiabloGame {
       if (buff.type === PotionType.SPEED) {
         p.moveSpeed *= (1 + buff.value / 100);
       }
+    }
+
+    // Rift Pylon: Speed buff (2.5x move speed, 2x attack speed)
+    const pylonBuff = this._state.greaterRift.activePylonBuff;
+    if (pylonBuff && pylonBuff.type === RiftPylonType.SPEED) {
+      p.moveSpeed *= 2.5;
+      p.attackSpeed *= 2.0;
     }
 
     // Make sure hp/mana don't exceed new max
