@@ -15,6 +15,8 @@ export class ForestHUD {
   private _dmgCtx!: CanvasRenderingContext2D;
   private _onExit: (() => void) | null = null;
   private _onResize: (() => void) | null = null;
+  private _menuBuilt = false;
+  private _menuDifficulty = "";
 
   build(onExit: () => void): void {
     this._onExit = onExit;
@@ -78,48 +80,54 @@ export class ForestHUD {
 
     // --- MENU SCREEN ---
     if (state.phase === "menu") {
-      html += `<div style="position:absolute;top:0;left:0;width:100%;height:100%;
-        display:flex;flex-direction:column;justify-content:center;align-items:center;
-        background:linear-gradient(180deg, rgba(10,30,10,0.8) 0%, rgba(0,15,0,0.9) 100%);
-        pointer-events:all;">
-        <div style="font-size:52px;font-weight:bold;color:#44cc44;text-shadow:0 0 20px #228822, 0 0 40px #11661180;
-          letter-spacing:6px;margin-bottom:8px;">FOREST OF CAMELOT</div>
-        <div style="font-size:16px;color:#88aa88;margin-bottom:40px;letter-spacing:3px;">
-          Defend the Great Oak &bull; Command the Seasons
-        </div>
-        <div style="display:flex;gap:12px;margin-bottom:20px;">
-          ${(["easy", "normal", "hard", "nightmare"] as const).map(d => {
-            const sel = d === state.difficulty;
-            const col: Record<string, string> = { easy: "#44aa44", normal: "#4488cc", hard: "#cc6622", nightmare: "#cc2222" };
-            return `<button data-diff="${d}" style="pointer-events:all;padding:8px 18px;border:2px solid ${sel ? col[d] : "#333"};
-              background:${sel ? col[d] + "33" : "#111"};color:${col[d]};cursor:pointer;border-radius:6px;
-              font-size:13px;font-weight:${sel ? "bold" : "normal"};letter-spacing:1px;
-              text-transform:uppercase;">${d}</button>`;
-          }).join("")}
-        </div>
-        <button id="forest-play-btn" style="pointer-events:all;padding:14px 50px;font-size:20px;font-weight:bold;
-          background:linear-gradient(180deg,#228822,#116611);color:#eeffee;border:2px solid #44cc44;
-          border-radius:8px;cursor:pointer;letter-spacing:3px;
-          text-shadow:0 0 8px #44cc4480;">
-          ENTER THE FOREST
-        </button>
-        <div style="margin-top:30px;font-size:13px;color:#556;">
-          Best Wave: ${Math.max(state.bestWave, parseInt(localStorage.getItem("forest_best") || "0"))}
-        </div>
-        <div style="font-size:12px;color:#445;margin-top:15px;">
-          WASD: Move &nbsp; Mouse: Look &nbsp; LMB: Staff (3-hit combo) &nbsp; RMB: Thorns<br>
-          Q: Vine Snare &nbsp; E: Root Crush &nbsp; F: Leaf Storm &nbsp; R: Root Travel<br>
-          T: Recruit Wisp &nbsp; G: Purify Grove &nbsp; X: Block/Parry<br>
-          Space: Jump &nbsp; Ctrl: Dodge &nbsp; Shift: Sprint
-        </div>
-        <button id="forest-exit-btn" style="pointer-events:all;position:absolute;top:16px;right:16px;
-          padding:6px 16px;font-size:13px;background:#222;color:#888;border:1px solid #444;
-          border-radius:4px;cursor:pointer;">EXIT</button>
-      </div>`;
-      this._root.innerHTML = html;
-      this._attachMenuListeners(state);
+      // Only rebuild menu DOM when difficulty changes to keep buttons stable for clicks
+      if (!this._menuBuilt || this._menuDifficulty !== state.difficulty) {
+        this._menuDifficulty = state.difficulty;
+        this._menuBuilt = true;
+        html += `<div style="position:absolute;top:0;left:0;width:100%;height:100%;
+          display:flex;flex-direction:column;justify-content:center;align-items:center;
+          background:linear-gradient(180deg, rgba(10,30,10,0.8) 0%, rgba(0,15,0,0.9) 100%);
+          pointer-events:all;">
+          <div style="font-size:52px;font-weight:bold;color:#44cc44;text-shadow:0 0 20px #228822, 0 0 40px #11661180;
+            letter-spacing:6px;margin-bottom:8px;">FOREST OF CAMELOT</div>
+          <div style="font-size:16px;color:#88aa88;margin-bottom:40px;letter-spacing:3px;">
+            Defend the Great Oak &bull; Command the Seasons
+          </div>
+          <div style="display:flex;gap:12px;margin-bottom:20px;">
+            ${(["easy", "normal", "hard", "nightmare"] as const).map(d => {
+              const sel = d === state.difficulty;
+              const col: Record<string, string> = { easy: "#44aa44", normal: "#4488cc", hard: "#cc6622", nightmare: "#cc2222" };
+              return `<button data-diff="${d}" style="pointer-events:all;padding:8px 18px;border:2px solid ${sel ? col[d] : "#333"};
+                background:${sel ? col[d] + "33" : "#111"};color:${col[d]};cursor:pointer;border-radius:6px;
+                font-size:13px;font-weight:${sel ? "bold" : "normal"};letter-spacing:1px;
+                text-transform:uppercase;">${d}</button>`;
+            }).join("")}
+          </div>
+          <button id="forest-play-btn" style="pointer-events:all;padding:14px 50px;font-size:20px;font-weight:bold;
+            background:linear-gradient(180deg,#228822,#116611);color:#eeffee;border:2px solid #44cc44;
+            border-radius:8px;cursor:pointer;letter-spacing:3px;
+            text-shadow:0 0 8px #44cc4480;">
+            ENTER THE FOREST
+          </button>
+          <div style="margin-top:30px;font-size:13px;color:#556;">
+            Best Wave: ${Math.max(state.bestWave, parseInt(localStorage.getItem("forest_best") || "0"))}
+          </div>
+          <div style="font-size:12px;color:#445;margin-top:15px;">
+            WASD: Move &nbsp; Mouse: Look &nbsp; LMB: Staff (3-hit combo) &nbsp; RMB: Thorns<br>
+            Q: Vine Snare &nbsp; E: Root Crush &nbsp; F: Leaf Storm &nbsp; R: Root Travel<br>
+            T: Recruit Wisp &nbsp; G: Purify Grove &nbsp; X: Block/Parry<br>
+            Space: Jump &nbsp; Ctrl: Dodge &nbsp; Shift: Sprint
+          </div>
+          <button id="forest-exit-btn" style="pointer-events:all;position:absolute;top:16px;right:16px;
+            padding:6px 16px;font-size:13px;background:#222;color:#888;border:1px solid #444;
+            border-radius:4px;cursor:pointer;">EXIT</button>
+        </div>`;
+        this._root.innerHTML = html;
+        this._attachMenuListeners(state);
+      }
       return;
     }
+    this._menuBuilt = false;
 
     // --- GAME OVER SCREEN ---
     if (state.phase === "game_over") {

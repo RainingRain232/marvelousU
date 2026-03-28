@@ -11,6 +11,8 @@ export class GargoyleHUD {
   private _minimapCanvas!: HTMLCanvasElement;
   private _minimapCtx!: CanvasRenderingContext2D;
   private _onExit: (() => void) | null = null;
+  private _menuBuilt = false;
+  private _menuDifficulty = "";
 
   build(onExit: () => void): void {
     this._onExit = onExit;
@@ -316,6 +318,13 @@ export class GargoyleHUD {
 
     // --- Menu ---
     if (state.phase === "menu") {
+      // Only rebuild menu DOM when difficulty changes to keep buttons stable for clicks
+      if (this._menuBuilt && this._menuDifficulty === state.difficulty) {
+        this._drawMinimap(state);
+        return;
+      }
+      this._menuBuilt = true;
+      this._menuDifficulty = state.difficulty;
       html += `<div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;
         background:radial-gradient(ellipse at center, #1a1030 0%, #0a0618 100%);pointer-events:auto;">
         <div style="text-align:center;max-width:600px;">
@@ -371,6 +380,8 @@ export class GargoyleHUD {
           })()}
         </div>
       </div>`;
+    } else {
+      this._menuBuilt = false;
     }
 
     // --- Upgrade screen ---

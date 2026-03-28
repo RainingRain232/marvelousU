@@ -400,6 +400,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   const worldSetupScreen = new WorldSetupScreen();
 
   function _showLoading(mode: string): void {
+    // Restore pixi canvas visibility (3D game modes hide it during boot)
+    const pixiCanvas = document.querySelector("#pixi-container canvas") as HTMLCanvasElement | null;
+    if (pixiCanvas) pixiCanvas.style.display = "";
     const DISPLAY_NAMES: Record<string, string> = {
       rpg: "RPG",
       survivor: "SURVIVOR",

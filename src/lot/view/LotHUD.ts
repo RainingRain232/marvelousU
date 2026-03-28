@@ -9,6 +9,8 @@ import { BUFF_INFO, UPGRADE_DEFS, MUTATION_INFO } from "../state/LotState";
 export class LotHUD {
   private _root!: HTMLDivElement;
   private _onExit!: () => void;
+  private _menuBuilt = false;
+  private _menuDifficulty = "";
 
   build(onExit: () => void): void {
     this._onExit = onExit;
@@ -25,9 +27,20 @@ export class LotHUD {
   update(state: LotState): void {
     if (!this._root) return;
 
+    // During menu, only rebuild DOM when difficulty changes to keep buttons stable for clicks
+    if (state.phase === "menu") {
+      if (!this._menuBuilt || this._menuDifficulty !== state.difficulty) {
+        this._menuDifficulty = state.difficulty;
+        this._menuBuilt = true;
+        this._root.innerHTML = this._renderMenu(state);
+        this._bindEvents(state);
+      }
+      return;
+    }
+    this._menuBuilt = false;
+
     let html = "";
     switch (state.phase) {
-      case "menu": html = this._renderMenu(state); break;
       case "draw": html = this._renderDraw(state); break;
       case "active": html = this._renderActive(state); break;
       case "victory": html = this._renderVictory(state); break;

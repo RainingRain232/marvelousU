@@ -10,6 +10,8 @@ import type { Difficulty, ArtifactType } from "../state/GuinevereState";
 export class GuinevereHUD {
   private _root!: HTMLDivElement;
   private _onExit!: () => void;
+  private _menuBuilt = false;
+  private _menuDifficulty = "";
 
   build(onExit: () => void): void {
     this._onExit = onExit;
@@ -38,9 +40,20 @@ export class GuinevereHUD {
   update(state: GuinevereState): void {
     if (!this._root) return;
 
+    // During menu, only rebuild DOM when difficulty changes to keep buttons stable for clicks
+    if (state.phase === "menu") {
+      if (!this._menuBuilt || this._menuDifficulty !== state.difficulty) {
+        this._menuDifficulty = state.difficulty;
+        this._menuBuilt = true;
+        this._root.innerHTML = this._renderMenu(state);
+        this._bindEvents(state);
+      }
+      return;
+    }
+    this._menuBuilt = false;
+
     let html = "";
     switch (state.phase) {
-      case "menu": html = this._renderMenu(state); break;
       case "game_over": html = this._renderGameOver(state); break;
       default: html = this._renderPlaying(state); break;
     }
