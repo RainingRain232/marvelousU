@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gargoyle Orb Prototype</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh; font-family: Georgia, serif; color: #ccc;
+  }
+  h2 { margin: 20px 0 10px; color: #c8a84e; letter-spacing: 2px; }
+
+  #controls { margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  #controls label { color: #aaa; font-size: 13px; }
+  #controls input[type=range] { width: 100px; }
+  #controls span { color: #c8a84e; font-size: 12px; min-width: 24px; }
+  #controls button {
+    padding: 6px 16px; background: #3a2a1a; color: #c8a84e;
+    border: 1px solid #5a4a2a; border-radius: 4px; cursor: pointer; font-family: Georgia, serif;
+  }
+  #controls button:hover { background: #4a3a2a; }
+
+  #status { color: #888; margin-bottom: 10px; font-size: 13px; }
+
+  .demo-row { display: flex; gap: 80px; align-items: flex-end; margin-top: 10px; }
+
+  .orb-container { position: relative; width: 180px; height: 180px; }
+
+  .gargoyle-bg {
+    position: absolute; z-index: 3; pointer-events: none; image-rendering: pixelated;
+  }
+  .gargoyle-bg.mana { transform: scaleX(-1); }
+
+  .orb-ring {
+    position: absolute; border-radius: 50%;
+    border: 3px solid transparent; z-index: 2; pointer-events: none;
+  }
+  .orb-ring.health {
+    background: conic-gradient(from 0deg, #8b6914, #c8a84e, #e8d07a, #c8a84e, #8b6914, #6b4f0e, #8b6914) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .orb-ring.mana {
+    background: conic-gradient(from 0deg, #4a5a8b, #7a8ac8, #a0b0e8, #7a8ac8, #4a5a8b, #3a4a6b, #4a5a8b) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+
+  .orb { position: absolute; border-radius: 50%; overflow: hidden; z-index: 1; }
+  .orb.health {
+    background: radial-gradient(circle at 35% 35%, rgba(60,10,10,0.9), rgba(20,2,2,0.97));
+    box-shadow: 0 0 20px rgba(200,30,30,0.5), inset 0 0 30px rgba(0,0,0,0.6);
+  }
+  .orb.mana {
+    background: radial-gradient(circle at 35% 35%, rgba(10,10,60,0.9), rgba(2,2,20,0.97));
+    box-shadow: 0 0 20px rgba(30,30,200,0.5), inset 0 0 30px rgba(0,0,0,0.6);
+  }
+
+  .orb-fill {
+    position: absolute; bottom: 0; left: 0; width: 100%;
+    height: 75%; border-radius: 50%; animation: liquid 3s ease-in-out infinite;
+  }
+  .orb-fill.health {
+    background: radial-gradient(circle at 40% 40%, rgba(240,50,50,0.9), rgba(160,20,20,0.85), rgba(100,10,10,0.9));
+    box-shadow: inset 0 -5px 15px rgba(255,60,60,0.3), inset 0 3px 8px rgba(255,120,120,0.15);
+  }
+  .orb-fill.mana {
+    background: radial-gradient(circle at 40% 40%, rgba(70,70,240,0.9), rgba(30,30,160,0.85), rgba(10,10,100,0.9));
+    box-shadow: inset 0 -5px 15px rgba(60,60,255,0.3), inset 0 3px 8px rgba(120,120,255,0.15);
+  }
+
+  .orb-sheen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-radius: 50%; pointer-events: none; z-index: 3;
+    background: linear-gradient(170deg, rgba(255,255,255,0.12) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.06) 100%);
+  }
+  .orb-glow {
+    position: absolute; top: 8%; left: 12%; width: 35%; height: 25%;
+    border-radius: 50%; pointer-events: none; z-index: 4;
+    animation: inner-pulse 2.5s ease-in-out infinite;
+  }
+  .orb-glow.health { background: radial-gradient(ellipse, rgba(255,200,200,0.35), transparent); }
+  .orb-glow.mana { background: radial-gradient(ellipse, rgba(200,200,255,0.35), transparent); }
+
+  .orb-text {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 5; font-size: 16px; font-weight: bold;
+    text-shadow: 0 0 6px rgba(0,0,0,1), 0 0 12px rgba(0,0,0,0.9); letter-spacing: 1px;
+  }
+  .orb-text.health { color: #ffcccc; }
+  .orb-text.mana { color: #ccccff; }
+
+  .label { text-align: center; margin-top: 10px; font-size: 14px; color: #888; letter-spacing: 3px; }
+
+  @keyframes liquid { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes inner-pulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
+
+  canvas { display: none; }
+  .debug-row { display: flex; gap: 20px; justify-content: center; margin-top: 10px; }
+  .debug-row canvas { display: block; border: 1px solid #333; image-rendering: pixelated; max-width: 350px; max-height: 350px; }
+</style>
+</head>
+<body>
+
+<h2>GARGOYLE ORB PROTOTYPE</h2>
+<div id="status">Loading image...</div>
+
+<div id="controls">
+  <label>Threshold: <input type="range" id="threshold" min="20" max="90" value="50" oninput="threshVal.textContent=this.value"><span id="threshVal">50</span></label>
+  <label>Orb size: <input type="range" id="orbSize" min="100" max="200" value="150" oninput="orbSizeVal.textContent=this.value"><span id="orbSizeVal">150</span></label>
+  <label>Garg size: <input type="range" id="gargSize" min="180" max="400" value="270" oninput="gargSizeVal.textContent=this.value"><span id="gargSizeVal">270</span></label>
+  <label>Garg X: <input type="range" id="gargX" min="-80" max="30" value="-40" oninput="gargXVal.textContent=this.value"><span id="gargXVal">-40</span></label>
+  <label>Garg Y: <input type="range" id="gargY" min="-80" max="30" value="-50" oninput="gargYVal.textContent=this.value"><span id="gargYVal">-50</span></label>
+  <button onclick="reprocess()">Re-process</button>
+</div>
+
+<div class="demo-row" id="result">
+  <div style="text-align:center">
+    <div class="orb-container" id="hp-container">
+      <img class="gargoyle-bg health" id="gargoyle-hp">
+      <div class="orb-ring health" id="hp-ring"></div>
+      <div class="orb health" id="hp-orb">
+        <div class="orb-fill health"></div>
+        <div class="orb-sheen"></div>
+        <div class="orb-glow health"></div>
+        <div class="orb-text health">404/809</div>
+      </div>
+    </div>
+    <div class="label">HEALTH</div>
+  </div>
+  <div style="text-align:center">
+    <div class="orb-container" id="mp-container">
+      <img class="gargoyle-bg mana" id="gargoyle-mp">
+      <div class="orb-ring mana" id="mp-ring"></div>
+      <div class="orb mana" id="mp-orb">
+        <div class="orb-fill mana"></div>
+        <div class="orb-sheen"></div>
+        <div class="orb-glow mana"></div>
+        <div class="orb-text mana">218/416</div>
+      </div>
+    </div>
+    <div class="label">MANA</div>
+  </div>
+</div>
+
+<div style="margin-top:20px;text-align:center">
+  <button onclick="document.querySelector('.debug-row').style.display = document.querySelector('.debug-row').style.display === 'none' ? 'flex' : 'none'" style="padding:6px 16px;background:#3a2a1a;color:#c8a84e;border:1px solid #5a4a2a;border-radius:4px;cursor:pointer;font-family:Georgia,serif;">Toggle Debug</button>
+  <div class="debug-row" style="display:none">
+    <div><div style="color:#ff6666;margin-bottom:4px;font-size:12px">Health</div><canvas id="debug-hp"></canvas></div>
+    <div><div style="color:#6666ff;margin-bottom:4px;font-size:12px">Mana</div><canvas id="debug-mp"></canvas></div>
+  </div>
+</div>
+
+<canvas id="processor"></canvas>
+<canvas id="mana-processor"></canvas>
+
+<script>
+const processor = document.getElementById('processor');
+const pCtx = processor.getContext('2d', { willReadFrequently: true });
+const manaProcessor = document.getElementById('mana-processor');
+const mCtx = manaProcessor.getContext('2d', { willReadFrequently: true });
+
+const img = new Image();
+img.crossOrigin = 'anonymous';
+img.onload = () => {
+  document.getElementById('status').textContent = `Image loaded: ${img.width}x${img.height}`;
+  processImage();
+};
+img.onerror = () => {
+  document.getElementById('status').textContent = 'ERROR: Could not load image!';
+  document.getElementById('status').style.color = '#ff4444';
+};
+img.src = 'src/diablo/gargoylered.png';
+
+function rgb2hsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [h * 360, s, l];
+}
+
+function processImage() {
+  const threshold = parseInt(document.getElementById('threshold').value);
+  const w = img.width, h = img.height;
+  processor.width = w; processor.height = h;
+  pCtx.clearRect(0, 0, w, h);
+  pCtx.drawImage(img, 0, 0);
+
+  const imageData = pCtx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+
+  // Pass 1: classify every pixel as background or foreground using hue
+  const isBg = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const r = data[i*4], g = data[i*4+1], b = data[i*4+2];
+    const [hue, sat, lum] = rgb2hsl(r, g, b);
+    const brightness = (r + g + b) / 3;
+
+    // Background conditions:
+    // 1. Blue sky: hue 190-260, any saturation
+    // 2. Very dark pixels (silhouettes, roof): brightness < 35
+    // 3. Stars/moon: very bright, low saturation
+    // 4. Dark blue-gray roof: blue-ish hue, low brightness
+
+    if (brightness < 30) {
+      isBg[i] = 1; // very dark silhouettes
+    } else if (hue > 190 && hue < 265 && brightness < 160 && sat > 0.08) {
+      isBg[i] = 1; // blue sky
+    } else if (brightness > 210 && sat < 0.15) {
+      isBg[i] = 1; // stars/moon (bright, desaturated)
+    } else if (hue > 180 && hue < 270 && brightness < 90 && sat > 0.05) {
+      isBg[i] = 1; // dark blue-gray (roof tiles, dark sky)
+    }
+  }
+
+  // Pass 2: flood fill from edges — only keep bg pixels connected to edges
+  const edgeConnected = new Uint8Array(w * h);
+  const queue = [];
+
+  for (let x = 0; x < w; x++) {
+    if (isBg[x]) { edgeConnected[x] = 1; queue.push(x); }
+    const bIdx = (h-1)*w+x;
+    if (isBg[bIdx]) { edgeConnected[bIdx] = 1; queue.push(bIdx); }
+  }
+  for (let y = 0; y < h; y++) {
+    const lIdx = y*w;
+    if (isBg[lIdx]) { edgeConnected[lIdx] = 1; queue.push(lIdx); }
+    const rIdx = y*w+(w-1);
+    if (isBg[rIdx]) { edgeConnected[rIdx] = 1; queue.push(rIdx); }
+  }
+
+  // Spread connectivity through bg pixels
+  let head = 0;
+  while (head < queue.length) {
+    const idx = queue[head++];
+    const x = idx % w, y = (idx - x) / w;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+        const nIdx = ny * w + nx;
+        if (edgeConnected[nIdx] || !isBg[nIdx]) continue;
+
+        // Also allow spreading through near-bg pixels (threshold-based smoothing)
+        edgeConnected[nIdx] = 1;
+        queue.push(nIdx);
+      }
+    }
+  }
+
+  // Also flood-fill spread into non-classified pixels that border lots of bg
+  // This catches edge pixels between gargoyle and sky (anti-aliasing)
+  for (let pass = 0; pass < 2; pass++) {
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        if (edgeConnected[idx]) continue;
+        let bgN = 0;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++)
+            if (!(dx===0 && dy===0) && edgeConnected[(y+dy)*w+(x+dx)]) bgN++;
+        // Pixel is surrounded by bg on most sides — likely edge artifact
+        if (bgN >= 7) edgeConnected[idx] = 1;
+      }
+    }
+  }
+
+  // Apply: set edge-connected bg pixels to transparent, semi-transparent for border
+  for (let i = 0; i < w * h; i++) {
+    if (edgeConnected[i]) {
+      data[i*4+3] = 0;
+    }
+  }
+
+  // Soften edges: partially transparent pixels next to transparent ones
+  const alphaData = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) alphaData[i] = data[i*4+3];
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      if (alphaData[idx] === 0) continue;
+      let transN = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++)
+          if (!(dx===0&&dy===0) && alphaData[(y+dy)*w+(x+dx)] === 0) transN++;
+      if (transN >= 3) data[idx*4+3] = Math.floor(data[idx*4+3] * 0.5);
+      else if (transN >= 1) data[idx*4+3] = Math.floor(data[idx*4+3] * 0.8);
+    }
+  }
+
+  pCtx.putImageData(imageData, 0, 0);
+  const healthUrl = processor.toDataURL('image/png');
+
+  // Create mana version: shift red/warm tones to blue/cool
+  manaProcessor.width = w; manaProcessor.height = h;
+  mCtx.drawImage(processor, 0, 0);
+  const manaData = mCtx.getImageData(0, 0, w, h);
+  const md = manaData.data;
+  for (let i = 0; i < md.length; i += 4) {
+    if (md[i+3] === 0) continue;
+    const r = md[i], g = md[i+1], b = md[i+2];
+    const [hue, sat] = rgb2hsl(r, g, b);
+
+    if (hue < 40 || hue > 330) {
+      // Red/warm tones -> blue
+      md[i]   = Math.min(255, Math.floor(b * 0.6 + 15));
+      md[i+1] = Math.min(255, Math.floor(g * 0.7 + r * 0.1));
+      md[i+2] = Math.min(255, Math.floor(r * 0.85 + 20));
+    } else {
+      // Neutral stone -> slight cool tint
+      md[i]   = Math.floor(r * 0.82);
+      md[i+1] = Math.floor(g * 0.85);
+      md[i+2] = Math.min(255, Math.floor(b * 1.15 + 10));
+    }
+  }
+  mCtx.putImageData(manaData, 0, 0);
+  const manaUrl = manaProcessor.toDataURL('image/png');
+
+  // Apply
+  document.getElementById('gargoyle-hp').src = healthUrl;
+  document.getElementById('gargoyle-mp').src = manaUrl;
+  updateLayout();
+
+  // Debug
+  for (const [canvasId, srcCanvas] of [['debug-hp', processor], ['debug-mp', manaProcessor]]) {
+    const c = document.getElementById(canvasId);
+    c.width = w; c.height = h;
+    const dc = c.getContext('2d');
+    for (let y = 0; y < h; y += 10)
+      for (let x = 0; x < w; x += 10) {
+        dc.fillStyle = ((x+y)%20===0) ? '#333' : '#222';
+        dc.fillRect(x, y, 10, 10);
+      }
+    dc.drawImage(srcCanvas, 0, 0);
+  }
+
+  document.getElementById('status').textContent = 'Processed!';
+}
+
+function updateLayout() {
+  const orbSize = parseInt(document.getElementById('orbSize').value);
+  const gargSize = parseInt(document.getElementById('gargSize').value);
+  const gargX = parseInt(document.getElementById('gargX').value);
+  const gargY = parseInt(document.getElementById('gargY').value);
+  const containerSize = orbSize + 30;
+
+  for (const id of ['hp-container', 'mp-container']) {
+    document.getElementById(id).style.width = containerSize + 'px';
+    document.getElementById(id).style.height = containerSize + 'px';
+  }
+  for (const el of document.querySelectorAll('.gargoyle-bg')) {
+    el.style.width = gargSize + 'px';
+    el.style.height = gargSize + 'px';
+    el.style.top = gargY + 'px';
+    el.style.left = gargX + 'px';
+  }
+  for (const el of document.querySelectorAll('.orb-ring')) {
+    const s = orbSize + 20;
+    el.style.width = s + 'px'; el.style.height = s + 'px';
+    el.style.top = '5px'; el.style.left = '5px';
+  }
+  for (const el of document.querySelectorAll('.orb')) {
+    el.style.width = orbSize + 'px'; el.style.height = orbSize + 'px';
+    el.style.top = '15px'; el.style.left = '15px';
+  }
+}
+
+function reprocess() { processImage(); }
+
+// Live update layout on slider change (no reprocess needed)
+for (const id of ['orbSize', 'gargSize', 'gargX', 'gargY']) {
+  document.getElementById(id).addEventListener('input', updateLayout);
+}
+</script>
+</body>
+</html>
