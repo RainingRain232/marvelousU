@@ -112,6 +112,7 @@ export class LeviathanRenderer {
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._canvas = this._renderer.domElement;
+    this._canvas.style.cssText = "position:fixed;top:0;left:0;z-index:5;";
 
     this._scene = new THREE.Scene();
     this._scene.background = new THREE.Color(COL.WATER_DEEP);
