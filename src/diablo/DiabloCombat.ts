@@ -502,7 +502,10 @@ export function doDodgeRoll(ctx: CombatContext): void {
 // ──────────────────────────────────────────────────────────────
 export function tickAOEDamage(ctx: CombatContext, aoe: DiabloAOE): void {
   if (aoe.ownerId === "player") {
-    ctx.renderer.destroyNearbyProps(aoe.x, aoe.z, aoe.radius);
+    // Only destroy props on the first tick (timer near 0) to avoid repeated expensive calls
+    if (aoe.timer < 0.05) {
+      ctx.renderer.destroyNearbyProps(aoe.x, aoe.z, aoe.radius);
+    }
     for (const enemy of ctx.state.enemies) {
       if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
       const dist = ctx.dist(aoe.x, aoe.z, enemy.x, enemy.z);
@@ -518,23 +521,23 @@ export function tickAOEDamage(ctx: CombatContext, aoe: DiabloAOE): void {
         const aoHkDist = 0.5;
         enemy.x += Math.cos(aoHkAngle) * aoHkDist;
         enemy.z += Math.sin(aoHkAngle) * aoHkDist;
-        // Spawn extra AoE impact particles based on damage type
-        switch (aoe.damageType) {
-          case DamageType.FIRE:
-            ctx.renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 0.5, enemy.z, 4 + Math.floor(Math.random() * 3), ctx.state.particles);
-            break;
-          case DamageType.ICE:
-            ctx.renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 0.5, enemy.z, 4 + Math.floor(Math.random() * 3), ctx.state.particles);
-            break;
-          case DamageType.LIGHTNING:
-            ctx.renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 0.5, enemy.z, 3 + Math.floor(Math.random() * 3), ctx.state.particles);
-            ctx.renderer.spawnParticles(ParticleType.SPARK, enemy.x, enemy.y + 1, enemy.z, 2, ctx.state.particles);
-            break;
-          case DamageType.POISON:
-            ctx.renderer.spawnParticles(ParticleType.POISON, enemy.x, enemy.y + 0.3, enemy.z, 3 + Math.floor(Math.random() * 2), ctx.state.particles);
-            break;
+        // Spawn extra AoE impact particles (limited to avoid particle explosion)
+        if (ctx.state.particles.length < 200) {
+          switch (aoe.damageType) {
+            case DamageType.FIRE:
+              ctx.renderer.spawnParticles(ParticleType.FIRE, enemy.x, enemy.y + 0.5, enemy.z, 2, ctx.state.particles);
+              break;
+            case DamageType.ICE:
+              ctx.renderer.spawnParticles(ParticleType.ICE, enemy.x, enemy.y + 0.5, enemy.z, 2, ctx.state.particles);
+              break;
+            case DamageType.LIGHTNING:
+              ctx.renderer.spawnParticles(ParticleType.LIGHTNING, enemy.x, enemy.y + 0.5, enemy.z, 2, ctx.state.particles);
+              break;
+            case DamageType.POISON:
+              ctx.renderer.spawnParticles(ParticleType.POISON, enemy.x, enemy.y + 0.3, enemy.z, 2, ctx.state.particles);
+              break;
+          }
         }
-        ctx.renderer.shakeCamera(0.15, 0.2);
 
         if (aoe.statusEffect) {
           const existing = enemy.statusEffects.find((e) => e.effect === aoe.statusEffect);
@@ -1347,7 +1350,34 @@ export function activateSkill(ctx: CombatContext, idx: number): void {
     case SkillId.LAY_ON_HANDS:
     case SkillId.AEGIS_OF_LIGHT:
     case SkillId.RIGHTEOUS_FURY:
-    case SkillId.RAISE_SKELETON:
+    case SkillId.RAISE_SKELETON: {
+      // Summon a skeleton warrior ally that fights for the player
+      const skelAngle = Math.random() * Math.PI * 2;
+      const skelX = p.x + Math.cos(skelAngle) * 3;
+      const skelZ = p.z + Math.sin(skelAngle) * 3;
+      const skelDmg = modDmg * 0.4;
+      const skelHp = p.maxHp * 0.3;
+      const skelEnemy: DiabloEnemy = {
+        id: ctx.genId(),
+        type: EnemyType.SKELETON_WARRIOR,
+        x: skelX, y: 0, z: skelZ,
+        angle: p.angle,
+        hp: skelHp, maxHp: skelHp,
+        damage: skelDmg, damageType: DamageType.PHYSICAL, armor: 5, speed: 3.5,
+        state: EnemyState.CHASE, targetId: null,
+        attackTimer: 1.0, attackRange: 2.0, aggroRange: 15,
+        xpReward: 0, lootTable: [], deathTimer: 0, stateTimer: 0,
+        patrolTarget: null, statusEffects: [], isBoss: false,
+        scale: 0.85, level: p.level,
+      };
+      // Mark as player-owned so it attacks enemies, not the player
+      (skelEnemy as any).isPlayerMinion = true;
+      ctx.state.enemies.push(skelEnemy);
+      ctx.renderer.spawnParticles(ParticleType.DUST, skelX, 0.3, skelZ, 8, ctx.state.particles);
+      ctx.renderer.spawnParticles(ParticleType.LIGHTNING, skelX, 0.5, skelZ, 5, ctx.state.particles);
+      ctx.addFloatingText(p.x, p.y + 3, p.z, "Rise!", "#44ff88");
+      break;
+    }
     case SkillId.BLOOD_GOLEM:
     case SkillId.ARMY_OF_THE_DEAD:
     case SkillId.BONE_ARMOR:

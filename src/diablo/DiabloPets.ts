@@ -164,9 +164,10 @@ export function updatePets(ctx: PetContext, dt: number): void {
     if (!pet.isSummoned) continue;
 
     // Update ability cooldowns
-    for (const key of Object.keys(pet.abilityCooldowns)) {
+    for (const key in pet.abilityCooldowns) {
       if (pet.abilityCooldowns[key] > 0) {
-        pet.abilityCooldowns[key] = Math.max(0, pet.abilityCooldowns[key] - dt);
+        pet.abilityCooldowns[key] -= dt;
+        if (pet.abilityCooldowns[key] < 0) pet.abilityCooldowns[key] = 0;
       }
     }
     pet.attackTimer = Math.max(0, pet.attackTimer - dt);
@@ -224,18 +225,22 @@ export function updatePets(ctx: PetContext, dt: number): void {
           }
         }
 
-        // Combat pets: look for enemies to attack
+        // Combat pets: look for enemies to attack (throttled to every ~0.5s)
         if (pet.petType === PetType.COMBAT && pet.aggroRange > 0) {
-          let nearestEnemy: DiabloEnemy | null = null;
-          let nearestDist = pet.aggroRange;
-          for (const enemy of ctx.state.enemies) {
-            if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
-            const d = ctx.dist(enemy.x, enemy.z, pet.x, pet.z);
-            if (d < nearestDist) { nearestDist = d; nearestEnemy = enemy; }
-          }
-          if (nearestEnemy) {
-            pet.targetId = nearestEnemy.id;
-            pet.aiState = PetAIState.ATTACKING;
+          pet.attackTimer -= dt;
+          if (pet.attackTimer <= 0) {
+            pet.attackTimer = 0.5;
+            let nearestEnemy: DiabloEnemy | null = null;
+            let nearestDist = pet.aggroRange;
+            for (const enemy of ctx.state.enemies) {
+              if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+              const d = ctx.dist(enemy.x, enemy.z, pet.x, pet.z);
+              if (d < nearestDist) { nearestDist = d; nearestEnemy = enemy; }
+            }
+            if (nearestEnemy) {
+              pet.targetId = nearestEnemy.id;
+              pet.aiState = PetAIState.ATTACKING;
+            }
           }
         }
 
@@ -280,7 +285,7 @@ export function updatePets(ctx: PetContext, dt: number): void {
                 (ability.buffType === 'cleanse' && p.statusEffects.length > 0) ||
                 (ability.buffType === 'cooldownReduce') ||
                 (ability.buffType === 'damageReduction' && p.hp < p.maxHp * 0.4) ||
-                (ability.buffType === 'taunt' && ctx.state.enemies.filter(e => e.state !== EnemyState.DEAD && ctx.dist(e.x, e.z, p.x, p.z) < 8).length >= 3);
+                (ability.buffType === 'taunt' && (() => { let c = 0; for (const e of ctx.state.enemies) { if (e.state !== EnemyState.DEAD && ctx.dist(e.x, e.z, p.x, p.z) < 8 && ++c >= 3) return true; } return false; })());
               if (shouldBuff) {
                 applyPetBuff(ctx, ability);
                 pet.abilityCooldowns[ability.id] = ability.cooldown;
@@ -293,7 +298,8 @@ export function updatePets(ctx: PetContext, dt: number): void {
       }
 
       case PetAIState.ATTACKING: {
-        const target = ctx.state.enemies.find(e => e.id === pet.targetId);
+        let target: DiabloEnemy | undefined;
+        for (const e of ctx.state.enemies) { if (e.id === pet.targetId) { target = e; break; } }
         if (!target || target.state === EnemyState.DYING || target.state === EnemyState.DEAD) {
           pet.targetId = null;
           pet.aiState = PetAIState.RETURNING;

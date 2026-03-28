@@ -41,7 +41,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
     // Clock faces on walls (more detailed with numerals)
     for (let i = 0; i < 12; i++) {
       const clock = new THREE.Group();
-      const face = new THREE.Mesh(new THREE.CircleGeometry(0.6, 44), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.6, 16), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
       clock.add(face);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 17, 46), clockMat); clock.add(rim);
       // Hour markers
@@ -69,7 +69,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.8 + Math.random() * 0.5, 0.05, 23, 46), timeMat);
       rift.add(ring);
       // Inner portal glow
-      const inner = new THREE.Mesh(new THREE.CircleGeometry(0.7 + Math.random() * 0.4, 36),
+      const inner = new THREE.Mesh(new THREE.CircleGeometry(0.7 + Math.random() * 0.4, 16),
         new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2266dd, emissiveIntensity: 1.5, transparent: true, opacity: 0.2 }));
       rift.add(inner);
       rift.position.set((Math.random() - 0.5) * w * 0.6, 1 + Math.random() * 3, (Math.random() - 0.5) * d * 0.6);
@@ -89,9 +89,9 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 8; i++) {
       const hg = new THREE.Group();
       // Frame
-      const frameTop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 23), clockMat);
+      const frameTop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 10), clockMat);
       frameTop.position.y = 0.8; hg.add(frameTop);
-      const frameBot = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 23), clockMat);
+      const frameBot = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 10), clockMat);
       frameBot.position.y = -0.4; hg.add(frameBot);
       // Posts
       for (let p = 0; p < 3; p++) {
@@ -105,7 +105,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const botBulb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 23, 20), new THREE.MeshStandardMaterial({ color: 0xddddcc, transparent: true, opacity: 0.4 }));
       botBulb.scale.y = 1.3; botBulb.position.y = -0.1; hg.add(botBulb);
       // Sand inside
-      const sand = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.2, 23), sandMat);
+      const sand = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.2, 10), sandMat);
       sand.position.y = -0.25; hg.add(sand);
       const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 17), clockMat);
       neck.position.y = 0.2; hg.add(neck);
@@ -159,7 +159,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const pend = new THREE.Group();
       const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2 + Math.random(), 16), clockMat);
       pend.add(rod);
-      const bob = new THREE.Mesh(new THREE.SphereGeometry(0.12, 31, 20), clockMat);
+      const bob = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10), clockMat);
       bob.position.y = -1.2; pend.add(bob);
       pend.position.set((Math.random() - 0.5) * w * 0.4, 4 + Math.random(), (Math.random() - 0.5) * d * 0.4);
       pend.rotation.z = (Math.random() - 0.5) * 0.4; mctx.scene.add(pend);
@@ -167,7 +167,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
 
     // Floor clock tile pattern
     for (let i = 0; i < 15; i++) {
-      const tile = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 0.5, 36), new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 }));
+      const tile = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 0.5, 16), new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.6 }));
       tile.rotation.x = -Math.PI / 2;
       const tlx = (Math.random() - 0.5) * w * 0.5, tlz = (Math.random() - 0.5) * d * 0.5;
       tile.position.set(tlx, getTerrainHeight(tlx, tlz, 0.5) + 0.02, tlz); mctx.scene.add(tile);
@@ -177,7 +177,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const wallClock = new THREE.Group();
       const backing = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.05), wallMat);
       wallClock.add(backing);
-      const face = new THREE.Mesh(new THREE.CircleGeometry(0.35, 30), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.35, 16), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
       face.position.z = 0.03; wallClock.add(face);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.03, 16, 30), clockMat);
       rim.position.z = 0.03; wallClock.add(rim);
@@ -226,7 +226,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       }
       const pendRod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.6, 16), handMat);
       pendRod.position.y = -0.35; mech.add(pendRod);
-      const pendBob = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 20), clockMat);
+      const pendBob = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 10), clockMat);
       pendBob.position.y = -0.65; mech.add(pendBob);
       const mex = (Math.random()-0.5)*w*0.5, mez = (Math.random()-0.5)*d*0.5;
       mech.position.set(mex, getTerrainHeight(mex, mez, 0.5) + 2 + Math.random(), mez);
@@ -237,7 +237,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const tPortal = new THREE.Group();
       const outer = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.04, 16, 30), timeMat);
       tPortal.add(outer);
-      const inner = new THREE.Mesh(new THREE.CircleGeometry(0.55, 30), new THREE.MeshStandardMaterial({ color: 0x224488, emissive: 0x112266, emissiveIntensity: 1.0, transparent: true, opacity: 0.15 }));
+      const inner = new THREE.Mesh(new THREE.CircleGeometry(0.55, 16), new THREE.MeshStandardMaterial({ color: 0x224488, emissive: 0x112266, emissiveIntensity: 1.0, transparent: true, opacity: 0.15 }));
       tPortal.add(inner);
       const clockOverlay = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.01, 16, 12), clockMat);
       tPortal.add(clockOverlay);
@@ -352,7 +352,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const trRing = new THREE.Mesh(new THREE.TorusGeometry(1.0 + Math.random() * 0.4, 0.06, 20, 40), timeMat);
       trPtl.add(trRing);
       // Swirling translucent colored fill
-      const trFill = new THREE.Mesh(new THREE.CircleGeometry(0.9 + Math.random() * 0.3, 32),
+      const trFill = new THREE.Mesh(new THREE.CircleGeometry(0.9 + Math.random() * 0.3, 16),
         new THREE.MeshStandardMaterial({ color: 0x4466cc, emissive: 0x2244aa, emissiveIntensity: 1.5, transparent: true, opacity: 0.2 }));
       trPtl.add(trFill);
       // Crackling edge sparks (tiny bright spheres)
@@ -375,7 +375,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       const ctBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, ctH, 1.5), wallMat);
       ctBody.position.y = ctH / 2; ctBody.castShadow = true; ctTwr.add(ctBody);
       // Clock face on front (circle with tick marks and hands)
-      const ctFace = new THREE.Mesh(new THREE.CircleGeometry(0.5, 30), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
+      const ctFace = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), new THREE.MeshStandardMaterial({ color: 0xeeddcc }));
       ctFace.position.set(0, ctH * 0.75, 0.76); ctTwr.add(ctFace);
       const ctRim = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.03, 16, 30), clockMat);
       ctRim.position.set(0, ctH * 0.75, 0.76); ctTwr.add(ctRim);
@@ -402,7 +402,7 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 8; i++) {
       const cmPil = new THREE.Group();
       const cmH = 3 + Math.random() * 2;
-      const cmBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, cmH, 20), wallMat);
+      const cmBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, cmH, 10), wallMat);
       cmBody.position.y = cmH / 2; cmBody.castShadow = true; cmPil.add(cmBody);
       // Rotating torus ring bands at different heights
       for (let r = 0; r < 4; r++) {
@@ -469,7 +469,7 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
       let lastR = 0.15 + Math.random() * 0.12;
       for (let s = 0; s < segments; s++) {
         const r = lastR * (0.82 + Math.random() * 0.12);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(r, lastR, 0.6, 23), tentacleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(r, lastR, 0.6, 10), tentacleMat);
         seg.position.y = s * 0.55;
         seg.rotation.z = Math.sin(s * 0.7) * 0.18;
         seg.rotation.x = Math.cos(s * 0.5) * 0.18; tentacle.add(seg); lastR = r;
@@ -539,7 +539,7 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
     for (let i = 0; i < 10; i++) {
       const alienCol = new THREE.Group();
       const colH = 3 + Math.random() * 4;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, colH, 20), alienStoneMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, colH, 10), alienStoneMat);
       col.position.y = colH / 2; alienCol.add(col);
       // Twisted ring decorations
       for (let r = 0; r < 3; r++) {
@@ -573,7 +573,7 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
       const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.7 + Math.random() * 0.5, 0.04, 17, 44), madnessMat);
       portal.add(innerRing);
       // Void center
-      const voidCenter = new THREE.Mesh(new THREE.CircleGeometry(0.6 + Math.random() * 0.4, 36),
+      const voidCenter = new THREE.Mesh(new THREE.CircleGeometry(0.6 + Math.random() * 0.4, 16),
         new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x220044, emissiveIntensity: 0.5 }));
       portal.add(voidCenter);
       portal.position.set((Math.random() - 0.5) * w * 0.4, 2 + Math.random() * 3, (Math.random() - 0.5) * d * 0.4);
@@ -583,11 +583,11 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
     // Cosmic horror statues
     for (let i = 0; i < 4; i++) {
       const statue = new THREE.Group();
-      const stBody = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 23), alienStoneMat);
+      const stBody = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 10), alienStoneMat);
       stBody.position.y = 1; statue.add(stBody);
       // Multiple heads/faces
       for (let h = 0; h < 3; h++) {
-        const face = new THREE.Mesh(new THREE.SphereGeometry(0.18, 31, 20), alienStoneMat);
+        const face = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 10), alienStoneMat);
         const hAngle = (h / 3) * Math.PI * 2;
         face.position.set(Math.sin(hAngle) * 0.15, 2.1, Math.cos(hAngle) * 0.15); statue.add(face);
       }
@@ -598,7 +598,7 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
         tArm.rotation.z = (a < 2 ? 1 : -1) * (0.5 + Math.random() * 0.5); statue.add(tArm);
       }
       // Base with runes
-      const stBase = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.3, 27), alienStoneMat);
+      const stBase = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 0.3, 12), alienStoneMat);
       stBase.position.y = 0.15; statue.add(stBase);
       const baseRune = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.02, 27, 27), runeMat);
       baseRune.rotation.x = -Math.PI / 2; baseRune.position.y = 0.31; statue.add(baseRune);
@@ -644,7 +644,7 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
 
     // Madness pools
     for (let i = 0; i < 8; i++) {
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 30), madnessMat);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 2, 16), madnessMat);
       pool.rotation.x = -Math.PI / 2;
       const px = (Math.random() - 0.5) * w * 0.5, pz = (Math.random() - 0.5) * d * 0.5;
       pool.position.set(px, getTerrainHeight(px, pz, 0.5) + 0.02, pz); mctx.scene.add(pool);
@@ -661,7 +661,7 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
       const archway = new THREE.Group();
       for (const side of [-1, 1]) {
         for (let s = 0; s < 6; s++) {
-          const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.08 - s * 0.008, 0.1 - s * 0.008, 0.5, 20), tentacleMat);
+          const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.08 - s * 0.008, 0.1 - s * 0.008, 0.5, 10), tentacleMat);
           const angle = (s / 6) * Math.PI * 0.5 * side;
           seg.position.set(side * (1.0 - Math.sin(angle) * 0.8), s * 0.45, 0);
           seg.rotation.z = angle * 0.8; archway.add(seg);
@@ -1184,7 +1184,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
     fWall.position.y = 0.75;
     fountainGroup.add(fWall);
     // Broken central pillar
-    const fPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2.5, 20), ftnMat);
+    const fPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2.5, 10), ftnMat);
     fPillar.position.y = 1.5;
     fPillar.rotation.z = 0.08;
     fPillar.castShadow = true;
@@ -1213,7 +1213,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
     fountainGroup.add(statHead);
     // Stagnant water
     const waterMat2 = new THREE.MeshStandardMaterial({ color: 0x2a3a25, transparent: true, opacity: 0.55, roughness: 0.15, metalness: 0.15 });
-    const ftnWater = new THREE.Mesh(new THREE.CircleGeometry(2.1, 32), waterMat2);
+    const ftnWater = new THREE.Mesh(new THREE.CircleGeometry(2.1, 16), waterMat2);
     ftnWater.rotation.x = -Math.PI / 2;
     ftnWater.position.y = 0.55;
     fountainGroup.add(ftnWater);
@@ -1481,7 +1481,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
       const r = Math.random();
       if (r < 0.35) {
         const barrelGroup = new THREE.Group();
-        const barrelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.7, 20);
+        const barrelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.7, 10);
         const barrelMesh = new THREE.Mesh(barrelGeo, new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.85 }));
         barrelMesh.position.y = 0.35;
         if (Math.random() > 0.6) { barrelMesh.rotation.x = Math.PI / 2; barrelMesh.position.y = 0.3; }
@@ -1898,7 +1898,7 @@ export function buildCityRuins(mctx: MapBuildContext, w: number, d: number): voi
     // ── Broken Clock Face on collapsed tower ──
     const clockGrp = new THREE.Group();
     const clockR = 1.5;
-    const clockFace = new THREE.Mesh(new THREE.CircleGeometry(clockR, 44), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.4, side: THREE.DoubleSide }));
+    const clockFace = new THREE.Mesh(new THREE.CircleGeometry(clockR, 16), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.4, side: THREE.DoubleSide }));
     clockGrp.add(clockFace);
     const clockRim = new THREE.Mesh(new THREE.TorusGeometry(clockR, 0.08, 16, 44), new THREE.MeshStandardMaterial({ color: 0x886622, metalness: 0.5, roughness: 0.35 }));
     clockGrp.add(clockRim);
@@ -2679,7 +2679,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
     // Corner towers with crenellations and arrow slits
     const towerMat = new THREE.MeshStandardMaterial({ color: 0x6a6860, roughness: 0.85 });
     for (const [tx, tz] of [[-hw + 1, -hd + 1], [hw - 1, -hd + 1], [-hw + 1, hd - 1], [hw - 1, hd - 1]] as [number, number][]) {
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.2, wallH + 4, 20), towerMat);
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.2, wallH + 4, 10), towerMat);
       tower.position.set(tx, (wallH + 4) / 2, tz);
       tower.castShadow = true;
       mctx.envGroup.add(tower);
@@ -2963,7 +2963,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
     // ── Well with full detail ──
     const wellGroup = new THREE.Group();
     const wellMat = new THREE.MeshStandardMaterial({ color: 0x706860, roughness: 0.85 });
-    const wellBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 0.6, 20), wellMat);
+    const wellBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 0.6, 10), wellMat);
     wellBase.position.y = 0.3;
     wellGroup.add(wellBase);
     // Individual rim stones
@@ -3111,7 +3111,7 @@ export function buildCity(mctx: MapBuildContext, w: number, d: number): void {
       const cfGroup = new THREE.Group();
       const cfR = 1.2;
       // Face
-      const cfFace = new THREE.Mesh(new THREE.CircleGeometry(cfR, 44), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.35, side: THREE.DoubleSide }));
+      const cfFace = new THREE.Mesh(new THREE.CircleGeometry(cfR, 16), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.35, side: THREE.DoubleSide }));
       cfGroup.add(cfFace);
       // Rim
       const cfRim = new THREE.Mesh(new THREE.TorusGeometry(cfR, 0.06, 12, 44), clockBrassMat);

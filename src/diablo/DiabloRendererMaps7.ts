@@ -373,14 +373,14 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       const pillarH = 3 + Math.random() * 5;
       const broken = Math.random() > 0.4;
       const actualH = broken ? pillarH * (0.3 + Math.random() * 0.5) : pillarH;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, actualH, 27), stoneMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, actualH, 12), stoneMat);
       const px = Math.sin(angle) * radius, pz = Math.cos(angle) * radius;
       pillar.position.set(px, getTerrainHeight(px, pz, 1.0) + actualH / 2, pz);
       pillar.castShadow = true; mctx.scene.add(pillar);
-      const pBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 27), darkStoneMat);
+      const pBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 12), darkStoneMat);
       pBase.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.15, pz); mctx.scene.add(pBase);
       if (!broken) {
-        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 27), darkStoneMat);
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 12), darkStoneMat);
         cap.position.set(px, getTerrainHeight(px, pz, 1.0) + actualH - 0.15, pz); mctx.scene.add(cap);
       }
       if (broken) {
@@ -401,40 +401,44 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
     }
 
     // Arena floor with marking rings
-    const arenaFloor = new THREE.Mesh(new THREE.CircleGeometry(w * 0.25, 62), sandMat);
+    const arenaFloor = new THREE.Mesh(new THREE.CircleGeometry(w * 0.25, 32), sandMat);
     arenaFloor.rotation.x = -Math.PI / 2; arenaFloor.position.y = 0.02; mctx.scene.add(arenaFloor);
-    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.2, 0.08, 17, 62), darkStoneMat);
+    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.2, 0.08, 10, 32), darkStoneMat);
     innerRing.rotation.x = -Math.PI / 2; innerRing.position.y = 0.04; mctx.scene.add(innerRing);
-    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.25, 0.15, 17, 62), stoneMat);
+    const outerRing = new THREE.Mesh(new THREE.TorusGeometry(w * 0.25, 0.15, 10, 32), stoneMat);
     outerRing.rotation.x = -Math.PI / 2; outerRing.position.y = 0.06; mctx.scene.add(outerRing);
 
-    // Spectator stands - broken tier blocks with stone seats
+    // Spectator stands - broken tier blocks with stone seats (shared geometry)
+    const seatGeo = new THREE.BoxGeometry(0.4, 0.25, 0.35);
+    const blkGeo = new THREE.BoxGeometry(2.2, 0.6, 1.5);
     for (let tier = 0; tier < 4; tier++) {
       const tierR = w * 0.28 + tier * 2.5, tierH = 0.4 + tier * 0.8;
-      for (let s = 0; s < 12; s++) {
-        const arcA = (s / 12) * Math.PI * 2;
-        if (Math.random() > 0.2) {
-          const arcLen = 1.5 + Math.random() * 2;
-          const blk = new THREE.Mesh(new THREE.BoxGeometry(arcLen, 0.6, 1.5), darkStoneMat);
+      for (let s = 0; s < 8; s++) {
+        const arcA = (s / 8) * Math.PI * 2;
+        if (Math.random() > 0.25) {
+          const blk = new THREE.Mesh(blkGeo, darkStoneMat);
           const bx = Math.sin(arcA) * tierR, bz = Math.cos(arcA) * tierR;
           blk.position.set(bx, tierH, bz); blk.rotation.y = -arcA; blk.castShadow = true; mctx.scene.add(blk);
-          for (let st = 0; st < 2 + Math.floor(Math.random() * 3); st++) {
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.35), stoneMat);
-            seat.position.set(bx + (Math.random() - 0.5) * arcLen * 0.8, tierH + 0.42, bz + (Math.random() - 0.5) * 0.6);
+          for (let st = 0; st < 1 + Math.floor(Math.random() * 2); st++) {
+            const seat = new THREE.Mesh(seatGeo, stoneMat);
+            seat.position.set(bx + (Math.random() - 0.5) * 1.5, tierH + 0.42, bz + (Math.random() - 0.5) * 0.6);
             seat.rotation.y = -arcA + (Math.random() - 0.5) * 0.2; mctx.scene.add(seat);
           }
         }
       }
     }
 
-    // Gladiator shields with boss and rim
-    for (let i = 0; i < 12; i++) {
+    // Gladiator shields with boss and rim (shared geometry)
+    const shieldDiscGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.04, 14);
+    const shieldBossGeo = new THREE.SphereGeometry(0.08, 10, 8);
+    const shieldRimGeo = new THREE.TorusGeometry(0.3, 0.025, 8, 20);
+    for (let i = 0; i < 8; i++) {
       const shield = new THREE.Group();
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 27), bronzeMat);
+      const disc = new THREE.Mesh(shieldDiscGeo, bronzeMat);
       disc.rotation.x = Math.PI / 2; shield.add(disc);
-      const boss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), ironMat);
+      const boss = new THREE.Mesh(shieldBossGeo, ironMat);
       boss.position.z = 0.03; shield.add(boss);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 17, 36), ironMat); shield.add(rim);
+      const rim = new THREE.Mesh(shieldRimGeo, ironMat); shield.add(rim);
       const sx = (Math.random() - 0.5) * w * 0.4, sz = (Math.random() - 0.5) * d * 0.4;
       shield.position.set(sx, getTerrainHeight(sx, sz, 1.0) + 0.05, sz);
       shield.rotation.set((Math.random() - 0.5) * 1.5, Math.random() * Math.PI, (Math.random() - 0.5) * 0.5);
@@ -463,7 +467,7 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       helmet.add(dome);
       const visor = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.18), ironMat);
       visor.position.set(0, -0.05, 0.08); helmet.add(visor);
-      const crest = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.25), new THREE.MeshStandardMaterial({ color: 0x881111, roughness: 0.7 }));
+      const crest = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.25), bloodMat);
       crest.position.y = 0.12; helmet.add(crest);
       const hx = (Math.random() - 0.5) * w * 0.35, hz = (Math.random() - 0.5) * d * 0.35;
       helmet.position.set(hx, getTerrainHeight(hx, hz, 1.0) + 0.1, hz);
@@ -474,13 +478,13 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
     // Fallen pillars on ground with drum fragments
     for (let i = 0; i < 6; i++) {
       const fallenH = 3 + Math.random() * 3;
-      const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, fallenH, 27), stoneMat);
+      const fallen = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, fallenH, 12), stoneMat);
       const fx = (Math.random() - 0.5) * w * 0.35, fz = (Math.random() - 0.5) * d * 0.35;
       fallen.position.set(fx, getTerrainHeight(fx, fz, 1.0) + 0.35, fz);
       fallen.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       fallen.rotation.y = Math.random() * Math.PI; fallen.castShadow = true; mctx.scene.add(fallen);
       for (let f = 0; f < 2; f++) {
-        const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.5, 27), stoneMat);
+        const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.5, 12), stoneMat);
         drum.position.set(fx + (Math.random() - 0.5) * 2, getTerrainHeight(fx, fz, 1.0) + 0.25, fz + (Math.random() - 0.5) * 2);
         mctx.scene.add(drum);
       }
@@ -530,13 +534,14 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
 
     // Victory podium with laurel wreath
     const podium = new THREE.Group();
-    const podBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.5, 27), darkStoneMat);
+    const podBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.5, 12), darkStoneMat);
     podBase.position.y = 0.25; podium.add(podBase);
-    const podMid = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, 0.5, 27), stoneMat);
+    const podMid = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, 0.5, 12), stoneMat);
     podMid.position.y = 0.75; podium.add(podMid);
-    const podTop = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.3, 27), stoneMat);
+    const podTop = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.3, 12), stoneMat);
     podTop.position.y = 1.15; podium.add(podTop);
-    const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 30, 36), new THREE.MeshStandardMaterial({ color: 0x668844 }));
+    const wreathMat = new THREE.MeshStandardMaterial({ color: 0x668844 });
+    const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 10, 20), wreathMat);
     wreath.rotation.x = -Math.PI / 2; wreath.position.y = 1.32; podium.add(wreath);
     podium.position.set(w * 0.05, getTerrainHeight(w * 0.05, d * 0.05, 1.0), d * 0.05);
     mctx.scene.add(podium);
@@ -558,9 +563,9 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       const tAngle = (i / 12) * Math.PI * 2, tRadius = Math.min(w, d) * 0.42;
       const bracket = new THREE.Group();
       const bArm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.5), ironMat); bracket.add(bArm);
-      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.15, 23), ironMat);
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.15, 10), ironMat);
       cup.position.z = 0.25; cup.rotation.x = Math.PI / 2; bracket.add(cup);
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 36), torchFireMat);
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.2, 10), torchFireMat);
       flame.position.set(0, 0.08, 0.25); bracket.add(flame);
       const bx = Math.sin(tAngle) * tRadius, bz = Math.cos(tAngle) * tRadius;
       bracket.position.set(bx, getTerrainHeight(bx, bz, 1.0) + 2.5, bz);
@@ -594,7 +599,7 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
     // Detailed champion statues
     for (let i = 0; i < 8; i++) {
       const statue = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 1.5, 27), stoneMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 1.5, 12), stoneMat);
       body.position.y = 0.95; body.castShadow = true; statue.add(body);
       const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 14), stoneMat);
       head.position.y = 1.8; statue.add(head);
@@ -673,8 +678,10 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       }
     }
     // ── Arena floor sand pit detail ──
-    for (let i = 0; i < 15; i++) {
-      const sandPit = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.5, 20), new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 1.0 }));
+    const sandPitMat = new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 1.0 });
+    const sandPitGeo = new THREE.CircleGeometry(0.5, 10);
+    for (let i = 0; i < 10; i++) {
+      const sandPit = new THREE.Mesh(sandPitGeo, sandPitMat);
       sandPit.rotation.x = -Math.PI / 2;
       const spx = (Math.random()-0.5)*w*0.25, spz = (Math.random()-0.5)*d*0.25;
       sandPit.position.set(spx, 0.025, spz); mctx.scene.add(sandPit);
@@ -781,7 +788,7 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       tier2.position.y = 0.45; podium.add(tier2);
       const tier3 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.8), goldPodiumMat);
       tier3.position.y = 0.75; podium.add(tier3);
-      const laurelMat = new THREE.MeshStandardMaterial({ color: 0x558833, metalness: 0.3, roughness: 0.5 });
+      const laurelMat = wreathMat;
       const laurel = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 8, 20), laurelMat);
       laurel.rotation.x = -Math.PI / 2; laurel.position.y = 0.95; podium.add(laurel);
       const podX = w * 0.15, podZ = -d * 0.18;
@@ -813,7 +820,7 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       const colGroup = new THREE.Group();
       const colLen = 1.5 + Math.random() * 2.5;
       const colR = 0.25 + Math.random() * 0.15;
-      const colSeg = new THREE.Mesh(new THREE.CylinderGeometry(colR, colR, colLen, 20), stoneMat);
+      const colSeg = new THREE.Mesh(new THREE.CylinderGeometry(colR, colR, colLen, 10), stoneMat);
       colSeg.rotation.z = Math.PI / 2; colSeg.position.y = colR; colGroup.add(colSeg);
       if (Math.random() > 0.4) {
         const crack = new THREE.Mesh(new THREE.BoxGeometry(colLen * 0.6, 0.01, 0.02), darkStoneMat);
@@ -837,7 +844,7 @@ export function buildShatteredColosseum(mctx: MapBuildContext, w: number, d: num
       sandRim.rotation.x = -Math.PI / 2; sandRim.position.y = 0.04; mctx.scene.add(sandRim);
       for (let i = 0; i < 30; i++) {
         const sandBit = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.02, 0.08 + Math.random() * 0.1),
-          new THREE.MeshStandardMaterial({ color: 0xbbaa77, roughness: 1.0 }));
+          sackMat);
         const sAngle2 = Math.random() * Math.PI * 2, sDist = Math.random() * w * 0.2;
         sandBit.position.set(Math.cos(sAngle2) * sDist, 0.02, Math.sin(sAngle2) * sDist);
         sandBit.rotation.y = Math.random() * Math.PI; mctx.scene.add(sandBit);
@@ -887,7 +894,7 @@ export function buildPetrifiedGarden(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 40; i++) {
       const tree = new THREE.Group();
       const h = 2 + Math.random() * 4;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 + Math.random() * 0.08, 0.2 + Math.random() * 0.1, h, 27), stoneMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 + Math.random() * 0.08, 0.2 + Math.random() * 0.1, h, 12), stoneMat);
       trunk.position.y = h / 2; trunk.castShadow = true; tree.add(trunk);
       for (let r = 0; r < 3; r++) {
         const root = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 0.8 + Math.random() * 0.6, 17), darkStoneMat);
@@ -919,7 +926,7 @@ export function buildPetrifiedGarden(mctx: MapBuildContext, w: number, d: number
     // Petrified people with legs, arms in varied poses
     for (let i = 0; i < 20; i++) {
       const statue = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 23), stoneMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.8, 10), stoneMat);
       body.position.y = 0.55; statue.add(body);
       const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), stoneMat);
       head.position.y = 1.05; statue.add(head);
@@ -946,7 +953,7 @@ export function buildPetrifiedGarden(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 12; i++) {
       const animal = new THREE.Group();
       if (Math.random() > 0.5) {
-        const deerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.6, 20), stoneMat);
+        const deerBody = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.6, 10), stoneMat);
         deerBody.rotation.z = Math.PI / 2; deerBody.position.y = 0.35; animal.add(deerBody);
         const deerHead = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), stoneMat);
         deerHead.position.set(0.35, 0.45, 0); animal.add(deerHead);
@@ -994,7 +1001,7 @@ export function buildPetrifiedGarden(mctx: MapBuildContext, w: number, d: number
       outerBasin.position.y = 0.15; fountain.add(outerBasin);
       const innerBasin = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.8, 0.4, 30), stoneMat);
       innerBasin.position.y = 0.3; fountain.add(innerBasin);
-      const center = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 23), stoneMat);
+      const center = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.2, 10), stoneMat);
       center.position.y = 0.8; fountain.add(center);
       const spout = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 31), new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.5 }));
       spout.position.y = 1.5; fountain.add(spout);
@@ -1288,7 +1295,7 @@ export function buildSunkenCitadel(mctx: MapBuildContext, w: number, d: number):
       clasp.position.set(0, 0.25, 0.18); chest.add(clasp);
       // Coins spilling out
       for (let c = 0; c < 4; c++) {
-        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 23), treasureMat);
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.01, 10), treasureMat);
         coin.position.set((Math.random() - 0.5) * 0.4, 0.02, (Math.random() - 0.5) * 0.3);
         coin.rotation.x = Math.random(); chest.add(coin);
       }
@@ -1331,7 +1338,7 @@ export function buildSunkenCitadel(mctx: MapBuildContext, w: number, d: number):
 
     // Sunken columns (tilted, covered)
     for (let i = 0; i < 14; i++) {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 3, 23), stoneMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 3, 10), stoneMat);
       const cx = (Math.random() - 0.5) * w * 0.7, cz = (Math.random() - 0.5) * d * 0.7;
       col.position.set(cx, getTerrainHeight(cx, cz, 0.6) + 1.5, cz);
       col.rotation.z = (Math.random() - 0.5) * 0.4; col.castShadow = true; mctx.scene.add(col);
@@ -1440,7 +1447,7 @@ export function buildSunkenCitadel(mctx: MapBuildContext, w: number, d: number):
     for (let i = 0; i < 10; i++) {
       const pillarGrp = new THREE.Group();
       const pillarH = 2.5 + Math.random() * 2;
-      const cpillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, pillarH, 20), stoneMat);
+      const cpillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, pillarH, 10), stoneMat);
       cpillar.position.y = pillarH / 2; cpillar.castShadow = true; pillarGrp.add(cpillar);
       const coralColors2 = [0xcc6655, 0xff7766, 0xcc8844, 0xaa5577, 0xff9966];
       for (let c = 0; c < 5 + Math.floor(Math.random() * 4); c++) {
@@ -1796,11 +1803,11 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
     const hoodooErosionMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 1.0 });
     for (let i = 0; i < 10; i++) {
       const hoodoo = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 1.5, 23), rockMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 1.5, 10), rockMat);
       base.position.y = 0.75; hoodoo.add(base);
-      const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 2, 23), rockMat);
+      const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 2, 10), rockMat);
       mid.position.y = 2; hoodoo.add(mid);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.3, 0.5, 23), darkRockMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.3, 0.5, 10), darkRockMat);
       cap.position.y = 2.75; hoodoo.add(cap);
 
       // Horizontal layer bands (sedimentary striping)
@@ -2465,7 +2472,7 @@ export function buildPlaguerotSewers(mctx: MapBuildContext, w: number, d: number
       const pipeGrp = new THREE.Group();
       const pipeRadius = 0.12 + Math.random() * 0.08;
       const pipeLen = 3 + Math.random() * 4;
-      const pipeBody = new THREE.Mesh(new THREE.CylinderGeometry(pipeRadius, pipeRadius, pipeLen, 23), Math.random() > 0.5 ? pipeMat : rustPipeMat);
+      const pipeBody = new THREE.Mesh(new THREE.CylinderGeometry(pipeRadius, pipeRadius, pipeLen, 10), Math.random() > 0.5 ? pipeMat : rustPipeMat);
       pipeGrp.add(pipeBody);
       // Pipe joint collar (TorusGeometry at connections)
       const pipeJointCollar = new THREE.Mesh(new THREE.TorusGeometry(pipeRadius + 0.03, 0.025, 16, 20), pipeMat);
@@ -2551,7 +2558,7 @@ export function buildPlaguerotSewers(mctx: MapBuildContext, w: number, d: number
     // Broken barrels
     for (let i = 0; i < 8; i++) {
       const barrel = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.22, 0.6, 27), woodMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.22, 0.6, 12), woodMat);
       body.position.y = 0.3; barrel.add(body);
       const bandT = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.015, 30, 30), grateMat);
       bandT.position.y = 0.5; barrel.add(bandT);
@@ -2582,7 +2589,7 @@ export function buildPlaguerotSewers(mctx: MapBuildContext, w: number, d: number
     // Toxic gas vents
     for (let i = 0; i < 6; i++) {
       const vent = new THREE.Group();
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 23), pipeMat);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 10), pipeMat);
       pipe.position.y = 0.15; vent.add(pipe);
       const gasCloud = new THREE.Mesh(new THREE.SphereGeometry(0.6 + Math.random() * 0.5, 31, 17), gasMat);
       gasCloud.scale.y = 0.5; gasCloud.position.y = 0.5; vent.add(gasCloud);
@@ -2607,7 +2614,7 @@ export function buildPlaguerotSewers(mctx: MapBuildContext, w: number, d: number
     // ── Pipe network detail (various diameter cylinders) ──
     for (let i = 0; i < 10; i++) {
       const pipeNet = new THREE.Group();
-      const mainPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2 + Math.random() * 3, 20), pipeMat);
+      const mainPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2 + Math.random() * 3, 10), pipeMat);
       mainPipe.rotation.z = Math.PI / 2; pipeNet.add(mainPipe);
       const elbow = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.08, 16, 20, Math.PI / 2), pipeMat);
       elbow.position.set(1.2, 0.2, 0); pipeNet.add(elbow);
@@ -2622,7 +2629,7 @@ export function buildPlaguerotSewers(mctx: MapBuildContext, w: number, d: number
     // ── Toxic waste barrels ──
     for (let i = 0; i < 6; i++) {
       const barrel = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.5, 20), new THREE.MeshStandardMaterial({ color: 0x555533, metalness: 0.3, roughness: 0.6 }));
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.5, 10), new THREE.MeshStandardMaterial({ color: 0x555533, metalness: 0.3, roughness: 0.6 }));
       body.position.y = 0.25; barrel.add(body);
       const symbol = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0xffcc00, side: THREE.DoubleSide }));
       symbol.position.set(0, 0.25, 0.21); barrel.add(symbol);
@@ -2850,7 +2857,7 @@ export function buildEtherealSanctum(mctx: MapBuildContext, w: number, d: number
     // Floating platforms at various heights
     for (let i = 0; i < 12; i++) {
       const platform = new THREE.Group();
-      const top = new THREE.Mesh(new THREE.CylinderGeometry(1.5 + Math.random() * 2, 1.8 + Math.random() * 2, 0.4, 27), stoneMat);
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(1.5 + Math.random() * 2, 1.8 + Math.random() * 2, 0.4, 12), stoneMat);
       top.castShadow = true; platform.add(top);
       const underside = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.5, 23), stoneMat);
       underside.position.y = -0.9; underside.rotation.x = Math.PI; platform.add(underside);
@@ -2943,7 +2950,7 @@ export function buildEtherealSanctum(mctx: MapBuildContext, w: number, d: number
 
     // Phasing pillars
     for (let i = 0; i < 16; i++) {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3 + Math.random() * 3, 23), etherealMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 3 + Math.random() * 3, 10), etherealMat);
       const ppx = (Math.random() - 0.5) * w * 0.8, ppz = (Math.random() - 0.5) * d * 0.8;
       pillar.position.set(ppx, getTerrainHeight(ppx, ppz, 0.6) + pillar.geometry.parameters.height / 2, ppz);
       pillar.castShadow = true; mctx.scene.add(pillar);
@@ -3051,9 +3058,9 @@ export function buildEtherealSanctum(mctx: MapBuildContext, w: number, d: number
     // ── Ethereal flame pedestals ──
     for (let i = 0; i < 6; i++) {
       const pedestal = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.8, 20), stoneMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.8, 10), stoneMat);
       base.position.y = 0.4; pedestal.add(base);
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 0.08, 20), stoneMat);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 0.08, 10), stoneMat);
       bowl.position.y = 0.84; pedestal.add(bowl);
       const flame = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 20), new THREE.MeshStandardMaterial({ color: 0xaaccff, emissive: 0x6688ff, emissiveIntensity: 2.0, transparent: true, opacity: 0.5 }));
       flame.position.y = 1.05; pedestal.add(flame);
@@ -3197,7 +3204,7 @@ export function buildEtherealSanctum(mctx: MapBuildContext, w: number, d: number
     // ── Ethereal flame pedestals (stone with ghostly fire) ──
     for (let i = 0; i < 8; i++) {
       const efPed = new THREE.Group();
-      const efBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 1.0, 20), stoneMat);
+      const efBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 1.0, 10), stoneMat);
       efBase.position.y = 0.5; efPed.add(efBase);
       const efBowl = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), stoneMat);
       efBowl.position.y = 1.05; efBowl.rotation.x = Math.PI; efPed.add(efBowl);
@@ -3272,7 +3279,7 @@ export function buildEtherealSanctum(mctx: MapBuildContext, w: number, d: number
       const saArch = new THREE.Group();
       // Two pillar cylinders with decorative torus rings
       for (const side of [-0.8, 0.8]) {
-        const saPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 3, 20), stoneMat);
+        const saPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 3, 10), stoneMat);
         saPillar.position.set(side, 1.5, 0); saArch.add(saPillar);
         for (let r = 0; r < 3; r++) {
           const saRing = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.015, 12, 20), runeMat);
@@ -3342,7 +3349,7 @@ export function buildIronWastes(mctx: MapBuildContext, w: number, d: number): vo
       const bW = 2 + Math.random() * 3, bH = 1 + Math.random() * 2, bD = 2 + Math.random() * 3;
       const body = new THREE.Mesh(new THREE.BoxGeometry(bW, bH, bD), rustMat);
       body.position.y = bH / 2; body.castShadow = true; hulk.add(body);
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2 + Math.random() * 2, 23), metalMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2 + Math.random() * 2, 10), metalMat);
       arm.position.set(0.5, bH + 0.5, 0); arm.rotation.z = (Math.random() - 0.5) * 0.8; hulk.add(arm);
       for (const side of [-1, 1]) {
         const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.15, 23, 30), metalMat);
@@ -3404,19 +3411,19 @@ export function buildIronWastes(mctx: MapBuildContext, w: number, d: number): vo
     // Oxidized pipes running along ground
     for (let i = 0; i < 12; i++) {
       const pipeLen = 3 + Math.random() * 6;
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, pipeLen, 23), corrodedMat);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, pipeLen, 10), corrodedMat);
       const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
       pipe.position.set(px, getTerrainHeight(px, pz, 1.0) + 0.12, pz);
       pipe.rotation.z = Math.PI / 2; pipe.rotation.y = Math.random() * Math.PI; mctx.scene.add(pipe);
       // Pipe joints
-      const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 23), metalMat);
+      const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), metalMat);
       joint.position.copy(pipe.position); mctx.scene.add(joint);
     }
 
     // Corroded tanks
     for (let i = 0; i < 5; i++) {
       const tank = new THREE.Group();
-      const tankBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 4, 27), rustMat);
+      const tankBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 4, 12), rustMat);
       tankBody.rotation.z = Math.PI / 2; tankBody.position.y = 0.8; tank.add(tankBody);
       // End caps
       for (const side of [-1, 1]) {
@@ -3437,7 +3444,7 @@ export function buildIronWastes(mctx: MapBuildContext, w: number, d: number): vo
 
     // Smokestacks (broken)
     for (let i = 0; i < 8; i++) {
-      const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4 + Math.random() * 4, 23), rustMat);
+      const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4 + Math.random() * 4, 10), rustMat);
       const sx = (Math.random() - 0.5) * w * 0.7, sz = (Math.random() - 0.5) * d * 0.7;
       stack.position.set(sx, getTerrainHeight(sx, sz, 1.0) + stack.geometry.parameters.height / 2, sz);
       stack.rotation.z = (Math.random() - 0.5) * 0.2; stack.castShadow = true; mctx.scene.add(stack);
@@ -3654,7 +3661,7 @@ export function buildIronWastes(mctx: MapBuildContext, w: number, d: number): vo
       const bigPipe = new THREE.Group();
       const pipeR = 0.3 + Math.random() * 0.4;
       const pipeL = 2 + Math.random() * 3;
-      const pipeSection = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, pipeL, 20), rustMat);
+      const pipeSection = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, pipeL, 10), rustMat);
       pipeSection.rotation.z = Math.PI / 2;
       pipeSection.rotation.y = (Math.random() - 0.5) * 0.3;
       bigPipe.add(pipeSection);
@@ -3714,9 +3721,9 @@ export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number)
 
     // Central corrupted throne (more elaborate)
     const throne = new THREE.Group();
-    const dais = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.5, 27), corruptMat);
+    const dais = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.5, 12), corruptMat);
     dais.position.y = 0.25; throne.add(dais);
-    const daisStep = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 10, 0.3, 27), corruptMat);
+    const daisStep = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 10, 0.3, 12), corruptMat);
     daisStep.position.y = 0.1; throne.add(daisStep);
     const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 1.5), throneMat);
     seat.position.y = 1.25; throne.add(seat);
@@ -3730,7 +3737,7 @@ export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number)
       armSkull.position.set(ax, 2.1, 0.4); throne.add(armSkull);
     }
     // Corrupted crown
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.3, 27), goldMat);
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.3, 12), goldMat);
     crown.position.set(0, 4.9, -0.6); throne.add(crown);
     for (let s = 0; s < 7; s++) {
       const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 17), goldMat);
@@ -3848,7 +3855,7 @@ export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number)
 
     // Corrupted pillars (withered, leaning)
     for (let i = 0; i < 16; i++) {
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4, 23), corruptMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 4, 10), corruptMat);
       const ppx = (Math.random() - 0.5) * w * 0.7, ppz = (Math.random() - 0.5) * d * 0.7;
       pillar.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 2, ppz);
       pillar.rotation.z = (Math.random() - 0.5) * 0.15; pillar.castShadow = true; mctx.scene.add(pillar);
@@ -3908,7 +3915,7 @@ export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 8; i++) {
       const warpedPillar = new THREE.Group();
       const pilH = 2 + Math.random() * 2;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, pilH, 20), corruptMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, pilH, 10), corruptMat);
       col.position.y = pilH / 2; warpedPillar.add(col);
       for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
         const bulge = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 16, 16), rotMat);
@@ -3966,7 +3973,7 @@ export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number)
       for (let seg = 0; seg < wpSegCount; seg++) {
         const segH = wpH / wpSegCount;
         const segR = 0.15 + Math.random() * 0.15;
-        const wpSeg = new THREE.Mesh(new THREE.CylinderGeometry(segR, segR + 0.05, segH, 20),
+        const wpSeg = new THREE.Mesh(new THREE.CylinderGeometry(segR, segR + 0.05, segH, 10),
           new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8 }));
         wpSeg.position.y = wpCurrY + segH / 2; warpPillar.add(wpSeg);
         wpCurrY += segH;
@@ -4005,11 +4012,11 @@ export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 2; i++) {
       const cFountain = new THREE.Group();
       // Stacked cylinders (former fountain)
-      const cfBase = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.2, 0.4, 23), corruptMat);
+      const cfBase = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.2, 0.4, 10), corruptMat);
       cfBase.position.y = 0.2; cFountain.add(cfBase);
-      const cfMid = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.8, 23), corruptMat);
+      const cfMid = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.8, 10), corruptMat);
       cfMid.position.y = 0.8; cFountain.add(cfMid);
-      const cfTop = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.5, 23), corruptMat);
+      const cfTop = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.5, 10), corruptMat);
       cfTop.position.y = 1.45; cFountain.add(cfTop);
       // Oozing dark fluid (green transparent surface)
       const cfOoze = new THREE.Mesh(new THREE.CircleGeometry(0.8, 27), toxicMat);
@@ -4031,11 +4038,11 @@ export function buildBlightedThrone(mctx: MapBuildContext, w: number, d: number)
       const corThrone = new THREE.Group();
       // Steps leading up to throne
       for (let ctStep = 0; ctStep < 3; ctStep++) {
-        const ctStepMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.8 - ctStep * 0.4, 3.0 - ctStep * 0.4, 0.15, 27), corruptMat);
+        const ctStepMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.8 - ctStep * 0.4, 3.0 - ctStep * 0.4, 0.15, 12), corruptMat);
         ctStepMesh.position.y = ctStep * 0.15; corThrone.add(ctStepMesh);
       }
       // Raised platform
-      const ctPlat = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, 0.4, 27), corruptMat);
+      const ctPlat = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, 0.4, 12), corruptMat);
       ctPlat.position.y = 0.65; corThrone.add(ctPlat);
       // Main throne seat
       const ctSeat = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 1.5), throneMat);

@@ -763,6 +763,7 @@ export class DiabloGame {
         if (this._firstPerson && document.pointerLockElement) document.exitPointerLock();
         this._showSkillSwapMenu();
       } else if (e.code === "KeyF") {
+        this._pickupNearbyLoot();
         this._openNearestChest();
       } else if (e.code === "KeyC" && e.shiftKey) {
         // Quick salvage selected item
@@ -995,6 +996,7 @@ export class DiabloGame {
       showControls: () => this._showControls(),
       showCharacterOverview: () => this._showCharacterOverview(),
       showPrestigePanel: () => this._showPrestigePanel(),
+      showPetPanel: () => this._showPetPanel(),
       showSkillTreeScreen: () => this._showSkillTreeScreen(),
       showItemTooltip: (ev, item) => this._showItemTooltip(ev, item),
       hideItemTooltip: () => this._hideItemTooltip(),
@@ -2083,6 +2085,49 @@ export class DiabloGame {
     const toRemove = new Set<string>();
 
     for (const enemy of this._state.enemies) {
+      // Player minions: attack nearest non-minion enemy instead of the player
+      if ((enemy as any).isPlayerMinion) {
+        if (enemy.state === EnemyState.DEAD || enemy.state === EnemyState.DYING) continue;
+        // Auto-expire after 15 seconds
+        enemy.stateTimer += dt;
+        if (enemy.stateTimer > 15) {
+          enemy.hp = 0; enemy.state = EnemyState.DYING; enemy.deathTimer = 0;
+          this._addFloatingText(enemy.x, enemy.y + 1, enemy.z, "Expired", "#888888");
+          continue;
+        }
+        // Find nearest non-minion enemy to attack
+        let minionTarget: DiabloEnemy | null = null;
+        let minionDist = 12;
+        for (const other of this._state.enemies) {
+          if (other === enemy || (other as any).isPlayerMinion) continue;
+          if (other.state === EnemyState.DYING || other.state === EnemyState.DEAD) continue;
+          const d = this._dist(enemy.x, enemy.z, other.x, other.z);
+          if (d < minionDist) { minionDist = d; minionTarget = other; }
+        }
+        if (minionTarget) {
+          const mdx = minionTarget.x - enemy.x, mdz = minionTarget.z - enemy.z;
+          enemy.angle = Math.atan2(mdx, mdz);
+          if (minionDist > enemy.attackRange) {
+            const mLen = Math.sqrt(mdx * mdx + mdz * mdz);
+            if (mLen > 0) { enemy.x += (mdx / mLen) * enemy.speed * dt; enemy.z += (mdz / mLen) * enemy.speed * dt; }
+          } else {
+            enemy.attackTimer -= dt;
+            if (enemy.attackTimer <= 0) {
+              minionTarget.hp -= enemy.damage;
+              enemy.attackTimer = 1.5;
+              this._addFloatingText(minionTarget.x, minionTarget.y + 2, minionTarget.z, `${Math.round(enemy.damage)}`, "#88ff88");
+              if (minionTarget.hp <= 0) this._killEnemy(minionTarget);
+            }
+          }
+        } else {
+          // Follow player if no targets
+          const fdx = p.x - enemy.x, fdz = p.z - enemy.z;
+          const fLen = Math.sqrt(fdx * fdx + fdz * fdz);
+          if (fLen > 4) { enemy.x += (fdx / fLen) * enemy.speed * dt; enemy.z += (fdz / fLen) * enemy.speed * dt; }
+        }
+        continue;
+      }
+
       // Stagger freeze
       if (enemy.staggerTimer && enemy.staggerTimer > 0) {
         enemy.staggerTimer -= dt;
@@ -2516,58 +2561,6 @@ export class DiabloGame {
       // Custom loot filter check
       if (!this._shouldShowLoot(loot.item)) continue;
 
-      // Auto-pickup within 3 units
-      const dist = this._dist(p.x, p.z, loot.x, loot.z);
-      if (dist < 3) {
-        // Auto-salvage check
-        if (this._shouldAutoSalvage(loot.item)) {
-          const salvageYields: Record<string, number> = {
-            [ItemRarity.COMMON]: 1, [ItemRarity.UNCOMMON]: 2, [ItemRarity.RARE]: 5,
-            [ItemRarity.EPIC]: 10, [ItemRarity.LEGENDARY]: 25,
-          };
-          const salvageMats = salvageYields[loot.item.rarity] || 1;
-          p.salvageMaterials += salvageMats;
-          this._addFloatingText(p.x, p.y + 2, p.z, `Auto-salvage: +${salvageMats}`, '#888888');
-          toRemove.add(loot.id);
-          continue;
-        }
-
-        const emptyIdx = p.inventory.findIndex((s) => s.item === null);
-        if (emptyIdx >= 0) {
-          p.inventory[emptyIdx].item = { ...loot.item, id: this._genId() };
-          this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.name}`, RARITY_CSS[loot.item.rarity]);
-          this._incrementAchievement('collector');
-          if (loot.item.rarity === ItemRarity.LEGENDARY || loot.item.rarity === ItemRarity.MYTHIC || loot.item.rarity === ItemRarity.DIVINE) {
-            this._incrementAchievement('legendary_hunter');
-          }
-          toRemove.add(loot.id);
-        }
-      }
-
-      // Extended auto-pickup radius for gold and low-tier items
-      if (dist >= 3 && dist <= 5) {
-        const isGold = loot.item.name.includes('Gold') || loot.item.icon === '\uD83D\uDCB0';
-        const isLowTier = loot.item.rarity === ItemRarity.COMMON || loot.item.rarity === ItemRarity.UNCOMMON;
-        if (isGold || isLowTier) {
-          if (this._shouldAutoSalvage(loot.item)) {
-            const salvageYields: Record<string, number> = {
-              [ItemRarity.COMMON]: 1, [ItemRarity.UNCOMMON]: 2,
-            };
-            const salvageMats = salvageYields[loot.item.rarity] || 1;
-            p.salvageMaterials += salvageMats;
-            this._addFloatingText(p.x, p.y + 2, p.z, `Auto-salvage: +${salvageMats}`, '#888888');
-            toRemove.add(loot.id);
-          } else {
-            const emptyIdx = p.inventory.findIndex((s) => s.item === null);
-            if (emptyIdx >= 0) {
-              p.inventory[emptyIdx].item = { ...loot.item, id: this._genId() };
-              this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.name}`, RARITY_CSS[loot.item.rarity]);
-              toRemove.add(loot.id);
-            }
-          }
-        }
-      }
-
       // Expire after 60 seconds
       if (loot.timer > 60) {
         toRemove.add(loot.id);
@@ -2681,7 +2674,7 @@ export class DiabloGame {
       const idHash = ft.id.charCodeAt(0) + ft.id.charCodeAt(ft.id.length - 1);
       ft.x += Math.sin(t * 4 + idHash) * 0.3 * dt;
       ft.z += Math.cos(t * 3 + idHash * 0.7) * 0.2 * dt;
-      if (ft.timer > 1.8) {
+      if (ft.timer > 3.0) {
         this._state.floatingTexts.splice(i, 1);
       }
     }
@@ -3741,6 +3734,26 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  HELPER: Pickup nearest loot within range (F key)
+  // ──────────────────────────────────────────────────────────────
+  private _pickupNearbyLoot(): void {
+    const p = this._state.player;
+    const pickupRange = 3;
+    let nearest: typeof this._state.loot[0] | null = null;
+    let nearestDist = pickupRange;
+    for (const loot of this._state.loot) {
+      const d = this._dist(p.x, p.z, loot.x, loot.z);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = loot;
+      }
+    }
+    if (nearest) {
+      this._pickupLoot(nearest.id);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  HELPER: Pickup loot manually
   // ──────────────────────────────────────────────────────────────
   private _pickupLoot(lootId: string): void {
@@ -3764,7 +3777,7 @@ export class DiabloGame {
             'All fragments found! Return to Camelot to reforge Excalibur!', '#ffd700');
         }
       }
-      this._state.loot = this._state.loot.filter(l => l.item.id !== loot.item.id);
+      this._state.loot.splice(lootIdx, 1);
       return;
     }
 
@@ -3779,13 +3792,42 @@ export class DiabloGame {
 
     p.inventory[emptyIdx].item = { ...loot.item, id: this._genId() };
     this._addFloatingText(p.x, p.y + 2.5, p.z, `+${loot.item.name}`, RARITY_CSS[loot.item.rarity]);
+    this._addLootLogEntry(loot.item.icon, loot.item.name, RARITY_CSS[loot.item.rarity]);
     this._playSound('loot');
-    this._renderer.spawnParticles(ParticleType.GOLD, loot.x, loot.y + 0.5, loot.z, 4 + Math.floor(Math.random() * 3), this._state.particles);
+    this._renderer.spawnParticles(ParticleType.GOLD, loot.x, loot.y + 0.5, loot.z, 3, this._state.particles);
     this._state.loot.splice(lootIdx, 1);
 
     if (this._network.isConnected) {
       this._network.sendLootPickup(lootId);
     }
+  }
+
+  private _addLootLogEntry(icon: string, name: string, color: string): void {
+    const log = this._hudRefs?.lootLog;
+    if (!log) return;
+    const entry = document.createElement("div");
+    entry.style.cssText = `
+      display:flex;align-items:center;gap:6px;
+      padding:3px 8px;border-radius:4px;
+      background:rgba(20,15,8,0.85);border:1px solid ${color}44;
+      font-family:'Georgia',serif;font-size:12px;
+      opacity:1;transition:opacity 0.5s;
+      box-shadow:0 1px 4px rgba(0,0,0,0.4);
+    `;
+    const iconSpan = document.createElement("span");
+    iconSpan.style.cssText = "font-size:16px;";
+    iconSpan.textContent = icon;
+    const nameSpan = document.createElement("span");
+    nameSpan.style.cssText = `color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+    nameSpan.textContent = name;
+    entry.appendChild(iconSpan);
+    entry.appendChild(nameSpan);
+    log.insertBefore(entry, log.firstChild);
+    // Limit to 6 visible entries
+    while (log.children.length > 6) log.removeChild(log.lastChild!);
+    // Fade out and remove after 4 seconds
+    setTimeout(() => { entry.style.opacity = "0"; }, 3500);
+    setTimeout(() => { if (entry.parentNode) entry.parentNode.removeChild(entry); }, 4000);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -4419,8 +4461,8 @@ export class DiabloGame {
     this._state.floatingTexts = [];
     this._state.particles = [];
     this._portalActive = false;
-    this._state.phase = DiabloPhase.CLASS_SELECT;
-    this._showClassSelect();
+    this._state.phase = DiabloPhase.MAP_SELECT;
+    this._showMapSelect();
   }
 
   // ──────────────────────────────────────────────────────────────

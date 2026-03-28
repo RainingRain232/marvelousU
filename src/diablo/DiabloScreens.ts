@@ -51,6 +51,7 @@ export interface ScreenContext {
   showCharacterOverview(): void;
   showPrestigePanel(): void;
   showSkillTreeScreen(): void;
+  showPetPanel(): void;
   showItemTooltip(ev: MouseEvent, item: DiabloItem | null): void;
   hideItemTooltip(): void;
   showSaveRecoveryPrompt(): void;
@@ -2924,6 +2925,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
               <button id="diablo-stash-btn" style="${btnBase}">&#9878; STASH</button>
               <button id="diablo-collection-btn" style="${btnBase}">&#10070; COLLECTION</button>
               <button id="diablo-bestiary-btn" style="${btnBase}">&#128026; BESTIARY</button>
+              <button id="diablo-pets-btn" style="${btnBase}">&#128062; PETS</button>
             </div>
             <!-- Right column: System -->
             <div style="display:flex;flex-direction:column;align-items:center;">
@@ -2945,7 +2947,7 @@ export function showPauseMenu(ctx: ScreenContext): void {
       </div>`;
 
     // Hover effects for standard buttons
-    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-bestiary-btn,#diablo-dailies-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
+    const stdBtns = ctx.menuEl.querySelectorAll("#diablo-resume-btn,#diablo-controls-btn,#diablo-inventory-btn,#diablo-character-btn,#diablo-skilltree-btn,#diablo-skillswap-btn,#diablo-stash-btn,#diablo-collection-btn,#diablo-bestiary-btn,#diablo-pets-btn,#diablo-dailies-btn,#diablo-charselect-btn") as NodeListOf<HTMLButtonElement>;
     stdBtns.forEach((btn) => {
       btn.addEventListener("mouseenter", () => {
         btn.style.borderColor = "#c8a84e";
@@ -3046,6 +3048,11 @@ export function showPauseMenu(ctx: ScreenContext): void {
       ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
       ctx.state.phase = DiabloPhase.INVENTORY;
       showBestiary(ctx);
+    });
+    ctx.menuEl.querySelector("#diablo-pets-btn")!.addEventListener("click", () => {
+      ctx.setPhaseBeforeOverlay(DiabloPhase.PAUSED);
+      ctx.state.phase = DiabloPhase.INVENTORY;
+      ctx.showPetPanel();
     });
     ctx.menuEl.querySelector("#diablo-dailies-btn")!.addEventListener("click", () => {
       ctx.showQuestTracker();
@@ -4736,6 +4743,7 @@ export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapI
       { label: "Equipment & Loot", icon: "\uD83D\uDEE1\uFE0F", text:
         "Press <b>I</b> to open your inventory. You have 9 equipment slots: Helmet, Body, Gauntlets, Legs, Feet, Weapon, two Accessories, and a Lantern.<br><br>" +
         "<b>Rarity:</b> Common (grey) \u2192 Uncommon (green) \u2192 Rare (blue) \u2192 Epic (purple) \u2192 Legendary (orange) \u2192 Mythic (red) \u2192 Divine (gold).<br><br>" +
+        "<b>Pick Up:</b> Press F near dropped items to pick them up. Items are not auto-collected.<br><br>" +
         "<b>Loot Filter:</b> Press Tab to cycle through filters so you only see the rarities you care about.<br><br>" +
         "<b>Salvage:</b> Shift+C quick-salvages common/uncommon items for crafting materials. Sell unwanted gear to vendors for gold." },
       { label: "Potions & Healing", icon: "\uD83E\uDDEA", text:

@@ -836,19 +836,19 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
           ctx.playerGroup.add(pouch);
         }
 
-        // Bow (torus segment)
-        const bowGeo = new THREE.TorusGeometry(0.4, 0.02, 44, 62, Math.PI);
+        // Bow (torus segment, facing forward)
+        const bowGeo = new THREE.TorusGeometry(0.4, 0.02, 12, 24, Math.PI);
         const bowMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 });
         const bow = new THREE.Mesh(bowGeo, bowMat);
-        bow.position.y = -0.3;
-        bow.rotation.z = Math.PI / 2;
+        bow.position.set(0, -0.3, 0.1);
+        bow.rotation.set(0, Math.PI / 2, Math.PI / 2);
         leftArmGroup.add(bow);
 
-        // Bowstring
-        const stringGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.8, 44);
+        // Bowstring (vertical, facing forward)
+        const stringGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.8, 8);
         const stringMat = new THREE.MeshStandardMaterial({ color: 0xccccaa });
         const bowString = new THREE.Mesh(stringGeo, stringMat);
-        bowString.position.y = -0.3;
+        bowString.position.set(0, -0.3, 0.1);
         leftArmGroup.add(bowString);
 
         // Quiver on back

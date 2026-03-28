@@ -22,7 +22,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       const tType = treeTypes[Math.floor(Math.random() * treeTypes.length)];
       const trunkH = tType === 'pine' ? 2.5 + Math.random() * 3.5 : tType === 'willow' ? 2.0 + Math.random() * 2.0 : 1.5 + Math.random() * 2.5;
       const trunkR = tType === 'oak' ? 0.2 + Math.random() * 0.2 : tType === 'birch' ? 0.08 + Math.random() * 0.08 : 0.15 + Math.random() * 0.15;
-      const trunkGeo = new THREE.CylinderGeometry(trunkR, trunkR * 1.3, trunkH, 27);
+      const trunkGeo = new THREE.CylinderGeometry(trunkR, trunkR * 1.3, trunkH, 12);
       const barkBases: Record<string, number> = { oak: 0x5c3a1e, pine: 0x4a2a0e, birch: 0xccbbaa, willow: 0x6a4a2a };
       const barkColor = (barkBases[tType] || 0x5c3a1e) + Math.floor(Math.random() * 0x111100);
       const trunkMat = new THREE.MeshStandardMaterial({ color: barkColor, roughness: 0.92, metalness: 0.02 });
@@ -57,7 +57,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       for (let r = 0; r < rootCount; r++) {
         const rootAngle = (r / rootCount) * Math.PI * 2 + Math.random() * 0.5;
         const rootLen = 0.3 + Math.random() * 0.5;
-        const rootGeo = new THREE.CylinderGeometry(trunkR * 0.3, trunkR * 0.12, rootLen, 20);
+        const rootGeo = new THREE.CylinderGeometry(trunkR * 0.3, trunkR * 0.12, rootLen, 10);
         const root = new THREE.Mesh(rootGeo, trunkMat);
         root.position.set(Math.cos(rootAngle) * trunkR * 0.8, rootLen * 0.2, Math.sin(rootAngle) * trunkR * 0.8);
         root.rotation.z = Math.cos(rootAngle) * 0.8;
@@ -70,7 +70,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         for (let br = 0; br < 2 + Math.floor(Math.random() * 3); br++) {
           const brAng = Math.random() * Math.PI * 2;
           const brLen = 0.8 + Math.random() * 1.2;
-          const branch = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.2, trunkR * 0.35, brLen, 20), trunkMat);
+          const branch = new THREE.Mesh(new THREE.CylinderGeometry(trunkR * 0.2, trunkR * 0.35, brLen, 10), trunkMat);
           branch.position.set(Math.cos(brAng) * trunkR * 0.5, trunkH * 0.5 + Math.random() * trunkH * 0.4, Math.sin(brAng) * trunkR * 0.5);
           branch.rotation.z = (Math.random() - 0.5) * 1.2 + (brAng > Math.PI ? 0.5 : -0.5);
           branch.rotation.y = brAng;
@@ -83,7 +83,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         const pineGreen = 0x1a5a1a + Math.floor(Math.random() * 0x113300);
         for (let li = 0; li < 5; li++) {
           const layerR = (1.8 - li * 0.3) * (0.8 + Math.random() * 0.2);
-          const layerGeo = new THREE.ConeGeometry(layerR, 1.2 - li * 0.1, 27);
+          const layerGeo = new THREE.ConeGeometry(layerR, 1.2 - li * 0.1, 10);
           const layer = new THREE.Mesh(layerGeo, new THREE.MeshStandardMaterial({ color: pineGreen + li * 0x050500, roughness: 0.85 }));
           layer.position.y = trunkH * 0.3 + li * 0.9;
           layer.castShadow = true;
@@ -127,7 +127,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         const crownH = 2.0 + Math.random() * 2.0;
         for (let li = 0; li < 4; li++) {
           const lc = layerCfgs[li];
-          const layerGeo = new THREE.ConeGeometry(crownR * lc.rM, crownH * lc.hM, 27);
+          const layerGeo = new THREE.ConeGeometry(crownR * lc.rM, crownH * lc.hM, 10);
           const layer = new THREE.Mesh(layerGeo, new THREE.MeshStandardMaterial({ color: leafCols[li], roughness: 0.8 }));
           layer.position.y = trunkH + crownH * 0.3 + lc.yO;
           layer.castShadow = true;
@@ -146,7 +146,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       for (let bs = 0; bs < 3; bs++) {
         const stubAng = Math.random() * Math.PI * 2;
         const stubLen = 0.15 + Math.random() * 0.2;
-        const stubGeo = new THREE.CylinderGeometry(trunkR * 0.08, trunkR * 0.15, stubLen, 27);
+        const stubGeo = new THREE.CylinderGeometry(trunkR * 0.08, trunkR * 0.15, stubLen, 12);
         const stub = new THREE.Mesh(stubGeo, trunkMat);
         stub.position.set(
           Math.cos(stubAng) * trunkR * 0.95,
@@ -299,7 +299,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
 
       // Ground shadow circle under tree
       const shadowR = tType === 'pine' ? 1.8 : tType === 'oak' ? 2.2 : 1.5;
-      const shadowGeo = new THREE.CircleGeometry(shadowR + Math.random() * 0.5, 36);
+      const shadowGeo = new THREE.CircleGeometry(shadowR + Math.random() * 0.5, 16);
       const shadowMat = new THREE.MeshStandardMaterial({ color: 0x111a11, transparent: true, opacity: 0.18, roughness: 1.0, side: THREE.DoubleSide });
       const shadow = new THREE.Mesh(shadowGeo, shadowMat);
       shadow.rotation.x = -Math.PI / 2;
@@ -402,7 +402,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       const logLen = 2.0 + Math.random() * 3.0;
       const logR = 0.12 + Math.random() * 0.15;
       const logColor = [0x4a3520, 0x3a2510, 0x5a4530][i % 3];
-      const logGeo = new THREE.CylinderGeometry(logR * 0.9, logR * 1.15, logLen, 27);
+      const logGeo = new THREE.CylinderGeometry(logR * 0.9, logR * 1.15, logLen, 12);
       const logMat = new THREE.MeshStandardMaterial({ color: logColor, roughness: 0.95 });
       const logMesh = new THREE.Mesh(logGeo, logMat);
       logMesh.rotation.z = Math.PI / 2;
@@ -475,13 +475,13 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
     for (let i = 0; i < 28; i++) {
       const mush = new THREE.Group();
       const stemH = 0.1 + Math.random() * 0.15;
-      const stemGeo = new THREE.CylinderGeometry(0.03, 0.04, stemH, 23);
+      const stemGeo = new THREE.CylinderGeometry(0.03, 0.04, stemH, 10);
       const stem = new THREE.Mesh(stemGeo, new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.8 }));
       stem.position.y = stemH / 2;
       mush.add(stem);
       const capR = 0.06 + Math.random() * 0.08;
       const capColor = mushCapColors[Math.floor(Math.random() * mushCapColors.length)];
-      const capGeo = new THREE.SphereGeometry(capR, 44, 23, 0, Math.PI * 2, 0, Math.PI / 2);
+      const capGeo = new THREE.SphereGeometry(capR, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
       const cap = new THREE.Mesh(capGeo, new THREE.MeshStandardMaterial({ color: capColor, roughness: 0.6 }));
       cap.position.y = stemH;
       mush.add(cap);
@@ -650,7 +650,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
     for (let i = 0; i < 5; i++) {
       const bonesGroup = new THREE.Group();
       for (let b = 0; b < 4; b++) {
-        const abGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.3 + Math.random() * 0.2, 20);
+        const abGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.3 + Math.random() * 0.2, 10);
         const abMat = new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.9 });
         const ab = new THREE.Mesh(abGeo, abMat);
         ab.position.set((Math.random() - 0.5) * 0.5, 0.04, (Math.random() - 0.5) * 0.5);
@@ -673,7 +673,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
     mctx.envGroup.add(wBridge);
     for (let side = -1; side <= 1; side += 2) {
       for (let pi = 0; pi < 2; pi++) {
-        const railGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 20);
+        const railGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 10);
         const railMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
         const rail = new THREE.Mesh(railGeo, railMat);
         rail.position.set(hw * 0.4 + (pi === 0 ? -1.2 : 1.2), 0.4, side * 0.65);
@@ -712,7 +712,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       charred.position.y = 0.01;
       campfire.add(charred);
       // Half-burned log
-      const hLogGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.5, 23);
+      const hLogGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.5, 10);
       const hLogMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.95 });
       const hLog = new THREE.Mesh(hLogGeo, hLogMat);
       hLog.rotation.z = Math.PI / 2;
@@ -910,7 +910,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
     for (let i = 0; i < 12; i++) {
       const shaftR = 0.15 + Math.random() * 0.35;
       const shaftH = 12 + Math.random() * 6;
-      const shaftGeo = new THREE.CylinderGeometry(shaftR * 0.6, shaftR, shaftH, 27);
+      const shaftGeo = new THREE.CylinderGeometry(shaftR * 0.6, shaftR, shaftH, 12);
       const shaftMat = new THREE.MeshStandardMaterial({
         color: 0xffffdd, transparent: true,
         opacity: 0.02 + Math.random() * 0.02,
@@ -986,7 +986,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         const lcAng = Math.random() * Math.PI * 2;
         const lcR = 0.25 + Math.random() * 0.15;
         const leafCluster = new THREE.Mesh(
-          new THREE.SphereGeometry(0.08 + Math.random() * 0.05, 36, 27),
+          new THREE.SphereGeometry(0.08 + Math.random() * 0.05, 14, 10),
           new THREE.MeshStandardMaterial({ color: 0x2a6a2a + Math.floor(Math.random() * 0x112200), roughness: 0.85 })
         );
         leafCluster.position.set(Math.cos(lcAng) * lcR, 0.22 + Math.random() * 0.12, Math.sin(lcAng) * lcR);
@@ -1006,7 +1006,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       const numShrooms = 3 + Math.floor(Math.random() * 3);
       for (let m = 0; m < numShrooms; m++) {
         const stemH = 0.1 + Math.random() * 0.15;
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, stemH, 20),
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, stemH, 10),
           new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 }));
         const mx = (Math.random() - 0.5) * 0.3;
         const mz = (Math.random() - 0.5) * 0.3;
@@ -1027,7 +1027,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
     // Old wooden signpost (2)
     for (let i = 0; i < 2; i++) {
       const signGrp = new THREE.Group();
-      const postGeo = new THREE.CylinderGeometry(0.04, 0.05, 2.0, 20);
+      const postGeo = new THREE.CylinderGeometry(0.04, 0.05, 2.0, 10);
       const postMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.9 });
       const post = new THREE.Mesh(postGeo, postMat);
       post.position.y = 1.0;
@@ -1069,11 +1069,11 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
     // Hollow tree stump (3)
     for (let i = 0; i < 3; i++) {
       const stumpGrp = new THREE.Group();
-      const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.5, 27),
+      const stump = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.5, 12),
         new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.9 }));
       stump.position.y = 0.25;
       stumpGrp.add(stump);
-      const hollow = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 27),
+      const hollow = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 12),
         new THREE.MeshStandardMaterial({ color: 0x1a0a00, roughness: 1.0 }));
       hollow.position.y = 0.5;
       stumpGrp.add(hollow);
@@ -1138,14 +1138,14 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       const logGrp = new THREE.Group();
       const logLen = 1.5 + Math.random() * 2.0;
       const logR = 0.08 + Math.random() * 0.06;
-      const logMesh = new THREE.Mesh(new THREE.CylinderGeometry(logR, logR * 1.1, logLen, 23),
+      const logMesh = new THREE.Mesh(new THREE.CylinderGeometry(logR, logR * 1.1, logLen, 10),
         new THREE.MeshStandardMaterial({ color: 0x4a2a10, roughness: 0.95 }));
       logMesh.rotation.z = Math.PI / 2;
       logMesh.position.y = logR;
       logGrp.add(logMesh);
       // Moss patches on log
       for (let m = 0; m < 3; m++) {
-        const mossPatch = new THREE.Mesh(new THREE.SphereGeometry(0.06, 30, 16),
+        const mossPatch = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10),
           new THREE.MeshStandardMaterial({ color: 0x447733, roughness: 1.0 }));
         mossPatch.scale.y = 0.4;
         mossPatch.position.set((Math.random() - 0.5) * logLen * 0.6, logR * 1.5, (Math.random() - 0.5) * 0.1);
@@ -1167,7 +1167,7 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       stemMesh.position.y = 0.075;
       flGrp.add(stemMesh);
       const petalColor = woodFlowerColors[Math.floor(Math.random() * woodFlowerColors.length)];
-      const petalMesh = new THREE.Mesh(new THREE.SphereGeometry(0.03, 36, 17),
+      const petalMesh = new THREE.Mesh(new THREE.SphereGeometry(0.03, 14, 10),
         new THREE.MeshStandardMaterial({ color: petalColor, roughness: 0.5, emissive: petalColor, emissiveIntensity: 0.1 }));
       petalMesh.scale.y = 0.5;
       petalMesh.position.y = 0.16;
@@ -1347,7 +1347,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       const building = new THREE.Group();
       const bh = 3 + Math.random() * 3;
       const br = 1.2 + Math.random() * 0.8;
-      const baseGeo = new THREE.CylinderGeometry(br, br * 1.1, bh, 27);
+      const baseGeo = new THREE.CylinderGeometry(br, br * 1.1, bh, 12);
       const baseMat = new THREE.MeshStandardMaterial({ color: 0xccccbb, roughness: 0.6, metalness: 0.1 });
       const base = new THREE.Mesh(baseGeo, baseMat);
       base.position.y = bh / 2;
@@ -1364,7 +1364,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       }
 
       const roofH = 2.0 + Math.random();
-      const roofGeo = new THREE.ConeGeometry(br * 1.3, roofH, 27);
+      const roofGeo = new THREE.ConeGeometry(br * 1.3, roofH, 10);
       const roofMat = new THREE.MeshStandardMaterial({ color: 0x336699, roughness: 0.4, metalness: 0.3 });
       const roof = new THREE.Mesh(roofGeo, roofMat);
       roof.position.y = bh + roofH / 2;
@@ -1955,7 +1955,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     for (let i = 0; i < 18; i++) {
       const lantern = new THREE.Group();
       const postMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.6, roughness: 0.3 });
-      const postGeo = new THREE.CylinderGeometry(0.05, 0.07, 2.5, 23);
+      const postGeo = new THREE.CylinderGeometry(0.05, 0.07, 2.5, 10);
       const post = new THREE.Mesh(postGeo, postMat);
       post.position.y = 1.25;
       lantern.add(post);
@@ -2031,7 +2031,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     for (let i = 0; i < 25; i++) {
       const tree = new THREE.Group();
       const trunkH = 4 + Math.random() * 3;
-      const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, trunkH, 27);
+      const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, trunkH, 12);
       const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4a3e, roughness: 0.9 });
       const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = trunkH / 2;
@@ -2040,7 +2040,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
 
       // Multi-layered canopy
       const crownR = 2.0 + Math.random();
-      const crownGeo = new THREE.SphereGeometry(crownR, 44, 23);
+      const crownGeo = new THREE.SphereGeometry(crownR, 16, 12);
       const crownMat = new THREE.MeshStandardMaterial({ color: 0x2a6a3a, roughness: 0.8 });
       const crown = new THREE.Mesh(crownGeo, crownMat);
       crown.position.y = trunkH + 1.0;
@@ -2069,7 +2069,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       for (let r = 0; r < 3; r++) {
         const rootAng = (r / 3) * Math.PI * 2 + Math.random() * 0.5;
         const rootLen = 0.5 + Math.random() * 0.6;
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, rootLen, 20), trunkMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, rootLen, 10), trunkMat);
         root.position.set(Math.cos(rootAng) * 0.3, rootLen * 0.2, Math.sin(rootAng) * 0.3);
         root.rotation.z = Math.cos(rootAng) * 0.7;
         root.rotation.x = Math.sin(rootAng) * 0.7;
@@ -2107,7 +2107,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     const bridgeRailGoldMat = new THREE.MeshStandardMaterial({ color: 0xddc866, metalness: 0.5, roughness: 0.25 });
     for (let side = -1; side <= 1; side += 2) {
       for (let pi = 0; pi < 5; pi++) {
-        const pillarGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 23);
+        const pillarGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 10);
         const pillar = new THREE.Mesh(pillarGeo, bridgeMat);
         pillar.position.set(5 + side * 0.9, 0.9, -5 - 3 + pi * 1.5);
         mctx.envGroup.add(pillar);
@@ -2153,7 +2153,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       ruin.add(plinthTop);
 
       // Main column body
-      const pilGeo = new THREE.CylinderGeometry(pilR, pilRBot, pH, 27);
+      const pilGeo = new THREE.CylinderGeometry(pilR, pilRBot, pH, 12);
       const pil = new THREE.Mesh(pilGeo, pilMat);
       pil.position.y = 0.35 + pH / 2;
       if (isBroken) pil.rotation.z = tiltAngle;
@@ -2179,7 +2179,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       // Capital (top piece with scroll detail)
       if (!isBroken || Math.random() > 0.5) {
         const capY = 0.35 + pH;
-        const capitalBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, pilR, 0.2, 27), pilMat);
+        const capitalBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, pilR, 0.2, 12), pilMat);
         capitalBase.position.y = capY + 0.1;
         if (isBroken) capitalBase.rotation.z = tiltAngle;
         ruin.add(capitalBase);
@@ -2327,7 +2327,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
 
       for (let side = -1; side <= 1; side += 2) {
         // Main pillar body
-        const pillarGeo = new THREE.CylinderGeometry(0.15, 0.17, 3.5, 27);
+        const pillarGeo = new THREE.CylinderGeometry(0.15, 0.17, 3.5, 12);
         const pillar = new THREE.Mesh(pillarGeo, pillarMat);
         pillar.position.set(side * 1.2, 1.75, 0);
         pillar.castShadow = true;
@@ -2471,7 +2471,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     innerBasinRim.rotation.x = -Math.PI / 2;
     innerBasinRim.position.y = 0.15;
     fountainGroup.add(innerBasinRim);
-    const waterGeo = new THREE.CircleGeometry(1.3, 44);
+    const waterGeo = new THREE.CircleGeometry(1.3, 16);
     const waterMat = new THREE.MeshStandardMaterial({ color: 0x4488cc, transparent: true, opacity: 0.5, roughness: 0.1, metalness: 0.3 });
     const waterSurf = new THREE.Mesh(waterGeo, waterMat);
     waterSurf.rotation.x = -Math.PI / 2;
@@ -2492,7 +2492,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       pedestalRing.position.y = 0.4 + pr * 0.4;
       fountainGroup.add(pedestalRing);
     }
-    const jetGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 23);
+    const jetGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 10);
     const jetMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x4488ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.5 });
     const jet = new THREE.Mesh(jetGeo, jetMat);
     jet.position.y = 1.3;
@@ -2527,7 +2527,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       const pedestal = new THREE.Mesh(pedGeo, pedMat);
       pedestal.position.y = 0.25;
       statueGroup.add(pedestal);
-      const stBodyGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 27);
+      const stBodyGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.2, 12);
       const stMat = new THREE.MeshStandardMaterial({ color: 0x999999, emissive: 0x112244, emissiveIntensity: 0.3, roughness: 0.5 });
       const stBody = new THREE.Mesh(stBodyGeo, stMat);
       stBody.position.y = 1.1;
@@ -2582,7 +2582,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     // Mushroom circle (fairy ring)
     const fairyRingGroup = new THREE.Group();
     for (let m = 0; m < 12; m++) {
-      const mStemGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 23);
+      const mStemGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 10);
       const mStemMat = new THREE.MeshStandardMaterial({ color: 0xaaddcc, emissive: 0x225544, emissiveIntensity: 0.5 });
       const mStem = new THREE.Mesh(mStemGeo, mStemMat);
       const mAng = (m / 12) * Math.PI * 2;
@@ -2641,7 +2641,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       const dirX = (Math.random() - 0.5) * 0.8;
       const dirZ = (Math.random() - 0.5) * 0.8;
       for (let s = 0; s < 8; s++) {
-        const ssGeo = new THREE.CylinderGeometry(0.2 + Math.random() * 0.1, 0.22 + Math.random() * 0.1, 0.06, 23);
+        const ssGeo = new THREE.CylinderGeometry(0.2 + Math.random() * 0.1, 0.22 + Math.random() * 0.1, 0.06, 10);
         const ssMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.85 });
         const ss = new THREE.Mesh(ssGeo, ssMat);
         const ssX = startX + dirX * s * 1.2;
@@ -2683,7 +2683,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     // Elven banners (4)
     for (let i = 0; i < 4; i++) {
       const bannerGroup = new THREE.Group();
-      const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 4.0, 23);
+      const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 4.0, 10);
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.4, roughness: 0.5 });
       const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.y = 2.0;
@@ -2706,7 +2706,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     mwRim.rotation.x = -Math.PI / 2;
     mwRim.position.y = 0.2;
     moonwellGrp.add(mwRim);
-    const mwWater = new THREE.Mesh(new THREE.CircleGeometry(1.8, 44),
+    const mwWater = new THREE.Mesh(new THREE.CircleGeometry(1.8, 16),
       new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2244aa, emissiveIntensity: 0.6, transparent: true, opacity: 0.7 }));
     mwWater.rotation.x = -Math.PI / 2;
     mwWater.position.y = 0.1;
@@ -2739,7 +2739,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
         vineGrp.add(seg);
       }
       // Glowing bud at end
-      const bud = new THREE.Mesh(new THREE.SphereGeometry(0.04, 36, 17),
+      const bud = new THREE.Mesh(new THREE.SphereGeometry(0.04, 14, 10),
         new THREE.MeshStandardMaterial({ color: 0x88ffbb, emissive: 0x44dd88, emissiveIntensity: 1.5 }));
       bud.position.y = 3 - vineLen;
       vineGrp.add(bud);
@@ -2752,16 +2752,16 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
     const gazPillarMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4, metalness: 0.2 });
     for (let p = 0; p < 6; p++) {
       const gazAng = (p / 6) * Math.PI * 2;
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3, 23), gazPillarMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 3, 10), gazPillarMat);
       pillar.position.set(Math.cos(gazAng) * 2, 1.5, Math.sin(gazAng) * 2);
       pillar.castShadow = true;
       gazGrp.add(pillar);
     }
-    const gazRoof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 23),
+    const gazRoof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.5, 10),
       new THREE.MeshStandardMaterial({ color: 0x4466aa, roughness: 0.5, transparent: true, opacity: 0.7 }));
     gazRoof.position.y = 3.75;
     gazGrp.add(gazRoof);
-    const gazFloor = new THREE.Mesh(new THREE.CircleGeometry(2.2, 36),
+    const gazFloor = new THREE.Mesh(new THREE.CircleGeometry(2.2, 16),
       new THREE.MeshStandardMaterial({ color: 0xaabbcc, roughness: 0.5 }));
     gazFloor.rotation.x = -Math.PI / 2;
     gazFloor.position.y = 0.02;
@@ -2833,7 +2833,7 @@ export function buildElvenVillage(mctx: MapBuildContext, w: number, d: number): 
       const numRoots = 3 + Math.floor(Math.random() * 3);
       for (let r = 0; r < numRoots; r++) {
         const rootLen = 1 + Math.random() * 2;
-        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, rootLen, 20), rootMat);
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, rootLen, 10), rootMat);
         root.rotation.z = Math.PI / 2 - 0.3;
         root.rotation.y = (r / numRoots) * Math.PI * 2;
         root.position.y = 0.1;
@@ -2879,16 +2879,16 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       const pilH = 4 + Math.random() * 3;
       const pilR = 0.35 + Math.random() * 0.15;
       const pilMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.7, metalness: 0.1 });
-      const pil = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 0.9, pilR, pilH, 27), pilMat);
+      const pil = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 0.9, pilR, pilH, 12), pilMat);
       pil.position.y = pilH / 2;
       pil.castShadow = true;
       pilGrp.add(pil);
       // Capital
-      const capM = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 1.3, pilR * 0.9, 0.3, 27), pilMat);
+      const capM = new THREE.Mesh(new THREE.CylinderGeometry(pilR * 1.3, pilR * 0.9, 0.3, 12), pilMat);
       capM.position.y = pilH;
       pilGrp.add(capM);
       // Base
-      const baseM = new THREE.Mesh(new THREE.CylinderGeometry(pilR, pilR * 1.3, 0.3, 27), pilMat);
+      const baseM = new THREE.Mesh(new THREE.CylinderGeometry(pilR, pilR * 1.3, 0.3, 12), pilMat);
       baseM.position.y = 0.15;
       pilGrp.add(baseM);
       // Crack detail
@@ -3216,7 +3216,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     for (let i = 0; i < 15; i++) {
       const bonePile = new THREE.Group();
       for (let b = 0; b < 6; b++) {
-        const boneGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5 + Math.random() * 0.3, 20);
+        const boneGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5 + Math.random() * 0.3, 10);
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.9 });
         const bone = new THREE.Mesh(boneGeo, boneMat);
         bone.position.set(
@@ -3230,7 +3230,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       }
       // Extra bone fragments scattered around the pile
       for (let f = 0; f < 3; f++) {
-        const fragGeo = new THREE.CylinderGeometry(0.012, 0.018, 0.15 + Math.random() * 0.12, 27);
+        const fragGeo = new THREE.CylinderGeometry(0.012, 0.018, 0.15 + Math.random() * 0.12, 12);
         const fragMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.9 });
         const frag = new THREE.Mesh(fragGeo, fragMat);
         frag.position.set(
@@ -3351,7 +3351,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     // Torch brackets with flickering point lights (14)
     for (let i = 0; i < 14; i++) {
       const torch = new THREE.Group();
-      const bracketGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 23);
+      const bracketGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 10);
       const bracketMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5 });
       const bracket = new THREE.Mesh(bracketGeo, bracketMat);
       bracket.position.y = 2.0;
@@ -3369,7 +3369,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       const sconceRing = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 8, 12), bracketMat);
       sconceRing.position.set(0, 2.32, 0);
       torch.add(sconceRing);
-      const flameGeo = new THREE.SphereGeometry(0.12, 31, 20);
+      const flameGeo = new THREE.SphereGeometry(0.12, 14, 10);
       const flameMat = new THREE.MeshStandardMaterial({
         color: 0xff6600,
         emissive: 0xff4400,
@@ -3553,7 +3553,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
         [(Math.random() - 0.5) * bpRadius * 0.4, (Math.random() - 0.5) * bpRadius * 0.4, bpRadius * 0.6, 0x550000, 0.9],
       ];
       for (const [ox, oz, rad, col, op] of poolOffsets) {
-        const circGeo = new THREE.CircleGeometry(rad as number, 30);
+        const circGeo = new THREE.CircleGeometry(rad as number, 16);
         const circMat = new THREE.MeshStandardMaterial({ color: col as number, transparent: true, opacity: op as number, roughness: 0.95, depthWrite: false });
         const circ = new THREE.Mesh(circGeo, circMat);
         circ.rotation.x = -Math.PI / 2;
@@ -3747,7 +3747,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     // Braziers (4)
     for (let i = 0; i < 4; i++) {
       const brazierGroup = new THREE.Group();
-      const pedGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.0, 27);
+      const pedGeo = new THREE.CylinderGeometry(0.15, 0.2, 1.0, 12);
       const pedMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.5, roughness: 0.4 });
       const ped = new THREE.Mesh(pedGeo, pedMat);
       ped.position.y = 0.5;
@@ -3886,7 +3886,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     altar.castShadow = true;
     altarGroup.add(altar);
     for (let c = 0; c < 4; c++) {
-      const candleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 20);
+      const candleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 10);
       const candleMat = new THREE.MeshStandardMaterial({ color: 0xdddd88, roughness: 0.8 });
       const candle = new THREE.Mesh(candleGeo, candleMat);
       candle.position.set(-0.6 + c * 0.4, 1.1, 0);
@@ -3909,7 +3909,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     for (let i = 0; i < 3; i++) {
       const caGroup = new THREE.Group();
       for (let side = -1; side <= 1; side += 2) {
-        const cPilGeo = new THREE.CylinderGeometry(0.25, 0.3, 3.5, 27);
+        const cPilGeo = new THREE.CylinderGeometry(0.25, 0.3, 3.5, 12);
         const cPilMat = new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.8 });
         const cPil = new THREE.Mesh(cPilGeo, cPilMat);
         cPil.position.set(side * 1.5, 1.75, 0);
@@ -3940,14 +3940,14 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     // Dungeon grate/drain (4)
     for (let i = 0; i < 4; i++) {
       const grateGroup = new THREE.Group();
-      const holeGeo = new THREE.CircleGeometry(0.4, 30);
+      const holeGeo = new THREE.CircleGeometry(0.4, 16);
       const holeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1.0 });
       const grateHole = new THREE.Mesh(holeGeo, holeMat);
       grateHole.rotation.x = -Math.PI / 2;
       grateHole.position.y = 0.01;
       grateGroup.add(grateHole);
       for (let b = 0; b < 4; b++) {
-        const barGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.8, 20);
+        const barGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.8, 10);
         const barMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.5, roughness: 0.4 });
         const bar = new THREE.Mesh(barGeo, barMat);
         bar.rotation.x = Math.PI / 2;
@@ -3963,12 +3963,12 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     // Poison gas vents (3)
     for (let i = 0; i < 3; i++) {
       const ventGroup = new THREE.Group();
-      const ventGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.05, 27);
+      const ventGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.05, 12);
       const ventMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 });
       const vent = new THREE.Mesh(ventGeo, ventMat);
       vent.position.y = 0.025;
       ventGroup.add(vent);
-      const gasGeo = new THREE.SphereGeometry(0.4, 44, 23);
+      const gasGeo = new THREE.SphereGeometry(0.4, 16, 12);
       const gasMat = new THREE.MeshStandardMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.5, transparent: true, opacity: 0.15 });
       const gas = new THREE.Mesh(gasGeo, gasMat);
       gas.position.y = 0.5;
@@ -3984,7 +3984,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       const cageGroup = new THREE.Group();
       const cBarMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.5, roughness: 0.4 });
       for (let side = 0; side < 8; side++) {
-        const cBarGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.0, 20);
+        const cBarGeo = new THREE.CylinderGeometry(0.02, 0.02, 2.0, 10);
         const cBar = new THREE.Mesh(cBarGeo, cBarMat);
         const cbAng = (side / 8) * Math.PI * 2;
         cBar.position.set(Math.cos(cbAng) * 0.5, 1.0, Math.sin(cbAng) * 0.5);
@@ -3996,7 +3996,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       cTop.position.y = 2.0;
       cageGroup.add(cTop);
       for (let bn = 0; bn < 3; bn++) {
-        const cBoneGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2 + Math.random() * 0.1, 20);
+        const cBoneGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2 + Math.random() * 0.1, 10);
         const cBoneMat = new THREE.MeshStandardMaterial({ color: 0xddddcc, roughness: 0.8 });
         const cBone = new THREE.Mesh(cBoneGeo, cBoneMat);
         cBone.position.set((Math.random() - 0.5) * 0.3, 0.05, (Math.random() - 0.5) * 0.3);
@@ -4005,7 +4005,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       }
       // Cage door hinges
       for (let h = 0; h < 2; h++) {
-        const hingeGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.12, 27);
+        const hingeGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.12, 12);
         const hingeMat = new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.6, roughness: 0.4 });
         const hinge = new THREE.Mesh(hingeGeo, hingeMat);
         hinge.position.set(0.5, 0.5 + h * 1.0, 0);
@@ -4021,7 +4021,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
     // Additional wall-mounted torches at varying heights (6)
     for (let i = 0; i < 6; i++) {
       const wtGroup = new THREE.Group();
-      const wtBracketGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 20);
+      const wtBracketGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.4, 10);
       const isExtinguished = i < 2;
       const wtBracketMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.5 });
       const wtBracket = new THREE.Mesh(wtBracketGeo, wtBracketMat);
@@ -4122,7 +4122,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       statGrp.add(inscribedFace);
 
       // Torso with anatomical detail
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.85, 23), brokenStatMat);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.85, 10), brokenStatMat);
       torso.position.y = 1.05;
       statGrp.add(torso);
       // Shoulders (sphere geometry)
@@ -4161,7 +4161,7 @@ export function buildNecropolis(mctx: MapBuildContext, w: number, d: number): vo
       }
 
       // Broken arm with weapon fragment
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 20), brokenStatMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.5, 10), brokenStatMat);
       arm.position.set(0.28, 1.15, 0);
       arm.rotation.z = -0.6;
       statGrp.add(arm);

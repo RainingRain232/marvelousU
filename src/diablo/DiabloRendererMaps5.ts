@@ -41,7 +41,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
         tooth.rotation.z = angle;
         gear.add(tooth);
       }
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(gearR * 0.2, gearR * 0.2, gearR * 0.15, 27), darkMetalMat);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(gearR * 0.2, gearR * 0.2, gearR * 0.15, 12), darkMetalMat);
       hub.rotation.x = Math.PI / 2;
       gear.add(hub);
       const gX = (Math.random() - 0.5) * w * 0.85;
@@ -56,18 +56,18 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       const pipe = new THREE.Group();
       const pipeLen = 4 + Math.random() * 10;
       const pipeR = 0.15 + Math.random() * 0.2;
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, pipeLen, 27), copperMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(pipeR, pipeR, pipeLen, 12), copperMat);
       if (i % 2 === 0) body.rotation.z = Math.PI / 2;
       pipe.add(body);
-      const joint1 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 27), darkMetalMat);
+      const joint1 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 12), darkMetalMat);
       joint1.position.y = pipeLen / 2;
       pipe.add(joint1);
-      const joint2 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 27), darkMetalMat);
+      const joint2 = new THREE.Mesh(new THREE.CylinderGeometry(pipeR * 1.3, pipeR * 1.3, 0.2, 12), darkMetalMat);
       joint2.position.y = -pipeLen / 2;
       pipe.add(joint2);
       if (i % 3 === 0) {
         for (let s = 0; s < 3; s++) {
-          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 31, 23), steamMat);
+          const steam = new THREE.Mesh(new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 14, 10), steamMat);
           steam.position.set((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * pipeLen * 0.5, pipeR + 0.3);
           pipe.add(steam);
         }
@@ -99,7 +99,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
 
     // ── Scattered bolts and screws (25) ──
     for (let i = 0; i < 25; i++) {
-      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.15, 23), ironMat);
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.15, 10), ironMat);
       const bX = (Math.random() - 0.5) * w * 0.8;
       const bZ = (Math.random() - 0.5) * d * 0.8;
       bolt.position.set(bX, getTerrainHeight(bX, bZ, 0.4) + 0.08, bZ);
@@ -114,7 +114,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       const belt = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, beltLen), darkMetalMat);
       conveyor.add(belt);
       for (let r = 0; r < Math.floor(beltLen / 0.8); r++) {
-        const roller = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.6, 23), ironMat);
+        const roller = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.6, 10), ironMat);
         roller.rotation.z = Math.PI / 2;
         roller.position.set(0, -0.15, -beltLen / 2 + r * 0.8 + 0.4);
         conveyor.add(roller);
@@ -141,10 +141,10 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       const piston = new THREE.Group();
       const housing = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), darkMetalMat);
       piston.add(housing);
-      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5, 27), copperMat);
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5, 12), copperMat);
       rod.position.y = 2.2;
       piston.add(rod);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2, 27), bronzeMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2, 12), bronzeMat);
       cap.position.y = 3.45;
       piston.add(cap);
       const piX = (Math.random() - 0.5) * w * 0.65;
@@ -155,7 +155,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
 
     // ── Oil puddles (12) ──
     for (let i = 0; i < 12; i++) {
-      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.2, 36), oilMat);
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 1.2, 16), oilMat);
       puddle.rotation.x = -Math.PI / 2;
       const oX = (Math.random() - 0.5) * w * 0.75;
       const oZ = (Math.random() - 0.5) * d * 0.75;
@@ -211,7 +211,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       const opening = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.1), new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8 }));
       opening.position.set(0, -0.3, 1.51);
       furnace.add(opening);
-      const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 2, 27), darkMetalMat);
+      const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 2, 12), darkMetalMat);
       chimney.position.y = 2.5;
       furnace.add(chimney);
       const fLight = new THREE.PointLight(0xff3300, 2.0, 24);
@@ -280,7 +280,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), bronzeMat);
       torso.rotation.set(Math.random() * 0.5, 0, Math.random() * Math.PI * 0.5);
       parts.add(torso);
-      const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.6, 23), copperMat);
+      const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.6, 10), copperMat);
       limb.position.set(0.5, 0, (Math.random() - 0.5) * 0.5);
       limb.rotation.z = Math.random() * Math.PI;
       parts.add(limb);
@@ -296,7 +296,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
     // ── Pressure gauges (6) ──
     for (let i = 0; i < 6; i++) {
       const gauge = new THREE.Group();
-      const face = new THREE.Mesh(new THREE.CircleGeometry(0.25, 44), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.25, 16), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
       gauge.add(face);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 23, 44), brassMat);
       gauge.add(rim);
@@ -338,7 +338,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       g1.rotation.x = 0.3 + Math.random() * 0.5; gearAsm.add(g1);
       const g2 = new THREE.Mesh(new THREE.TorusGeometry(gR2, gR2 * 0.12, 23, 36), brassMat);
       g2.rotation.y = 0.8; g2.position.set(gR1 * 0.8, 0.3, 0); gearAsm.add(g2);
-      const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 23), darkMetalMat);
+      const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 10), darkMetalMat);
       axle.rotation.x = Math.PI / 2; gearAsm.add(axle);
       gearAsm.position.set((Math.random() - 0.5) * w * 0.7, 1 + Math.random() * 5, (Math.random() - 0.5) * d * 0.7);
       mctx.scene.add(gearAsm);
@@ -367,9 +367,9 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
     // ── Steam vents ──
     for (let i = 0; i < 15; i++) {
       const vent = new THREE.Group();
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.5, 27), darkMetalMat);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.5, 12), darkMetalMat);
       vent.add(pipe);
-      const grate = new THREE.Mesh(new THREE.CircleGeometry(0.15, 44), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide }));
+      const grate = new THREE.Mesh(new THREE.CircleGeometry(0.15, 16), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide }));
       grate.rotation.x = -Math.PI / 2; grate.position.y = 0.26; vent.add(grate);
       // Steam puffs
       for (let s = 0; s < 3; s++) {
@@ -388,7 +388,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       let px = 0; let py = 0; let pz = 0;
       for (let s = 0; s < segs; s++) {
         const pLen = 2 + Math.random() * 4; const pR = 0.08 + Math.random() * 0.1;
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(pR, pR, pLen, 23), copperMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(pR, pR, pLen, 10), copperMat);
         const dir = s % 3;
         if (dir === 0) { seg.position.set(px + pLen / 2, py, pz); seg.rotation.z = Math.PI / 2; px += pLen; }
         else if (dir === 1) { seg.position.set(px, py + pLen / 2, pz); py += pLen; }
@@ -406,13 +406,13 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
     for (let i = 0; i < 10; i++) {
       const pg = new THREE.Group();
       const faceR = 0.2 + Math.random() * 0.15;
-      const face = new THREE.Mesh(new THREE.CircleGeometry(faceR, 44), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(faceR, 16), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
       pg.add(face);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(faceR, 0.02, 23, 44), brassMat); pg.add(rim);
       const needle = new THREE.Mesh(new THREE.BoxGeometry(0.008, faceR * 0.8, 0.002), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
       needle.position.z = 0.01; needle.rotation.z = Math.random() * Math.PI - Math.PI / 2; pg.add(needle);
       // Pipe connection
-      const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 23), copperMat);
+      const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 10), copperMat);
       conn.position.y = -faceR - 0.15; pg.add(conn);
       pg.position.set((Math.random() - 0.5) * w * 0.65, 1.5 + Math.random() * 3, (Math.random() - 0.5) * d * 0.65);
       pg.rotation.y = Math.random() * Math.PI; mctx.scene.add(pg);
@@ -423,7 +423,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       const anvil = new THREE.Group();
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.3), ironMat); anvil.add(base);
       const top = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.35), ironMat); top.position.y = 0.26; anvil.add(top);
-      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 23), ironMat);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 10), ironMat);
       horn.rotation.z = Math.PI / 2; horn.position.set(0.5, 0.2, 0); anvil.add(horn);
       const ax = (Math.random() - 0.5) * w * 0.7; const az = (Math.random() - 0.5) * d * 0.7;
       anvil.position.set(ax, getTerrainHeight(ax, az, 0.4) + 0.2, az); mctx.scene.add(anvil);
@@ -455,7 +455,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
     for (let i = 0; i < 5; i++) {
       const clock = new THREE.Group();
       const clockR = 1.5 + Math.random() * 1.5;
-      const face = new THREE.Mesh(new THREE.CircleGeometry(clockR, 44), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.3 }));
+      const face = new THREE.Mesh(new THREE.CircleGeometry(clockR, 16), new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.3 }));
       clock.add(face);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(clockR, 0.08, 27, 44), brassMat); clock.add(rim);
       // Hour markers
@@ -496,7 +496,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       }
       // Support columns
       for (const sz of [-cwLen / 2 + 1, cwLen / 2 - 1]) {
-        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 23), darkMetalMat);
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 10), darkMetalMat);
         col.position.set(0, -1.5, sz); cw.add(col);
       }
       cw.position.set((Math.random() - 0.5) * w * 0.5, 3 + Math.random() * 3, (Math.random() - 0.5) * d * 0.5);
@@ -535,7 +535,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
         tooth.position.set(Math.cos(ta) * wgR, Math.sin(ta) * wgR, 0);
         tooth.rotation.z = ta; wallGear.add(tooth);
       }
-      const wgHub = new THREE.Mesh(new THREE.CylinderGeometry(wgR * 0.15, wgR * 0.15, wgR * 0.1, 20), darkMetalMat);
+      const wgHub = new THREE.Mesh(new THREE.CylinderGeometry(wgR * 0.15, wgR * 0.15, wgR * 0.1, 10), darkMetalMat);
       wgHub.rotation.x = Math.PI / 2; wallGear.add(wgHub);
       wallGear.position.set((Math.random() - 0.5) * w * 0.7, 1.5 + Math.random() * 4, (Math.random() - 0.5) * d * 0.7);
       wallGear.rotation.y = Math.random() * Math.PI; mctx.scene.add(wallGear);
@@ -571,7 +571,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
     for (let i = 0; i < 12; i++) {
       const pgDetail = new THREE.Group();
       const pgR = 0.15 + Math.random() * 0.12;
-      const pgFace = new THREE.Mesh(new THREE.CircleGeometry(pgR, 32), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
+      const pgFace = new THREE.Mesh(new THREE.CircleGeometry(pgR, 16), new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.3 }));
       pgDetail.add(pgFace);
       const pgRim = new THREE.Mesh(new THREE.TorusGeometry(pgR, 0.015, 16, 32), brassMat);
       pgDetail.add(pgRim);
@@ -662,7 +662,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
     const slagMat = new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.9 });
     for (let i = 0; i < 6; i++) {
       const furnaceUnit = new THREE.Group();
-      const furnaceBody = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 3.5, 27), forgeMat);
+      const furnaceBody = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 3.5, 12), forgeMat);
       furnaceBody.position.y = 1.75;
       furnaceUnit.add(furnaceBody);
       const topGlow = new THREE.Mesh(new THREE.CircleGeometry(1.1, 27), furnaceGlowMat);
@@ -674,10 +674,10 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
       furnaceUnit.add(topLight);
       mctx.torchLights.push(topLight);
       const chimneyH2 = 4 + Math.random() * 2;
-      const chimStack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, chimneyH2, 20), darkMetalMat);
+      const chimStack = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, chimneyH2, 10), darkMetalMat);
       chimStack.position.set(0.6, 3.5 + chimneyH2 / 2, 0);
       furnaceUnit.add(chimStack);
-      const chimTop = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.3, 20), darkMetalMat);
+      const chimTop = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.3, 10), darkMetalMat);
       chimTop.position.set(0.6, 3.5 + chimneyH2 + 0.15, 0);
       furnaceUnit.add(chimTop);
       for (let s = 0; s < 5; s++) {
@@ -697,7 +697,7 @@ export function buildClockworkFoundry(mctx: MapBuildContext, w: number, d: numbe
     for (let i = 0; i < 5; i++) {
       const craneStruct = new THREE.Group();
       const craneMastH = 7 + Math.random() * 3;
-      const craneMast = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, craneMastH, 20), darkMetalMat);
+      const craneMast = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, craneMastH, 10), darkMetalMat);
       craneMast.position.y = craneMastH / 2;
       craneStruct.add(craneMast);
       const craneArmLen = 4 + Math.random() * 2;
@@ -894,7 +894,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
     // ── Blood fountains/pools (12+) ──
     for (let i = 0; i < 14; i++) {
       const pool = new THREE.Group();
-      const basin = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 1.5, 44), bloodMat);
+      const basin = new THREE.Mesh(new THREE.CircleGeometry(1 + Math.random() * 1.5, 16), bloodMat);
       basin.rotation.x = -Math.PI / 2;
       basin.position.y = 0.03;
       pool.add(basin);
@@ -903,10 +903,10 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
       rim.position.y = 0.15;
       pool.add(rim);
       if (i % 3 === 0) {
-        const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.5, 27), darkStoneMat);
+        const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.5, 12), darkStoneMat);
         spout.position.y = 0.75;
         pool.add(spout);
-        const spoutTop = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 23), redStoneMat);
+        const spoutTop = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), redStoneMat);
         spoutTop.position.y = 1.5;
         pool.add(spoutTop);
       }
@@ -954,10 +954,10 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
         // Rack
         const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 3), woodMat);
         device.add(base);
-        const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 23), woodMat);
+        const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 10), woodMat);
         post1.position.set(0, 0.85, -1.2);
         device.add(post1);
-        const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 23), woodMat);
+        const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 10), woodMat);
         post2.position.set(0, 0.85, 1.2);
         device.add(post2);
       } else if (i % 3 === 1) {
@@ -968,12 +968,12 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
         device.add(spoke1);
         const spoke2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2, 0.06), woodMat);
         device.add(spoke2);
-        const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 2, 23), woodMat);
+        const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 2, 10), woodMat);
         stand.position.y = -1.5;
         device.add(stand);
       } else {
         // Chain post
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 23), ironMat);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 10), ironMat);
         post.position.y = 1.5;
         device.add(post);
         for (let c = 0; c < 4; c++) {
@@ -993,7 +993,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
     // ── Wall-mounted torches (15+) ──
     for (let i = 0; i < 18; i++) {
       const torch = new THREE.Group();
-      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 23), ironMat);
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 10), ironMat);
       torch.add(handle);
       const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.06), ironMat);
       bracket.position.set(-0.15, -0.2, 0);
@@ -1048,7 +1048,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
 
     // ── Floor bloodstains (25+) ──
     for (let i = 0; i < 28; i++) {
-      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 1.5, 30), bloodStainMat);
+      const stain = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 1.5, 16), bloodStainMat);
       stain.rotation.x = -Math.PI / 2;
       const sX = (Math.random() - 0.5) * w * 0.8;
       const sZ = (Math.random() - 0.5) * d * 0.8;
@@ -1129,7 +1129,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 12; i++) {
       const towerH = 3 + Math.random() * 6;
       const towerR = 0.8 + Math.random() * 1.2;
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(towerR * 0.8, towerR, towerH, 27), darkStoneMat);
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(towerR * 0.8, towerR, towerH, 12), darkStoneMat);
       const twX = (Math.random() - 0.5) * w * 0.8;
       const twZ = (Math.random() - 0.5) * d * 0.8;
       tower.position.set(twX, towerH / 2, twZ);
@@ -1141,7 +1141,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
     // ── Scattered bones (15+) ──
     for (let i = 0; i < 18; i++) {
       const bone = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03, 0.04, 0.4 + Math.random() * 0.3, 20),
+        new THREE.CylinderGeometry(0.03, 0.04, 0.4 + Math.random() * 0.3, 10),
         boneMat,
       );
       const boX = (Math.random() - 0.5) * w * 0.8;
@@ -1170,7 +1170,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
       const count = 3 + Math.floor(Math.random() * 4);
       for (let c = 0; c < count; c++) {
         const h = 0.2 + Math.random() * 0.4;
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, h, 20), candleMat);
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, h, 10), candleMat);
         candle.position.set((Math.random() - 0.5) * 0.3, h / 2, (Math.random() - 0.5) * 0.3);
         cluster.add(candle);
       }
@@ -1240,7 +1240,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 12; i++) {
       const bp = new THREE.Group();
       const poleH = 4 + Math.random() * 4;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, poleH, 23), ironMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, poleH, 10), ironMat);
       pole.position.y = poleH / 2; bp.add(pole);
       // Tattered flag (multiple segments for torn look)
       for (let f = 0; f < 3; f++) {
@@ -1260,7 +1260,7 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
     // ── Blood pools ──
     const bloodPoolMat = new THREE.MeshStandardMaterial({ color: 0x660011, emissive: 0x220008, emissiveIntensity: 0.2, roughness: 0.15, transparent: true, opacity: 0.75 });
     for (let i = 0; i < 14; i++) {
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 36), bloodPoolMat);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 16), bloodPoolMat);
       pool.rotation.x = -Math.PI / 2;
       const bpx2 = (Math.random() - 0.5) * w * 0.8; const bpz2 = (Math.random() - 0.5) * d * 0.8;
       pool.position.set(bpx2, getTerrainHeight(bpx2, bpz2, 0.6) + 0.02, bpz2); mctx.scene.add(pool);
@@ -1387,12 +1387,12 @@ export function buildCrimsonCitadel(mctx: MapBuildContext, w: number, d: number)
         frame.position.y = 1.2; td.add(frame);
         // Holes
         for (let h = 0; h < 3; h++) {
-          const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.16, 27), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+          const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.16, 12), new THREE.MeshStandardMaterial({ color: 0x111111 }));
           hole.position.set(-0.4 + h * 0.4, 1.2, 0); hole.rotation.x = Math.PI / 2; td.add(hole);
         }
         // Support posts
         for (const px of [-0.6, 0.6]) {
-          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.3, 20), woodMat);
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.3, 10), woodMat);
           post.position.set(px, 0.65, 0); td.add(post);
         }
       }
@@ -1840,7 +1840,7 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 12; i++) {
       const rod = new THREE.Group();
       const rodH = 5 + Math.random() * 6;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, rodH, 23), metalMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, rodH, 10), metalMat);
       pole.position.y = rodH / 2;
       rod.add(pole);
       const tip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 30), metalMat);
@@ -1917,7 +1917,7 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
       const pillar = new THREE.Group();
       const pillarH = 2 + Math.random() * 4;
       const pillarR = 0.3 + Math.random() * 0.4;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(pillarR * 0.8, pillarR, pillarH, 27), greyRockMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(pillarR * 0.8, pillarR, pillarH, 12), greyRockMat);
       col.position.y = pillarH / 2;
       pillar.add(col);
       // Erosion cutouts
@@ -1937,10 +1937,10 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
       const shrine = new THREE.Group();
       const altar = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 1.5), greyRockMat);
       shrine.add(altar);
-      const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.5, 23), greyRockMat);
+      const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.5, 10), greyRockMat);
       pillarL.position.set(-1.2, 1.25, 0);
       shrine.add(pillarL);
-      const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.8, 23), greyRockMat);
+      const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.8, 10), greyRockMat);
       pillarR.position.set(1.2, 0.9, 0);
       shrine.add(pillarR);
       const brokenLintel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.5), greyRockMat);
@@ -1956,7 +1956,7 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
 
     // ── Snow patches (15+) ──
     for (let i = 0; i < 18; i++) {
-      const snow = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 30), snowMat);
+      const snow = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 2, 16), snowMat);
       snow.rotation.x = -Math.PI / 2;
       const snX = (Math.random() - 0.5) * w * 0.85;
       const snZ = (Math.random() - 0.5) * d * 0.85;
@@ -2030,10 +2030,10 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
     // ── Telescope/observation platforms (5+) ──
     for (let i = 0; i < 6; i++) {
       const obs = new THREE.Group();
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.5, 23), metalMat);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.5, 10), metalMat);
       stand.position.y = 0.75;
       obs.add(stand);
-      const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.8, 27), metalMat);
+      const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.8, 12), metalMat);
       scope.position.set(0, 1.5, 0.2);
       scope.rotation.x = -0.3;
       obs.add(scope);
@@ -2085,11 +2085,11 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
       const peak = new THREE.Group();
       const pH = 6 + Math.random() * 10;
       const pR = 2 + Math.random() * 3;
-      const rock = new THREE.Mesh(new THREE.ConeGeometry(pR, pH, 23), darkRockMat);
+      const rock = new THREE.Mesh(new THREE.ConeGeometry(pR, pH, 10), darkRockMat);
       rock.position.y = pH / 2; peak.add(rock);
       // Snow cap
       const snowH = pH * 0.3;
-      const snowCap = new THREE.Mesh(new THREE.ConeGeometry(pR * 0.5, snowH, 23), snowMat);
+      const snowCap = new THREE.Mesh(new THREE.ConeGeometry(pR * 0.5, snowH, 10), snowMat);
       snowCap.position.y = pH - snowH / 2; peak.add(snowCap);
       // Ridges
       for (let r = 0; r < 3; r++) {
@@ -2105,7 +2105,7 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 15; i++) {
       const tree = new THREE.Group();
       const tH = 1.5 + Math.random() * 2.5;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, tH, 20), woodMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, tH, 10), woodMat);
       trunk.position.y = tH / 2; trunk.rotation.z = 0.2 + Math.random() * 0.3; tree.add(trunk);
       // Sparse wind-swept branches (all leaning one way)
       for (let b = 0; b < 3 + Math.floor(Math.random() * 3); b++) {
@@ -2151,10 +2151,10 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 8; i++) {
       const totem = new THREE.Group();
       const tH = 1.5 + Math.random() * 1.5;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, tH, 20), woodMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, tH, 10), woodMat);
       pole.position.y = tH / 2; totem.add(pole);
       // Skull
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 36, 17), snowMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10), snowMat);
       skull.position.y = tH + 0.1; skull.scale.set(0.8, 1, 1.2); totem.add(skull);
       // Horns
       for (const hx of [-0.12, 0.12]) {
@@ -2181,7 +2181,7 @@ export function buildStormspirePeak(mctx: MapBuildContext, w: number, d: number)
     for (let i = 0; i < 6; i++) {
       const wv = new THREE.Group();
       const wvH = 2 + Math.random() * 2;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, wvH, 20), metalMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, wvH, 10), metalMat);
       pole.position.y = wvH / 2; wv.add(pole);
       // Arrow
       const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 30), metalMat);
@@ -2570,7 +2570,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       const portalR = 1 + Math.random() * 1.5;
       const ring = new THREE.Mesh(new THREE.TorusGeometry(portalR, 0.12, 27, 46), purpleMat);
       portal.add(ring);
-      const center = new THREE.Mesh(new THREE.CircleGeometry(portalR * 0.85, 44), portalMat);
+      const center = new THREE.Mesh(new THREE.CircleGeometry(portalR * 0.85, 16), portalMat);
       portal.add(center);
       const pLight = new THREE.PointLight(0x6600aa, 0.8, 8);
       portal.add(pLight);
@@ -2622,7 +2622,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
     for (let i = 0; i < 18; i++) {
       const tree = new THREE.Group();
       const trunkH = 2 + Math.random() * 4;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, trunkH, 20), blackMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, trunkH, 10), blackMat);
       trunk.position.y = trunkH / 2;
       trunk.rotation.x = (Math.random() - 0.5) * 0.2;
       trunk.rotation.z = (Math.random() - 0.5) * 0.2;
@@ -2648,7 +2648,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
     for (let i = 0; i < 8; i++) {
       const pool = new THREE.Group();
       const poolR = 1.5 + Math.random() * 2;
-      const surface = new THREE.Mesh(new THREE.CircleGeometry(poolR, 44), new THREE.MeshStandardMaterial({ color: 0x330044, emissive: 0x220033, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 }));
+      const surface = new THREE.Mesh(new THREE.CircleGeometry(poolR, 16), new THREE.MeshStandardMaterial({ color: 0x330044, emissive: 0x220033, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 }));
       surface.rotation.x = -Math.PI / 2;
       surface.position.y = 0.02;
       pool.add(surface);
@@ -2720,10 +2720,10 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       const totem = new THREE.Group();
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.6), voidMat);
       totem.add(base);
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 2, 23), darkPurpleMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 2, 10), darkPurpleMat);
       body.position.y = 1.15;
       totem.add(body);
-      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 31, 23), voidMat);
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), voidMat);
       skull.position.y = 2.3;
       totem.add(skull);
       const totemLight = new THREE.PointLight(0x440066, 0.5, 4);
@@ -2793,7 +2793,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       for (let s = 0; s < segs; s++) {
         const sH = 0.5 + Math.random() * 0.8;
         const sR = Math.max(0.015, 0.1 - s * 0.008);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(sR * 0.7, sR, sH, 20), darkPurpleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(sR * 0.7, sR, sH, 10), darkPurpleMat);
         seg.position.set((Math.random() - 0.5) * 0.4, ty + sH / 2, (Math.random() - 0.5) * 0.4);
         seg.rotation.x = (Math.random() - 0.5) * 0.4; seg.rotation.z = (Math.random() - 0.5) * 0.4;
         tendril.add(seg);
@@ -2848,7 +2848,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
     for (let i = 0; i < 10; i++) {
       const pool = new THREE.Group();
       const pR = 1 + Math.random() * 2;
-      const surface = new THREE.Mesh(new THREE.CircleGeometry(pR, 44), new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x0a0011, emissiveIntensity: 0.3, transparent: true, opacity: 0.8 }));
+      const surface = new THREE.Mesh(new THREE.CircleGeometry(pR, 16), new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x0a0011, emissiveIntensity: 0.3, transparent: true, opacity: 0.8 }));
       surface.rotation.x = -Math.PI / 2; surface.position.y = 0.02; pool.add(surface);
       // Concentric ripple rings
       for (let r = 0; r < 3; r++) {
@@ -2909,7 +2909,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
     for (let i = 0; i < 8; i++) {
       const conduit = new THREE.Group();
       const cLen = 4 + Math.random() * 6;
-      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, cLen, 23), new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.5, metalness: 0.3 }));
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, cLen, 10), new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.5, metalness: 0.3 }));
       conduit.add(pipe);
       // Energy pulses along conduit
       for (let p = 0; p < 4; p++) {
@@ -2930,10 +2930,10 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
     for (let i = 0; i < 8; i++) {
       const brazier = new THREE.Group();
       // Bowl
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.3, 27), voidMat);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.3, 12), voidMat);
       bowl.position.y = 1.3; brazier.add(bowl);
       // Stand
-      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 1.3, 23), voidMat);
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 1.3, 10), voidMat);
       stand.position.y = 0.65; brazier.add(stand);
       // Shadow flames (dark purple/black transparent cones)
       for (let f = 0; f < 4; f++) {
@@ -2976,7 +2976,7 @@ export function buildShadowRealm(mctx: MapBuildContext, w: number, d: number): v
       const mirrorPortal = new THREE.Group();
       const mpR = 0.8 + Math.random() * 1.5;
       // Reflective surface
-      const mpSurf = new THREE.Mesh(new THREE.CircleGeometry(mpR, 36), new THREE.MeshStandardMaterial({ color: 0x667799, roughness: 0.02, metalness: 0.95 }));
+      const mpSurf = new THREE.Mesh(new THREE.CircleGeometry(mpR, 16), new THREE.MeshStandardMaterial({ color: 0x667799, roughness: 0.02, metalness: 0.95 }));
       mirrorPortal.add(mpSurf);
       // Ornate frame ring
       const mpFrame = new THREE.Mesh(new THREE.TorusGeometry(mpR, 0.06, 12, 36), purpleMat);
@@ -3312,7 +3312,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
     // ── Energy conduits (12+) ──
     for (let i = 0; i < 14; i++) {
       const condLen = 4 + Math.random() * 8;
-      const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, condLen, 23), conduitMat);
+      const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, condLen, 10), conduitMat);
       conduit.position.set(
         (Math.random() - 0.5) * w * 0.7,
         1 + Math.random() * 5,
@@ -3391,7 +3391,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
         const segH = 0.6 + Math.random() * 0.8;
         const topR = Math.max(0.02, 0.15 - s * 0.015);
         const botR = Math.max(0.03, 0.18 - s * 0.015);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, segH, 20), tentacleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, segH, 10), tentacleMat);
         seg.position.set((Math.random() - 0.5) * 0.2, ty + segH / 2, (Math.random() - 0.5) * 0.2);
         seg.rotation.x = (Math.random() - 0.5) * 0.3;
         seg.rotation.z = (Math.random() - 0.5) * 0.3;
@@ -3446,7 +3446,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 10; i++) {
       const well = new THREE.Group();
       const wellR = 1.5 + Math.random() * 2;
-      const disc = new THREE.Mesh(new THREE.CircleGeometry(wellR, 44), wellMat);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(wellR, 16), wellMat);
       disc.rotation.x = -Math.PI / 2;
       well.add(disc);
       const distortRing = new THREE.Mesh(new THREE.TorusGeometry(wellR * 0.7, 0.04, 23, 44), new THREE.MeshStandardMaterial({ color: 0x3322aa, emissive: 0x2211aa, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 }));
@@ -3499,7 +3499,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 5; i++) {
       const godEye = new THREE.Group();
       const eyeR = 1.5 + Math.random() * 2;
-      const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeR, 36, 30), new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff0000, emissiveIntensity: 0.6, roughness: 0.3 }));
+      const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeR, 14, 10), new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff0000, emissiveIntensity: 0.6, roughness: 0.3 }));
       godEye.add(eyeball);
       const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeR * 0.4, 27, 27), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1 }));
       pupil.position.z = eyeR * 0.7;
@@ -3524,7 +3524,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 14; i++) {
       const spireH = 2 + Math.random() * 5;
       const spire = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.2 + Math.random() * 0.15, spireH, 23),
+        new THREE.CylinderGeometry(0.08, 0.2 + Math.random() * 0.15, spireH, 10),
         boneMat,
       );
       const bsX = (Math.random() - 0.5) * w * 0.8;
@@ -3538,9 +3538,9 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
     // ── Chaos fountains (4+) ──
     for (let i = 0; i < 5; i++) {
       const fountain = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 0.5, 27), voidBlackMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 0.5, 12), voidBlackMat);
       fountain.add(base);
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 23), conduitMat);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 10), conduitMat);
       cone.position.y = 1.5;
       cone.rotation.z = Math.PI; // pointing up = reverse gravity feel
       fountain.add(cone);
@@ -3622,7 +3622,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
         const sH = 0.5 + Math.random() * 0.6;
         const topR = Math.max(0.02, 0.2 - s * 0.02);
         const botR = Math.max(0.03, 0.25 - s * 0.02);
-        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, sH, 23), tentacleMat);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, sH, 10), tentacleMat);
         const dx = (Math.random() - 0.5) * 0.3; const dz = (Math.random() - 0.5) * 0.3;
         seg.position.set(tx2 + dx, ty + sH / 2, tz2 + dz);
         seg.rotation.x = (Math.random() - 0.5) * 0.4; seg.rotation.z = (Math.random() - 0.5) * 0.4;
@@ -3646,10 +3646,10 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
       const lid = new THREE.Mesh(new THREE.TorusGeometry(eR, eR * 0.15, 23, 44), new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.7 }));
       eye.add(lid);
       // Iris
-      const iris = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.7, 44), new THREE.MeshStandardMaterial({ color: 0xaa4400, emissive: 0x882200, emissiveIntensity: 0.5 }));
+      const iris = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xaa4400, emissive: 0x882200, emissiveIntensity: 0.5 }));
       eye.add(iris);
       // Pupil
-      const pupil = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.3, 36), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+      const pupil = new THREE.Mesh(new THREE.CircleGeometry(eR * 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x000000 }));
       pupil.position.z = 0.01; eye.add(pupil);
       // Veins
       for (let v = 0; v < 5; v++) {
@@ -3705,7 +3705,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 8; i++) {
       const ooze = new THREE.Group();
       const oR = 1 + Math.random() * 2.5;
-      const surface = new THREE.Mesh(new THREE.CircleGeometry(oR, 36), oozeMat);
+      const surface = new THREE.Mesh(new THREE.CircleGeometry(oR, 16), oozeMat);
       surface.rotation.x = -Math.PI / 2; surface.position.y = 0.02; ooze.add(surface);
       // Bubbles
       for (let b = 0; b < 4; b++) {
@@ -3722,12 +3722,12 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
       const bone = new THREE.Group();
       // Giant femur
       const boneLen = 4 + Math.random() * 6;
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, boneLen, 27), boneMat);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, boneLen, 12), boneMat);
       shaft.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
       shaft.position.y = 0.5; bone.add(shaft);
       // Knobs on ends
       for (const ex of [-boneLen / 2, boneLen / 2]) {
-        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 31, 23), boneMat);
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), boneMat);
         knob.position.set(ex, 0.5, 0); bone.add(knob);
       }
       const bnx = (Math.random() - 0.5) * w * 0.7; const bnz = (Math.random() - 0.5) * d * 0.7;
@@ -3743,7 +3743,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
       const ring = new THREE.Mesh(new THREE.TorusGeometry(riftR, 0.1, 23, 46), conduitMat);
       rift.add(ring);
       // Inner void
-      const inner = new THREE.Mesh(new THREE.CircleGeometry(riftR * 0.8, 44), new THREE.MeshStandardMaterial({ color: 0x000005, emissive: 0x110022, emissiveIntensity: 0.3, transparent: true, opacity: 0.9 }));
+      const inner = new THREE.Mesh(new THREE.CircleGeometry(riftR * 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x000005, emissive: 0x110022, emissiveIntensity: 0.3, transparent: true, opacity: 0.9 }));
       rift.add(inner);
       // Energy arcs
       for (let a = 0; a < 6; a++) {
@@ -3818,7 +3818,7 @@ export function buildPrimordialAbyss(mctx: MapBuildContext, w: number, d: number
     for (let i = 0; i < 10; i++) {
       const oozePool = new THREE.Group();
       const opR = 1.5 + Math.random() * 2.5;
-      const opSurf = new THREE.Mesh(new THREE.CircleGeometry(opR, 32), enhancedOozeMat);
+      const opSurf = new THREE.Mesh(new THREE.CircleGeometry(opR, 16), enhancedOozeMat);
       opSurf.rotation.x = -Math.PI / 2; opSurf.position.y = 0.02; oozePool.add(opSurf);
       // Bubble spheres
       for (let b = 0; b < 6 + Math.floor(Math.random() * 4); b++) {

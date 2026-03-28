@@ -66,6 +66,7 @@ export interface HUDRefs {
   levelText: HTMLDivElement;
   killText: HTMLDivElement;
   topRightPanel: HTMLDivElement;
+  lootLog: HTMLDivElement;
   skillSlots: HTMLDivElement[];
   skillCooldownOverlays: HTMLDivElement[];
   minimapCanvas: HTMLCanvasElement;
@@ -309,91 +310,92 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <ellipse cx="110" cy="190" rx="3" ry="2" fill="#14100a" opacity="0.5"/>
     <ellipse cx="110" cy="198" rx="2.5" ry="1.8" fill="#14100a" opacity="0.4"/>
     <ellipse cx="110" cy="205" rx="2" ry="1.5" fill="#14100a" opacity="0.3"/>
-    <!-- Shoulder masses (larger, more muscular) -->
-    <ellipse cx="38" cy="62" rx="20" ry="16" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
-    <ellipse cx="182" cy="62" rx="20" ry="16" fill="#120e08" stroke="#1a1410" stroke-width="0.8" opacity="0.7"/>
-    <!-- Shoulder muscle striations -->
-    <path d="M 28 56 Q 34 60 30 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
-    <path d="M 192 56 Q 186 60 190 68" fill="none" stroke="#1a1410" stroke-width="0.7" opacity="0.35"/>
-    <!-- LEFT CLAW gripping orb (3 thick talon fingers + thumb) -->
-    <!-- Left finger 1 (top) — thick with 2 phalanges + curved talon -->
-    <path d="M 36 76 Q 28 80 22 88 Q 16 96 14 104 Q 12 110 16 112 Q 20 108 22 100 Q 26 92 30 86 Q 34 80 36 76 Z" fill="#14100a" stroke="#221a10" stroke-width="1"/>
-    <!-- Finger 1 highlight (top edge) -->
-    <path d="M 35 77 Q 28 82 23 90 Q 18 98 16 105" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <!-- Finger 1 inner shadow -->
-    <path d="M 33 80 Q 26 86 20 96 Q 16 104 15 109" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
-    <!-- Finger 1 talon (long, curved, sharp) -->
-    <path d="M 16 104 Q 8 94 2 84 Q -1 78 1 79 Q 5 84 10 92 Q 14 100 16 104" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
-    <!-- Finger 1 talon shine -->
-    <path d="M 12 96 Q 7 90 3 83" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
-    <!-- Finger 1 knuckle + joint wrinkles -->
-    <circle cx="28" cy="86" r="3.5" fill="#16120c" opacity="0.5"/>
-    <circle cx="20" cy="98" r="3" fill="#16120c" opacity="0.4"/>
-    <path d="M 25 88 Q 23 90 25 92" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 19 100 Q 17 102 19 104" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
-    <!-- Left finger 2 (middle) — thickest finger -->
-    <path d="M 32 92 Q 22 100 16 110 Q 10 120 8 128 Q 6 134 10 134 Q 14 128 18 118 Q 22 108 28 100 Q 32 94 32 92 Z" fill="#120e08" stroke="#221a10" stroke-width="1"/>
-    <path d="M 31 93 Q 22 102 17 112 Q 12 122 9 130" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 30 96 Q 20 106 14 118 Q 10 126 8 132" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
-    <!-- Finger 2 talon -->
-    <path d="M 10 128 Q 2 118 -4 108 Q -7 102 -5 103 Q -1 108 4 116 Q 8 124 10 128" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
-    <path d="M 6 120 Q 0 112 -4 106" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
-    <circle cx="24" cy="102" r="3.5" fill="#16120c" opacity="0.5"/>
-    <circle cx="16" cy="116" r="3" fill="#16120c" opacity="0.4"/>
-    <path d="M 21 104 Q 19 106 21 108" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 14 118 Q 12 120 14 122" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
-    <!-- Left finger 3 (bottom) -->
-    <path d="M 28 110 Q 18 120 12 132 Q 8 142 6 150 Q 4 156 8 154 Q 12 148 16 138 Q 20 128 26 118 Q 28 112 28 110 Z" fill="#0e0c06" stroke="#221a10" stroke-width="1"/>
-    <path d="M 27 111 Q 18 122 13 134 Q 9 144 7 152" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 26 114 Q 16 126 10 140 Q 8 146 6 152" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
-    <!-- Finger 3 talon -->
-    <path d="M 8 148 Q 0 138 -6 128 Q -9 122 -7 123 Q -3 128 2 136 Q 6 144 8 148" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
-    <path d="M 4 140 Q -2 132 -6 126" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
-    <circle cx="20" cy="120" r="3" fill="#16120c" opacity="0.5"/>
-    <circle cx="14" cy="136" r="2.5" fill="#16120c" opacity="0.4"/>
-    <path d="M 17 122 Q 15 124 17 126" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
-    <!-- LEFT THUMB (wraps from behind, thicker) -->
-    <path d="M 40 66 Q 32 72 26 82 Q 22 90 20 96 Q 18 102 22 100 Q 24 94 28 86 Q 32 78 38 72 Z" fill="#16120c" stroke="#221a10" stroke-width="0.9"/>
-    <path d="M 38 68 Q 32 74 27 84 Q 24 90 22 96" fill="none" stroke="#2a2218" stroke-width="0.7" opacity="0.5"/>
-    <!-- Thumb talon -->
-    <path d="M 22 96 Q 16 88 10 80 Q 8 76 10 78 Q 14 82 18 90 Q 22 96 22 96" fill="#1e1a12" stroke="#2a2218" stroke-width="0.7"/>
-    <!-- Webbing between thumb and finger 1 -->
-    <path d="M 36 76 Q 34 72 38 68" fill="none" stroke="#0e0c08" stroke-width="2" opacity="0.25"/>
-    <!-- RIGHT CLAW gripping orb (mirror — 3 thick talon fingers + thumb) -->
-    <!-- Right finger 1 (top) -->
-    <path d="M 184 76 Q 192 80 198 88 Q 204 96 206 104 Q 208 110 204 112 Q 200 108 198 100 Q 194 92 190 86 Q 186 80 184 76 Z" fill="#14100a" stroke="#221a10" stroke-width="1"/>
-    <path d="M 185 77 Q 192 82 197 90 Q 202 98 204 105" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 187 80 Q 194 86 200 96 Q 204 104 205 109" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
-    <path d="M 204 104 Q 212 94 218 84 Q 221 78 219 79 Q 215 84 210 92 Q 206 100 204 104" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
-    <path d="M 208 96 Q 213 90 217 83" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
-    <circle cx="192" cy="86" r="3.5" fill="#16120c" opacity="0.5"/>
-    <circle cx="200" cy="98" r="3" fill="#16120c" opacity="0.4"/>
-    <path d="M 195 88 Q 197 90 195 92" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 201 100 Q 203 102 201 104" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
-    <!-- Right finger 2 (middle) -->
-    <path d="M 188 92 Q 198 100 204 110 Q 210 120 212 128 Q 214 134 210 134 Q 206 128 202 118 Q 198 108 192 100 Q 188 94 188 92 Z" fill="#120e08" stroke="#221a10" stroke-width="1"/>
-    <path d="M 189 93 Q 198 102 203 112 Q 208 122 211 130" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 190 96 Q 200 106 206 118 Q 210 126 212 132" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
-    <path d="M 210 128 Q 218 118 224 108 Q 227 102 225 103 Q 221 108 216 116 Q 212 124 210 128" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
-    <path d="M 214 120 Q 220 112 224 106" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
-    <circle cx="196" cy="102" r="3.5" fill="#16120c" opacity="0.5"/>
-    <circle cx="204" cy="116" r="3" fill="#16120c" opacity="0.4"/>
-    <path d="M 199 104 Q 201 106 199 108" fill="none" stroke="#201810" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 206 118 Q 208 120 206 122" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
-    <!-- Right finger 3 (bottom) -->
-    <path d="M 192 110 Q 202 120 208 132 Q 212 142 214 150 Q 216 156 212 154 Q 208 148 204 138 Q 200 128 194 118 Q 192 112 192 110 Z" fill="#0e0c06" stroke="#221a10" stroke-width="1"/>
-    <path d="M 193 111 Q 202 122 207 134 Q 211 144 213 152" fill="none" stroke="#2a2218" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 194 114 Q 204 126 210 140 Q 212 146 214 152" fill="none" stroke="#0a0806" stroke-width="0.6" opacity="0.4"/>
-    <path d="M 212 148 Q 220 138 226 128 Q 229 122 227 123 Q 223 128 218 136 Q 214 144 212 148" fill="#1e1a12" stroke="#2a2218" stroke-width="0.8"/>
-    <path d="M 216 140 Q 222 132 226 126" fill="none" stroke="#302820" stroke-width="0.5" opacity="0.4"/>
-    <circle cx="200" cy="120" r="3" fill="#16120c" opacity="0.5"/>
-    <circle cx="206" cy="136" r="2.5" fill="#16120c" opacity="0.4"/>
-    <path d="M 203 122 Q 205 124 203 126" fill="none" stroke="#201810" stroke-width="0.7" opacity="0.45"/>
-    <!-- RIGHT THUMB -->
-    <path d="M 180 66 Q 188 72 194 82 Q 198 90 200 96 Q 202 102 198 100 Q 196 94 192 86 Q 188 78 182 72 Z" fill="#16120c" stroke="#221a10" stroke-width="0.9"/>
-    <path d="M 182 68 Q 188 74 193 84 Q 196 90 198 96" fill="none" stroke="#2a2218" stroke-width="0.7" opacity="0.5"/>
-    <path d="M 198 96 Q 204 88 210 80 Q 212 76 210 78 Q 206 82 202 90 Q 198 96 198 96" fill="#1e1a12" stroke="#2a2218" stroke-width="0.7"/>
-    <path d="M 184 76 Q 186 72 182 68" fill="none" stroke="#0e0c08" stroke-width="2" opacity="0.25"/>
+    <!-- LEFT SHOULDER (skeletal — scapula + ball joint) -->
+    <ellipse cx="40" cy="60" rx="14" ry="10" fill="#14100a" stroke="#1e1810" stroke-width="0.8" opacity="0.6"/>
+    <circle cx="34" cy="68" r="5" fill="#18140e" stroke="#221c14" stroke-width="0.8"/>
+    <circle cx="34" cy="68" r="2.5" fill="#100c06" opacity="0.5"/>
+    <!-- Left clavicle bone -->
+    <path d="M 70 52 Q 52 54 34 64" fill="none" stroke="#1e1810" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+    <!-- Left upper arm bone (humerus) -->
+    <path d="M 34 72 Q 32 78 30 86" fill="none" stroke="#1a1410" stroke-width="3" stroke-linecap="round" opacity="0.45"/>
+    <!-- LEFT ELBOW joint -->
+    <circle cx="30" cy="86" r="3" fill="#14100a" stroke="#1e1810" stroke-width="0.6"/>
+    <!-- Left forearm bones (radius + ulna) -->
+    <path d="M 30 88 Q 28 96 26 105" fill="none" stroke="#1a1410" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+    <path d="M 31 89 Q 30 97 28 105" fill="none" stroke="#16120c" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+    <!-- RIGHT SHOULDER (skeletal — mirror) -->
+    <ellipse cx="180" cy="60" rx="14" ry="10" fill="#14100a" stroke="#1e1810" stroke-width="0.8" opacity="0.6"/>
+    <circle cx="186" cy="68" r="5" fill="#18140e" stroke="#221c14" stroke-width="0.8"/>
+    <circle cx="186" cy="68" r="2.5" fill="#100c06" opacity="0.5"/>
+    <!-- Right clavicle bone -->
+    <path d="M 150 52 Q 168 54 186 64" fill="none" stroke="#1e1810" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+    <!-- Right upper arm bone -->
+    <path d="M 186 72 Q 188 78 190 86" fill="none" stroke="#1a1410" stroke-width="3" stroke-linecap="round" opacity="0.45"/>
+    <!-- RIGHT ELBOW joint -->
+    <circle cx="190" cy="86" r="3" fill="#14100a" stroke="#1e1810" stroke-width="0.6"/>
+    <!-- Right forearm bones -->
+    <path d="M 190 88 Q 192 96 194 105" fill="none" stroke="#1a1410" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+    <path d="M 189 89 Q 190 97 192 105" fill="none" stroke="#16120c" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+    <!-- LEFT SKELETAL HAND gripping orb (5 bony fingers from wrist) -->
+    <!-- Left wrist bones (carpals) -->
+    <circle cx="24" cy="106" r="3" fill="#16120c" stroke="#221c14" stroke-width="0.6"/>
+    <circle cx="28" cy="104" r="2" fill="#14100a" opacity="0.4"/>
+    <!-- Left thumb (metacarpal + 2 phalanges) -->
+    <path d="M 28 100 Q 34 92 38 82 Q 40 76 38 74" fill="none" stroke="#1e1810" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="34" cy="90" r="1.8" fill="#1a1410" opacity="0.5"/>
+    <path d="M 38 74 Q 36 70 32 68" fill="none" stroke="#1e1810" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Left index finger (3 phalanges curving around orb) -->
+    <path d="M 22 108 Q 18 98 16 88" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="18" cy="96" r="1.5" fill="#16120c" opacity="0.5"/>
+    <path d="M 16 88 Q 12 80 8 74" fill="none" stroke="#1a1410" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="14" cy="82" r="1.3" fill="#16120c" opacity="0.45"/>
+    <path d="M 8 74 Q 4 68 2 64" fill="none" stroke="#1e1810" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Left middle finger (longest) -->
+    <path d="M 20 110 Q 14 102 10 92" fill="none" stroke="#1a1410" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="14" cy="100" r="1.5" fill="#16120c" opacity="0.5"/>
+    <path d="M 10 92 Q 6 82 2 74" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="7" cy="86" r="1.4" fill="#16120c" opacity="0.45"/>
+    <path d="M 2 74 Q -2 66 -4 60" fill="none" stroke="#1e1810" stroke-width="1.4" stroke-linecap="round"/>
+    <!-- Left ring finger -->
+    <path d="M 18 114 Q 12 108 8 100" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="12" cy="106" r="1.4" fill="#16120c" opacity="0.5"/>
+    <path d="M 8 100 Q 4 92 0 86" fill="none" stroke="#1a1410" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 0 86 Q -2 80 -4 76" fill="none" stroke="#1e1810" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Left pinky finger -->
+    <path d="M 16 118 Q 10 114 8 108" fill="none" stroke="#16120c" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="10" cy="112" r="1.2" fill="#14100a" opacity="0.45"/>
+    <path d="M 8 108 Q 4 102 2 96" fill="none" stroke="#16120c" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 2 96 Q 0 92 -2 88" fill="none" stroke="#1a1410" stroke-width="1" stroke-linecap="round"/>
+    <!-- RIGHT SKELETAL HAND gripping orb (mirror) -->
+    <!-- Right wrist bones -->
+    <circle cx="196" cy="106" r="3" fill="#16120c" stroke="#221c14" stroke-width="0.6"/>
+    <circle cx="192" cy="104" r="2" fill="#14100a" opacity="0.4"/>
+    <!-- Right thumb -->
+    <path d="M 192 100 Q 186 92 182 82 Q 180 76 182 74" fill="none" stroke="#1e1810" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="186" cy="90" r="1.8" fill="#1a1410" opacity="0.5"/>
+    <path d="M 182 74 Q 184 70 188 68" fill="none" stroke="#1e1810" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Right index finger -->
+    <path d="M 198 108 Q 202 98 204 88" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="202" cy="96" r="1.5" fill="#16120c" opacity="0.5"/>
+    <path d="M 204 88 Q 208 80 212 74" fill="none" stroke="#1a1410" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="206" cy="82" r="1.3" fill="#16120c" opacity="0.45"/>
+    <path d="M 212 74 Q 216 68 218 64" fill="none" stroke="#1e1810" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Right middle finger (longest) -->
+    <path d="M 200 110 Q 206 102 210 92" fill="none" stroke="#1a1410" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="206" cy="100" r="1.5" fill="#16120c" opacity="0.5"/>
+    <path d="M 210 92 Q 214 82 218 74" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="213" cy="86" r="1.4" fill="#16120c" opacity="0.45"/>
+    <path d="M 218 74 Q 222 66 224 60" fill="none" stroke="#1e1810" stroke-width="1.4" stroke-linecap="round"/>
+    <!-- Right ring finger -->
+    <path d="M 202 114 Q 208 108 212 100" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="208" cy="106" r="1.4" fill="#16120c" opacity="0.5"/>
+    <path d="M 212 100 Q 216 92 220 86" fill="none" stroke="#1a1410" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 220 86 Q 222 80 224 76" fill="none" stroke="#1e1810" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Right pinky finger -->
+    <path d="M 204 118 Q 210 114 212 108" fill="none" stroke="#16120c" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="210" cy="112" r="1.2" fill="#14100a" opacity="0.45"/>
+    <path d="M 212 108 Q 216 102 218 96" fill="none" stroke="#16120c" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M 218 96 Q 220 92 222 88" fill="none" stroke="#1a1410" stroke-width="1" stroke-linecap="round"/>
     <!-- Head (larger, more detailed) -->
     <path d="M 110 14 C 90 12 76 18 74 30 C 72 42 80 50 95 52 C 100 52 110 53 120 52
              C 140 50 148 42 146 30 C 144 18 130 12 110 14 Z" fill="#12100a" stroke="#1a1410" stroke-width="1"/>
@@ -1090,7 +1092,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
 
     const keyLabel = document.createElement("div");
     keyLabel.style.cssText = `
-      position:absolute;bottom:2px;right:4px;font-size:10px;color:#9a8a5a;z-index:2;
+      position:absolute;bottom:2px;right:4px;font-size:13px;color:#9a8a5a;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,0.6);
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
     `;
     keyLabel.textContent = String(i + 1);
@@ -1135,13 +1137,13 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   }
   hud.appendChild(skillBarBg);
 
-  // === Skeleton figurehead on left side of skill bar ===
+  // === Skeleton figurehead on left side of top-right panel ===
   const figurehead = document.createElement("div");
   figurehead.style.cssText = `
-    position:absolute;bottom:8px;left:50%;
-    transform:translateX(calc(-50% - 260px)) rotate(-12deg);
-    width:80px;height:120px;pointer-events:none;z-index:11;
+    position:absolute;top:12px;right:190px;
+    width:70px;height:110px;pointer-events:none;z-index:11;
     filter:drop-shadow(2px 2px 4px rgba(0,0,0,0.7));
+    transform:scaleX(-1);
   `;
   figurehead.innerHTML = `<svg viewBox="0 0 80 120" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -1390,6 +1392,16 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   topRight.appendChild(waxSeal);
 
   hud.appendChild(topRight);
+
+  // Loot pickup log (fading entries, right side below top-right panel)
+  const lootLog = document.createElement("div");
+  lootLog.style.cssText = `
+    position:absolute;top:170px;right:20px;width:220px;
+    display:flex;flex-direction:column;gap:2px;
+    pointer-events:none;z-index:8;
+  `;
+  hud.appendChild(lootLog);
+
 
   // Minimap canvas - top-left corner (ornate frame)
   const minimapWrap = document.createElement("div");
@@ -1649,9 +1661,9 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
 
     const keyLabel = document.createElement("div");
     keyLabel.style.cssText = `
-      position:absolute;bottom:2px;right:4px;font-size:10px;color:#9aaa7a;z-index:4;
+      position:absolute;bottom:2px;right:4px;font-size:13px;color:#9aaa7a;z-index:4;
       font-family:'Cinzel','Palatino Linotype','Book Antiqua',Georgia,serif;
-      text-shadow:0 1px 2px rgba(0,0,0,0.8);
+      text-shadow:0 1px 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.6);
     `;
     keyLabel.textContent = potionLabels[i];
     const iconEl = document.createElement("div");
@@ -1961,6 +1973,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     levelText: levelText as HTMLDivElement,
     killText: killText as HTMLDivElement,
     topRightPanel: topRight as HTMLDivElement,
+    lootLog: lootLog as HTMLDivElement,
     skillSlots,
     skillCooldownOverlays,
     minimapCanvas,
@@ -2226,8 +2239,8 @@ export function updateHUD(
     if (!countEl) {
       countEl = document.createElement("div");
       countEl.className = "potion-count";
-      countEl.style.cssText = `position:absolute;bottom:2px;left:4px;font-size:10px;font-weight:bold;color:#ffd700;
-        text-shadow:0 0 3px #000,0 0 6px #000;z-index:3;font-family:'Georgia',serif;pointer-events:none;`;
+      countEl.style.cssText = `position:absolute;bottom:2px;left:4px;font-size:14px;font-weight:bold;color:#ffd700;
+        text-shadow:0 0 3px #000,0 0 6px #000,0 1px 2px #000;z-index:3;font-family:'Georgia',serif;pointer-events:none;`;
       refs.potionHudSlots[i].appendChild(countEl);
     }
     countEl.textContent = slot && slot.count > 1 ? `x${slot.count}` : "";
