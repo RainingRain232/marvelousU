@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 import { getTerrainHeight } from './DiabloRenderer';
-import { VendorType } from './DiabloTypes';
-import { VENDOR_DEFS } from './DiabloConfig';
 import { MapBuildContext } from './DiabloRendererMaps';
 
 export function buildForest(mctx: MapBuildContext, w: number, d: number, propMult: number = 1.0): void {

@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 import { getTerrainHeight } from './DiabloRenderer';
-import { VendorType } from './DiabloTypes';
-import { VENDOR_DEFS } from './DiabloConfig';
 import { MapBuildContext } from './DiabloRendererMaps';
 
 export function buildMoonlitGrove(mctx: MapBuildContext, w: number, d: number): void {
@@ -879,7 +877,7 @@ export function buildAncientLibrary(mctx: MapBuildContext, w: number, d: number)
     const magicMat = new THREE.MeshStandardMaterial({ color: 0x4466ff, emissive: 0x2244cc, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
     const candleMat = new THREE.MeshStandardMaterial({ color: 0xeeddaa });
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.6 });
-    const dustMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, transparent: true, opacity: 0.3, depthWrite: false });
+    const _dustMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, transparent: true, opacity: 0.3, depthWrite: false });
     // Towering bookshelves arranged in rows
     const bookGeo = new THREE.BoxGeometry(0.12, 0.3, 0.22);
     for (let i = 0; i < 18; i++) {

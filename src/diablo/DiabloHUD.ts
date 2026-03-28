@@ -7,11 +7,12 @@
 
 import {
   DiabloState, DiabloMapId, VendorType, DiabloVendor,
-  GreaterRiftState, MultiplayerState, SkillId, DamageType,
+  GreaterRiftState, MultiplayerState, DamageType,
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, ADVANCED_CRAFTING_RECIPES,
 } from "./DiabloConfig";
+import gargoyleRedUrl from './gargoylered.png';
 
 // Dark Diablo-style skill icon colors per damage type
 const SKILL_ICON_STYLES: Record<string, { bg: string; glow: string; border: string; symbol: string }> = {
@@ -263,7 +264,7 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
   // mpCreature is declared later, so we store ref to update it in the callback
   let _mpCreatureRef: HTMLDivElement | null = null;
   const _gargImg = new Image();
-  _gargImg.src = 'src/diablo/gargoylered.png';
+  _gargImg.src = gargoyleRedUrl;
   _gargImg.onload = () => {
     const mpCreature = _mpCreatureRef;
     function _rgb2hsl(r: number, g: number, b: number): [number, number, number] {

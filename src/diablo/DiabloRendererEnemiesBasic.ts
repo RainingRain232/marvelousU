@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { EnemyType } from './DiabloTypes';
 
 /** Build enemy mesh for basic/forest/undead enemies. Returns true if type was handled. */
-export function createBasicEnemyMesh(type: EnemyType, scale: number, group: THREE.Group): boolean {
+export function createBasicEnemyMesh(type: EnemyType, _scale: number, group: THREE.Group): boolean {
     switch (type) {
       case EnemyType.WOLF: {
         // --- WOLF | Estimated polygons: ~52000 triangles ---

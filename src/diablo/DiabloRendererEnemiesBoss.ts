@@ -3,7 +3,7 @@ import { EnemyType, EnemyBehavior } from './DiabloTypes';
 import { ENEMY_DEFS } from './DiabloConfig';
 
 /** Build enemy mesh for night bosses + default fallback. Always handles the type. */
-export function createBossEnemyMesh(type: EnemyType, scale: number, group: THREE.Group): boolean {
+export function createBossEnemyMesh(type: EnemyType, _scale: number, group: THREE.Group): boolean {
     switch (type) {
       // ── NIGHT BOSSES ────────────────────────────────────────────
       case EnemyType.NIGHT_FOREST_WENDIGO: {

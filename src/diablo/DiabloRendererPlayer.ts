@@ -41,7 +41,7 @@ export function buildPlayerMesh(ctx: PlayerBuildContext, cls: DiabloClass): Play
     const skinColor = 0xdeb887;
     const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.7 });
     const skinDarkMat = new THREE.MeshStandardMaterial({ color: 0xb8925a, roughness: 0.7 });
-    const skinLightMat = new THREE.MeshStandardMaterial({ color: 0xeecca0, roughness: 0.65 });
+    const _skinLightMat = new THREE.MeshStandardMaterial({ color: 0xeecca0, roughness: 0.65 });
 
     // Head (higher poly)
     const headGeo = new THREE.SphereGeometry(0.18, 24, 20);

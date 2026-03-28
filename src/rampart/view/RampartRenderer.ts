@@ -28,7 +28,7 @@ export class RampartRenderer {
   private _explosionGroup = new THREE.Group();
   private _rangeCircle: THREE.Mesh | null = null;
   private _hoverMarker: THREE.Mesh | null = null;
-  private _explosions: Array<{ mesh: THREE.Mesh; life: number; maxLife: number; radius: number }> = [];
+  private __explosions: Array<{ mesh: THREE.Mesh; life: number; maxLife: number; radius: number }> = [];
   private _muzzleFlashGroup = new THREE.Group();
   private _flagMeshes: THREE.Mesh[] = [];
 

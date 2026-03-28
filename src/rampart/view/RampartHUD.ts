@@ -3,7 +3,6 @@
 // ---------------------------------------------------------------------------
 
 import { RAMPART, TOWER_DEFS, ENEMY_DEFS, DIFFICULTIES, getWaveComposition } from "../config/RampartConfig";
-import type { TowerDef } from "../config/RampartConfig";
 import type { RampartState } from "../state/RampartState";
 import { getUpgradeCost, getTowerSellValue, getTowerEffectiveDamage, getTowerEffectiveRange, getTowerEffectiveFireRate, cycleTowerTargetMode } from "../systems/RampartSystem";
 
@@ -11,7 +10,7 @@ export class RampartHUD {
   private _root!: HTMLDivElement;
   private _topBar!: HTMLDivElement;
   private _towerPanel!: HTMLDivElement;
-  private _waveInfo!: HTMLDivElement;
+  private __waveInfo!: HTMLDivElement;
   private _castleBar!: HTMLDivElement;
   private _castleBarFill!: HTMLDivElement;
   private _goldDisplay!: HTMLSpanElement;

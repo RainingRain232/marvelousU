@@ -7,7 +7,7 @@ import { RAMPART, TOWER_DEFS, DIFFICULTIES } from "./config/RampartConfig";
 import { createRampartState } from "./state/RampartState";
 import type { RampartState } from "./state/RampartState";
 import {
-  canPlaceTower, placeTower, updateWaveTimer, updateEnemies,
+  placeTower, updateWaveTimer, updateEnemies,
   updateTowers, updateProjectiles, updateParticles, updateDamageNumbers,
   cleanupDead, startGame, startWave, sellTower, upgradeTower, cycleTowerTargetMode,
 } from "./systems/RampartSystem";

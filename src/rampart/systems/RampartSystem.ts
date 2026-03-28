@@ -3,7 +3,6 @@
 // ---------------------------------------------------------------------------
 
 import { RAMPART, TOWER_DEFS, ENEMY_DEFS, getWaveComposition } from "../config/RampartConfig";
-import type { TowerDef } from "../config/RampartConfig";
 import type {
   RampartState, RampartEnemy, RampartTower, RampartProjectile,
   TargetMode,

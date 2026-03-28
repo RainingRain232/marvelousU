@@ -1,7 +1,4 @@
 import * as THREE from 'three';
-import { getTerrainHeight } from './DiabloRenderer';
-import { VendorType } from './DiabloTypes';
-import { VENDOR_DEFS } from './DiabloConfig';
 
 export interface MapBuildContext {
   scene: THREE.Scene;

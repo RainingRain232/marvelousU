@@ -4,7 +4,7 @@
 
 import {
   DiabloState, DiabloEnemy, DiabloProjectile, DiabloAOE,
-  DiabloClass, DiabloMapId, DiabloEquipment,
+  DiabloClass, DiabloEquipment,
   SkillId, EnemyState, EnemyType, StatusEffect, DamageType,
   DiabloItem, PotionType,
   TalentEffectType,

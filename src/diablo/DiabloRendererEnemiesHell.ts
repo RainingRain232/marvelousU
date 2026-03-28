@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { EnemyType } from './DiabloTypes';
 
 /** Build enemy mesh for volcanic/abyssal enemies. Returns true if type was handled. */
-export function createHellEnemyMesh(type: EnemyType, scale: number, group: THREE.Group): boolean {
+export function createHellEnemyMesh(type: EnemyType, _scale: number, group: THREE.Group): boolean {
     switch (type) {
       // ── Volcanic Wastes enemies ──
       // --- FIRE_IMP | Estimated polygons: ~54000 triangles ---

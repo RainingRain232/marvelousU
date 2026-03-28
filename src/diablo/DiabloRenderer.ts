@@ -9,7 +9,6 @@ import {
   ItemRarity,
   EnemyState,
   DiabloClass,
-  SkillId,
   StatusEffect,
   DiabloPhase,
   TimeOfDay,
@@ -19,7 +18,6 @@ import {
   Weather,
   DiabloTownfolk,
   TownfolkRole,
-  DamageType,
   PetSpecies,
   PetAIState,
   DungeonLayout,
@@ -467,7 +465,7 @@ export class DiabloRenderer {
     // Higher detail geometry (detail level 3 for main boulders)
     const stoneGeoLg = new THREE.DodecahedronGeometry(1, 3);
     const stoneGeoMd = new THREE.DodecahedronGeometry(1, 2);
-    const stoneGeoSm = new THREE.DodecahedronGeometry(1, 2);
+    const _stoneGeoSm = new THREE.DodecahedronGeometry(1, 2);
     const postGeo = new THREE.CylinderGeometry(0.18, 0.25, 2.5, 12);
 
     const spacing = 4;
@@ -2171,7 +2169,7 @@ export class DiabloRenderer {
     const group = new THREE.Group();
     const color = RARITY_COLORS[rarity];
     const rarityIdx = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC, ItemRarity.DIVINE].indexOf(rarity);
-    const isHighRarity = rarityIdx >= 2; // Rare+
+    const _isHighRarity = rarityIdx >= 2; // Rare+
 
     // Ground glow disc
     const glowOpacity = 0.1 + rarityIdx * 0.04;

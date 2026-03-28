@@ -5,7 +5,7 @@
 import type { DiabloState } from "./DiabloTypes";
 import { DiabloMapId, VendorType, EnemyState } from "./DiabloTypes";
 import { MAP_CONFIGS } from "./DiabloConfig";
-import { RARITY_CSS, RARITY_ORDER, EXCALIBUR_QUEST_INFO } from "./DiabloConstants";
+import { RARITY_CSS, RARITY_ORDER } from "./DiabloConstants";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Public interface

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DiabloState, DamageType } from './DiabloTypes';
+import { DiabloState } from './DiabloTypes';
 
 export interface AOESyncContext {
   aoeMeshes: Map<string, THREE.Group>;

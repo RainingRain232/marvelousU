@@ -25,13 +25,13 @@ import {
   DiabloItem, DiabloEquipment, DiabloPotion, PotionType,
   VendorType, DiabloVendor, DiabloTownfolk, TownfolkRole, DiabloPortalNpc,
   BossAbility, EnemyBehavior,
-  DiabloQuest, QuestType, CraftType,
+  DiabloQuest, QuestType,
   TalentEffectType,
   ParticleType, Weather,
   MapModifier, LootFilterLevel, GreaterRiftState,
-  PetType, PetSpecies, PetAIState, DiabloPet,
-  CraftingStationType, MaterialType, AdvancedCraftingRecipe,
-  RuneType, SkillRuneEffect,
+  PetSpecies, PetAIState, DiabloPet,
+  MaterialType, AdvancedCraftingRecipe,
+  RuneType,
   LegendaryEffectDef,
   ItemSlot, ItemType, DiabloItemStats,
   MultiplayerState,
@@ -40,23 +40,18 @@ import {
 } from "./DiabloTypes";
 import {
   SKILL_DEFS, MAP_CONFIGS, ENEMY_DEFS, ITEM_DATABASE, SET_BONUSES,
-  LOOT_TABLES, RARITY_NAMES, XP_TABLE,
+  LOOT_TABLES, XP_TABLE,
   ENEMY_SPAWN_WEIGHTS,
   VENDOR_DEFS, generateVendorInventory, generatePortalNpcInventory,
   DIFFICULTY_CONFIGS,
   BOSS_PHASE_CONFIGS,
-  TALENT_TREES, TALENT_BRANCH_NAMES,
-  POTION_DATABASE, POTION_DROP_POOL, ENEMY_DAMAGE_TYPES,
-  QUEST_DATABASE,
+  TALENT_TREES,
+  POTION_DROP_POOL, ENEMY_DAMAGE_TYPES,
   MAP_COMPLETION_REWARDS,
-  CRAFTING_RECIPES,
-  SALVAGE_MATERIAL_YIELDS,
   LANTERN_CONFIGS,
-  SKILL_BRANCHES,
   UNLOCKABLE_SKILLS,
   MAP_SPECIFIC_ITEMS,
   MAP_MODIFIER_DEFS, PARAGON_XP_TABLE,
-  PET_DEFS, PET_DROP_TABLE, PET_XP_TABLE,
   ADVANCED_CRAFTING_RECIPES, CRAFTING_MATERIALS, MATERIAL_DROP_TABLE,
   GREATER_RIFT_CONFIG,
   SKILL_RUNES,
@@ -66,13 +61,12 @@ import {
   TALENT_SYNERGIES,
 } from "./DiabloConfig";
 import {
-  RARITY_CSS, RARITY_GLOW, RARITY_BORDER, RARITY_TIER, RARITY_BG, RARITY_BADGE,
-  rarityNeedsAnim, resolveEquipKey,
+  RARITY_CSS,
   MAP_KILL_TARGET, BOSS_NAMES, EXCALIBUR_QUEST_INFO, CAMELOT_FIRST_VISIT_TEXT,
-  VENDOR_DIALOGUE, NIGHT_BOSS_MAP, DAY_BOSS_MAP,
-  MAP_LORE_POINTS, RARITY_ORDER, MAP_NAME_MAP, WEATHER_LABELS,
+  NIGHT_BOSS_MAP, DAY_BOSS_MAP,
+  MAP_LORE_POINTS, RARITY_ORDER,
   SPAWN_QUOTES,
-  PORTAL_NPC_NAME, PORTAL_NPC_GREETING, PORTAL_NPC_RUMORS, PORTAL_NPC_GENERIC_RUMORS,
+  PORTAL_NPC_NAME, PORTAL_NPC_GREETING,
 } from "./DiabloConstants";
 import {
   createAudioState, ensureAudio as ensureAudioCtx,
@@ -239,7 +233,7 @@ export class DiabloGame {
   private _slowMotionScale: number = 1;
 
   // DPS tracking
-  private _dpsDisplay!: HTMLDivElement;
+  private __dpsDisplay!: HTMLDivElement;
   private _combatLog: { time: number; damage: number }[] = [];
   private _currentDps: number = 0;
 
@@ -282,8 +276,8 @@ export class DiabloGame {
   private _lastRevealZ: number = -9999;
 
   // Performance: cached HUD element references
-  private _dpsValueEl: Element | null = null;
-  private _lootFilterLabelEl: HTMLDivElement | null = null;
+  private __dpsValueEl: Element | null = null;
+  private __lootFilterLabelEl: HTMLDivElement | null = null;
 
   // ──────────────────────────────────────────────────────────────
   //  LEADERBOARD

@@ -2762,7 +2762,7 @@ export function buildCamelot(mctx: MapBuildContext, w: number, d: number): void 
       const [tbx, tbz, tbw2, tbd] = buildingPositions[tbi];
       const tbh = 3 + ((tbi * 7 + 3) % 5) * 0.4;
       const frontZ = tbz + tbd / 2 + 0.04;
-      const backZ = tbz - tbd / 2 - 0.04;
+      const _backZ = tbz - tbd / 2 - 0.04;
       const leftX = tbx - tbw2 / 2 - 0.04;
       const rightX = tbx + tbw2 / 2 + 0.04;
 

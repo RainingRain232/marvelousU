@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { EnemyType } from './DiabloTypes';
 
 /** Build enemy mesh for dragon/desert/grassland enemies. Returns true if type was handled. */
-export function createWildEnemyMesh(type: EnemyType, scale: number, group: THREE.Group): boolean {
+export function createWildEnemyMesh(type: EnemyType, _scale: number, group: THREE.Group): boolean {
     switch (type) {
       // ── Dragon's Sanctum enemies ──
       // --- DRAGONKIN_WARRIOR | Estimated polygons: ~55000 triangles ---
