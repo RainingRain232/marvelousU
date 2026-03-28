@@ -2006,6 +2006,25 @@ export class DiabloGame {
       p.talentPoints += 1;
 
       this._addFloatingText(p.x, p.y + 3, p.z, "LEVEL UP!", "#ffd700");
+      // Progression unlock messages (only if cheats off)
+      if (!this._state.cheatsEnabled) {
+        const unlockMsgs: [number, string][] = [
+          [4, "New maps & Cleaver difficulty unlocked!"],
+          [6, "Paladin class unlocked!"],
+          [8, "More maps & Longsword difficulty unlocked!"],
+          [12, "Necromancer class & Bastard Sword unlocked!"],
+          [16, "More maps & Claymore difficulty unlocked!"],
+          [18, "Assassin class unlocked!"],
+          [20, "Flamberge difficulty unlocked!"],
+        ];
+        for (const [lvl, msg] of unlockMsgs) {
+          if (p.level === lvl) {
+            setTimeout(() => {
+              this._addFloatingText(p.x, p.y + 4.5, p.z, msg, "#44ccff");
+            }, 500);
+          }
+        }
+      }
       this._updateAchievement('level_cap', p.level);
       this._playSound('levelup');
       this._renderer.spawnParticles(ParticleType.LEVEL_UP, p.x, p.y + 0.5, p.z, 20 + Math.floor(Math.random() * 11), this._state.particles);

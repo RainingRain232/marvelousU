@@ -168,10 +168,18 @@ export function showClassSelect(ctx: ScreenContext): void {
     WARRIOR: "#e85030", MAGE: "#5080ff", RANGER: "#40cc40",
     PALADIN: "#ffd740", NECROMANCER: "#b050e0", ASSASSIN: "#cc40cc",
   };
+  // Class unlock levels: Warrior/Mage/Ranger = 0, Paladin = 6, Necro = 12, Assassin = 18
+  const classUnlockLevel: Record<string, number> = {
+    WARRIOR: 0, MAGE: 0, RANGER: 0, PALADIN: 6, NECROMANCER: 12, ASSASSIN: 18,
+  };
+  const playerLevel = ctx.state.player.level;
+  const cheats = ctx.state.cheatsEnabled;
   const maxStat = 100;
   let cardsHtml = "";
   let classCardIndex = 0;
   for (const c of classes) {
+    const reqLevel = classUnlockLevel[c.name] || 0;
+    const isUnlocked = cheats || playerLevel >= reqLevel;
     const cc = classColors[c.name] || "#c8a84e";
     const statBar = (label: string, val: number, color: string) => {
       const pct = Math.round((val / maxStat) * 100);
@@ -184,18 +192,20 @@ export function showClassSelect(ctx: ScreenContext): void {
       </div>`;
     };
     cardsHtml += `
-      <div class="diablo-class-card" data-class="${c.cls}" style="
+      <div class="diablo-class-card" data-class="${c.cls}" data-unlocked="${isUnlocked}" style="
         width:220px;background:rgba(20,15,10,0.95);
-        border:3px solid #5a4a2a;border-top-color:#8a7a4a;border-left-color:#7a6a3a;
-        border-right-color:#3a2a1a;border-bottom-color:#2a1a0a;
-        border-radius:12px;padding:28px 24px;cursor:pointer;text-align:center;
+        border:3px solid ${isUnlocked ? '#5a4a2a' : '#333'};border-top-color:${isUnlocked ? '#8a7a4a' : '#444'};border-left-color:${isUnlocked ? '#7a6a3a' : '#3a3a3a'};
+        border-right-color:${isUnlocked ? '#3a2a1a' : '#222'};border-bottom-color:${isUnlocked ? '#2a1a0a' : '#111'};
+        border-radius:12px;padding:28px 24px;cursor:${isUnlocked ? 'pointer' : 'not-allowed'};text-align:center;
         transition:all 0.3s ease;position:relative;
         backdrop-filter:blur(4px);
         transform:translateY(0) scale(1);
         animation:cs-card-enter 0.4s ease-out backwards;
         animation-delay:${classCardIndex * 0.1}s;
         background-image:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(200,168,78,0.015) 8px,rgba(200,168,78,0.015) 16px);
+        ${isUnlocked ? '' : 'opacity:0.5;filter:grayscale(0.7);'}
       ">
+        ${isUnlocked ? '' : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:10;border-radius:10px;background:rgba(0,0,0,0.4);"><div style="color:#888;font-size:14px;font-family:'Georgia',serif;">&#128274; Unlocks at Level ${reqLevel}</div></div>`}
         <!-- Corner rivets -->
         <div style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
         <div style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd740,#8a6a20);box-shadow:0 1px 2px rgba(0,0,0,0.6);"></div>
@@ -218,7 +228,7 @@ export function showClassSelect(ctx: ScreenContext): void {
     classCardIndex++;
   }
 
-  // Build difficulty selector
+  // Build difficulty selector (unlock every 4 levels)
   const difficulties = [
     DiabloDifficulty.DAGGER,
     DiabloDifficulty.CLEAVER,
@@ -227,17 +237,21 @@ export function showClassSelect(ctx: ScreenContext): void {
     DiabloDifficulty.CLAYMORE,
     DiabloDifficulty.FLAMBERGE,
   ];
+  const diffUnlockLevels = [0, 4, 8, 12, 16, 20];
   let diffHtml = "";
-  for (const diff of difficulties) {
+  for (let di = 0; di < difficulties.length; di++) {
+    const diff = difficulties[di];
     const cfg = DIFFICULTY_CONFIGS[diff];
     const isActive = ctx.state.difficulty === diff;
-    diffHtml += `<button class="diff-btn" data-diff="${diff}" style="
-      cursor:pointer;padding:8px 16px;font-size:14px;border-radius:6px;transition:0.2s;
+    const diffUnlocked = cheats || playerLevel >= diffUnlockLevels[di];
+    diffHtml += `<button class="diff-btn" data-diff="${diff}" ${diffUnlocked ? '' : 'disabled'} style="
+      cursor:${diffUnlocked ? 'pointer' : 'not-allowed'};padding:8px 16px;font-size:14px;border-radius:6px;transition:0.2s;
       background:${isActive ? "rgba(60,50,20,0.9)" : "rgba(30,20,10,0.7)"};
-      border:2px solid ${isActive ? cfg.color : "#3a3a2a"};
-      color:${isActive ? cfg.color : "#666"};
+      border:2px solid ${isActive ? cfg.color : diffUnlocked ? "#3a3a2a" : "#222"};
+      color:${isActive ? cfg.color : diffUnlocked ? "#666" : "#444"};
       font-family:'Georgia',serif;font-weight:bold;
-    ">${cfg.icon} ${cfg.label}<br><span style="font-size:11px;font-weight:normal;opacity:0.7;">${cfg.subtitle}</span></button>`;
+      ${diffUnlocked ? '' : 'opacity:0.4;'}
+    ">${cfg.icon} ${cfg.label}<br><span style="font-size:11px;font-weight:normal;opacity:0.7;">${diffUnlocked ? cfg.subtitle : 'Lv ' + diffUnlockLevels[di]}</span></button>`;
   }
 
   const hasSave = ctx.hasSave();
@@ -522,12 +536,18 @@ export function showClassSelect(ctx: ScreenContext): void {
       </div>
 
       <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">${cardsHtml}</div>
-      <div style="text-align:center;margin:10px 0;">
+      <div style="text-align:center;margin:10px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
         <label style="color:#ff4444;font-family:Georgia,serif;cursor:pointer;font-size:14px;
           padding:6px 16px;border:1px solid rgba(255,68,68,0.2);border-radius:4px;
           background:rgba(80,20,20,0.3);transition:all 0.2s;">
           <input type="checkbox" id="hardcore-check" style="margin-right:6px;accent-color:#ff4444;">
           \u2620 Hardcore Mode (Permadeath)
+        </label>
+        <label style="color:#44ccff;font-family:Georgia,serif;cursor:pointer;font-size:14px;
+          padding:6px 16px;border:1px solid rgba(68,204,255,0.2);border-radius:4px;
+          background:rgba(20,40,60,0.3);transition:all 0.2s;">
+          <input type="checkbox" id="cheat-check" ${ctx.state.cheatsEnabled ? 'checked' : ''} style="margin-right:6px;accent-color:#44ccff;">
+          \u2728 Unlock All (Cheats)
         </label>
       </div>
       ${savedCharHtml}
@@ -551,6 +571,7 @@ export function showClassSelect(ctx: ScreenContext): void {
       card.style.transform = "translateY(0) scale(1)";
     });
     card.addEventListener("click", () => {
+      if (card.getAttribute("data-unlocked") !== "true") return;
       const cls = card.getAttribute("data-class") as DiabloClass;
       ctx.state.player = createDefaultPlayer(cls);
       const hcCheck = document.getElementById('hardcore-check') as HTMLInputElement | null;
@@ -560,6 +581,15 @@ export function showClassSelect(ctx: ScreenContext): void {
       ctx.showMapSelect();
     });
   });
+
+  // Wire up cheat toggle
+  const cheatCheck = document.getElementById('cheat-check') as HTMLInputElement | null;
+  if (cheatCheck) {
+    cheatCheck.addEventListener("change", () => {
+      ctx.state.cheatsEnabled = cheatCheck.checked;
+      showClassSelect(ctx); // Re-render to update locked/unlocked state
+    });
+  }
 
   // Wire up saved character continue button
   const savedCharEl = ctx.menuEl.querySelector("#diablo-saved-char") as HTMLElement | null;
@@ -907,21 +937,28 @@ export function showMapSelect(ctx: ScreenContext): void {
 
   let cardsHtml = "";
   let mapCardIndex = 0;
+  const mapCheats = ctx.state.cheatsEnabled;
+  const mapPlayerLevel = ctx.state.player.level;
   for (const m of maps) {
     // Check if any difficulty variant of this map has been completed
     const isCompleted = Object.keys(ctx.state.completedMaps).some(k => k.startsWith(m.id) && ctx.state.completedMaps[k]);
     const completionBadge = isCompleted ? `<span style="color:#44ff44;margin-left:6px;font-size:16px;">\u2713</span>` : '';
-    const cardBorder = isCompleted ? '#44ff44' : '#5a4a2a';
-    const cardBorderTop = isCompleted ? '#66ff66' : '#8a7a4a';
-    const cardBorderBot = isCompleted ? '#228822' : '#2a1a0a';
+    // Gate maps by star tier: 1 star = level 0, 2 star = level 4, 3 star = level 8, etc.
+    const starCount = m.isSafe ? 0 : (m.difficulty.match(/\u2B50/g) || []).length;
+    const mapReqLevel = Math.max(0, (starCount - 1) * 4);
+    const mapUnlocked = mapCheats || m.isSafe || mapPlayerLevel >= mapReqLevel;
+    const cardBorder = !mapUnlocked ? '#333' : isCompleted ? '#44ff44' : '#5a4a2a';
+    const cardBorderTop = !mapUnlocked ? '#444' : isCompleted ? '#66ff66' : '#8a7a4a';
+    const cardBorderBot = !mapUnlocked ? '#111' : isCompleted ? '#228822' : '#2a1a0a';
     cardsHtml += `
-      <div class="diablo-map-card" data-map="${m.id}" style="
+      <div class="diablo-map-card" data-map="${m.id}" data-unlocked="${mapUnlocked}" style="
         width:220px;background:rgba(20,15,10,0.95);
-        border:3px solid ${cardBorder};border-top-color:${cardBorderTop};border-left-color:${isCompleted ? '#55dd55' : '#7a6a3a'};
-        border-right-color:${isCompleted ? '#339933' : '#3a2a1a'};border-bottom-color:${cardBorderBot};
-        border-radius:12px;padding:28px 24px;cursor:pointer;text-align:center;
+        border:3px solid ${cardBorder};border-top-color:${cardBorderTop};border-left-color:${!mapUnlocked ? '#333' : isCompleted ? '#55dd55' : '#7a6a3a'};
+        border-right-color:${!mapUnlocked ? '#222' : isCompleted ? '#339933' : '#3a2a1a'};border-bottom-color:${cardBorderBot};
+        border-radius:12px;padding:28px 24px;cursor:${mapUnlocked ? 'pointer' : 'not-allowed'};text-align:center;
         transition:all 0.3s ease;
         backdrop-filter:blur(4px);
+        ${mapUnlocked ? '' : 'opacity:0.4;filter:grayscale(0.7);'}
         transform:translateY(0) scale(1);
         animation:cs-card-enter 0.4s ease-out backwards;
         animation-delay:${mapCardIndex * 0.1}s;
@@ -939,6 +976,7 @@ export function showMapSelect(ctx: ScreenContext): void {
         <div style="width:60%;height:1px;background:linear-gradient(to right,transparent,#5a4a2a,transparent);margin:0 auto 10px;"></div>
         <p style="color:#998877;font-size:13px;line-height:1.5;margin-bottom:14px;font-family:'Georgia',serif;">${m.desc}</p>
         <div style="font-size:18px;color:${m.isSafe ? '#44ff44' : '#ff8'};font-family:'Georgia',serif;text-shadow:0 0 6px ${m.isSafe ? 'rgba(68,255,68,0.3)' : 'rgba(255,255,136,0.3)'};">${m.difficulty}</div>
+        ${mapUnlocked ? '' : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:10;border-radius:10px;background:rgba(0,0,0,0.5);"><div style="color:#888;font-size:13px;font-family:'Georgia',serif;">&#128274; Level ${mapReqLevel}</div></div>`}
       </div>`;
     mapCardIndex++;
   }
@@ -1257,6 +1295,7 @@ export function showMapSelect(ctx: ScreenContext): void {
       card.style.transform = "translateY(0) scale(1)";
     });
     card.addEventListener("click", () => {
+      if (card.getAttribute("data-unlocked") !== "true") return;
       const mapId = card.getAttribute("data-map") as DiabloMapId;
       ctx.state.activeMapModifiers = [...activeModifiers] as MapModifier[];
       ctx.startMap(mapId);

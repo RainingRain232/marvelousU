@@ -1691,6 +1691,7 @@ export interface DiabloState {
   deathGoldLoss: number;
   weather: Weather;
   preferredWeather: Weather | 'RANDOM';
+  cheatsEnabled: boolean;
   exploredGrid: boolean[][];
   activeQuests: DiabloQuest[];
   completedQuestIds: string[];
@@ -2190,6 +2191,7 @@ export function createDefaultState(): DiabloState {
     deathGoldLoss: 0,
     weather: Weather.NORMAL,
     preferredWeather: 'RANDOM' as Weather | 'RANDOM',
+    cheatsEnabled: true,
     exploredGrid: [],
     activeQuests: [],
     completedQuestIds: [],
