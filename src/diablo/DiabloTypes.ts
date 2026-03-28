@@ -128,6 +128,7 @@ export enum ItemType {
   AMULET = 'AMULET',
   NECKLACE = 'NECKLACE',
   LANTERN = 'LANTERN',
+  RUNE = 'RUNE',
 }
 
 export enum EnemyType {

@@ -2414,6 +2414,7 @@ export class DiabloGame {
         showSkillFlash: (color) => this._renderer.showSkillFlash(color),
         showCastOverlay: (damageType, duration) => this._renderer.showCastOverlay(damageType, duration),
         destroyNearbyProps: (x, z, radius) => this._renderer.destroyNearbyProps(x, z, radius),
+        spawnImpactEffect: (x, y, z, damageType, isBig) => this._renderer.spawnImpactEffect(x, y, z, damageType, isBig),
       },
       incrementAchievement: (id, amount?) => this._incrementAchievement(id, amount),
       updateAchievement: (id, progress) => this._updateAchievement(id, progress),
@@ -2958,6 +2959,43 @@ export class DiabloGame {
         const mapItem = ITEM_DATABASE.find((it) => it.name === name);
         if (mapItem) {
           items.push({ ...mapItem, id: this._genId() });
+        }
+      }
+    }
+
+    // Rune drops (5% from regular enemies, 25% from bosses)
+    const runeDropChance = enemy.isBoss ? 0.25 : 0.05;
+    if (Math.random() < runeDropChance) {
+      const runeNames = ['Rune of Fire', 'Rune of Frost', 'Rune of Thunder', 'Rune of Venom', 'Rune of Light'];
+      // Higher tier runes are rarer
+      const runeWeights = [30, 30, 20, 15, 5]; // Fire/Frost common, Light very rare
+      const totalWeight = runeWeights.reduce((a, b) => a + b, 0);
+      let roll = Math.random() * totalWeight;
+      let chosenRune = runeNames[0];
+      for (let i = 0; i < runeWeights.length; i++) {
+        roll -= runeWeights[i];
+        if (roll <= 0) { chosenRune = runeNames[i]; break; }
+      }
+      const runeItem = ITEM_DATABASE.find(it => it.name === chosenRune);
+      if (runeItem) {
+        items.push({ ...runeItem, id: this._genId() });
+      }
+    }
+
+    // Add sockets to rare+ items (chance increases with rarity)
+    for (const item of items) {
+      if (item.sockets) continue; // already has sockets
+      if (item.maxSockets === 0) continue; // runes etc. that can't have sockets
+      const rarityIdx = RARITY_ORDER.indexOf(item.rarity);
+      if (rarityIdx >= 2) { // RARE or higher
+        const socketChance = rarityIdx >= 4 ? 0.6 : rarityIdx >= 3 ? 0.4 : 0.2;
+        if (Math.random() < socketChance) {
+          const maxSockets = rarityIdx >= 4 ? 3 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 2);
+          item.maxSockets = maxSockets;
+          item.sockets = [];
+          for (let s = 0; s < maxSockets; s++) {
+            item.sockets.push({ gemType: null, gemTier: 0, bonusStats: {} as any });
+          }
         }
       }
     }
@@ -6156,7 +6194,8 @@ export class DiabloGame {
     if (damageType === DamageType.PHYSICAL && isArmored) {
       particleType = ParticleType.SPARK;
     }
-    const count = 5 + Math.floor(Math.random() * 5);
+    const baseCount = enemy.isBoss ? 16 : 8;
+    const count = baseCount + Math.floor(Math.random() * 8);
     this._renderer.spawnParticles(particleType, enemy.x, enemy.y + 0.5, enemy.z, count, this._state.particles);
   }
 }

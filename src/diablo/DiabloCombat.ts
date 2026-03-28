@@ -42,6 +42,7 @@ export interface CombatContext {
     showSkillFlash: (color: string) => void;
     showCastOverlay: (damageType: DamageType, duration: number) => void;
     destroyNearbyProps: (x: number, z: number, radius: number) => void;
+    spawnImpactEffect: (x: number, y: number, z: number, damageType: string, isBig?: boolean) => void;
   };
 
   // Callbacks into DiabloGame
@@ -516,6 +517,7 @@ export function tickAOEDamage(ctx: CombatContext, aoe: DiabloAOE): void {
 
         ctx.spawnHitParticles(enemy, aoe.damageType);
         ctx.renderer.flashEnemy(enemy.id);
+        ctx.renderer.spawnImpactEffect(enemy.x, enemy.y + 0.5, enemy.z, aoe.damageType, true);
         // AOE hit knockback — push enemy away from impact center
         const aoHkAngle = Math.atan2(enemy.z - aoe.z, enemy.x - aoe.x);
         const aoHkDist = 0.5;
@@ -653,12 +655,13 @@ export function updateProjectiles(ctx: CombatContext, dt: number): void {
 
           ctx.spawnHitParticles(enemy, proj.damageType);
           ctx.renderer.flashEnemy(enemy.id);
+          ctx.renderer.spawnImpactEffect(enemy.x, enemy.y + 0.5, enemy.z, proj.damageType, false);
           // Projectile hit knockback
           const projAngle = Math.atan2(proj.vz, proj.vx);
           const projKb = 0.4;
           enemy.x += Math.cos(projAngle) * projKb;
           enemy.z += Math.sin(projAngle) * projKb;
-          ctx.renderer.shakeCamera(0.08, 0.1);
+          ctx.renderer.shakeCamera(0.12, 0.15);
 
           // Apply status effect if applicable
           const def = proj.skillId ? SKILL_DEFS[proj.skillId] : null;
@@ -818,15 +821,17 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
   // Floating text + sound
   if (isCrit) {
     ctx.addFloatingText(target.x, target.y + 2.5, target.z, `CRIT! ${Math.round(finalDamage)}`, "#ff4444");
-    ctx.renderer.shakeCamera(0.15, 0.2);
+    ctx.renderer.shakeCamera(0.25, 0.3);
     ms.hitFreezeTimer = 0.04; // 40ms freeze frame on crit
     ctx.playSound('crit');
     ctx.incrementAchievement('crit_master');
+    ctx.renderer.spawnImpactEffect(target.x, target.y + 0.5, target.z, DamageType.PHYSICAL, true);
   } else {
     ctx.addFloatingText(target.x, target.y + 2, target.z, `${Math.round(finalDamage)}`, "#ffff44");
     ctx.playSound('hit');
     ctx.renderer.shakeCamera(0.08, 0.1); // subtle hit feedback
     ms.hitFreezeTimer = 0.02; // 20ms micro-freeze on normal hits
+    ctx.renderer.spawnImpactEffect(target.x, target.y + 0.5, target.z, DamageType.PHYSICAL, false);
   }
 
   ctx.spawnHitParticles(target, DamageType.PHYSICAL);
@@ -882,6 +887,7 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
       ms.slowMotionTimer = 1.5;
       ms.slowMotionScale = 0.3;
       ctx.renderer.shakeCamera(0.8, 1.2);
+      ctx.renderer.spawnImpactEffect(target.x, target.y + 1.0, target.z, DamageType.PHYSICAL, true);
     }
     // Combo system
     ms.comboCount++;

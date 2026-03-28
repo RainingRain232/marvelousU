@@ -863,6 +863,44 @@ export const ITEM_DATABASE: DiabloItem[] = [
     description: 'Forged from the last ember of a dying star. Its warmth can be felt across realms.',
     legendaryAbility: 'Regenerate 2% max HP per second while the lantern is lit.',
   },
+  // =========================================================================
+  //  RUNE ITEMS (5) — socketable runes for the runeword system
+  // =========================================================================
+  {
+    id: nextId(), name: 'Rune of Fire', icon: '🔥',
+    rarity: ItemRarity.UNCOMMON, type: ItemType.RUNE, slot: ItemSlot.ACCESSORY_1,
+    level: 1, value: 50, stats: {},
+    description: 'A smoldering rune etched with primal fire. Socket into equipment to build runewords.',
+    maxSockets: 0,
+  },
+  {
+    id: nextId(), name: 'Rune of Frost', icon: '❄️',
+    rarity: ItemRarity.UNCOMMON, type: ItemType.RUNE, slot: ItemSlot.ACCESSORY_1,
+    level: 1, value: 50, stats: {},
+    description: 'A glacial rune radiating bitter cold. Socket into equipment to build runewords.',
+    maxSockets: 0,
+  },
+  {
+    id: nextId(), name: 'Rune of Thunder', icon: '⚡',
+    rarity: ItemRarity.RARE, type: ItemType.RUNE, slot: ItemSlot.ACCESSORY_1,
+    level: 1, value: 100, stats: {},
+    description: 'A crackling rune charged with lightning. Socket into equipment to build runewords.',
+    maxSockets: 0,
+  },
+  {
+    id: nextId(), name: 'Rune of Venom', icon: '🐍',
+    rarity: ItemRarity.RARE, type: ItemType.RUNE, slot: ItemSlot.ACCESSORY_1,
+    level: 1, value: 100, stats: {},
+    description: 'A toxic rune dripping with venom. Socket into equipment to build runewords.',
+    maxSockets: 0,
+  },
+  {
+    id: nextId(), name: 'Rune of Light', icon: '✨',
+    rarity: ItemRarity.EPIC, type: ItemType.RUNE, slot: ItemSlot.ACCESSORY_1,
+    level: 1, value: 200, stats: {},
+    description: 'A radiant rune shining with divine light. Socket into equipment to build runewords.',
+    maxSockets: 0,
+  },
 ];
 
 // ---------------------------------------------------------------------------

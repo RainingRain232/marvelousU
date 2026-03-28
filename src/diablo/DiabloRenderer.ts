@@ -147,6 +147,9 @@ export class DiabloRenderer {
   private _castEffectTimer: number = 0;
   private _prevActiveSkillTimer: number = 0;
 
+  // Impact explosion effects
+  private _impactEffects: THREE.Group[] = [];
+
   // Water surface meshes for animation
   private _waterMeshes: THREE.Mesh[] = [];
   private _waterOriginalY: Map<THREE.Mesh, number> = new Map();
@@ -1098,6 +1101,7 @@ export class DiabloRenderer {
     for (const [, m] of this._petMeshes) persistent.add(m);
     for (const [, m] of this._bossWarningRings) persistent.add(m);
     if (this._castEffectGroup) persistent.add(this._castEffectGroup);
+    for (const fx of this._impactEffects) persistent.add(fx);
     if (this._playerStatusFxGroup) persistent.add(this._playerStatusFxGroup);
     if (this._aimLine) persistent.add(this._aimLine);
     if (this._invulnMesh) persistent.add(this._invulnMesh);
@@ -3601,6 +3605,9 @@ export class DiabloRenderer {
     // -- Skill cast effects (3rd person) --
     this._updateCastEffects(state, dt);
 
+    // -- Impact explosion effects --
+    this._updateImpactEffects(dt);
+
     // -- Player status effect visuals --
     this._syncPlayerStatusEffects(state);
 
@@ -6087,7 +6094,7 @@ export class DiabloRenderer {
     // Animate existing cast effect
     if (this._castEffectGroup && this._castEffectTimer > 0) {
       this._castEffectTimer -= dt;
-      const t = Math.max(0, this._castEffectTimer / 0.6); // 1 → 0 over 0.6s
+      const t = Math.max(0, this._castEffectTimer / 0.8); // 1 → 0 over 0.8s
       const expand = 1.0 + (1.0 - t) * 2.0;
       const fade = t;
 
@@ -6096,6 +6103,20 @@ export class DiabloRenderer {
       this._castEffectGroup.traverse((child) => {
         if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
           child.material.opacity = fade * 0.7;
+          // Shockwave ring expands faster
+          if (child.name === 'cast_shockwave') {
+            child.scale.setScalar(1.0 + (1.0 - t) * 4.0);
+            child.material.opacity = fade * 0.4;
+          }
+          // Spiral particles orbit upward
+          if (child.name === 'cast_spiral') {
+            const idx = child.userData.spiralIndex || 0;
+            const spiralAngle = (idx / 8) * Math.PI * 2 + (1.0 - t) * Math.PI * 3;
+            const radius = 0.6 + (1.0 - t) * 0.4;
+            child.position.x = Math.cos(spiralAngle) * radius;
+            child.position.z = Math.sin(spiralAngle) * radius;
+            child.position.y = 0.3 + idx * 0.12 + (1.0 - t) * 1.5;
+          }
         }
       });
       this._castEffectGroup.position.set(state.player.x, state.player.y + 0.1, state.player.z);
@@ -6129,8 +6150,8 @@ export class DiabloRenderer {
       case DiabloClass.ASSASSIN: color = 0x8844cc; emissive = 0x442266; break;
     }
 
-    // Ground ring burst
-    const ringGeo = new THREE.TorusGeometry(0.5, 0.06, 12, 32);
+    // Ground ring burst (larger)
+    const ringGeo = new THREE.TorusGeometry(0.8, 0.06, 12, 32);
     const ringMat = new THREE.MeshStandardMaterial({
       color, emissive, emissiveIntensity: 3.0, transparent: true, opacity: 0.7
     });
@@ -6139,17 +6160,43 @@ export class DiabloRenderer {
     ring.position.y = 0.05;
     group.add(ring);
 
-    // Rising energy wisps
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
+    // Second shockwave ring (grows faster)
+    const shockGeo = new THREE.TorusGeometry(0.4, 0.03, 8, 32);
+    const shockMat = new THREE.MeshStandardMaterial({
+      color, emissive, emissiveIntensity: 4.0, transparent: true, opacity: 0.5
+    });
+    const shockRing = new THREE.Mesh(shockGeo, shockMat);
+    shockRing.rotation.x = -Math.PI / 2;
+    shockRing.position.y = 0.08;
+    shockRing.name = 'cast_shockwave';
+    group.add(shockRing);
+
+    // Rising energy wisps (12 instead of 6)
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
       const wisp = new THREE.Mesh(
         new THREE.SphereGeometry(0.06, 8, 6),
         new THREE.MeshStandardMaterial({
           color, emissive, emissiveIntensity: 4.0, transparent: true, opacity: 0.6
         })
       );
-      wisp.position.set(Math.cos(angle) * 0.4, 0.2 + i * 0.15, Math.sin(angle) * 0.4);
+      wisp.position.set(Math.cos(angle) * 0.4, 0.2 + (i % 6) * 0.15, Math.sin(angle) * 0.4);
       group.add(wisp);
+    }
+
+    // Upward-spiraling particles (8 orbiting particles)
+    for (let i = 0; i < 8; i++) {
+      const spiralAngle = (i / 8) * Math.PI * 2;
+      const spiral = new THREE.Mesh(
+        new THREE.SphereGeometry(0.04, 6, 4),
+        new THREE.MeshStandardMaterial({
+          color, emissive, emissiveIntensity: 5.0, transparent: true, opacity: 0.7
+        })
+      );
+      spiral.position.set(Math.cos(spiralAngle) * 0.6, 0.3 + i * 0.12, Math.sin(spiralAngle) * 0.6);
+      spiral.name = 'cast_spiral';
+      spiral.userData.spiralIndex = i;
+      group.add(spiral);
     }
 
     // Central glow column
@@ -6164,7 +6211,112 @@ export class DiabloRenderer {
     group.position.set(state.player.x, state.player.y + 0.1, state.player.z);
     this._scene.add(group);
     this._castEffectGroup = group;
-    this._castEffectTimer = 0.6;
+    this._castEffectTimer = 0.8;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  IMPACT EXPLOSION EFFECTS
+  // ════════════════════════════════════════════════════════════════════════
+
+  spawnImpactEffect(x: number, y: number, z: number, damageType: string, isBig: boolean = false): void {
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+
+    // Color based on damage type
+    const colors: Record<string, number> = {
+      FIRE: 0xff4400, ICE: 0x44aaff, LIGHTNING: 0xffff44,
+      POISON: 0x44ff44, ARCANE: 0xaa44ff, SHADOW: 0x6633aa,
+      HOLY: 0xffdd88, PHYSICAL: 0xffaa44,
+    };
+    const color = colors[damageType] || 0xffaa44;
+    const mat = new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: 3.0,
+      transparent: true, opacity: 0.8,
+    });
+
+    const scale = isBig ? 1.5 : 1.0;
+
+    // 1. Expanding sphere flash (brief bright sphere)
+    const flash = new THREE.Mesh(new THREE.SphereGeometry(0.3 * scale, 12, 10), mat.clone());
+    flash.name = 'impact_flash';
+    group.add(flash);
+
+    // 2. Ground ring expanding outward
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.1, 0.3 * scale, 24),
+      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.0, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.name = 'impact_ring';
+    group.add(ring);
+
+    // 3. Radial spikes (rays shooting outward)
+    const spikeCount = isBig ? 8 : 6;
+    for (let i = 0; i < spikeCount; i++) {
+      const angle = (i / spikeCount) * Math.PI * 2;
+      const spike = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.06 * scale, 0.8 * scale, 6),
+        mat.clone()
+      );
+      spike.position.set(Math.cos(angle) * 0.2, 0.1, Math.sin(angle) * 0.2);
+      spike.rotation.z = Math.PI / 2;
+      spike.rotation.y = angle;
+      spike.name = 'impact_spike';
+      spike.userData.angle = angle;
+      group.add(spike);
+    }
+
+    this._scene.add(group);
+
+    group.userData.timer = 0;
+    group.userData.duration = isBig ? 0.6 : 0.4;
+    group.userData.type = 'impact';
+    group.userData.isBig = isBig;
+
+    this._impactEffects.push(group);
+  }
+
+  private _updateImpactEffects(dt: number): void {
+    for (let i = this._impactEffects.length - 1; i >= 0; i--) {
+      const group = this._impactEffects[i];
+      group.userData.timer += dt;
+      const t = group.userData.timer / group.userData.duration; // 0 → 1
+
+      if (t >= 1.0) {
+        this._scene.remove(group);
+        this._disposeObject3D(group);
+        this._impactEffects.splice(i, 1);
+        continue;
+      }
+
+      const fade = 1.0 - t;
+
+      group.traverse((child) => {
+        if (!(child instanceof THREE.Mesh) || !(child.material instanceof THREE.MeshStandardMaterial)) return;
+
+        if (child.name === 'impact_flash') {
+          // Sphere expands rapidly then fades
+          const flashScale = 1.0 + t * 3.0;
+          child.scale.setScalar(flashScale);
+          child.material.opacity = fade * 0.8;
+          child.material.emissiveIntensity = fade * 5.0;
+        } else if (child.name === 'impact_ring') {
+          // Ring expands outward
+          const ringScale = 1.0 + t * 5.0;
+          child.scale.setScalar(ringScale);
+          child.material.opacity = fade * 0.7;
+        } else if (child.name === 'impact_spike') {
+          // Spikes shoot outward along their angle
+          const angle = child.userData.angle || 0;
+          const dist = 0.2 + t * 2.0;
+          child.position.set(Math.cos(angle) * dist, 0.1 * fade, Math.sin(angle) * dist);
+          child.material.opacity = fade * 0.6;
+          child.scale.y = 1.0 + t * 0.5;
+        } else {
+          child.material.opacity = fade * 0.7;
+        }
+      });
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -6918,6 +7070,11 @@ export class DiabloRenderer {
       this._disposeObject3D(this._castEffectGroup);
       this._castEffectGroup = null;
     }
+    for (const fx of this._impactEffects) {
+      this._scene.remove(fx);
+      this._disposeObject3D(fx);
+    }
+    this._impactEffects = [];
     if (this._playerStatusFxGroup) {
       this._scene.remove(this._playerStatusFxGroup);
       this._disposeObject3D(this._playerStatusFxGroup);
