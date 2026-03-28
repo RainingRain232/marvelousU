@@ -478,19 +478,22 @@ export class SewerSplashGame {
 
     this._scene = new THREE.Scene();
     this._scene.background = new THREE.Color(0x050808);
-    this._scene.fog = new THREE.FogExp2(0x050808, 0.018);
+    this._scene.fog = new THREE.FogExp2(0x050808, 0.012);
 
     this._camera = new THREE.PerspectiveCamera(70, w / h, 0.1, 200);
     this._camera.position.set(0, PLAYER_Y_BASE + 2.5, 5);
     this._camera.lookAt(0, PLAYER_Y_BASE + 0.5, -10);
 
     // Ambient
-    this._scene.add(new THREE.AmbientLight(0x223322, 0.3));
+    this._scene.add(new THREE.AmbientLight(0x445544, 0.8));
 
     // Directional fill
-    const dirLight = new THREE.DirectionalLight(0x667755, 0.2);
+    const dirLight = new THREE.DirectionalLight(0x889977, 0.6);
     dirLight.position.set(0, 5, -10);
     this._scene.add(dirLight);
+
+    // Headlight following the player so the path ahead is always visible
+    this._scene.add(new THREE.HemisphereLight(0x667766, 0x223322, 0.5));
   }
 
   // ── Water ──────────────────────────────────────────────────────────────
@@ -1682,7 +1685,7 @@ export class SewerSplashGame {
 
     // Vignette
     this._vignetteEl = document.createElement("div");
-    this._vignetteEl.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:15;background:radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);";
+    this._vignetteEl.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:15;background:radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%);";
     document.getElementById("pixi-container")!.appendChild(this._vignetteEl);
 
     document.getElementById("pixi-container")!.appendChild(this._hud);
@@ -3146,7 +3149,7 @@ export class SewerSplashGame {
       mat.opacity = theme.waterOpacity;
 
       // Update scene fog & background
-      this._scene.fog = new THREE.FogExp2(theme.fogColor, 0.018);
+      this._scene.fog = new THREE.FogExp2(theme.fogColor, 0.012);
       (this._scene.background as THREE.Color).setHex(theme.fogColor);
 
       // Update ambient hum
@@ -3683,7 +3686,7 @@ export class SewerSplashGame {
         this._vignetteEl.style.background = `radial-gradient(ellipse at center, rgba(${c.r * 255},${c.g * 255},${c.b * 255},${a * 0.3}) 30%, rgba(0,0,0,0.7) 100%)`;
       }
     } else if (this._vignetteEl) {
-      this._vignetteEl.style.background = "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%)";
+      this._vignetteEl.style.background = "radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%)";
     }
   }
 
