@@ -639,6 +639,35 @@ export class AscentRenderer {
       }
     }
 
+    // --- Ambient particles that vary by altitude ---
+    const zoneIdx = Math.min(Math.floor(state.floor / B.ZONE_FLOORS), B.ZONES.length - 1);
+    for (let ai = 0; ai < 15; ai++) {
+      const ax = ((ai * 173 + time * 15) % (this._sw + 40)) - 20;
+      const ay = ((ai * 291 + time * 20 + ai * ai * 7) % (this._sh + 40)) - 20;
+
+      if (zoneIdx <= 1) {
+        // Lower zones: falling dust and stone fragments
+        g.circle(ax, ay, 0.8 + (ai % 3) * 0.3).fill({ color: 0xaa9977, alpha: 0.06 + Math.sin(time + ai) * 0.03 });
+      } else if (zoneIdx <= 3) {
+        // Mid zones: embers rising from torches
+        const emberY = this._sh - ay;
+        g.circle(ax, emberY, 0.6 + (ai % 2) * 0.4).fill({ color: 0xff6622, alpha: 0.08 + Math.sin(time * 3 + ai) * 0.04 });
+      } else {
+        // High zones: snow / ice crystals drifting down
+        const snowDrift = Math.sin(time * 0.8 + ai * 1.5) * 8;
+        g.circle(ax + snowDrift, ay, 1 + (ai % 2)).fill({ color: 0xddeeff, alpha: 0.1 + Math.sin(time * 2 + ai) * 0.04 });
+      }
+    }
+
+    // --- Wind streaks at high altitude ---
+    if (zoneIdx >= 3) {
+      for (let wi = 0; wi < 5; wi++) {
+        const wx = ((wi * 227 + time * 40) % (this._sw + 100)) - 50;
+        const wy = 50 + wi * 100 + Math.sin(time + wi) * 30;
+        g.moveTo(wx, wy).lineTo(wx - 30 - wi * 5, wy + 2).stroke({ color: 0xccddff, width: 0.5, alpha: 0.06 });
+      }
+    }
+
     this._bgLayer.addChild(g);
   }
 
