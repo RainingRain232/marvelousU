@@ -35,33 +35,64 @@ export class TavernRenderer {
     // Tavern background
     const bg = new Graphics();
     bg.rect(0, 0, sw, sh).fill({ color: 0x1a1208 });
-    // Wood plank texture
-    for (let py = 0; py < sh; py += 20) {
-      bg.moveTo(0, py).lineTo(sw, py).stroke({ color: 0x221a0e, width: 0.4, alpha: 0.15 });
-      if (py % 40 === 0) bg.moveTo(sw * 0.3, py).lineTo(sw * 0.3, py + 20).stroke({ color: 0x1a120a, width: 0.3, alpha: 0.1 });
-      if (py % 60 === 0) bg.moveTo(sw * 0.7, py).lineTo(sw * 0.7, py + 20).stroke({ color: 0x1a120a, width: 0.3, alpha: 0.1 });
+    // Wood plank texture (more detailed with grain variation)
+    for (let py = 0; py < sh; py += 14) {
+      const shade = 0.08 + Math.sin(py * 0.1) * 0.04;
+      bg.moveTo(0, py).lineTo(sw, py).stroke({ color: 0x221a0e, width: 0.5, alpha: shade });
+      // Vertical plank seams
+      const seam1 = (py * 7 + 37) % 5 === 0 ? sw * 0.25 : sw * 0.35;
+      const seam2 = (py * 11 + 43) % 5 === 0 ? sw * 0.65 : sw * 0.75;
+      bg.moveTo(seam1, py).lineTo(seam1, py + 14).stroke({ color: 0x1a120a, width: 0.4, alpha: 0.08 });
+      bg.moveTo(seam2, py).lineTo(seam2, py + 14).stroke({ color: 0x1a120a, width: 0.4, alpha: 0.08 });
     }
-    // Torch glow
-    for (const [tx, ty] of [[40, 60], [sw - 40, 60]]) {
-      for (let r = 1; r <= 4; r++) bg.circle(tx, ty, r * 50).fill({ color: 0xff8833, alpha: 0.006 / r });
+    // Wood knots
+    for (let ki = 0; ki < 8; ki++) {
+      const kx = (ki * 97 + 23) % sw, ky = (ki * 71 + 47) % sh;
+      bg.circle(kx, ky, 3 + ki % 3).fill({ color: 0x150e06, alpha: 0.1 });
     }
-    // Vignette
-    for (let v = 0; v < 5; v++) {
-      const inset = v * 45;
-      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.025 });
-      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.025 });
+    // Torch glow (brighter, with flicker feel)
+    for (const [tx, ty] of [[40, 60], [sw - 40, 60], [sw / 2, 20]]) {
+      for (let r = 1; r <= 5; r++) bg.circle(tx, ty, r * 45).fill({ color: 0xff8833, alpha: 0.008 / r });
+      bg.circle(tx, ty, 4).fill({ color: 0xffaa44, alpha: 0.15 });
+      bg.circle(tx, ty, 2).fill({ color: 0xffdd88, alpha: 0.3 });
+    }
+    // Hanging tankards (decorative)
+    for (const hx of [sw * 0.15, sw * 0.85]) {
+      bg.roundRect(hx - 5, 15, 10, 14, 2).fill({ color: 0x554422, alpha: 0.15 });
+      bg.roundRect(hx - 5, 15, 10, 14, 2).stroke({ color: 0x776644, width: 0.5, alpha: 0.1 });
+    }
+    // Vignette (stronger for atmosphere)
+    for (let v = 0; v < 6; v++) {
+      const inset = v * 40;
+      bg.rect(0, 0, inset, sh).fill({ color: 0x000000, alpha: 0.02 });
+      bg.rect(sw - inset, 0, inset, sh).fill({ color: 0x000000, alpha: 0.02 });
+      bg.rect(0, sh - inset, sw, inset).fill({ color: 0x000000, alpha: 0.015 });
     }
     this.container.addChild(bg);
 
-    // Green felt table area
+    // Green felt table area (richer, with stitching)
     const tableX = sw * 0.1, tableY = sh * 0.2, tableW = sw * 0.8, tableH = sh * 0.6;
     const table = new Graphics();
-    table.roundRect(tableX - 4, tableY - 4, tableW + 8, tableH + 8, 12).fill({ color: 0x2a1a0a, alpha: 0.6 }); // wood border
-    table.roundRect(tableX, tableY, tableW, tableH, 10).fill({ color: 0x1a4a1a, alpha: 0.7 }); // felt
-    table.roundRect(tableX, tableY, tableW, tableH, 10).stroke({ color: 0x3a6a3a, width: 1, alpha: 0.2 });
-    // Felt texture
-    for (let fy = 0; fy < tableH; fy += 8) {
-      table.moveTo(tableX + 5, tableY + fy).lineTo(tableX + tableW - 5, tableY + fy).stroke({ color: 0x1a3a1a, width: 0.3, alpha: 0.05 });
+    // Wood border with beveled edges
+    table.roundRect(tableX - 6, tableY - 6, tableW + 12, tableH + 12, 14).fill({ color: 0x3a2a14, alpha: 0.7 });
+    table.roundRect(tableX - 4, tableY - 4, tableW + 8, tableH + 8, 12).fill({ color: 0x2a1a0a, alpha: 0.6 });
+    // Felt surface
+    table.roundRect(tableX, tableY, tableW, tableH, 10).fill({ color: 0x1a4a1a, alpha: 0.75 });
+    table.roundRect(tableX, tableY, tableW, tableH, 10).stroke({ color: 0x3a6a3a, width: 1.5, alpha: 0.25 });
+    // Felt texture (crosshatch)
+    for (let fy = 0; fy < tableH; fy += 6) {
+      table.moveTo(tableX + 5, tableY + fy).lineTo(tableX + tableW - 5, tableY + fy).stroke({ color: 0x1a3a1a, width: 0.3, alpha: 0.04 });
+    }
+    for (let fx = 0; fx < tableW; fx += 8) {
+      table.moveTo(tableX + fx, tableY + 5).lineTo(tableX + fx, tableY + tableH - 5).stroke({ color: 0x1a3a1a, width: 0.2, alpha: 0.03 });
+    }
+    // Gold stitching along inner edge
+    table.roundRect(tableX + 3, tableY + 3, tableW - 6, tableH - 6, 8).stroke({ color: 0xaa8833, width: 0.5, alpha: 0.12 });
+    // Coin stacks (decorative, on table corners)
+    for (const [cx, cy] of [[tableX + 20, tableY + 20], [tableX + tableW - 20, tableY + 20]]) {
+      for (let ci = 0; ci < 3; ci++) {
+        table.ellipse(cx, cy - ci * 2, 5, 2).fill({ color: 0xdaa520, alpha: 0.15 });
+      }
     }
     this.container.addChild(table);
 

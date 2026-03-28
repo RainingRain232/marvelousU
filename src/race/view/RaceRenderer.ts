@@ -19,9 +19,22 @@ export class RaceRenderer {
     this.container.removeChildren();
     const bg = new Graphics();
     bg.rect(0, 0, sw, sh).fill({ color: 0x1a2a1a });
-    // Grass texture
-    for (let gy = 0; gy < sh; gy += 6) {
-      bg.moveTo(0, gy).lineTo(sw, gy).stroke({ color: 0x1e2e1e, width: 0.5, alpha: 0.08 });
+    // Rich grass texture with variation patches
+    for (let gy = 0; gy < sh; gy += 4) {
+      const shade = 0.04 + Math.sin(gy * 0.07) * 0.02;
+      bg.moveTo(0, gy).lineTo(sw, gy).stroke({ color: 0x1e3e1e, width: 0.5, alpha: shade });
+    }
+    // Grass clumps
+    for (let gi = 0; gi < 80; gi++) {
+      const gx = Math.random() * sw, gy = Math.random() * sh;
+      const gr = 3 + Math.random() * 8;
+      bg.circle(gx, gy, gr).fill({ color: gi % 2 === 0 ? 0x223a22 : 0x1a3018, alpha: 0.12 + Math.random() * 0.08 });
+    }
+    // Wildflower dots
+    for (let fi = 0; fi < 40; fi++) {
+      const fx = Math.random() * sw, fy = Math.random() * sh;
+      const fc = [0xffdd44, 0xff8866, 0xaaddff, 0xffaacc, 0xaaffaa][fi % 5];
+      bg.circle(fx, fy, 1 + Math.random()).fill({ color: fc, alpha: 0.15 + Math.random() * 0.1 });
     }
     this.container.addChild(bg);
     this._gfx = new Graphics();
@@ -38,41 +51,69 @@ export class RaceRenderer {
     const track = state.track;
     const wp = track.waypoints;
 
-    // Draw track path
+    // Track dirt border (worn grass at edges)
     for (let i = 0; i < wp.length; i++) {
       const a = wp[i], b = wp[(i + 1) % wp.length];
-      // Track surface
-      g.moveTo(ox + a.x, oy + a.y).lineTo(ox + b.x, oy + b.y).stroke({ color: 0x554433, width: track.width, alpha: 0.4 });
-      // Track edges
-      g.moveTo(ox + a.x, oy + a.y).lineTo(ox + b.x, oy + b.y).stroke({ color: 0x776655, width: track.width + 4, alpha: 0.15 });
+      g.moveTo(ox + a.x, oy + a.y).lineTo(ox + b.x, oy + b.y).stroke({ color: 0x443322, width: track.width + 12, alpha: 0.12 });
+    }
+    // Track surface (dirt road with texture)
+    for (let i = 0; i < wp.length; i++) {
+      const a = wp[i], b = wp[(i + 1) % wp.length];
+      g.moveTo(ox + a.x, oy + a.y).lineTo(ox + b.x, oy + b.y).stroke({ color: 0x664422, width: track.width, alpha: 0.35 });
+      g.moveTo(ox + a.x, oy + a.y).lineTo(ox + b.x, oy + b.y).stroke({ color: 0x775533, width: track.width - 4, alpha: 0.2 });
+    }
+    // Track edge lines (fence posts / rail markings)
+    for (let i = 0; i < wp.length; i++) {
+      const a = wp[i], b = wp[(i + 1) % wp.length];
+      g.moveTo(ox + a.x, oy + a.y).lineTo(ox + b.x, oy + b.y).stroke({ color: 0xaa9977, width: track.width + 2, alpha: 0.08 });
+      // Fence post dots along edges
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const segDist = Math.sqrt(dx * dx + dy * dy);
+      const nx = -dy / segDist, ny = dx / segDist;
+      const posts = Math.floor(segDist / 25);
+      for (let p = 0; p < posts; p++) {
+        const t = p / posts;
+        const px = a.x + dx * t, py = a.y + dy * t;
+        const hw = track.width / 2 + 2;
+        g.circle(ox + px + nx * hw, oy + py + ny * hw, 1.5).fill({ color: 0x998877, alpha: 0.25 });
+        g.circle(ox + px - nx * hw, oy + py - ny * hw, 1.5).fill({ color: 0x998877, alpha: 0.25 });
+      }
     }
     // Track center dashes
     for (let i = 0; i < wp.length; i++) {
       const a = wp[i], b = wp[(i + 1) % wp.length];
       const dx = b.x - a.x, dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const steps = Math.floor(dist / 20);
+      const steps = Math.floor(dist / 16);
       for (let s = 0; s < steps; s += 2) {
         const t = s / steps;
-        const t2 = (s + 1) / steps;
-        g.moveTo(ox + a.x + dx * t, oy + a.y + dy * t).lineTo(ox + a.x + dx * t2, oy + a.y + dy * t2).stroke({ color: 0xccbb99, width: 1, alpha: 0.15 });
+        const t2 = Math.min((s + 1) / steps, 1);
+        g.moveTo(ox + a.x + dx * t, oy + a.y + dy * t).lineTo(ox + a.x + dx * t2, oy + a.y + dy * t2).stroke({ color: 0xccbb99, width: 1.5, alpha: 0.12 });
       }
     }
 
-    // Start/finish line
+    // Start/finish line (checkered flag pattern)
     const s0 = wp[0];
-    g.rect(ox + s0.x - 15, oy + s0.y - 2, 30, 4).fill({ color: 0xffffff, alpha: 0.3 });
-    // Checkered pattern
-    for (let ci = 0; ci < 6; ci++) {
-      if (ci % 2 === 0) g.rect(ox + s0.x - 15 + ci * 5, oy + s0.y - 2, 5, 2).fill({ color: 0x000000, alpha: 0.3 });
-      else g.rect(ox + s0.x - 15 + ci * 5, oy + s0.y, 5, 2).fill({ color: 0x000000, alpha: 0.3 });
+    g.rect(ox + s0.x - 20, oy + s0.y - 3, 40, 6).fill({ color: 0xffffff, alpha: 0.35 });
+    for (let ci = 0; ci < 8; ci++) {
+      for (let ri = 0; ri < 2; ri++) {
+        if ((ci + ri) % 2 === 0) g.rect(ox + s0.x - 20 + ci * 5, oy + s0.y - 3 + ri * 3, 5, 3).fill({ color: 0x111111, alpha: 0.35 });
+      }
     }
 
-    // Obstacles
+    // Obstacles (trees with trunk, crown, shadow)
     for (const obs of track.obstacles) {
-      g.circle(ox + obs.x, oy + obs.y, obs.r).fill({ color: 0x2a3a2a, alpha: 0.5 });
-      g.circle(ox + obs.x, oy + obs.y, obs.r * 0.7).fill({ color: 0x1e2e1e, alpha: 0.3 });
-      g.circle(ox + obs.x, oy + obs.y, obs.r).stroke({ color: 0x3a4a3a, width: 0.5, alpha: 0.3 });
+      const tx = ox + obs.x, ty = oy + obs.y;
+      // Tree shadow
+      g.ellipse(tx + 3, ty + obs.r * 0.6, obs.r * 0.8, obs.r * 0.3).fill({ color: 0x000000, alpha: 0.12 });
+      // Trunk
+      g.roundRect(tx - 2, ty - 2, 4, obs.r * 0.5, 1).fill({ color: 0x553311, alpha: 0.6 });
+      // Crown (layered circles for foliage)
+      g.circle(tx, ty - obs.r * 0.3, obs.r * 0.85).fill({ color: 0x2a5a2a, alpha: 0.5 });
+      g.circle(tx - obs.r * 0.25, ty - obs.r * 0.4, obs.r * 0.55).fill({ color: 0x336633, alpha: 0.4 });
+      g.circle(tx + obs.r * 0.3, ty - obs.r * 0.2, obs.r * 0.5).fill({ color: 0x2a4a2a, alpha: 0.45 });
+      // Highlight
+      g.circle(tx - obs.r * 0.15, ty - obs.r * 0.5, obs.r * 0.25).fill({ color: 0x44aa44, alpha: 0.15 });
     }
 
     // Waypoint markers (subtle)
@@ -96,42 +137,88 @@ export class RaceRenderer {
       this._ui.addChild(sym);
     }
 
-    // Draw racers
-    for (const racer of state.racers) {
+    // Draw racers (sorted by Y for depth)
+    const sortedRacers = [...state.racers].sort((a, b) => a.y - b.y);
+    for (const racer of sortedRacers) {
       const rx = ox + racer.x, ry = oy + racer.y;
       const hc = racer.horse.color;
-      // Shadow
-      g.ellipse(rx + 1, ry + 4, 8, 3).fill({ color: 0x000000, alpha: 0.15 });
-      // Horse body (elongated ellipse facing direction)
       const cos = Math.cos(racer.angle), sin = Math.sin(racer.angle);
-      g.ellipse(rx, ry, 10, 5).fill({ color: hc });
-      // Head
-      g.circle(rx + cos * 8, ry + sin * 8, 4).fill({ color: hc });
-      // Ears
-      g.circle(rx + cos * 10 - sin * 2, ry + sin * 10 + cos * 2, 1.5).fill({ color: hc });
-      g.circle(rx + cos * 10 + sin * 2, ry + sin * 10 - cos * 2, 1.5).fill({ color: hc });
-      // Rider
-      if (racer.isPlayer) {
-        g.circle(rx - cos * 2, ry - sin * 2 - 4, 3).fill({ color: 0x4466aa });
-      } else {
-        g.circle(rx - cos * 2, ry - sin * 2 - 4, 3).fill({ color: 0x666666 });
+      // Leg animation (gallop cycle)
+      const gallopPhase = state.elapsedTime * (racer.speed / 50);
+      const legAnim = Math.sin(gallopPhase * 6) * 3;
+
+      // Shadow (stretched in direction of movement)
+      g.ellipse(rx + sin * 2 + 2, ry - cos * 2 + 5, 10, 4).fill({ color: 0x000000, alpha: 0.18 });
+
+      // Legs (4, animated)
+      const legColor = ((hc >> 1) & 0x7f7f7f); // darker
+      for (const [lox, loy] of [[-4, -3], [4, -3], [-4, 3], [4, 3]]) {
+        const legOffset = (loy < 0 ? legAnim : -legAnim) * (racer.speed > 50 ? 1 : 0.2);
+        g.moveTo(rx + cos * loy + sin * lox, ry + sin * loy - cos * lox)
+          .lineTo(rx + cos * loy + sin * lox + legOffset * 0.3, ry + sin * loy - cos * lox + 3)
+          .stroke({ color: legColor, width: 1.5, alpha: 0.6 });
       }
-      // Player indicator + shield
+
+      // Horse body (elongated, facing direction)
+      g.ellipse(rx, ry, 11, 6).fill({ color: hc });
+      // Body highlight
+      g.ellipse(rx - sin * 1, ry + cos * 1 - 2, 8, 3).fill({ color: 0xffffff, alpha: 0.06 });
+      // Neck
+      g.moveTo(rx + cos * 6, ry + sin * 6).lineTo(rx + cos * 10, ry + sin * 10 - 2).stroke({ color: hc, width: 4 });
+      // Head
+      g.ellipse(rx + cos * 11, ry + sin * 11 - 1, 4, 3).fill({ color: hc });
+      // Eye
+      g.circle(rx + cos * 12 + sin * 1.5, ry + sin * 12 - cos * 1.5 - 1, 0.8).fill({ color: 0x222222 });
+      // Ears
+      g.circle(rx + cos * 12 - sin * 2, ry + sin * 12 + cos * 2 - 2, 1.5).fill({ color: hc });
+      g.circle(rx + cos * 12 + sin * 2, ry + sin * 12 - cos * 2 - 2, 1.5).fill({ color: hc });
+      // Tail (flowing behind)
+      const tailWave = Math.sin(gallopPhase * 4) * 2;
+      g.moveTo(rx - cos * 10, ry - sin * 10)
+        .lineTo(rx - cos * 16 + tailWave, ry - sin * 16 + tailWave * 0.5)
+        .stroke({ color: hc, width: 1.5, alpha: 0.5 });
+      // Mane (along neck)
+      for (let mi = 0; mi < 3; mi++) {
+        const mt = 0.3 + mi * 0.2;
+        const mx = rx + cos * (6 + mt * 4), my = ry + sin * (6 + mt * 4) - 3;
+        g.moveTo(mx, my).lineTo(mx + tailWave * 0.5, my - 2).stroke({ color: hc, width: 1, alpha: 0.4 });
+      }
+
+      // Rider (body + head)
+      const riderColor = racer.isPlayer ? 0x4466aa : 0x666666;
+      g.roundRect(rx - cos * 1 - 2, ry - sin * 1 - 7, 4, 5, 1).fill({ color: riderColor, alpha: 0.8 });
+      g.circle(rx - cos * 1, ry - sin * 1 - 9, 2.5).fill({ color: 0xddbb88, alpha: 0.8 });
+      // Rider helmet
+      g.circle(rx - cos * 1, ry - sin * 1 - 10, 2.8).fill({ color: racer.isPlayer ? 0x4488cc : 0x888888, alpha: 0.5 });
+
+      // Player indicator
       if (racer.isPlayer) {
-        g.circle(rx, ry, 12).stroke({ color: 0x44ff44, width: 1, alpha: 0.3 });
+        g.circle(rx, ry, 14).stroke({ color: 0x44ff44, width: 1.5, alpha: 0.25 });
+        // Name tag arrow
+        g.moveTo(rx, ry - 16).lineTo(rx - 3, ry - 20).lineTo(rx + 3, ry - 20).closePath().fill({ color: 0x44ff44, alpha: 0.3 });
         if (state.playerShield > 0) {
           const shieldAlpha = Math.min(0.4, state.playerShield / 3);
-          g.circle(rx, ry, 14).fill({ color: 0xffd700, alpha: shieldAlpha * 0.2 });
-          g.circle(rx, ry, 14).stroke({ color: 0xffd700, width: 1.5, alpha: shieldAlpha });
+          g.circle(rx, ry, 16).fill({ color: 0xffd700, alpha: shieldAlpha * 0.15 });
+          g.circle(rx, ry, 16).stroke({ color: 0xffd700, width: 2, alpha: shieldAlpha });
         }
+      } else {
+        // AI name label
+        const nameT = new Text({ text: racer.name, style: new TextStyle({ fontFamily: FONT, fontSize: 7, fill: 0xaaaaaa }) });
+        nameT.anchor.set(0.5, 1); nameT.position.set(rx, ry - 14); nameT.alpha = 0.5;
+        this._ui.addChild(nameT);
       }
+
       // Speed lines when galloping
       if (racer.galloping && racer.speed > racer.horse.maxSpeed) {
-        for (let li = 0; li < 3; li++) {
-          const lx = rx - cos * (12 + li * 4) + (Math.random() - 0.5) * 4;
-          const ly = ry - sin * (12 + li * 4) + (Math.random() - 0.5) * 4;
-          g.moveTo(lx, ly).lineTo(lx - cos * 6, ly - sin * 6).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
+        for (let li = 0; li < 4; li++) {
+          const lx = rx - cos * (14 + li * 5) + (Math.random() - 0.5) * 5;
+          const ly = ry - sin * (14 + li * 5) + (Math.random() - 0.5) * 5;
+          g.moveTo(lx, ly).lineTo(lx - cos * 8, ly - sin * 8).stroke({ color: 0xffffff, width: 0.8, alpha: 0.12 + Math.random() * 0.08 });
         }
+      }
+      // Stamina glow when sprinting
+      if (racer.galloping) {
+        g.circle(rx, ry, 12).fill({ color: 0xffaa44, alpha: 0.05 + Math.sin(gallopPhase * 8) * 0.03 });
       }
     }
 
@@ -187,6 +274,41 @@ export class RaceRenderer {
       });
       const pos = sorted.findIndex(r => r.isPlayer) + 1;
       addText(`${pos}${pos === 1 ? "st" : pos === 2 ? "nd" : pos === 3 ? "rd" : "th"}`, sw - 50, 6, { fontSize: 16, fill: pos === 1 ? 0xffd700 : 0xccddcc, fontWeight: "bold" });
+    }
+
+    // Weather overlay
+    if (state.track.weather === "rain") {
+      g.rect(0, 0, sw, sh).fill({ color: 0x224466, alpha: 0.06 });
+    } else if (state.track.weather === "mud") {
+      g.rect(0, 0, sw, sh).fill({ color: 0x332211, alpha: 0.05 });
+    } else if (state.track.weather === "fog") {
+      g.rect(0, 0, sw, sh).fill({ color: 0xaabbcc, alpha: 0.08 });
+      // Fog wisps
+      for (let fi = 0; fi < 5; fi++) {
+        const fx = (fi * 173 + Date.now() * 0.01) % sw;
+        const fy = sh * 0.3 + fi * 60;
+        g.ellipse(fx, fy, 80, 15).fill({ color: 0xcccccc, alpha: 0.04 });
+      }
+    }
+    // Weather label
+    if (state.track.weather !== "clear") {
+      addText(state.track.weather.toUpperCase(), sw - 80, 26, { fontSize: 9, fill: state.track.weather === "rain" ? 0x6688aa : state.track.weather === "mud" ? 0x886644 : 0x8899aa, fontStyle: "italic" });
+    }
+
+    // Minimap (bottom right)
+    const mmx = sw - 90, mmy = sh - 90, mms = 70;
+    g.roundRect(mmx, mmy, mms, mms, 4).fill({ color: 0x000000, alpha: 0.4 });
+    g.roundRect(mmx, mmy, mms, mms, 4).stroke({ color: 0x444433, width: 0.5 });
+    const mmScale = mms / Math.max(RaceConfig.FIELD_WIDTH, RaceConfig.FIELD_HEIGHT);
+    for (let i = 0; i < wp.length; i++) {
+      const a = wp[i], b = wp[(i + 1) % wp.length];
+      g.moveTo(mmx + a.x * mmScale, mmy + a.y * mmScale)
+        .lineTo(mmx + b.x * mmScale, mmy + b.y * mmScale)
+        .stroke({ color: 0x554433, width: 2, alpha: 0.5 });
+    }
+    for (const racer of state.racers) {
+      const mc = racer.isPlayer ? 0x44ff44 : 0xaa4444;
+      g.circle(mmx + racer.x * mmScale, mmy + racer.y * mmScale, racer.isPlayer ? 2.5 : 1.5).fill({ color: mc, alpha: 0.8 });
     }
 
     // Controls
