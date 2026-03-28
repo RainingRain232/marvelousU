@@ -522,6 +522,19 @@ export function showClassSelect(ctx: ScreenContext): void {
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;align-items:center;">
         <span style="color:#888;font-size:14px;margin-right:8px;font-family:'Georgia',serif;">DIFFICULTY:</span>
         ${diffHtml}
+        <span style="width:1px;height:20px;background:#5a4a2a;margin:0 8px;"></span>
+        <label style="color:#ff4444;font-family:Georgia,serif;cursor:pointer;font-size:13px;
+          padding:4px 12px;border:1px solid rgba(255,68,68,0.2);border-radius:4px;
+          background:rgba(80,20,20,0.3);transition:all 0.2s;">
+          <input type="checkbox" id="hardcore-check" style="margin-right:6px;accent-color:#ff4444;">
+          &#9760; Hardcore
+        </label>
+        <label style="color:#44ccff;font-family:Georgia,serif;cursor:pointer;font-size:13px;
+          padding:4px 12px;border:1px solid rgba(68,204,255,0.2);border-radius:4px;
+          background:rgba(20,40,60,0.3);transition:all 0.2s;">
+          <input type="checkbox" id="cheat-check" ${ctx.state.cheatsEnabled ? 'checked' : ''} style="margin-right:6px;accent-color:#44ccff;">
+          &#10024; Cheats
+        </label>
       </div>
 
       <!-- Weather moved to map select screen -->
@@ -536,20 +549,6 @@ export function showClassSelect(ctx: ScreenContext): void {
       </div>
 
       <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">${cardsHtml}</div>
-      <div style="text-align:center;margin:10px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <label style="color:#ff4444;font-family:Georgia,serif;cursor:pointer;font-size:14px;
-          padding:6px 16px;border:1px solid rgba(255,68,68,0.2);border-radius:4px;
-          background:rgba(80,20,20,0.3);transition:all 0.2s;">
-          <input type="checkbox" id="hardcore-check" style="margin-right:6px;accent-color:#ff4444;">
-          \u2620 Hardcore Mode (Permadeath)
-        </label>
-        <label style="color:#44ccff;font-family:Georgia,serif;cursor:pointer;font-size:14px;
-          padding:6px 16px;border:1px solid rgba(68,204,255,0.2);border-radius:4px;
-          background:rgba(20,40,60,0.3);transition:all 0.2s;">
-          <input type="checkbox" id="cheat-check" ${ctx.state.cheatsEnabled ? 'checked' : ''} style="margin-right:6px;accent-color:#44ccff;">
-          \u2728 Unlock All (Cheats)
-        </label>
-      </div>
       ${savedCharHtml}
       <div style="display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;">
         ${saveBtns}
