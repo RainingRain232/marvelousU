@@ -5355,101 +5355,304 @@ export class DiabloRenderer {
         const noseMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
         const eyeMat = new THREE.MeshStandardMaterial({ color: 0x554422 });
         const eyeShineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x888888, emissiveIntensity: 0.3 });
+        const pawPadMat = new THREE.MeshStandardMaterial({ color: 0x443333, roughness: 0.5 });
         // Torso (elongated, muscular)
-        const torso = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 16), furMat);
+        const torso = new THREE.Mesh(new THREE.SphereGeometry(0.18, 28, 22), furMat);
         torso.scale.set(1.5, 0.85, 0.9);
         torso.position.y = 0.28;
         group.add(torso);
         // Chest (lighter fur, wider front)
-        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), furLightMat);
+        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.12, 22, 18), furLightMat);
         chest.position.set(0.12, 0.26, 0);
         chest.scale.set(1, 0.9, 1.1);
         group.add(chest);
-        // Haunches (back hips)
-        const haunch = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), furMat);
-        haunch.position.set(-0.16, 0.26, 0);
-        haunch.scale.set(1, 0.9, 1.1);
-        group.add(haunch);
-        // Neck
-        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.1, 12), furMat);
+        // Belly underside (lighter fur)
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 16), furLightMat);
+        belly.position.set(0, 0.22, 0);
+        belly.scale.set(1.3, 0.5, 0.75);
+        group.add(belly);
+        // Haunches (back hips, bulkier)
+        const haunchL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 20, 16), furMat);
+        haunchL.position.set(-0.14, 0.26, 0.05);
+        haunchL.scale.set(1, 0.9, 1.1);
+        group.add(haunchL);
+        const haunchR = new THREE.Mesh(new THREE.SphereGeometry(0.11, 20, 16), furMat);
+        haunchR.position.set(-0.14, 0.26, -0.05);
+        haunchR.scale.set(1, 0.9, 1.1);
+        group.add(haunchR);
+        // Shoulder muscles
+        const shoulderL = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 14), furMat);
+        shoulderL.position.set(0.12, 0.3, 0.08);
+        group.add(shoulderL);
+        const shoulderR = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 14), furMat);
+        shoulderR.position.set(0.12, 0.3, -0.08);
+        group.add(shoulderR);
+        // Neck (thicker, muscular)
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.085, 0.12, 18), furMat);
         neck.position.set(0.22, 0.34, 0);
         neck.rotation.z = -0.4;
         group.add(neck);
+        // Neck scruff (fur tuft)
+        const scruff = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 12), furDarkMat);
+        scruff.position.set(0.18, 0.36, 0);
+        scruff.scale.set(1.2, 0.8, 1.1);
+        group.add(scruff);
         // Head (more angular, wolf-like)
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 18, 14), furMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 24, 20), furMat);
         head.position.set(0.28, 0.38, 0);
         head.scale.set(1.1, 0.9, 0.95);
         group.add(head);
+        // Cheeks (fur puff)
+        for (const side of [-1, 1]) {
+          const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.04, 14, 12), furLightMat);
+          cheek.position.set(0.28, 0.36, side * 0.06);
+          cheek.scale.set(0.8, 0.7, 1);
+          group.add(cheek);
+        }
         // Snout/muzzle
-        const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.1, 12), furLightMat);
+        const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.1, 18), furLightMat);
         snout.position.set(0.36, 0.36, 0);
         snout.rotation.z = -Math.PI / 2;
         group.add(snout);
+        // Snout bridge (ridge)
+        const snoutBridge = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.08, 12), furMat);
+        snoutBridge.position.set(0.34, 0.39, 0);
+        snoutBridge.rotation.z = -Math.PI / 2;
+        group.add(snoutBridge);
         // Nose
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), noseMat);
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), noseMat);
         nose.position.set(0.41, 0.37, 0);
         group.add(nose);
+        // Nostrils
+        for (const side of [-1, 1]) {
+          const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 6), noseMat);
+          nostril.position.set(0.42, 0.37, side * 0.01);
+          group.add(nostril);
+        }
         // Lower jaw
-        const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 8), furDarkMat);
+        const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.04, 18, 14), furDarkMat);
         jaw.position.set(0.32, 0.33, 0);
         jaw.scale.set(1.2, 0.5, 0.9);
         group.add(jaw);
+        // Mouth line
+        const mouthLine = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.06, 8), noseMat);
+        mouthLine.position.set(0.38, 0.345, 0);
+        mouthLine.rotation.z = Math.PI / 2;
+        group.add(mouthLine);
         // Eyes
         for (const side of [-1, 1]) {
-          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), eyeMat);
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.022, 16, 14), eyeMat);
           eyeSocket.position.set(0.32, 0.4, side * 0.05);
           group.add(eyeSocket);
-          const eyeShine = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), eyeShineMat);
+          const eyeShine = new THREE.Mesh(new THREE.SphereGeometry(0.01, 12, 10), eyeShineMat);
           eyeShine.position.set(0.33, 0.41, side * 0.05);
           group.add(eyeShine);
+          // Pupil
+          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.006, 10, 8),
+            new THREE.MeshStandardMaterial({ color: 0x111111 }));
+          pupil.position.set(0.335, 0.41, side * 0.05);
+          group.add(pupil);
+          // Brow ridge
+          const brow = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.03, 8), furDarkMat);
+          brow.position.set(0.31, 0.43, side * 0.05);
+          brow.rotation.z = Math.PI / 2;
+          group.add(brow);
         }
         // Ears (tall, pointed, wolf-like)
         for (const side of [-1, 1]) {
-          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.1, 10), furDarkMat);
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.1, 16), furDarkMat);
           ear.position.set(0.26, 0.5, side * 0.055);
           ear.rotation.z = side * 0.15;
           ear.rotation.x = side * 0.1;
           group.add(ear);
           // Inner ear (pink)
-          const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 8),
+          const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 12),
             new THREE.MeshStandardMaterial({ color: 0xcc9999, roughness: 0.6 }));
           innerEar.position.set(0.27, 0.49, side * 0.055);
           innerEar.rotation.z = side * 0.15;
           group.add(innerEar);
         }
-        // Tail (bushy, curved upward)
-        const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.015, 0.18, 10), furMat);
-        tail.position.set(-0.28, 0.34, 0);
-        tail.rotation.z = 0.7;
-        tail.name = 'pet_tail';
-        group.add(tail);
-        const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), furLightMat);
+        // Tail (bushy, multi-segment)
+        const tailBase = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.08, 14), furMat);
+        tailBase.position.set(-0.24, 0.32, 0);
+        tailBase.rotation.z = 0.5;
+        tailBase.name = 'pet_tail';
+        group.add(tailBase);
+        const tailMid = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.1, 14), furMat);
+        tailMid.position.set(-0.28, 0.36, 0);
+        tailMid.rotation.z = 0.8;
+        tailMid.name = 'pet_tail';
+        group.add(tailMid);
+        const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.025, 14, 12), furLightMat);
         tailTip.position.set(-0.32, 0.42, 0);
         tailTip.name = 'pet_tail';
         group.add(tailTip);
-        // Legs (4 with paws, joints)
-        for (const lx of [0.14, -0.14]) {
-          for (const lz of [0.07, -0.07]) {
-            // Upper leg
-            const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.1, 10), furMat);
-            upperLeg.position.set(lx, 0.18, lz);
-            group.add(upperLeg);
-            // Lower leg
-            const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.1, 10), furMat);
-            lowerLeg.position.set(lx, 0.07, lz);
-            group.add(lowerLeg);
-            // Paw
-            const paw = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), furDarkMat);
-            paw.position.set(lx + 0.01, 0.02, lz);
-            paw.scale.set(1, 0.5, 1.2);
-            group.add(paw);
+        // Legs (4 articulated with proper joints, named for animation)
+        // Front-left leg
+        {
+          const legGroup = new THREE.Group();
+          legGroup.name = 'pet_leg';
+          legGroup.userData.legIndex = 0; // front-left
+          legGroup.position.set(0.14, 0.22, 0.07);
+          // Shoulder joint
+          const shoulderJoint = new THREE.Mesh(new THREE.SphereGeometry(0.025, 14, 12), furMat);
+          shoulderJoint.position.set(0, 0, 0);
+          legGroup.add(shoulderJoint);
+          // Upper leg
+          const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.1, 16), furMat);
+          upperLeg.position.set(0, -0.05, 0);
+          legGroup.add(upperLeg);
+          // Knee joint
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 10), furDarkMat);
+          knee.position.set(0, -0.1, 0);
+          legGroup.add(knee);
+          // Lower leg
+          const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.1, 16), furMat);
+          lowerLeg.position.set(0, -0.15, 0);
+          legGroup.add(lowerLeg);
+          // Ankle
+          const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.014, 10, 8), furDarkMat);
+          ankle.position.set(0, -0.2, 0);
+          legGroup.add(ankle);
+          // Paw
+          const paw = new THREE.Mesh(new THREE.SphereGeometry(0.024, 16, 12), furDarkMat);
+          paw.position.set(0.01, -0.22, 0);
+          paw.scale.set(1, 0.45, 1.3);
+          legGroup.add(paw);
+          // Paw pad
+          const pad = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 8), pawPadMat);
+          pad.position.set(0.01, -0.225, 0);
+          pad.scale.set(0.8, 0.3, 1);
+          legGroup.add(pad);
+          // Toes (3 visible)
+          for (let t = -1; t <= 1; t++) {
+            const toe = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), furDarkMat);
+            toe.position.set(0.025, -0.225, t * 0.012);
+            toe.scale.set(1.2, 0.5, 1);
+            legGroup.add(toe);
           }
+          group.add(legGroup);
+        }
+        // Front-right leg
+        {
+          const legGroup = new THREE.Group();
+          legGroup.name = 'pet_leg';
+          legGroup.userData.legIndex = 1; // front-right
+          legGroup.position.set(0.14, 0.22, -0.07);
+          const shoulderJoint = new THREE.Mesh(new THREE.SphereGeometry(0.025, 14, 12), furMat);
+          legGroup.add(shoulderJoint);
+          const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.1, 16), furMat);
+          upperLeg.position.set(0, -0.05, 0);
+          legGroup.add(upperLeg);
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 10), furDarkMat);
+          knee.position.set(0, -0.1, 0);
+          legGroup.add(knee);
+          const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.1, 16), furMat);
+          lowerLeg.position.set(0, -0.15, 0);
+          legGroup.add(lowerLeg);
+          const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.014, 10, 8), furDarkMat);
+          ankle.position.set(0, -0.2, 0);
+          legGroup.add(ankle);
+          const paw = new THREE.Mesh(new THREE.SphereGeometry(0.024, 16, 12), furDarkMat);
+          paw.position.set(0.01, -0.22, 0);
+          paw.scale.set(1, 0.45, 1.3);
+          legGroup.add(paw);
+          const pad = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 8), pawPadMat);
+          pad.position.set(0.01, -0.225, 0);
+          pad.scale.set(0.8, 0.3, 1);
+          legGroup.add(pad);
+          for (let t = -1; t <= 1; t++) {
+            const toe = new THREE.Mesh(new THREE.SphereGeometry(0.008, 10, 8), furDarkMat);
+            toe.position.set(0.025, -0.225, t * 0.012);
+            toe.scale.set(1.2, 0.5, 1);
+            legGroup.add(toe);
+          }
+          group.add(legGroup);
+        }
+        // Rear-left leg
+        {
+          const legGroup = new THREE.Group();
+          legGroup.name = 'pet_leg';
+          legGroup.userData.legIndex = 2; // rear-left
+          legGroup.position.set(-0.14, 0.22, 0.07);
+          const hipJoint = new THREE.Mesh(new THREE.SphereGeometry(0.028, 14, 12), furMat);
+          legGroup.add(hipJoint);
+          const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.022, 0.1, 16), furMat);
+          upperLeg.position.set(0, -0.05, 0);
+          legGroup.add(upperLeg);
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 10), furDarkMat);
+          knee.position.set(0, -0.1, 0);
+          legGroup.add(knee);
+          const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.1, 16), furMat);
+          lowerLeg.position.set(0, -0.15, 0);
+          legGroup.add(lowerLeg);
+          const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 8), furDarkMat);
+          ankle.position.set(0, -0.2, 0);
+          legGroup.add(ankle);
+          const paw = new THREE.Mesh(new THREE.SphereGeometry(0.026, 16, 12), furDarkMat);
+          paw.position.set(0.01, -0.22, 0);
+          paw.scale.set(1, 0.45, 1.3);
+          legGroup.add(paw);
+          const pad = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), pawPadMat);
+          pad.position.set(0.01, -0.225, 0);
+          pad.scale.set(0.8, 0.3, 1);
+          legGroup.add(pad);
+          for (let t = -1; t <= 1; t++) {
+            const toe = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), furDarkMat);
+            toe.position.set(0.025, -0.225, t * 0.013);
+            toe.scale.set(1.2, 0.5, 1);
+            legGroup.add(toe);
+          }
+          group.add(legGroup);
+        }
+        // Rear-right leg
+        {
+          const legGroup = new THREE.Group();
+          legGroup.name = 'pet_leg';
+          legGroup.userData.legIndex = 3; // rear-right
+          legGroup.position.set(-0.14, 0.22, -0.07);
+          const hipJoint = new THREE.Mesh(new THREE.SphereGeometry(0.028, 14, 12), furMat);
+          legGroup.add(hipJoint);
+          const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.022, 0.1, 16), furMat);
+          upperLeg.position.set(0, -0.05, 0);
+          legGroup.add(upperLeg);
+          const knee = new THREE.Mesh(new THREE.SphereGeometry(0.02, 12, 10), furDarkMat);
+          knee.position.set(0, -0.1, 0);
+          legGroup.add(knee);
+          const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.024, 0.1, 16), furMat);
+          lowerLeg.position.set(0, -0.15, 0);
+          legGroup.add(lowerLeg);
+          const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 8), furDarkMat);
+          ankle.position.set(0, -0.2, 0);
+          legGroup.add(ankle);
+          const paw = new THREE.Mesh(new THREE.SphereGeometry(0.026, 16, 12), furDarkMat);
+          paw.position.set(0.01, -0.22, 0);
+          paw.scale.set(1, 0.45, 1.3);
+          legGroup.add(paw);
+          const pad = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), pawPadMat);
+          pad.position.set(0.01, -0.225, 0);
+          pad.scale.set(0.8, 0.3, 1);
+          legGroup.add(pad);
+          for (let t = -1; t <= 1; t++) {
+            const toe = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), furDarkMat);
+            toe.position.set(0.025, -0.225, t * 0.013);
+            toe.scale.set(1.2, 0.5, 1);
+            legGroup.add(toe);
+          }
+          group.add(legGroup);
         }
         // Fur texture hint (dark stripe along back)
-        const backStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.35, 6), furDarkMat);
+        const backStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.35, 10), furDarkMat);
         backStripe.position.set(0, 0.36, 0);
         backStripe.rotation.z = Math.PI / 2;
         group.add(backStripe);
+        // Fur tufts on sides
+        for (const side of [-1, 1]) {
+          const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), furMat);
+          tuft.position.set(-0.05, 0.3, side * 0.12);
+          tuft.scale.set(1.5, 0.6, 0.8);
+          group.add(tuft);
+        }
         break;
       }
       case PetSpecies.FIRE_SPRITE: {
@@ -5823,14 +6026,38 @@ export class DiabloRenderer {
         mesh.position.y += Math.abs(Math.sin(this._time * 6 + petOffset)) * 0.08;
       }
 
-      // Animate wings for flying pets
+      // Determine if pet is moving (for walk animation)
+      const petSpeed = Math.hypot(
+        pet.x - (mesh.userData.prevX ?? pet.x),
+        pet.z - (mesh.userData.prevZ ?? pet.z)
+      ) / Math.max(_dt, 0.001);
+      mesh.userData.prevX = pet.x;
+      mesh.userData.prevZ = pet.z;
+      const isMoving = petSpeed > 0.3;
+
+      // Animate wings, tail, legs for pets
       mesh.traverse((child) => {
+        if (child.name === 'pet_leg') {
+          const idx = child.userData.legIndex as number;
+          if (isMoving) {
+            // Diagonal gait: front-left + rear-right together, front-right + rear-left together
+            const phase = (idx === 0 || idx === 3) ? 0 : Math.PI;
+            const walkSpeed = 12;
+            const swing = Math.sin(this._time * walkSpeed + petOffset + phase) * 0.5;
+            child.rotation.x = swing;
+          } else {
+            // Smoothly return to neutral
+            child.rotation.x *= 0.85;
+          }
+        }
         if (child.name === 'pet_wing') {
           const side = child.userData.side || 1;
           child.rotation.x = Math.sin(this._time * 8 + petOffset) * 0.6 * side;
         }
         if (child.name === 'pet_tail') {
-          child.rotation.y = Math.sin(this._time * 5 + petOffset) * 0.4;
+          const tailWag = isMoving ? 0.6 : 0.25;
+          const tailSpeed = isMoving ? 8 : 5;
+          child.rotation.y = Math.sin(this._time * tailSpeed + petOffset) * tailWag;
         }
         if (child.name === 'pet_flame') {
           // Use userData for base position to avoid Y drift from +=

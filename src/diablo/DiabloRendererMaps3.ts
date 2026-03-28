@@ -1152,26 +1152,72 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
         palm.add(palmTrunkRing);
       }
 
-      // Leaves (flat planes angled outward) - more fronds
-      const palmFrondCount = 8 + Math.floor(Math.random() * 3);
+      // Crown bulge at top of trunk where fronds emerge
+      const crownBulge = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), palmTrunkMat);
+      crownBulge.position.y = trunkH;
+      crownBulge.scale.set(1, 0.6, 1);
+      palm.add(crownBulge);
+
+      // Fronds emanating from crown top
+      const palmFrondCount = 8 + Math.floor(Math.random() * 4);
       for (let l = 0; l < palmFrondCount; l++) {
-        const leafAngle = (l / palmFrondCount) * Math.PI * 2;
-        const palmFrondLen = 2.0 + Math.random() * 1.0;
-        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(palmFrondLen, 0.5), palmLeafMat);
-        leaf.position.set(Math.cos(leafAngle) * 1.0, trunkH + 0.2, Math.sin(leafAngle) * 1.0);
-        leaf.rotation.x = -0.4 - Math.random() * 0.3;
-        leaf.rotation.y = leafAngle;
-        palm.add(leaf);
-        // Secondary droop leaf for depth
-        const palmDroopLeaf = new THREE.Mesh(new THREE.PlaneGeometry(palmFrondLen * 0.7, 0.3), palmLeafMat);
-        palmDroopLeaf.position.set(
-          Math.cos(leafAngle) * 1.4,
-          trunkH - 0.1,
-          Math.sin(leafAngle) * 1.4,
-        );
-        palmDroopLeaf.rotation.x = -0.8;
-        palmDroopLeaf.rotation.y = leafAngle;
-        palm.add(palmDroopLeaf);
+        const leafAngle = (l / palmFrondCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        const palmFrondLen = 2.5 + Math.random() * 1.5;
+        const frondGroup = new THREE.Group();
+        frondGroup.position.set(0, trunkH, 0);
+        frondGroup.rotation.y = leafAngle;
+        // Droop angle — inner fronds more upright, outer ring droops more
+        const droopBase = 0.15 + Math.random() * 0.25;
+
+        // Rachis (central spine) built from segments that curve outward and down
+        const rachisSegs = 8;
+        for (let s = 0; s < rachisSegs; s++) {
+          const t = s / rachisSegs;
+          const segLen = palmFrondLen / rachisSegs;
+          // Curve: starts going up/out, then droops with gravity
+          const outDist = t * palmFrondLen * 0.9;
+          const yOff = t * 0.5 - t * t * (1.5 + droopBase * 3);
+          const seg = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.025 * (1 - t * 0.7), 0.025 * (1 - (t + 1/rachisSegs) * 0.7), segLen * 1.1, 6),
+            new THREE.MeshStandardMaterial({ color: 0x6a7a2a, roughness: 0.7 })
+          );
+          seg.position.set(0, yOff, outDist);
+          // Angle segment to follow the curve
+          const nextT = (s + 1) / rachisSegs;
+          const nextY = nextT * 0.5 - nextT * nextT * (1.5 + droopBase * 3);
+          const segAngle = Math.atan2(nextY - yOff, segLen);
+          seg.rotation.x = Math.PI / 2 - segAngle;
+          frondGroup.add(seg);
+
+          // Leaflets on both sides of the rachis
+          if (s > 0) {
+            for (const side of [-1, 1]) {
+              const leafletLen = 0.3 + (1 - t) * 0.4;
+              const leaflet = new THREE.Mesh(
+                new THREE.PlaneGeometry(leafletLen, 0.06 + (1 - t) * 0.04),
+                palmLeafMat
+              );
+              leaflet.position.set(side * leafletLen * 0.35, yOff - 0.02, outDist);
+              leaflet.rotation.y = leafAngle + side * 0.3;
+              leaflet.rotation.z = side * (0.3 + t * 0.4);
+              leaflet.rotation.x = -0.1 - t * 0.3;
+              frondGroup.add(leaflet);
+            }
+          }
+        }
+        palm.add(frondGroup);
+      }
+
+      // Dead/dried hanging fronds (2-3 brown ones drooping along trunk)
+      const deadFrondMat = new THREE.MeshStandardMaterial({ color: 0x8a7a3a, roughness: 0.9, side: THREE.DoubleSide });
+      const deadCount = 1 + Math.floor(Math.random() * 3);
+      for (let df = 0; df < deadCount; df++) {
+        const dfAngle = Math.random() * Math.PI * 2;
+        const deadFrond = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1.2 + Math.random() * 0.8), deadFrondMat);
+        deadFrond.position.set(Math.cos(dfAngle) * 0.2, trunkH - 0.5, Math.sin(dfAngle) * 0.2);
+        deadFrond.rotation.y = dfAngle;
+        deadFrond.rotation.x = 0.2;
+        palm.add(deadFrond);
       }
 
       // Coconut cluster (2-4 coconuts)
@@ -1542,31 +1588,51 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
         trRing.rotation.x = Math.PI / 2;
         frondPalm.add(trRing);
       }
+      // Crown bulge
+      const fpCrown = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), palmTrunkMat);
+      fpCrown.position.y = fpTrunkH;
+      fpCrown.scale.set(1, 0.6, 1);
+      frondPalm.add(fpCrown);
+
       const frondCount = 10 + Math.floor(Math.random() * 5);
       for (let f = 0; f < frondCount; f++) {
-        const fAngle = (f / frondCount) * Math.PI * 2;
-        const frondLen = 2 + Math.random() * 1.5;
-        const frondSpine = new THREE.Mesh(new THREE.ConeGeometry(0.04, frondLen, 8), palmLeafMat);
-        frondSpine.position.set(
-          Math.cos(fAngle) * frondLen * 0.35,
-          fpTrunkH + 0.1 - frondLen * 0.15,
-          Math.sin(fAngle) * frondLen * 0.35,
-        );
-        frondSpine.rotation.z = Math.cos(fAngle) * 0.8;
-        frondSpine.rotation.x = Math.sin(fAngle) * 0.8;
-        frondPalm.add(frondSpine);
-        for (let lf = 0; lf < 5; lf++) {
-          const leaflet = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.08), palmLeafMat);
-          const lfDist = 0.3 + lf * (frondLen / 6);
-          leaflet.position.set(
-            Math.cos(fAngle) * lfDist,
-            fpTrunkH + 0.1 - lfDist * 0.25,
-            Math.sin(fAngle) * lfDist,
+        const fAngle = (f / frondCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
+        const frondLen = 2.5 + Math.random() * 1.5;
+        const fGrp = new THREE.Group();
+        fGrp.position.set(0, fpTrunkH, 0);
+        fGrp.rotation.y = fAngle;
+        const droopBase = 0.15 + Math.random() * 0.3;
+
+        const rachisSegs = 8;
+        for (let s = 0; s < rachisSegs; s++) {
+          const t = s / rachisSegs;
+          const segLen = frondLen / rachisSegs;
+          const outDist = t * frondLen * 0.9;
+          const yOff = t * 0.5 - t * t * (1.5 + droopBase * 3);
+          const seg = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02 * (1 - t * 0.7), 0.02 * (1 - (t + 1/rachisSegs) * 0.7), segLen * 1.1, 6),
+            new THREE.MeshStandardMaterial({ color: 0x6a7a2a, roughness: 0.7 })
           );
-          leaflet.rotation.y = fAngle;
-          leaflet.rotation.z = (Math.random() - 0.5) * 0.3;
-          frondPalm.add(leaflet);
+          seg.position.set(0, yOff, outDist);
+          const nextT = (s + 1) / rachisSegs;
+          const nextY = nextT * 0.5 - nextT * nextT * (1.5 + droopBase * 3);
+          const segAngle = Math.atan2(nextY - yOff, segLen);
+          seg.rotation.x = Math.PI / 2 - segAngle;
+          fGrp.add(seg);
+
+          if (s > 0) {
+            for (const side of [-1, 1]) {
+              const lfLen = 0.3 + (1 - t) * 0.4;
+              const leaflet = new THREE.Mesh(new THREE.PlaneGeometry(lfLen, 0.06 + (1 - t) * 0.04), palmLeafMat);
+              leaflet.position.set(side * lfLen * 0.35, yOff - 0.02, outDist);
+              leaflet.rotation.y = fAngle + side * 0.3;
+              leaflet.rotation.z = side * (0.3 + t * 0.4);
+              leaflet.rotation.x = -0.1 - t * 0.3;
+              fGrp.add(leaflet);
+            }
+          }
         }
+        frondPalm.add(fGrp);
       }
       const fpX = oasisX + Math.cos(fpAngle) * (9.5 + Math.random() * 2);
       const fpZ = oasisZ + Math.sin(fpAngle) * (9.5 + Math.random() * 2);
@@ -2167,13 +2233,48 @@ export function buildSunscorchDesert(mctx: MapBuildContext, w: number, d: number
       trunk2.rotation.x = (Math.random() - 0.5) * 0.15;
       trunk2.rotation.z = (Math.random() - 0.5) * 0.15;
       palm2.add(trunk2);
-      for (let l = 0; l < 5; l++) {
-        const leafAngle2 = (l / 5) * Math.PI * 2;
-        const leaf2 = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.5), palmLeafMat);
-        leaf2.position.set(Math.cos(leafAngle2) * 0.8, trunkH2 + 0.15, Math.sin(leafAngle2) * 0.8);
-        leaf2.rotation.x = -0.5;
-        leaf2.rotation.y = leafAngle2;
-        palm2.add(leaf2);
+      // Crown bulge
+      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), palmTrunkMat);
+      crown2.position.y = trunkH2;
+      crown2.scale.set(1, 0.6, 1);
+      palm2.add(crown2);
+      // Fronds from crown
+      const fCount2 = 7 + Math.floor(Math.random() * 3);
+      for (let l = 0; l < fCount2; l++) {
+        const leafAngle2 = (l / fCount2) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        const fLen2 = 2 + Math.random() * 1.2;
+        const fg2 = new THREE.Group();
+        fg2.position.set(0, trunkH2, 0);
+        fg2.rotation.y = leafAngle2;
+        const droop2 = 0.15 + Math.random() * 0.25;
+        const rSegs = 6;
+        for (let s = 0; s < rSegs; s++) {
+          const t = s / rSegs;
+          const segLen = fLen2 / rSegs;
+          const outD = t * fLen2 * 0.9;
+          const yOff = t * 0.4 - t * t * (1.3 + droop2 * 3);
+          const seg = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02 * (1 - t * 0.7), 0.02 * (1 - (t + 1/rSegs) * 0.7), segLen * 1.1, 6),
+            new THREE.MeshStandardMaterial({ color: 0x6a7a2a, roughness: 0.7 })
+          );
+          seg.position.set(0, yOff, outD);
+          const nT = (s + 1) / rSegs;
+          const nY = nT * 0.4 - nT * nT * (1.3 + droop2 * 3);
+          seg.rotation.x = Math.PI / 2 - Math.atan2(nY - yOff, segLen);
+          fg2.add(seg);
+          if (s > 0) {
+            for (const side of [-1, 1]) {
+              const lfL = 0.25 + (1 - t) * 0.35;
+              const lf = new THREE.Mesh(new THREE.PlaneGeometry(lfL, 0.05 + (1 - t) * 0.03), palmLeafMat);
+              lf.position.set(side * lfL * 0.35, yOff - 0.02, outD);
+              lf.rotation.y = leafAngle2 + side * 0.3;
+              lf.rotation.z = side * (0.3 + t * 0.4);
+              lf.rotation.x = -0.1 - t * 0.3;
+              fg2.add(lf);
+            }
+          }
+        }
+        palm2.add(fg2);
       }
       const p2X = oasis2X + Math.cos(angle2) * (4.5 + Math.random() * 1.5);
       const p2Z = oasis2Z + Math.sin(angle2) * (4.5 + Math.random() * 1.5);
