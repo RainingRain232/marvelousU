@@ -2047,7 +2047,43 @@ export function createDefaultPlayer(cls: DiabloClass): DiabloPlayerState {
         description: 'A sturdy brass lantern with a warm, steady flame. A reliable companion in the dark.',
       },
     },
-    inventory: createEmptyInventory(40),
+    inventory: (() => {
+      const inv = createEmptyInventory(40);
+      // Starter socketed weapon
+      inv[0] = { item: {
+        id: 'starter-socketed-sword',
+        name: 'Runic Broadsword',
+        icon: '🗡️',
+        rarity: ItemRarity.RARE,
+        type: ItemType.SWORD,
+        slot: ItemSlot.WEAPON,
+        level: 1,
+        value: 80,
+        stats: { strength: 5, bonusDamage: 8 } as DiabloItemStats,
+        description: 'A finely crafted blade with rune sockets carved into the hilt.',
+        maxSockets: 3,
+        sockets: [
+          { gemType: null, gemTier: 0, bonusStats: {} as DiabloItemStats },
+          { gemType: null, gemTier: 0, bonusStats: {} as DiabloItemStats },
+          { gemType: null, gemTier: 0, bonusStats: {} as DiabloItemStats },
+        ],
+      }};
+      // Starter rune
+      inv[1] = { item: {
+        id: 'starter-rune-fire',
+        name: 'Rune of Fire',
+        icon: '🔥',
+        rarity: ItemRarity.UNCOMMON,
+        type: ItemType.RUNE,
+        slot: ItemSlot.ACCESSORY_1,
+        level: 1,
+        value: 50,
+        stats: {} as DiabloItemStats,
+        description: 'A glowing rune pulsing with flame. Socket into equipment to build runewords.',
+        maxSockets: 0,
+      }};
+      return inv;
+    })(),
     skills,
     skillCooldowns: new Map<SkillId, number>(),
     statusEffects: [],
