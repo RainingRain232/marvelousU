@@ -1159,15 +1159,32 @@ export function buildHUD(hud: HTMLDivElement): HUDRefs {
     <path d="M 22 52 Q 40 50 58 48 Q 62 48 62 52 Q 62 56 58 56 Q 40 56 22 54 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.8"/>
     <!-- Shoulder joint -->
     <circle cx="22" cy="53" r="4" fill="#c4b898" stroke="#8a7a60" stroke-width="0.8"/>
-    <!-- Ribcage (torso hanging down) -->
-    <path d="M 14 56 Q 10 58 8 65 Q 6 72 8 80 Q 10 86 16 88 Q 22 90 28 88 Q 34 86 36 80 Q 38 72 36 65 Q 34 58 30 56 Z" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="0.8"/>
-    <!-- Rib lines -->
-    <path d="M 12 62 Q 20 60 32 62" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 10 68 Q 20 66 34 68" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 9 74 Q 20 72 35 74" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
-    <path d="M 10 80 Q 20 78 34 80" fill="none" stroke="#a89870" stroke-width="0.8" opacity="0.5"/>
-    <!-- Spine -->
-    <path d="M 22 56 L 22 88" fill="none" stroke="#9a8a68" stroke-width="1.5" opacity="0.4"/>
+    <!-- Sternum (breastbone) -->
+    <path d="M 22 56 L 22 82" fill="none" stroke="url(#fhBone)" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Spine (behind sternum) -->
+    <path d="M 22 56 L 22 90" fill="none" stroke="#9a8a68" stroke-width="1.8" opacity="0.5"/>
+    <!-- Spine vertebrae bumps -->
+    <circle cx="22" cy="58" r="1.2" fill="#b8a880" opacity="0.5"/>
+    <circle cx="22" cy="63" r="1.2" fill="#b8a880" opacity="0.5"/>
+    <circle cx="22" cy="68" r="1.2" fill="#b8a880" opacity="0.5"/>
+    <circle cx="22" cy="73" r="1.2" fill="#b8a880" opacity="0.5"/>
+    <circle cx="22" cy="78" r="1.2" fill="#b8a880" opacity="0.5"/>
+    <circle cx="22" cy="83" r="1.2" fill="#b8a880" opacity="0.5"/>
+    <!-- Clavicles (collarbones) -->
+    <path d="M 22 56 Q 16 54 10 56" fill="none" stroke="url(#fhBone)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M 22 56 Q 28 54 34 56" fill="none" stroke="url(#fhBone)" stroke-width="2" stroke-linecap="round"/>
+    <!-- Ribs - left side (curving out from spine) -->
+    <path d="M 22 59 Q 16 57 10 60 Q 7 63 10 65 Q 16 63 22 61" fill="none" stroke="url(#fhBone)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 22 64 Q 15 62 9 65 Q 6 68 9 70 Q 15 68 22 66" fill="none" stroke="url(#fhBone)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 22 69 Q 15 67 10 70 Q 7 73 10 75 Q 15 73 22 71" fill="none" stroke="url(#fhBone)" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M 22 74 Q 16 72 12 75 Q 10 77 13 79 Q 17 77 22 76" fill="none" stroke="url(#fhBone)" stroke-width="1.4" stroke-linecap="round"/>
+    <path d="M 22 78 Q 17 77 14 79 Q 13 81 15 82 Q 18 81 22 80" fill="none" stroke="url(#fhBone)" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+    <!-- Ribs - right side (curving out from spine) -->
+    <path d="M 22 59 Q 28 57 34 60 Q 37 63 34 65 Q 28 63 22 61" fill="none" stroke="url(#fhBone)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 22 64 Q 29 62 35 65 Q 38 68 35 70 Q 29 68 22 66" fill="none" stroke="url(#fhBone)" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M 22 69 Q 29 67 34 70 Q 37 73 34 75 Q 29 73 22 71" fill="none" stroke="url(#fhBone)" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M 22 74 Q 28 72 32 75 Q 34 77 31 79 Q 27 77 22 76" fill="none" stroke="url(#fhBone)" stroke-width="1.4" stroke-linecap="round"/>
+    <path d="M 22 78 Q 27 77 30 79 Q 31 81 29 82 Q 26 81 22 80" fill="none" stroke="url(#fhBone)" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
     <!-- Skull -->
     <ellipse cx="22" cy="40" rx="12" ry="14" fill="url(#fhBone)" stroke="#8a7a60" stroke-width="1"/>
     <!-- Skull top (cranium) -->
