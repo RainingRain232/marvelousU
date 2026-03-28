@@ -74,6 +74,11 @@ export class LeviathanGame {
       this._state.gameTime += rawDt;
     }
 
+    // Release pointer lock on game over so player can click UI buttons
+    if (this._state.phase === "game_over" && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+
     this._renderer.update(this._state, rawDt);
     this._hud.update(this._state);
     this._rafId = requestAnimationFrame((t) => this._gameLoop(t));

@@ -128,6 +128,11 @@ export class DepthsGame {
     if (this._state.audioExcalibur) { this._audio.playExcalibur(); this._state.audioExcalibur = false; }
     if (this._state.audioZoneTransition) { this._audio.playZoneTransition(); this._state.audioZoneTransition = false; }
 
+    // Release pointer lock on game over so player can click UI buttons
+    if (this._state.phase === "game_over" && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+
     this._renderer.update(this._state, rawDt);
     this._hud.update(this._state);
 
