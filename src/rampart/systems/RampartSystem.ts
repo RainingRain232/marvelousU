@@ -6,7 +6,7 @@ import { RAMPART, TOWER_DEFS, ENEMY_DEFS, getWaveComposition } from "../config/R
 import type { TowerDef } from "../config/RampartConfig";
 import type {
   RampartState, RampartEnemy, RampartTower, RampartProjectile,
-  RampartParticle, PathNode, TargetMode,
+  TargetMode,
 } from "../state/RampartState";
 
 const CS = RAMPART.CELL_SIZE;

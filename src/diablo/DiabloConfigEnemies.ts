@@ -2727,6 +2727,7 @@ export const ENEMY_SPAWN_WEIGHTS: Record<DiabloMapId, { type: EnemyType; weight:
     { type: EnemyType.SEWER_CREEPER, weight: 14 },
     { type: EnemyType.BELL_TOWER_SENTINEL, weight: 10 },
   ],
+  [DiabloMapId.RIVERSIDE_VILLAGE]: [],
   [DiabloMapId.CAMELOT]: [],
 };
 
@@ -3032,6 +3033,7 @@ export const BOSS_PHASE_CONFIGS: Record<DiabloMapId, BossPhaseConfig[]> = {
     { hpThreshold: 0.66, name: 'Phase 2', damageMultiplier: 1.2, speedMultiplier: 1.2, abilities: [BossAbility.GROUND_SLAM, BossAbility.CHARGE] },
     { hpThreshold: 0.33, name: 'Phase 3', damageMultiplier: 1.5, speedMultiplier: 1.4, abilities: [BossAbility.GROUND_SLAM, BossAbility.CHARGE, BossAbility.ENRAGE] },
   ],
+  [DiabloMapId.RIVERSIDE_VILLAGE]: [],
   [DiabloMapId.CAMELOT]: [],
 };
 

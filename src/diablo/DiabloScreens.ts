@@ -1243,7 +1243,7 @@ export function showMapSelect(ctx: ScreenContext): void {
   };
   weatherBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
-      const w = btn.getAttribute("data-weather") as string;
+      const w = btn.getAttribute("data-weather") as Weather;
       ctx.state.preferredWeather = w;
       weatherBtns.forEach((b) => {
         const bw = b.getAttribute("data-weather")!;
@@ -4997,7 +4997,7 @@ export function showPortalNpcShop(ctx: ScreenContext, npc: DiabloPortalNpc, mapI
           if (slot) {
             slot.item = { ...item, id: ctx.genId() };
           } else {
-            p.inventory.push({ item: { ...item, id: ctx.genId() }, locked: false });
+            p.inventory.push({ item: { ...item, id: ctx.genId() } });
           }
           npc.inventory.splice(idx, 1);
           showStatus(`Purchased ${item.name}!`, "#44ff44");

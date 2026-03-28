@@ -5,7 +5,7 @@
 
 import * as THREE from "three";
 import { RAMPART, TOWER_DEFS } from "../config/RampartConfig";
-import type { RampartState, RampartTower, RampartEnemy, RampartProjectile } from "../state/RampartState";
+import type { RampartState, RampartTower, RampartEnemy } from "../state/RampartState";
 import { getTerrainHeight, getTowerEffectiveRange } from "../systems/RampartSystem";
 
 const CS = RAMPART.CELL_SIZE;

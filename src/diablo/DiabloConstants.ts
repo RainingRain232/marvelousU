@@ -141,6 +141,7 @@ export const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
   [DiabloMapId.ELDRITCH_NEXUS]: 140,
   [DiabloMapId.CITY_RUINS]: 30,
   [DiabloMapId.CITY]: 35,
+  [DiabloMapId.RIVERSIDE_VILLAGE]: 0,
   [DiabloMapId.CAMELOT]: 0,
 };
 
@@ -188,6 +189,7 @@ export const BOSS_NAMES: Record<DiabloMapId, string[]> = {
   [DiabloMapId.ELDRITCH_NEXUS]: ["Overmind Xul'tharax", "The Convergence", "Elder Brain Infinitus"],
   [DiabloMapId.CITY_RUINS]: ["Captain Harren the Undying", "The Rubble Colossus", "Gatekeeper Voss"],
   [DiabloMapId.CITY]: ["Warden-Commander Blackthorn", "The Iron Magistrate", "Sergeant Grieves"],
+  [DiabloMapId.RIVERSIDE_VILLAGE]: [],
   [DiabloMapId.CAMELOT]: [],
 };
 
