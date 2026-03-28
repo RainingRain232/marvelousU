@@ -56,6 +56,7 @@ import { buildingWikiScreen } from "@view/ui/BuildingWikiScreen";
 import { mainMenuWikiScreen } from "@view/ui/MainMenuWikiScreen";
 import { minimap } from "@view/ui/Minimap";
 import { lobbyScreen } from "@view/ui/LobbyScreen";
+import { loadingScreen } from "@view/ui/LoadingScreen";
 import { RoomManager } from "@net/RoomManager";
 import { campaignState } from "@sim/config/CampaignState";
 import { getScenario, SCENARIO_DEFINITIONS } from "@sim/config/CampaignDefs";
@@ -398,415 +399,592 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
   // World setup screen
   const worldSetupScreen = new WorldSetupScreen();
 
+  function _showLoading(mode: string): void {
+    const DISPLAY_NAMES: Record<string, string> = {
+      rpg: "RPG",
+      survivor: "SURVIVOR",
+      colosseum: "COLOSSEUM",
+      medieval_gta: "MEDIEVAL GTA",
+      duel: "DUEL",
+      warband: "WARBAND",
+      tekken: "TEKKEN",
+      dragoon: "DRAGOON",
+      three_dragon: "THREE DRAGON",
+      medieval_gta_3d: "MEDIEVAL GTA 3D",
+      diablo: "DIABLO",
+      mage_wars: "MAGE WARS",
+      warband_campaign: "WARBAND CAMPAIGN",
+      game: "QUEST FOR THE GRAIL",
+      grail_ball: "GRAIL BALL",
+      grail_manager: "GRAIL MANAGER",
+      arthurian_rpg: "ARTHURIAN RPG",
+      rift_wizard: "RIFT WIZARD",
+      settlers: "SETTLERS",
+      caesar: "CAESAR",
+      camelot_craft: "CAMELOT CRAFT",
+      eagle_flight: "EAGLE FLIGHT",
+      terraria: "TERRARIA",
+      civilization: "CIVILIZATION",
+      morgan: "MORGAN LE FAY",
+      jousting: "JOUSTING",
+      exodus: "EXODUS",
+      coven: "COVEN",
+      caravan: "CARAVAN",
+      shadowhand: "SHADOWHAND",
+      alchemist: "ALCHEMIST",
+      siege: "SIEGE",
+      tavern: "TAVERN",
+      hunt: "HUNT",
+      race: "RACE",
+      round_table: "ROUND TABLE",
+      camelot_ascent: "CAMELOT ASCENT",
+      grail_blocks: "GRAIL BLOCKS",
+      grail_derby: "GRAIL DERBY",
+      grail_breaker: "GRAIL BREAKER",
+      necromancer: "NECROMANCER",
+      bard: "BARD",
+      labyrinth: "LABYRINTH",
+      plague: "PLAGUE",
+      plague_rt: "PLAGUE RT",
+      wyrm: "WYRM",
+      prince_camelot: "PRINCE OF CAMELOT",
+      phantom: "PHANTOM",
+      conjurer: "CONJURER",
+      flux: "FLUX",
+      echo: "ECHO",
+      void_knight: "VOID KNIGHT",
+      last_flame: "LAST FLAME",
+      graviton: "GRAVITON",
+      grail_quest: "GRAIL QUEST",
+      merlin_duel: "MERLIN DUEL",
+      koth: "KING OF THE HILL",
+      runeblade: "RUNEBLADE",
+      chronomancer: "CHRONOMANCER",
+      shapeshifter: "SHAPESHIFTER",
+      voidwalker: "VOIDWALKER",
+      age_of_wonders: "AGE OF WONDERS",
+      lancelot: "LANCELOT",
+      sewer_splash: "SEWER SPLASH",
+      lake_of_avalon: "LAKE OF AVALON",
+      trebuchet: "TREBUCHET",
+      grail_keeper: "GRAIL KEEPER",
+      gargoyle: "GARGOYLE",
+      lot: "LOT",
+      guinevere: "GUINEVERE",
+      forest: "FOREST",
+      pendulum: "PENDULUM",
+      leviathan: "LEVIATHAN",
+      sword_of_avalon: "SWORD OF AVALON",
+      depths: "DEPTHS",
+      chariot: "CHARIOT",
+      bearing: "BEARING",
+      matrix: "MATRIX",
+      knight_ball: "KNIGHT BALL",
+      epsilon: "EPSILON",
+      grand: "GRAND",
+      rampart: "RAMPART",
+      standard: "STANDARD",
+      deathmatch: "DEATHMATCH",
+      battlefield: "BATTLEFIELD",
+      campaign: "CAMPAIGN",
+      world: "WORLD",
+      wave: "WAVE",
+    };
+    const title = DISPLAY_NAMES[mode] ?? mode.replace(/_/g, " ").toUpperCase();
+    loadingScreen.show(title);
+  }
+
   menuScreen.onContinue = () => {
     if (menuScreen.selectedGameMode === GameMode.RPG) {
       menuScreen.hide();
-      _bootRPGGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootRPGGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.SURVIVOR) {
       menuScreen.hide();
-      _bootSurvivorGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootSurvivorGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.COLOSSEUM) {
       menuScreen.hide();
-      _bootColosseumGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootColosseumGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.MEDIEVAL_GTA) {
       menuScreen.hide();
-      _bootMedievalGTA();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootMedievalGTA().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.DUEL) {
       menuScreen.hide();
-      _bootDuelGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootDuelGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WARBAND) {
       menuScreen.hide();
-      _bootWarbandGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootWarbandGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.TEKKEN) {
       menuScreen.hide();
-      _bootTekkenGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootTekkenGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.DRAGOON) {
       menuScreen.hide();
-      _bootDragoonGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootDragoonGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.THREE_DRAGON) {
       menuScreen.hide();
-      _bootThreeDragonGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootThreeDragonGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.MEDIEVAL_GTA_3D) {
       menuScreen.hide();
-      _bootMedievalGTA3D();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootMedievalGTA3D().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.DIABLO) {
       menuScreen.hide();
-      _bootDiabloGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootDiabloGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.MAGE_WARS) {
       menuScreen.hide();
-      _bootMageWarsGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootMageWarsGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WARBAND_CAMPAIGN) {
       menuScreen.hide();
-      _bootWarbandCampaign();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootWarbandCampaign().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GAME) {
       menuScreen.hide();
-      _bootGameGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGameGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_BALL) {
       menuScreen.hide();
-      _bootGrailBallGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGrailBallGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_MANAGER) {
       menuScreen.hide();
-      _bootGrailManagerGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGrailManagerGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.ARTHURIAN_RPG) {
       menuScreen.hide();
-      _bootArthurianRPGGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootArthurianRPGGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.RIFT_WIZARD) {
       menuScreen.hide();
-      _bootRiftWizardGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootRiftWizardGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.SETTLERS) {
       menuScreen.hide();
+      _showLoading(menuScreen.selectedGameMode);
       _showSettlersMapModeSelect();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CAESAR) {
       menuScreen.hide();
-      _bootCaesarGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootCaesarGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CAMELOT_CRAFT) {
       menuScreen.hide();
-      _bootCamelotCraftGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootCamelotCraftGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.EAGLE_FLIGHT) {
       menuScreen.hide();
-      _bootEagleFlightGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootEagleFlightGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.TERRARIA) {
       menuScreen.hide();
-      _bootTerrariaGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootTerrariaGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.MORGAN) {
       menuScreen.hide();
-      _bootMorganGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootMorganGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CIVILIZATION) {
       menuScreen.hide();
-      _bootCivGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootCivGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.JOUSTING) {
       menuScreen.hide();
-      _bootJoustingGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootJoustingGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.EXODUS) {
       menuScreen.hide();
-      _bootExodusGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootExodusGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.COVEN) {
       menuScreen.hide();
-      _bootCovenGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootCovenGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CARAVAN) {
       menuScreen.hide();
-      _bootCaravanGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootCaravanGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.SHADOWHAND) {
       menuScreen.hide();
-      _bootShadowhandGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootShadowhandGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.ALCHEMIST) {
       menuScreen.hide();
-      _bootAlchemistGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootAlchemistGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.SIEGE) {
       menuScreen.hide();
-      _bootSiegeGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootSiegeGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.TAVERN) {
       menuScreen.hide();
-      _bootTavernGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootTavernGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.HUNT) {
       menuScreen.hide();
-      _bootHuntGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootHuntGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.RACE) {
       menuScreen.hide();
-      _bootRaceGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootRaceGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.ROUND_TABLE) {
       menuScreen.hide();
-      _bootRoundTableGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootRoundTableGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CAMELOT_ASCENT) {
       menuScreen.hide();
-      _bootAscentGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootAscentGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_BLOCKS) {
       menuScreen.hide();
-      _bootGrailBlocksGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGrailBlocksGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_DERBY) {
       menuScreen.hide();
-      _bootDerbyGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootDerbyGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_BREAKER) {
       menuScreen.hide();
-      _bootBreakerGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootBreakerGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.NECROMANCER) {
       menuScreen.hide();
-      _bootNecroGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootNecroGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.BARD) {
       menuScreen.hide();
-      _bootBardGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootBardGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LABYRINTH) {
       menuScreen.hide();
-      _bootLabyrinthGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootLabyrinthGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.PLAGUE) {
       menuScreen.hide();
-      _bootPlagueGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootPlagueGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.PLAGUE_RT) {
       menuScreen.hide();
-      _bootPlagueRTGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootPlagueRTGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WYRM) {
       menuScreen.hide();
-      _bootWyrmGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootWyrmGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.PRINCE_CAMELOT) {
       menuScreen.hide();
-      _bootCamelotGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootCamelotGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.PHANTOM) {
       menuScreen.hide();
-      _bootPhantomGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootPhantomGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CONJURER) {
       menuScreen.hide();
-      _bootConjurerGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootConjurerGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.FLUX) {
       menuScreen.hide();
-      _bootFluxGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootFluxGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.ECHO) {
       menuScreen.hide();
-      _bootEchoGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootEchoGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.VOID_KNIGHT) {
       menuScreen.hide();
-      _bootVoidKnightGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootVoidKnightGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LAST_FLAME) {
       menuScreen.hide();
-      _bootLastFlameGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootLastFlameGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAVITON) {
       menuScreen.hide();
-      _bootGravitonGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGravitonGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_QUEST) {
       menuScreen.hide();
-      _bootGrailQuestGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGrailQuestGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.MERLIN_DUEL) {
       menuScreen.hide();
-      _bootMerlinDuelGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootMerlinDuelGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.KOTH) {
       menuScreen.hide();
-      _bootKothGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootKothGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.RUNEBLADE) {
       menuScreen.hide();
-      _bootRunebladeGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootRunebladeGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CHRONOMANCER) {
       menuScreen.hide();
-      _bootChronomancerGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootChronomancerGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.SHAPESHIFTER) {
       menuScreen.hide();
-      _bootShapeshifterGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootShapeshifterGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.VOIDWALKER) {
       menuScreen.hide();
-      _bootVoidwalkerGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootVoidwalkerGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.AGE_OF_WONDERS) {
       menuScreen.hide();
-      _bootAoWGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootAoWGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LANCELOT) {
       menuScreen.hide();
-      _bootLancelotGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootLancelotGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.SEWER_SPLASH) {
       menuScreen.hide();
-      _bootSewerSplashGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootSewerSplashGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LAKE_OF_AVALON) {
       menuScreen.hide();
-      _bootLakeOfAvalonGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootLakeOfAvalonGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.TREBUCHET) {
       menuScreen.hide();
-      _bootTrebuchetGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootTrebuchetGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_KEEPER) {
       menuScreen.hide();
-      _bootGrailKeeperGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGrailKeeperGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GARGOYLE) {
       menuScreen.hide();
-      _bootGargoyleGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGargoyleGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GUINEVERE) {
       menuScreen.hide();
-      _bootGuinevereGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGuinevereGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.FOREST) {
       menuScreen.hide();
-      _bootForestGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootForestGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.PENDULUM) {
       menuScreen.hide();
-      _bootPendulumGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootPendulumGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LEVIATHAN) {
       menuScreen.hide();
-      _bootLeviathanGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootLeviathanGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.SWORD_OF_AVALON) {
       menuScreen.hide();
-      _bootSwordOfAvalonGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootSwordOfAvalonGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.DEPTHS) {
       menuScreen.hide();
-      _bootDepthsGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootDepthsGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.KNIGHT_BALL) {
       menuScreen.hide();
-      _bootKnightBallGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootKnightBallGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.EPSILON) {
       menuScreen.hide();
-      _bootEpsilonGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootEpsilonGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAND) {
       menuScreen.hide();
-      _bootGrandGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootGrandGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.RAMPART) {
       menuScreen.hide();
-      _bootRampartGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootRampartGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
       menuScreen.hide();
-      _bootLotGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootLotGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.CHARIOT) {
       menuScreen.hide();
-      _bootChariotGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootChariotGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.BEARING) {
       menuScreen.hide();
-      _bootBearingGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootBearingGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.MATRIX) {
       menuScreen.hide();
-      _bootMatrixGame();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootMatrixGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.WORLD) {
@@ -846,16 +1024,20 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
                 worldSetupScreen.init(viewManager);
                 worldSetupScreen.onStart = async (settings) => {
                   worldSetupScreen.destroy();
+                  _showLoading("world");
                   await _bootWorldGame(
                     settings,
                     raceSelectScreen.selectedRaceId,
                     leaderSelectScreen.selectedLeaderId,
                     armoryScreen.selectedItems,
                   );
+                  loadingScreen.hide();
                 };
                 worldSetupScreen.onLoad = async () => {
                   worldSetupScreen.destroy();
+                  _showLoading("world");
                   await _loadWorldGame();
+                  loadingScreen.hide();
                 };
                 worldSetupScreen.onBack = () => {
                   worldSetupScreen.destroy();
@@ -874,11 +1056,14 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       return;
     }
     menuScreen.hide();
+    _showLoading(menuScreen.selectedGameMode);
+    loadingScreen.hide();
     leaderSelectScreen.show();
   };
 
   menuScreen.onQuickPlay = async () => {
     menuScreen.hide();
+    _showLoading("standard");
     await _bootGame(
       true, // p2 is AI
       MAP_SIZES[0], // standard map size
@@ -889,6 +1074,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
       MapType.FANTASIA,
       ["longsword"], // armory weapon
     );
+    loadingScreen.hide();
   };
 
   // ---------------------------------------------------------------------------
@@ -946,13 +1132,17 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
 
   menuScreen.onLoadWorldGame = async () => {
     menuScreen.hide();
+    _showLoading("world");
     await _loadWorldGame();
+    loadingScreen.hide();
   };
 
   menuScreen.onLoadWaveGame = () => {
     const ws = _loadWaveGame();
     if (!ws) return;
     menuScreen.hide();
+    _showLoading("wave");
+    loadingScreen.hide();
     _waveState = ws;
     const extraGold = 1000 + (ws.leftoverGold ?? 0);
     _startNextWaveShop(ws, extraGold);
@@ -1365,6 +1555,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
           // P2 unit shop
           unitShopScreen.onDone = async (p2Roster) => {
             unitShopScreen.hide();
+            _showLoading("battlefield");
             _worldBattleRosters = {
               p1Roster: playerRoster,
               p2Roster: p2Roster,
@@ -1385,6 +1576,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
               p2LeaderId,
               p2RaceId,
             );
+            loadingScreen.hide();
           };
           unitShopScreen.setSurvivingUnits([]);
           unitShopScreen.show(p2RaceId, bfGold, "PLAYER 2 ARMY");
@@ -1460,6 +1652,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
           playerIsAttacker: true,
         };
 
+        _showLoading("wave");
         await _bootGame(
           true,
           mapSize,
@@ -1472,6 +1665,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
           2,
           [],
         );
+        loadingScreen.hide();
       };
       const corruptionLabel = corruption.enabled ? " [GRAIL GREED]" : "";
       unitShopScreen.setCorruptionModifiers(corruption.activeModifiers);
@@ -1501,6 +1695,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         showWaveShop();
       }
     } else {
+      _showLoading(gameMode);
       await _bootGame(
         p2IsAI,
         mapSize,
@@ -1513,6 +1708,7 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
         menuScreen.selectedPlayerCount,
         menuScreen.alliedPlayerIds,
       );
+      loadingScreen.hide();
     }
   };
 
@@ -1543,7 +1739,9 @@ import { showLeaderIntroduction, LEADER_IMAGES } from "@view/world/ui/LeaderIntr
     const leaderId = leaderSelectScreen.selectedLeaderId;
     const raceId = raceSelectScreen.selectedRaceId;
     const scenarioNum = scenarioSelectScreen.selectedScenario;
+    _showLoading("campaign");
     await _bootCampaign(p2IsAI, mapSize, scenarioNum, leaderId, raceId);
+    loadingScreen.hide();
   };
 
   // If returning from a campaign game, jump straight to the scenario picker
@@ -5316,6 +5514,7 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
       playerIsAttacker: true,
     };
 
+    _showLoading("wave");
     await _bootGame(
       true,
       ws.mapSize,
@@ -5328,6 +5527,7 @@ function _startNextWaveShop(ws: NonNullable<typeof _waveState>, extraGold: numbe
       2,
       [],
     );
+    loadingScreen.hide();
   };
   const corruptionSuffix = ws.corruption.enabled && ws.corruption.corruptionLevel > 0
     ? ` [CORRUPTION ${ws.corruption.corruptionLevel}]`
@@ -5603,6 +5803,7 @@ async function _bootWorldBattle(): Promise<void> {
     ? TERRAIN_TO_MAP_TYPE[meta.terrain as TerrainType] ?? MapType.MEADOW
     : MapType.MEADOW;
 
+  _showLoading("world");
   await _bootGame(
     true,
     MAP_SIZES[0],
@@ -5613,6 +5814,7 @@ async function _bootWorldBattle(): Promise<void> {
     battleMapType,
     player?.armoryItems ?? [],
   );
+  loadingScreen.hide();
 }
 
 /** Return from a played world battle and apply results. */
