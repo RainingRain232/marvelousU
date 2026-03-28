@@ -3074,6 +3074,23 @@ export class DiabloGame {
     const bossNames = BOSS_NAMES[this._state.currentMap] || ["Dark Champion"];
     const bossName = bossNames[Math.floor(Math.random() * bossNames.length)];
 
+    // Push boss spawn further from town portal
+    if (isBossSpawn && this._portalActive) {
+      const bossMinPortalDist = this._safeZoneRadius + 30;
+      const bpDist = Math.sqrt((ex - this._portalX) ** 2 + (ez - this._portalZ) ** 2);
+      if (bpDist < bossMinPortalDist) {
+        // Push position away from portal
+        const awayAngle = Math.atan2(ez - this._portalZ, ex - this._portalX);
+        ex = this._portalX + Math.cos(awayAngle) * bossMinPortalDist;
+        ez = this._portalZ + Math.sin(awayAngle) * bossMinPortalDist;
+        const mapCfg2 = MAP_CONFIGS[this._state.currentMap];
+        const hW2 = mapCfg2.width / 2 - 2;
+        const hD2 = ((mapCfg2 as any).depth || mapCfg2.width) / 2 - 2;
+        ex = Math.max(-hW2, Math.min(hW2, ex));
+        ez = Math.max(-hD2, Math.min(hD2, ez));
+      }
+    }
+
     const enemy: DiabloEnemy = {
       id: this._genId(),
       type: chosenType,
@@ -4311,12 +4328,23 @@ export class DiabloGame {
     const halfD = ((mapCfg as any).depth || mapCfg.width) / 2 - 5;
     const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
 
+    // Ensure boss spawns far from town portal
+    let nbX = 0, nbZ = 0;
+    const nightBossMinPortalDist = this._safeZoneRadius + 30;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      nbX = (Math.random() - 0.5) * halfW * 1.2;
+      nbZ = (Math.random() - 0.5) * halfD * 1.2;
+      if (!this._portalActive) break;
+      const pdist = Math.sqrt((nbX - this._portalX) ** 2 + (nbZ - this._portalZ) ** 2);
+      if (pdist >= nightBossMinPortalDist) break;
+    }
+
     const enemy: DiabloEnemy = {
       id: this._genId(),
       type: nightBossType,
-      x: (Math.random() - 0.5) * halfW * 1.2,
+      x: nbX,
       y: 0,
-      z: (Math.random() - 0.5) * halfD * 1.2,
+      z: nbZ,
       angle: Math.random() * Math.PI * 2,
       hp: def.hp * diffCfg.hpMult,
       maxHp: def.hp * diffCfg.hpMult,
@@ -4372,12 +4400,23 @@ export class DiabloGame {
     const halfD = ((mapCfg as any).depth || mapCfg.width) / 2 - 5;
     const diffCfg = DIFFICULTY_CONFIGS[this._state.difficulty];
 
+    // Ensure boss spawns far from town portal
+    let dbX = 0, dbZ = 0;
+    const dayBossMinPortalDist = this._safeZoneRadius + 30;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      dbX = (Math.random() - 0.5) * halfW * 1.2;
+      dbZ = (Math.random() - 0.5) * halfD * 1.2;
+      if (!this._portalActive) break;
+      const pdist = Math.sqrt((dbX - this._portalX) ** 2 + (dbZ - this._portalZ) ** 2);
+      if (pdist >= dayBossMinPortalDist) break;
+    }
+
     const enemy: DiabloEnemy = {
       id: this._genId(),
       type: dayBossType,
-      x: (Math.random() - 0.5) * halfW * 1.2,
+      x: dbX,
       y: 0,
-      z: (Math.random() - 0.5) * halfD * 1.2,
+      z: dbZ,
       angle: Math.random() * Math.PI * 2,
       hp: def.hp * diffCfg.hpMult,
       maxHp: def.hp * diffCfg.hpMult,
