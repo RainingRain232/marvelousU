@@ -186,7 +186,7 @@ export function showClassSelect(ctx: ScreenContext): void {
       return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
         <span style="color:${color};font-size:11px;width:28px;text-align:right;font-weight:bold;">${label}</span>
         <div style="flex:1;height:8px;background:rgba(0,0,0,0.5);border-radius:4px;border:1px solid #3a3020;overflow:hidden;">
-          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,${color},${color}aa);border-radius:4px;box-shadow:0 0 4px ${color}80;"></div>
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;box-shadow:0 0 4px ${color};"></div>
         </div>
         <span style="color:#ddd;font-size:11px;width:20px;">${val}</span>
       </div>`;
