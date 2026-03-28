@@ -448,11 +448,11 @@ export class LancelotGame {
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this._renderer.toneMappingExposure = 0.6;
+    this._renderer.toneMappingExposure = 1.0;
 
     this._scene = new THREE.Scene();
-    this._scene.background = new THREE.Color(0x0a0808);
-    this._scene.fog = new THREE.Fog(0x0a0808, 20, 45);
+    this._scene.background = new THREE.Color(0x141010);
+    this._scene.fog = new THREE.Fog(0x141010, 25, 50);
 
     this._camera = new THREE.PerspectiveCamera(55, w / h, 0.1, 100);
   }
@@ -462,7 +462,7 @@ export class LancelotGame {
   private _buildArena(): void {
     // ── Sky dome (starfield) ──
     const skyGeo = new THREE.SphereGeometry(50, 16, 12);
-    const skyMat = new THREE.MeshBasicMaterial({ color: 0x050510, side: THREE.BackSide });
+    const skyMat = new THREE.MeshBasicMaterial({ color: 0x0a0a1a, side: THREE.BackSide });
     const sky = new THREE.Mesh(skyGeo, skyMat);
     sky.position.y = 5;
     this._scene.add(sky);
@@ -479,7 +479,7 @@ export class LancelotGame {
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({ color: 0xccccdd, size: 0.15, transparent: true, opacity: 0.6 });
+    const starMat = new THREE.PointsMaterial({ color: 0xccccdd, size: 0.2, transparent: true, opacity: 0.8 });
     this._scene.add(new THREE.Points(starGeo, starMat));
 
     // ── Ground (stone tiles with vertex color variation) ──
@@ -735,11 +735,15 @@ export class LancelotGame {
     this._scene.add(fogLayer);
 
     // Ambient
-    const ambient = new THREE.AmbientLight(0x221815, 0.4);
+    const ambient = new THREE.AmbientLight(0x443830, 0.8);
     this._scene.add(ambient);
 
-    // Moonlight (slightly brighter)
-    const moon = new THREE.DirectionalLight(0x334466, 0.3);
+    // Hemisphere fill light
+    const hemi = new THREE.HemisphereLight(0x445566, 0x221111, 0.4);
+    this._scene.add(hemi);
+
+    // Moonlight
+    const moon = new THREE.DirectionalLight(0x556688, 0.6);
     moon.position.set(5, 20, -5);
     moon.castShadow = true;
     moon.shadow.mapSize.set(1024, 1024);
@@ -1158,7 +1162,7 @@ export class LancelotGame {
 
     // Vignette overlay
     this._vignetteEl = document.createElement("div");
-    this._vignetteEl.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.5) 100%);";
+    this._vignetteEl.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;background:radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.3) 100%);";
     document.getElementById("pixi-container")!.appendChild(this._vignetteEl);
   }
 

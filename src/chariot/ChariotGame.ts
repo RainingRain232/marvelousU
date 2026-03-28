@@ -464,169 +464,375 @@ function generateTrack(def: (typeof TRACK_DEFS)[number]): TrackDef {
 
 function buildChariotMesh(color: number, isPlayer: boolean): THREE.Group {
   const g = new THREE.Group();
-  const teamCol = new THREE.Color(color);
-  void teamCol; // used for lerp operations below
 
-  // ── chariot body: tapered platform with curved front ──
-  const woodMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.8, metalness: 0.05 });
-  const woodDark = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.85, metalness: 0.05 });
-  const metalMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.7 });
-  const teamMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.3 });
-  const teamGlow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.2 });
+  // ── Materials ──
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.75, metalness: 0.05 });
+  const woodDark = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8, metalness: 0.05 });
+  const woodPlanks = new THREE.MeshStandardMaterial({ color: 0x705530, roughness: 0.7, metalness: 0.05 });
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.25, metalness: 0.8 });
+  const metalDark = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.3, metalness: 0.75 });
+  const teamMat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.35 });
+  const teamGlow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.3, roughness: 0.35, metalness: 0.25 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xdaa520, roughness: 0.25, metalness: 0.8, emissive: 0x442200, emissiveIntensity: 0.1 });
+  const leatherMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.85, metalness: 0 });
 
-  // floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.15, 2.6), woodMat);
+  // ── Chariot body: planked floor with bevelled edges ──
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.12, 2.8, 4, 1, 6), woodMat);
   floor.position.set(0, 0.45, 0); floor.castShadow = true; g.add(floor);
-
-  // side walls: tapered (narrower at back)
-  for (const sx of [-0.75, 0.75]) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.55, 2.6), woodDark);
-    wall.position.set(sx, 0.78, 0); wall.castShadow = true; g.add(wall);
-    // team color trim strip along top of wall
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 2.6), teamGlow);
-    trim.position.set(sx, 1.06, 0); g.add(trim);
+  // Plank lines on floor
+  for (let pz = -1.2; pz <= 1.2; pz += 0.4) {
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.02, 0.02), woodDark);
+    plank.position.set(0, 0.52, pz); g.add(plank);
   }
 
-  // front shield: curved (use cylinder section)
-  const frontGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.8, 12, 1, false, -0.7, 1.4);
+  // Side walls: shaped panels with reinforcement strips
+  for (const sx of [-0.8, 0.8]) {
+    // Main wall panel
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 2.8, 1, 2, 6), woodPlanks);
+    wall.position.set(sx, 0.82, 0); wall.castShadow = true; g.add(wall);
+    // Team color trim along top
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 2.8), teamGlow);
+    trim.position.set(sx, 1.13, 0); g.add(trim);
+    // Metal reinforcement bands
+    for (const bz of [-0.9, 0, 0.9]) {
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.04), metalDark);
+      band.position.set(sx, 0.82, bz); g.add(band);
+    }
+    // Corner posts (vertical pillars at front/back of walls)
+    for (const pz of [-1.35, 1.35]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.7, 8), metalDark);
+      post.position.set(sx, 0.86, pz); g.add(post);
+      // Gold cap on post
+      const postCap = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), goldMat);
+      postCap.position.set(sx, 1.22, pz); g.add(postCap);
+    }
+  }
+
+  // Front shield: curved with more segments
+  const frontGeo = new THREE.CylinderGeometry(1.3, 1.3, 0.9, 24, 2, false, -0.7, 1.4);
   const frontMesh = new THREE.Mesh(frontGeo, teamMat);
   frontMesh.rotation.z = Math.PI / 2; frontMesh.rotation.y = Math.PI / 2;
-  frontMesh.position.set(0, 0.85, -1.3); frontMesh.castShadow = true; g.add(frontMesh);
+  frontMesh.position.set(0, 0.88, -1.4); frontMesh.castShadow = true; g.add(frontMesh);
+  // Decorative metal rim on front shield
+  const frontRimGeo = new THREE.TorusGeometry(1.3, 0.03, 8, 24, 1.4);
+  const frontRim = new THREE.Mesh(frontRimGeo, goldMat);
+  frontRim.rotation.z = Math.PI / 2; frontRim.rotation.y = Math.PI / 2;
+  frontRim.position.set(0, 0.88, -1.43); g.add(frontRim);
 
-  // emblem circle on front shield
-  const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.25, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.2 }));
-  emblem.position.set(0, 0.9, -1.52); emblem.rotation.y = Math.PI; g.add(emblem);
+  // Emblem circle on front shield (larger, with ring)
+  const emblemRing = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.28, 24), goldMat);
+  emblemRing.position.set(0, 0.92, -1.62); emblemRing.rotation.y = Math.PI; g.add(emblemRing);
+  const emblem = new THREE.Mesh(new THREE.CircleGeometry(0.22, 24), new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.85, roughness: 0.15 }));
+  emblem.position.set(0, 0.92, -1.61); emblem.rotation.y = Math.PI; g.add(emblem);
 
-  // back rail
-  const backRail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.35, 0.08), woodDark);
-  backRail.position.set(0, 0.72, 1.3); g.add(backRail);
+  // Back rail with curve
+  const backRail = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 0.08, 4, 2, 1), woodDark);
+  backRail.position.set(0, 0.75, 1.4); g.add(backRail);
+  // Back rail metal trim
+  const backTrim = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.04, 0.1), goldMat);
+  backTrim.position.set(0, 0.96, 1.4); g.add(backTrim);
 
-  // ── wheels: proper rims with 6 spokes ──
-  const rimMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.5, metalness: 0.4 });
-  const hubMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.3, metalness: 0.6 });
+  // ── Wheels: higher-poly rims with 8 spokes and iron tire ──
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0x664433, roughness: 0.45, metalness: 0.45 });
+  const tireMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.6 });
+  const hubMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.25, metalness: 0.65 });
 
-  for (const [wx, wy, wz] of [[-0.95, 0.38, -0.85], [0.95, 0.38, -0.85], [-0.95, 0.38, 0.85], [0.95, 0.38, 0.85]] as [number, number, number][]) {
-    // outer rim (torus)
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.06, 8, 20), rimMat);
-    rim.name = "wheel"; rim.position.set(wx, wy, wz); rim.rotation.y = Math.PI / 2; rim.castShadow = true; g.add(rim);
-    // hub
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8), hubMat);
+  for (const [wx, wy, wz] of [[-1.0, 0.38, -0.9], [1.0, 0.38, -0.9], [-1.0, 0.38, 0.9], [1.0, 0.38, 0.9]] as [number, number, number][]) {
+    // Iron tire (outer ring)
+    const tire = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 12, 32), tireMat);
+    tire.name = "wheel"; tire.position.set(wx, wy, wz); tire.rotation.y = Math.PI / 2; tire.castShadow = true; g.add(tire);
+    // Wooden rim inside tire
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.05, 10, 28), rimMat);
+    rim.position.set(wx, wy, wz); rim.rotation.y = Math.PI / 2; g.add(rim);
+    // Hub (larger, more detailed)
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 12), hubMat);
     hub.position.set(wx, wy, wz); hub.rotation.x = Math.PI / 2; g.add(hub);
-    // 6 radial spokes
-    for (let s = 0; s < 6; s++) {
-      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4), rimMat);
-      const a = (s / 6) * Math.PI * 2;
-      spoke.position.set(wx + Math.cos(a) * 0.17 * 0, wy + Math.sin(a) * 0.17, wz);
-      spoke.rotation.set(0, 0, a);
-      spoke.position.set(wx, wy + Math.sin(a) * 0.15, wz + Math.cos(a) * 0.15);
+    // 8 spokes
+    for (let s = 0; s < 8; s++) {
+      const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.025, 0.28, 6), rimMat);
+      const a = (s / 8) * Math.PI * 2;
+      spoke.position.set(wx, wy + Math.sin(a) * 0.18, wz + Math.cos(a) * 0.18);
       spoke.rotation.x = a;
       g.add(spoke);
     }
-    // metal axle cap
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), metalMat);
-    cap.position.set(wx + (wx > 0 ? 0.1 : -0.1), wy, wz); g.add(cap);
+    // Decorative axle cap
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), goldMat);
+    cap.position.set(wx + (wx > 0 ? 0.12 : -0.12), wy, wz); g.add(cap);
+    // Axle shaft
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8), metalDark);
+    axle.position.set(wx + (wx > 0 ? 0.05 : -0.05), wy, wz); axle.rotation.z = Math.PI / 2; g.add(axle);
   }
 
-  // ── horses: smoother bodies with capsule-like shapes ──
-  const horseBody = 0x886644;
-  const horseLight = 0x997755;
+  // ── Horses: higher-poly organic shapes ──
+  const horseMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.65, metalness: 0 });
+  const horseLightMat = new THREE.MeshStandardMaterial({ color: 0x997755, roughness: 0.65, metalness: 0 });
+  const hoofMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.45, metalness: 0.1 });
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x775544, roughness: 0.65 });
+
   for (let h = 0; h < 2; h++) {
     const hg = new THREE.Group(); hg.name = `horse_${h}`;
 
-    // body: elongated sphere for organic feel
-    const bodyGeo = new THREE.SphereGeometry(0.55, 10, 8);
-    bodyGeo.scale(0.55, 0.5, 1.2);
-    const hBodyMesh = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({ color: horseBody, roughness: 0.7, metalness: 0 }));
+    // Body: barrel chest (smooth ellipsoid)
+    const bodyGeo = new THREE.SphereGeometry(0.55, 16, 12);
+    bodyGeo.scale(0.6, 0.55, 1.3);
+    const hBodyMesh = new THREE.Mesh(bodyGeo, horseMat);
     hBodyMesh.position.set(0, 0.7, 0); hBodyMesh.castShadow = true; hg.add(hBodyMesh);
+    // Belly underside (slightly lighter)
+    const bellyGeo = new THREE.SphereGeometry(0.45, 12, 8);
+    bellyGeo.scale(0.5, 0.3, 1.1);
+    const belly = new THREE.Mesh(bellyGeo, horseLightMat);
+    belly.position.set(0, 0.5, 0); hg.add(belly);
 
-    // neck: tapered cylinder
-    const neckGeo = new THREE.CylinderGeometry(0.12, 0.2, 0.7, 8);
-    const neckMat = new THREE.MeshStandardMaterial({ color: horseLight, roughness: 0.7 });
-    const neck = new THREE.Mesh(neckGeo, neckMat);
-    neck.name = "neck"; neck.position.set(0, 1.0, -0.65); neck.rotation.x = -0.5; neck.castShadow = true; hg.add(neck);
+    // Haunches (rear muscle mass)
+    const haunchGeo = new THREE.SphereGeometry(0.35, 12, 10);
+    haunchGeo.scale(0.7, 0.65, 0.6);
+    const haunch = new THREE.Mesh(haunchGeo, horseMat);
+    haunch.position.set(0, 0.72, 0.5); hg.add(haunch);
 
-    // head: elongated sphere (snout shape)
-    const headGeo = new THREE.SphereGeometry(0.2, 8, 6);
-    headGeo.scale(0.7, 0.6, 1.3);
-    const head = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: horseLight, roughness: 0.7 }));
-    head.name = "head"; head.position.set(0, 1.25, -1.05); head.rotation.x = -0.15; head.castShadow = true; hg.add(head);
+    // Chest (front muscle mass)
+    const chestGeo = new THREE.SphereGeometry(0.3, 12, 10);
+    chestGeo.scale(0.65, 0.7, 0.5);
+    const chest = new THREE.Mesh(chestGeo, horseMat);
+    chest.position.set(0, 0.78, -0.5); hg.add(chest);
 
-    // ears (two small cones)
+    // Neck: tapered with more segments
+    const neckGeo = new THREE.CylinderGeometry(0.13, 0.22, 0.75, 12, 3);
+    const neck = new THREE.Mesh(neckGeo, horseLightMat);
+    neck.name = "neck"; neck.position.set(0, 1.05, -0.7); neck.rotation.x = -0.5; neck.castShadow = true; hg.add(neck);
+
+    // Head: elongated with jaw shape
+    const headGeo = new THREE.SphereGeometry(0.2, 12, 10);
+    headGeo.scale(0.7, 0.65, 1.4);
+    const head = new THREE.Mesh(headGeo, horseLightMat);
+    head.name = "head"; head.position.set(0, 1.28, -1.1); head.rotation.x = -0.15; head.castShadow = true; hg.add(head);
+    // Snout/muzzle
+    const snoutGeo = new THREE.SphereGeometry(0.12, 10, 8);
+    snoutGeo.scale(0.8, 0.6, 1.0);
+    const snout = new THREE.Mesh(snoutGeo, new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 0.6 }));
+    snout.position.set(0, 1.22, -1.35); hg.add(snout);
+    // Nostrils
+    for (const nx of [-0.05, 0.05]) {
+      const nostril = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+      nostril.position.set(nx, 1.2, -1.42); hg.add(nostril);
+    }
+    // Eyes
+    for (const ex of [-0.1, 0.1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshStandardMaterial({ color: 0x221100, roughness: 0.2, metalness: 0.3 }));
+      eye.position.set(ex, 1.32, -1.15); hg.add(eye);
+    }
+
+    // Ears (two curved cones)
     for (const ex of [-0.08, 0.08]) {
-      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 4), neckMat);
-      ear.position.set(ex, 1.38, -0.95); ear.rotation.x = -0.3; hg.add(ear);
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.14, 8), horseLightMat);
+      ear.position.set(ex, 1.42, -0.98); ear.rotation.x = -0.3; hg.add(ear);
     }
 
-    // mane: ridge along neck (team-tinted for AI)
+    // Mane: multiple ridges along neck
     const maneColor = isPlayer ? 0x443322 : new THREE.Color(color).lerp(new THREE.Color(0x443322), 0.6).getHex();
-    const mane = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.7), new THREE.MeshStandardMaterial({ color: maneColor, roughness: 0.8 }));
-    mane.position.set(0, 1.15, -0.4); mane.rotation.x = -0.3; hg.add(mane);
-
-    // saddle blanket (team colored)
-    const saddleMat = new THREE.MeshStandardMaterial({ color: isPlayer ? color : new THREE.Color(color).lerp(new THREE.Color(0x444444), 0.3).getHex(), roughness: 0.6 });
-    const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), saddleMat);
-    saddle.position.set(0, 1.0, 0.1); hg.add(saddle);
-
-    // tail: tapering cylinder
-    const tailGeo = new THREE.CylinderGeometry(0.01, 0.05, 0.6, 4);
-    const tail = new THREE.Mesh(tailGeo, new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8 }));
-    tail.name = "tail"; tail.position.set(0, 0.85, 0.85); tail.rotation.x = 0.6; hg.add(tail);
-
-    // legs: tapered cylinders
-    const legMat = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.7 });
-    const legPositions = [[-0.18, 0.08, -0.45], [0.18, 0.08, -0.45], [-0.18, 0.08, 0.45], [0.18, 0.08, 0.45]];
-    for (let li = 0; li < 4; li++) {
-      const legGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.55, 6);
-      const leg = new THREE.Mesh(legGeo, legMat);
-      leg.name = `leg_${li}`;
-      const lp = legPositions[li];
-      leg.position.set(lp[0], lp[1], lp[2]); leg.castShadow = true; hg.add(leg);
-      // hoof
-      const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.06, 6), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.5 }));
-      hoof.position.set(lp[0], -0.2, lp[2]); hg.add(hoof);
+    const maneMat = new THREE.MeshStandardMaterial({ color: maneColor, roughness: 0.85 });
+    for (let mi = 0; mi < 5; mi++) {
+      const maneSegGeo = new THREE.BoxGeometry(0.035, 0.12 + mi * 0.02, 0.14);
+      const maneSeg = new THREE.Mesh(maneSegGeo, maneMat);
+      maneSeg.position.set(0, 1.18 - mi * 0.03, -0.2 - mi * 0.15);
+      maneSeg.rotation.x = -0.3; hg.add(maneSeg);
     }
 
-    // reins
-    const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 2.0, 4), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.7 }));
-    rein.position.set(0, 0.9, 1.0); rein.rotation.x = Math.PI / 2; hg.add(rein);
+    // Saddle blanket (team colored, shaped)
+    const saddleColor = isPlayer ? color : new THREE.Color(color).lerp(new THREE.Color(0x444444), 0.3).getHex();
+    const saddleMat = new THREE.MeshStandardMaterial({ color: saddleColor, roughness: 0.55 });
+    const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.55, 2, 1, 2), saddleMat);
+    saddle.position.set(0, 1.02, 0.1); hg.add(saddle);
+    // Saddle edge trim
+    const saddleTrim = new THREE.Mesh(new THREE.BoxGeometry(0.57, 0.02, 0.02), goldMat);
+    saddleTrim.position.set(0, 1.04, -0.17); hg.add(saddleTrim);
+
+    // Tail: multi-segment flowing
+    const tailMat = new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.8 });
+    for (let ti = 0; ti < 3; ti++) {
+      const tailSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.01 + (2 - ti) * 0.012, 0.015 + (2 - ti) * 0.015, 0.25, 6), tailMat);
+      tailSeg.name = ti === 0 ? "tail" : "";
+      tailSeg.position.set(0, 0.85 - ti * 0.08, 0.85 + ti * 0.2);
+      tailSeg.rotation.x = 0.5 + ti * 0.15; hg.add(tailSeg);
+    }
+
+    // Legs: upper + lower segments with knee joint
+    const legPositions = [[-0.2, 0, -0.45], [0.2, 0, -0.45], [-0.2, 0, 0.45], [0.2, 0, 0.45]];
+    for (let li = 0; li < 4; li++) {
+      const lp = legPositions[li];
+      // Upper leg (thicker)
+      const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 0.35, 8), legMat);
+      upperLeg.name = `leg_${li}`;
+      upperLeg.position.set(lp[0], 0.35 + lp[1], lp[2]); upperLeg.castShadow = true; hg.add(upperLeg);
+      // Knee joint
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), legMat);
+      knee.position.set(lp[0], 0.18 + lp[1], lp[2]); hg.add(knee);
+      // Lower leg (thinner)
+      const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.3, 8), legMat);
+      lowerLeg.position.set(lp[0], 0.03 + lp[1], lp[2]); lowerLeg.castShadow = true; hg.add(lowerLeg);
+      // Hoof (wider, shaped)
+      const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.07, 10), hoofMat);
+      hoof.position.set(lp[0], -0.12 + lp[1], lp[2]); hg.add(hoof);
+    }
+
+    // Bridle/harness on head
+    const bridleMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.6, metalness: 0.1 });
+    const noseband = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.012, 6, 16), bridleMat);
+    noseband.position.set(0, 1.25, -1.2); noseband.rotation.y = Math.PI / 2; hg.add(noseband);
+    // Bit ring
+    const bitRing = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 6, 12), metalMat);
+    bitRing.position.set(0.12, 1.2, -1.2); hg.add(bitRing);
+
+    // Reins (to chariot)
+    const reinMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.7 });
+    const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 2.2, 6), reinMat);
+    rein.position.set(0, 0.92, 1.0); rein.rotation.x = Math.PI / 2; hg.add(rein);
+
     hg.position.set(h === 0 ? -0.7 : 0.7, 0, -3.2); g.add(hg);
   }
 
-  // ── rider: armored with team colors ──
-  const armorColor = isPlayer ? color : new THREE.Color(color).lerp(new THREE.Color(0x444444), 0.2).getHex();
-  const armorMat = new THREE.MeshStandardMaterial({ color: armorColor, roughness: 0.4, metalness: 0.5 });
-
-  // torso (tapered box for armor)
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.65, 0.35), armorMat);
-  torso.position.set(0, 1.2, 0.3); torso.castShadow = true; g.add(torso);
-
-  // shoulders (spheres)
-  for (const sx of [-0.28, 0.28]) {
-    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), armorMat);
-    shoulder.position.set(sx, 1.45, 0.3); g.add(shoulder);
+  // ── Yoke & harness connecting horses to chariot ──
+  const yokeMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.7, metalness: 0.1 });
+  // Central pole (tongue)
+  const tongue = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3.2, 8), yokeMat);
+  tongue.position.set(0, 0.55, -1.6); tongue.rotation.x = Math.PI / 2; g.add(tongue);
+  // Cross yoke bar
+  const yokeBar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 8), yokeMat);
+  yokeBar.position.set(0, 0.6, -3.1); yokeBar.rotation.z = Math.PI / 2; g.add(yokeBar);
+  // Yoke pads on each horse
+  for (const yx of [-0.7, 0.7]) {
+    const yokePad = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.035, 8, 16, Math.PI), leatherMat);
+    yokePad.position.set(yx, 0.72, -3.1); yokePad.rotation.y = Math.PI / 2; g.add(yokePad);
+  }
+  // Metal fittings on yoke
+  for (const fx of [-0.9, 0, 0.9]) {
+    const fitting = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 10), metalDark);
+    fitting.position.set(fx, 0.6, -3.1); fitting.rotation.z = Math.PI / 2; g.add(fitting);
   }
 
-  // head
-  const riderHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), new THREE.MeshStandardMaterial({ color: 0xddbb88, roughness: 0.6 }));
+  // ── Decorative shields on chariot sides ──
+  for (const sx of [-0.86, 0.86]) {
+    const shieldBack = new THREE.Mesh(new THREE.CircleGeometry(0.22, 16), woodDark);
+    shieldBack.position.set(sx, 0.85, 0); shieldBack.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; g.add(shieldBack);
+    const shieldFace = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), teamMat);
+    shieldFace.position.set(sx > 0 ? sx + 0.01 : sx - 0.01, 0.85, 0); shieldFace.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; g.add(shieldFace);
+    const shieldBoss = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), goldMat);
+    shieldBoss.position.set(sx > 0 ? sx + 0.02 : sx - 0.02, 0.85, 0); g.add(shieldBoss);
+    const shieldRim = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.22, 16), metalDark);
+    shieldRim.position.set(sx > 0 ? sx + 0.015 : sx - 0.015, 0.85, 0); shieldRim.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2; g.add(shieldRim);
+  }
+
+  // ── Lantern hooks on front posts ──
+  for (const lx of [-0.8, 0.8]) {
+    // Hook arm
+    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 6), metalDark);
+    hook.position.set(lx, 1.25, -1.3); hook.rotation.z = lx > 0 ? -0.4 : 0.4; g.add(hook);
+    // Lantern cage
+    const lanternCage = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.12, 8, 1, true), metalDark);
+    lanternCage.position.set(lx + (lx > 0 ? 0.08 : -0.08), 1.15, -1.3); g.add(lanternCage);
+    // Lantern glow
+    const lanternGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xff8811, emissiveIntensity: 0.8 }),
+    );
+    lanternGlow.position.set(lx + (lx > 0 ? 0.08 : -0.08), 1.15, -1.3); g.add(lanternGlow);
+  }
+
+  // ── Rider: fully armored knight ──
+  const armorColor = isPlayer ? color : new THREE.Color(color).lerp(new THREE.Color(0x444444), 0.2).getHex();
+  const armorMat = new THREE.MeshStandardMaterial({ color: armorColor, roughness: 0.35, metalness: 0.55 });
+  const chainmailMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.4, metalness: 0.7 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xddbb88, roughness: 0.6 });
+
+  // Torso: shaped breastplate
+  const torsoGeo = new THREE.BoxGeometry(0.48, 0.65, 0.38, 3, 3, 2);
+  const torso = new THREE.Mesh(torsoGeo, armorMat);
+  torso.position.set(0, 1.2, 0.3); torso.castShadow = true; g.add(torso);
+  // Chest plate ridge
+  const chestRidge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.02), metalDark);
+  chestRidge.position.set(0, 1.25, 0.11); g.add(chestRidge);
+  // Belt
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.4), leatherMat);
+  belt.position.set(0, 0.92, 0.3); g.add(belt);
+  // Belt buckle
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.02), goldMat);
+  buckle.position.set(0, 0.92, 0.1); g.add(buckle);
+
+  // Shoulders: pauldrons
+  for (const sx of [-0.3, 0.3]) {
+    const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), armorMat);
+    pauldron.position.set(sx, 1.5, 0.3); pauldron.castShadow = true; g.add(pauldron);
+    // Pauldron edge trim
+    const pauldronTrim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 6, 16, Math.PI), goldMat);
+    pauldronTrim.position.set(sx, 1.44, 0.3); pauldronTrim.rotation.x = Math.PI / 2; pauldronTrim.rotation.z = sx > 0 ? 0.3 : -0.3; g.add(pauldronTrim);
+  }
+
+  // Arms
+  for (const sx of [-0.32, 0.32]) {
+    // Upper arm
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8), chainmailMat);
+    upperArm.position.set(sx, 1.3, 0.3); g.add(upperArm);
+    // Elbow
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), armorMat);
+    elbow.position.set(sx, 1.14, 0.3); g.add(elbow);
+    // Forearm (reaching forward for reins)
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.35, 8), chainmailMat);
+    forearm.position.set(sx, 1.1, 0.1); forearm.rotation.x = -0.8; g.add(forearm);
+    // Gauntlet
+    const gauntlet = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.12, 2, 1, 2), armorMat);
+    gauntlet.position.set(sx, 1.0, -0.1); g.add(gauntlet);
+  }
+
+  // Legs (standing in chariot)
+  for (const sx of [-0.12, 0.12]) {
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.35, 8), armorMat);
+    thigh.position.set(sx, 0.72, 0.3); g.add(thigh);
+    const greave = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8), armorMat);
+    greave.position.set(sx, 0.42, 0.3); g.add(greave);
+    // Knee cop
+    const kneeCop = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), goldMat);
+    kneeCop.position.set(sx, 0.57, 0.2); g.add(kneeCop);
+  }
+
+  // Head
+  const riderHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 12), skinMat);
   riderHead.position.set(0, 1.72, 0.3); riderHead.castShadow = true; g.add(riderHead);
 
-  // helmet (team colored, proper dome + visor)
+  // Helmet: great helm with crest
   const helmetColor = isPlayer ? COL_GOLD : new THREE.Color(color).lerp(new THREE.Color(0x888888), 0.3).getHex();
-  const helmetMat = new THREE.MeshStandardMaterial({ color: helmetColor, roughness: 0.25, metalness: 0.8 });
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), helmetMat);
-  helmet.position.set(0, 1.76, 0.3); helmet.castShadow = true; g.add(helmet);
-  // visor slit
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.06), new THREE.MeshBasicMaterial({ color: 0x111111 }));
-  visor.position.set(0, 1.73, 0.12); g.add(visor);
+  const helmetMat = new THREE.MeshStandardMaterial({ color: helmetColor, roughness: 0.2, metalness: 0.85 });
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), helmetMat);
+  helmet.position.set(0, 1.78, 0.3); helmet.castShadow = true; g.add(helmet);
+  // Helmet face guard
+  const faceGuard = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.18, 0.08, 3, 2, 1), helmetMat);
+  faceGuard.position.set(0, 1.7, 0.1); g.add(faceGuard);
+  // Visor slit
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.025, 0.09), new THREE.MeshBasicMaterial({ color: 0x080808 }));
+  visor.position.set(0, 1.72, 0.08); g.add(visor);
+  // Breathing holes
+  for (let bh = 0; bh < 3; bh++) {
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.01, 6), new THREE.MeshBasicMaterial({ color: 0x080808 }));
+    hole.position.set(-0.06 + bh * 0.06, 1.66, 0.06); g.add(hole);
+  }
+  // Helmet crest (plume)
+  const crestColor = isPlayer ? color : new THREE.Color(color).getHex();
+  const crestMat = new THREE.MeshStandardMaterial({ color: crestColor, roughness: 0.7 });
+  const crest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.3, 1, 2, 4), crestMat);
+  crest.position.set(0, 1.95, 0.3); g.add(crest);
+  // Crest flowing back
+  const crestTail = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.08, 0.2), crestMat);
+  crestTail.position.set(0, 1.88, 0.52); crestTail.rotation.x = 0.3; g.add(crestTail);
 
-  // cape (team color, flows behind rider)
-  const capeMat = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, side: THREE.DoubleSide });
-  const capeGeo = new THREE.PlaneGeometry(0.4, 0.6, 1, 3);
+  // Cape (team color, wider with more segments for better flow)
+  const capeMat = new THREE.MeshStandardMaterial({ color, roughness: 0.65, metalness: 0, side: THREE.DoubleSide });
+  const capeGeo = new THREE.PlaneGeometry(0.55, 0.8, 3, 6);
   const cape = new THREE.Mesh(capeGeo, capeMat);
-  cape.name = "cape"; cape.position.set(0, 1.3, 0.65); cape.rotation.x = 0.3; g.add(cape);
+  cape.name = "cape"; cape.position.set(0, 1.25, 0.72); cape.rotation.x = 0.25; g.add(cape);
+  // Cape clasp at neck
+  const capeClasp = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), goldMat);
+  capeClasp.position.set(0, 1.55, 0.5); g.add(capeClasp);
 
-  // whip arm
-  const whipArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 1.2, 4), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.7 }));
+  // Whip arm
+  const whipArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 1.2, 6), new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.7 }));
   whipArm.name = "whip"; whipArm.position.set(0.3, 1.5, -0.3); whipArm.rotation.x = Math.PI / 2; whipArm.visible = false; g.add(whipArm);
 
   return g;
@@ -2495,9 +2701,14 @@ export class ChariotGame {
       const hw = pt.width / 2;
 
       if (Math.abs(lateral) > hw) {
-        racer.pos.copy(pt.pos).add(pt.right.clone().multiplyScalar(Math.sign(lateral) * hw));
-        racer.speed *= 0.55;
+        // Push racer inward (not just to edge — slightly inside to prevent sticking)
+        racer.pos.copy(pt.pos).add(pt.right.clone().multiplyScalar(Math.sign(lateral) * (hw - 0.5)));
+        racer.speed *= 0.7;
         racer.damage = Math.min(DAMAGE_MAX, racer.damage + WALL_DAMAGE);
+        // Deflect angle away from wall so racers don't keep grinding against it
+        const wallNormalAngle = Math.atan2(pt.right.x, pt.right.z) * -Math.sign(lateral);
+        const angleDiff = racer.angle - wallNormalAngle;
+        racer.angle -= angleDiff * 0.3;
         if (racer.isPlayer) {
           this._spawnSparks(racer.pos.clone(), 8);
           this._shakeIntensity = Math.max(this._shakeIntensity, 0.2);

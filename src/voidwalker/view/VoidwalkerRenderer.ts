@@ -248,19 +248,19 @@ export class VoidwalkerRenderer {
   // ---------------------------------------------------------------------------
   private _drawBackground(g: Graphics, state: VWState, sw: number, sh: number): void {
     const t = state.time;
-    // Deep void black-purple
-    g.rect(0, 0, sw, sh).fill({ color: 0x050008 });
+    // Deep void purple
+    g.rect(0, 0, sw, sh).fill({ color: 0x120020 });
     // Void nebula washes
-    g.rect(0, 0, sw, sh * 0.4).fill({ color: 0x0a0018, alpha: 0.4 });
-    g.circle(sw * 0.15, sh * 0.12, 160).fill({ color: 0x110022, alpha: 0.25 });
-    g.circle(sw * 0.75, sh * 0.18, 200).fill({ color: 0x0d001a, alpha: 0.2 });
+    g.rect(0, 0, sw, sh * 0.4).fill({ color: 0x1a0030, alpha: 0.4 });
+    g.circle(sw * 0.15, sh * 0.12, 160).fill({ color: 0x220044, alpha: 0.25 });
+    g.circle(sw * 0.75, sh * 0.18, 200).fill({ color: 0x1a0033, alpha: 0.2 });
     // Void rift in sky — glowing tear
     const riftX = sw * 0.5, riftY = sh * 0.08;
     const riftPulse = 0.15 + Math.sin(t * 1.2) * 0.06;
-    g.circle(riftX, riftY, 55).fill({ color: 0x220044, alpha: riftPulse * 0.4 });
-    g.circle(riftX, riftY, 35).fill({ color: 0x440088, alpha: riftPulse * 0.6 });
-    g.circle(riftX, riftY, 18).fill({ color: 0x6622cc, alpha: riftPulse });
-    g.circle(riftX, riftY, 8).fill({ color: 0x9944ff, alpha: 0.9 });
+    g.circle(riftX, riftY, 55).fill({ color: 0x330066, alpha: riftPulse * 0.5 });
+    g.circle(riftX, riftY, 35).fill({ color: 0x5500aa, alpha: riftPulse * 0.7 });
+    g.circle(riftX, riftY, 18).fill({ color: 0x8833ee, alpha: riftPulse });
+    g.circle(riftX, riftY, 8).fill({ color: 0xbb66ff, alpha: 0.9 });
     // Stars — cold white-blue in void sky
     const parallaxX = (state.playerX - sw / 2) * 0.015;
     const parallaxY = (state.playerY - sh / 2) * 0.015;
@@ -268,7 +268,7 @@ export class VoidwalkerRenderer {
       const sx = ((si * 197 + 53) % sw) - parallaxX * (1 + si * 0.015);
       const sy = ((si * 311 + 97) % (sh * 0.45)) - parallaxY * (1 + si * 0.015);
       const sBright = ((si * 73) % 5) / 5;
-      const sFlicker = 0.08 + sBright * 0.18 + Math.sin(t * (0.4 + si * 0.07) + si) * 0.05;
+      const sFlicker = 0.15 + sBright * 0.3 + Math.sin(t * (0.4 + si * 0.07) + si) * 0.08;
       const starColor = si % 3 === 0 ? 0x9988ff : si % 3 === 1 ? 0xaaaaff : 0xccccff;
       g.circle(sx, sy, 0.5 + sBright * 0.5).fill({ color: starColor, alpha: sFlicker });
     }
@@ -280,10 +280,10 @@ export class VoidwalkerRenderer {
       g.circle(mx, my, 1.8).fill({ color: 0x8844ff, alpha: mAlpha });
       g.circle(mx, my, 4.5).fill({ color: 0x6622cc, alpha: mAlpha * 0.2 });
     }
-    // Dark vignette edges
+    // Subtle vignette edges
     for (let r = 3; r > 0; r--) {
       const vr = Math.max(sw, sh) * (0.4 + r * 0.13);
-      g.circle(sw / 2, sh / 2, vr).fill({ color: 0x000000, alpha: 0.06 });
+      g.circle(sw / 2, sh / 2, vr).fill({ color: 0x000000, alpha: 0.03 });
     }
   }
 
@@ -294,21 +294,21 @@ export class VoidwalkerRenderer {
     const { arenaW: aw, arenaH: ah } = state;
     const t = state.time;
     const cx = aw / 2, cy = ah / 2;
-    // Dark void floor
-    g.rect(0, 0, aw, ah).fill({ color: 0x08000f });
+    // Void floor
+    g.rect(0, 0, aw, ah).fill({ color: 0x140028 });
     // Hex/void tile grid
     const tileSize = 32;
     for (let tx = 0; tx < aw; tx += tileSize) {
       for (let ty = 0; ty < ah; ty += tileSize) {
         const txi = Math.floor(tx / tileSize), tyi = Math.floor(ty / tileSize);
-        const shade = (txi + tyi) % 2 === 0 ? 0x0b0018 : 0x09001a;
+        const shade = (txi + tyi) % 2 === 0 ? 0x1a0030 : 0x160035;
         const variation = ((txi * 73 + tyi * 137) % 5) * 0.003;
-        g.rect(tx, ty, tileSize, tileSize).fill({ color: shade, alpha: 0.6 + variation });
-        g.moveTo(tx, ty).lineTo(tx + tileSize, ty).stroke({ color: 0x110022, width: 0.5, alpha: 0.3 });
+        g.rect(tx, ty, tileSize, tileSize).fill({ color: shade, alpha: 0.7 + variation });
+        g.moveTo(tx, ty).lineTo(tx + tileSize, ty).stroke({ color: 0x2a0044, width: 0.5, alpha: 0.4 });
       }
     }
     // Void energy ambient glow from center
-    g.circle(cx, cy, Math.min(aw, ah) * 0.38).fill({ color: 0x1a0033, alpha: 0.1 + Math.sin(t * 0.7) * 0.03 });
+    g.circle(cx, cy, Math.min(aw, ah) * 0.38).fill({ color: 0x2a0055, alpha: 0.12 + Math.sin(t * 0.7) * 0.03 });
     // Combat intensity
     const aliveCount = state.enemies.filter(e => e.alive).length;
     if (aliveCount > 4) {
