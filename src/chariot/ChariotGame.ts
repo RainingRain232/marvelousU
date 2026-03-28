@@ -50,16 +50,16 @@ const WHIP_DURATION = 0.6;
 const WHIP_COOLDOWN = 3.0;
 
 // camera
-const CAM_DIST = 12;
-const CAM_HEIGHT = 5.5;
+const CAM_DIST = 16;
+const CAM_HEIGHT = 7.5;
 const CAM_SMOOTH = 4;
-const CAM_LOOK_AHEAD = 6;
-const CAM_BASE_FOV = 60;
+const CAM_LOOK_AHEAD = 10;
+const CAM_BASE_FOV = 68;
 const CAM_SPEED_FOV_ADD = 15; // max extra FOV at top speed
 const CAM_BOOST_FOV_ADD = 10; // extra FOV during boost
 
 // track generation
-const TRACK_WIDTH = 14;
+const TRACK_WIDTH = 18;
 const WALL_HEIGHT = 2.5;
 
 // power-ups
@@ -94,7 +94,7 @@ const WEATHER_VIS: Record<Weather, [number, number]> = { // [fogNear, fogFar]
 
 // damage
 const DAMAGE_MAX = 100;
-const WALL_DAMAGE = 15;
+const WALL_DAMAGE = 8;
 const COLLISION_DAMAGE = 8;
 const DAMAGE_SPEED_PENALTY = 0.25; // 25% speed loss at max damage
 
@@ -1380,6 +1380,7 @@ export class ChariotGame {
       </div>
       <div id="ch-leaderboard" style="position:absolute;top:50px;left:30px;font-size:12px;color:#888;line-height:1.7;"></div>
       <div id="ch-wrongway" style="position:absolute;top:35%;left:50%;transform:translateX(-50%);font-size:36px;font-weight:bold;color:#ff2222;text-shadow:0 0 20px rgba(255,0,0,0.6);opacity:0;transition:opacity 0.2s;">WRONG WAY!</div>
+      <div id="ch-turn-indicator" style="position:absolute;top:50%;right:30px;transform:translateY(-50%);font-size:48px;color:rgba(218,165,32,0.5);text-shadow:0 0 10px rgba(218,165,32,0.3);opacity:0;transition:opacity 0.3s;pointer-events:none;"></div>
       <div id="ch-vignette" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity 0.3s;background:radial-gradient(ellipse at center,transparent 50%,rgba(255,120,0,0.25) 100%);"></div>
       <div id="ch-announcer" style="position:absolute;top:18%;left:50%;transform:translateX(-50%);font-size:20px;font-weight:bold;color:#fff;text-shadow:0 0 15px rgba(255,255,255,0.5),0 2px 4px rgba(0,0,0,0.8);opacity:0;transition:opacity 0.3s;text-align:center;letter-spacing:2px;pointer-events:none;"></div>
       <div id="ch-slipstream" style="position:absolute;bottom:110px;left:50%;transform:translateX(-50%);font-size:11px;color:#66bbff;opacity:0;transition:opacity 0.3s;letter-spacing:1px;">SLIPSTREAM!</div>
@@ -1578,6 +1579,34 @@ export class ChariotGame {
 
     // wrong-way
     this._hudWrongWay.style.opacity = this._wrongWay ? String(0.6 + Math.sin(this._time * 8) * 0.4) : "0";
+
+    // Turn indicator — look ahead on track to show upcoming turn direction
+    const turnEl = document.getElementById("ch-turn-indicator");
+    if (turnEl && this._track) {
+      const lookAheadPts = 25; // look ~25 track points ahead
+      const currentIdx = p.lastTrackIdx ?? 0;
+      const aheadIdx = (currentIdx + lookAheadPts) % this._track.points.length;
+      const currentPt = this._track.points[currentIdx];
+      const aheadPt = this._track.points[aheadIdx];
+      if (currentPt && aheadPt) {
+        // Calculate turn angle between current direction and look-ahead direction
+        const dx = aheadPt.pos.x - currentPt.pos.x;
+        const dz = aheadPt.pos.z - currentPt.pos.z;
+        const aheadAngle = Math.atan2(dx, dz);
+        let turnDelta = aheadAngle - p.angle;
+        while (turnDelta > Math.PI) turnDelta -= Math.PI * 2;
+        while (turnDelta < -Math.PI) turnDelta += Math.PI * 2;
+
+        if (Math.abs(turnDelta) > 0.3) {
+          turnEl.style.opacity = String(Math.min(0.8, Math.abs(turnDelta) * 0.8));
+          turnEl.textContent = turnDelta > 0 ? "⟶" : "⟵";
+          turnEl.style.right = turnDelta > 0 ? "30px" : "";
+          turnEl.style.left = turnDelta > 0 ? "" : "30px";
+        } else {
+          turnEl.style.opacity = "0";
+        }
+      }
+    }
 
     // boost vignette
     const boosting = p.boostTimer > 0 || p.driftBoostTimer > 0 || p.whipTimer > 0;
@@ -1972,6 +2001,51 @@ export class ChariotGame {
       clGeo.setIndex(centerIdx);
       clGeo.computeVertexNormals();
       this._trackMesh.add(new THREE.Mesh(clGeo, new THREE.MeshBasicMaterial({ vertexColors: true })));
+    }
+
+    // Edge guide lines (bright yellow lines along inner edges of curb)
+    for (const side of [-1, 1]) {
+      const edgeVerts: number[] = [];
+      const edgeColors: number[] = [];
+      const edgeIdx: number[] = [];
+      const EDGE_W = 0.12;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        const hw = p.width / 2 - 0.3;
+        const l = p.pos.clone().add(p.right.clone().multiplyScalar(side * hw - EDGE_W));
+        const r = p.pos.clone().add(p.right.clone().multiplyScalar(side * hw + EDGE_W));
+        l.y += 0.035; r.y += 0.035;
+        const vi = edgeVerts.length / 3;
+        edgeVerts.push(l.x, l.y, l.z, r.x, r.y, r.z);
+        edgeColors.push(0.9, 0.8, 0.2, 0.9, 0.8, 0.2);
+        if (vi >= 2) edgeIdx.push(vi - 2, vi - 1, vi, vi - 1, vi + 1, vi);
+      }
+      if (edgeVerts.length > 0) {
+        const eGeo = new THREE.BufferGeometry();
+        eGeo.setAttribute("position", new THREE.Float32BufferAttribute(edgeVerts, 3));
+        eGeo.setAttribute("color", new THREE.Float32BufferAttribute(edgeColors, 3));
+        eGeo.setIndex(edgeIdx); eGeo.computeVertexNormals();
+        this._trackMesh.add(new THREE.Mesh(eGeo, new THREE.MeshBasicMaterial({ vertexColors: true })));
+      }
+    }
+
+    // Direction arrows on the road surface every 30 track points
+    for (let i = 0; i < pts.length; i += 30) {
+      const p = pts[i];
+      const arrowMat = new THREE.MeshBasicMaterial({ color: 0xccccaa, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+      // Arrow shape: triangle pointing in track direction
+      const arrowGeo = new THREE.BufferGeometry();
+      const fwd = p.dir.clone().multiplyScalar(1.5);
+      const side = p.right.clone().multiplyScalar(0.8);
+      const tip = p.pos.clone().add(fwd); tip.y += 0.04;
+      const bl = p.pos.clone().sub(fwd).sub(side); bl.y += 0.04;
+      const br = p.pos.clone().sub(fwd).add(side); br.y += 0.04;
+      arrowGeo.setAttribute("position", new THREE.Float32BufferAttribute([
+        tip.x, tip.y, tip.z, bl.x, bl.y, bl.z, br.x, br.y, br.z,
+      ], 3));
+      arrowGeo.setIndex([0, 1, 2]);
+      arrowGeo.computeVertexNormals();
+      this._trackMesh.add(new THREE.Mesh(arrowGeo, arrowMat));
     }
 
     // barriers / walls with stone texture
@@ -3200,7 +3274,7 @@ export class ChariotGame {
     // camera position
     const camAngleDir = this._rearView ? -1 : 1;
     // offset camera slightly to the outside of turns for better visibility
-    const turnOffset = p.steer * 1.5 * speedPct;
+    const turnOffset = p.steer * 3.0 * speedPct;
     const camAngle = p.angle;
     const behindX = p.pos.x - Math.sin(camAngle) * dynDist * camAngleDir + Math.cos(camAngle) * turnOffset;
     const behindZ = p.pos.z - Math.cos(camAngle) * dynDist * camAngleDir - Math.sin(camAngle) * turnOffset;
@@ -3225,7 +3299,7 @@ export class ChariotGame {
     }
 
     // look-ahead: further at speed, leads into turns
-    const dynLookAhead = CAM_LOOK_AHEAD + speedPct * 3;
+    const dynLookAhead = CAM_LOOK_AHEAD + speedPct * 5;
     const lookDir = this._rearView ? -1 : 1;
     const lookTarget = new THREE.Vector3(
       p.pos.x + Math.sin(p.angle) * dynLookAhead * lookDir,
