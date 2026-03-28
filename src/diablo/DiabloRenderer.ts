@@ -260,7 +260,7 @@ export class DiabloRenderer {
     this._scene.background = new THREE.Color(0x2a4a2a); // default green, overridden per-map by fog color
 
     this._camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 600);
-    this._camera.position.set(12, 18, 12);
+    this._camera.position.set(14.4, 21.6, 14.4);
     this._camera.lookAt(0, 0, 0);
 
     this._ambientLight = new THREE.AmbientLight(0x404060, 0.6);
@@ -3081,9 +3081,9 @@ export class DiabloRenderer {
         this._camera.fov = 50;
         this._camera.updateProjectionMatrix();
       }
-      const camTargetX = state.player.x + 12 + this._shakeOffsetX;
-      const camTargetY = 18 + this._shakeOffsetY;
-      const camTargetZ = state.player.z + 12 + this._shakeOffsetZ;
+      const camTargetX = state.player.x + 14.4 + this._shakeOffsetX;
+      const camTargetY = 21.6 + this._shakeOffsetY;
+      const camTargetZ = state.player.z + 14.4 + this._shakeOffsetZ;
       const lerpSpeed = 3.0 * dt;
       this._camera.position.x += (camTargetX - this._camera.position.x) * Math.min(lerpSpeed, 1);
       this._camera.position.y += (camTargetY - this._camera.position.y) * Math.min(lerpSpeed, 1);
