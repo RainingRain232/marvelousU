@@ -46,7 +46,7 @@ export class KothRenderer {
   }
 
   getArenaOffset(sw: number): { ox: number; oy: number } {
-    return { ox: (sw - KothConfig.ARENA_W) / 2, oy: 70 };
+    return { ox: Math.max(10, (sw - KothConfig.ARENA_W) / 2), oy: 65 };
   }
 
   draw(state: KothState, sw: number, sh: number): void {
@@ -90,26 +90,69 @@ export class KothRenderer {
   }
 
   private _drawArena(state: KothState, ox: number, oy: number, sw: number, sh: number): void {
-    this._bg.rect(0, 0, sw, sh).fill({ color: 0x0a0806 });
-    this._bg.rect(ox, oy, KothConfig.ARENA_W, KothConfig.ARENA_H).fill({ color: 0x1a2218 });
+    const aw = KothConfig.ARENA_W, ah = KothConfig.ARENA_H;
+
+    // Screen background
+    this._bg.rect(0, 0, sw, sh).fill({ color: 0x080806 });
+
+    // Arena base with gradient bands
+    this._bg.rect(ox, oy, aw, ah).fill({ color: 0x1a2218 });
+    // Gradient strips for depth
+    for (let i = 0; i < 6; i++) {
+      const bandH = ah / 6;
+      const alpha = 0.03 + i * 0.01;
+      this._bg.rect(ox, oy + i * bandH, aw, bandH).fill({ color: i % 2 === 0 ? 0x1e2a1c : 0x182016, alpha });
+    }
+
+    // Terrain noise (grass patches, dirt spots)
     const th = (x: number, y: number) => { let h = x * 374761 + y * 668265; h = (h ^ (h >> 13)) * 127413; return ((h ^ (h >> 16)) >>> 0) / 4294967296; };
-    for (let gx = 0; gx < KothConfig.ARENA_W; gx += 20) {
-      for (let gy = 0; gy < KothConfig.ARENA_H; gy += 20) {
+    for (let gx = 0; gx < aw; gx += 16) {
+      for (let gy = 0; gy < ah; gy += 16) {
         const h = th(gx, gy);
-        if (h > 0.7) this._bg.rect(ox + gx, oy + gy, 20, 20).fill({ color: h > 0.85 ? 0x223320 : 0x1e2a1c, alpha: 0.3 });
+        if (h > 0.6) {
+          const col = h > 0.9 ? 0x2a3a22 : h > 0.8 ? 0x253520 : h > 0.7 ? 0x1e2c1a : 0x222e1e;
+          this._bg.rect(ox + gx, oy + gy, 16, 16).fill({ color: col, alpha: 0.35 });
+        }
+        // Dirt patches
+        if (h < 0.12) {
+          this._bg.circle(ox + gx + 8, oy + gy + 8, 5 + h * 20).fill({ color: 0x2a2218, alpha: 0.2 });
+        }
       }
     }
-    this._bg.rect(ox, oy, KothConfig.ARENA_W, KothConfig.ARENA_H).stroke({ color: 0x444433, width: 2 });
-    const { SPAWN_OFFSET, ARENA_H: ah } = KothConfig;
-    this._bg.circle(ox + SPAWN_OFFSET, oy + ah / 2, 25).fill({ color: 0x4488cc, alpha: 0.1 });
-    this._bg.circle(ox + SPAWN_OFFSET, oy + ah / 2, 25).stroke({ color: 0x4488cc, width: 1, alpha: 0.3 });
-    this._bg.circle(ox + KothConfig.ARENA_W - SPAWN_OFFSET, oy + ah / 2, 25).fill({ color: 0xcc4444, alpha: 0.1 });
-    this._bg.circle(ox + KothConfig.ARENA_W - SPAWN_OFFSET, oy + ah / 2, 25).stroke({ color: 0xcc4444, width: 1, alpha: 0.3 });
 
-    // War Horn active aura when active
+    // Grass tufts scattered
+    for (let i = 0; i < 80; i++) {
+      const gx = th(i * 137, 42) * aw;
+      const gy = th(i * 97, 73) * ah;
+      const gs = 2 + th(i, i) * 4;
+      this._bg.ellipse(ox + gx, oy + gy, gs, gs * 0.4).fill({ color: 0x2a4a22, alpha: 0.25 });
+    }
+
+    // Subtle path/trail marks
+    this._bg.moveTo(ox + aw * 0.15, oy + ah * 0.5)
+      .lineTo(ox + aw * 0.5, oy + ah * 0.48)
+      .lineTo(ox + aw * 0.85, oy + ah * 0.5)
+      .stroke({ color: 0x2a2a1a, width: 12, alpha: 0.15 });
+
+    // Arena border (double line)
+    this._bg.rect(ox + 1, oy + 1, aw - 2, ah - 2).stroke({ color: 0x555544, width: 1, alpha: 0.4 });
+    this._bg.rect(ox, oy, aw, ah).stroke({ color: 0x666655, width: 2 });
+
+    // Spawn zones (larger, more detailed)
+    const { SPAWN_OFFSET } = KothConfig;
+    // Blue spawn
+    this._bg.circle(ox + SPAWN_OFFSET, oy + ah / 2, 35).fill({ color: 0x4488cc, alpha: 0.06 });
+    this._bg.circle(ox + SPAWN_OFFSET, oy + ah / 2, 35).stroke({ color: 0x4488cc, width: 1.5, alpha: 0.25 });
+    this._bg.circle(ox + SPAWN_OFFSET, oy + ah / 2, 20).stroke({ color: 0x4488cc, width: 0.5, alpha: 0.15 });
+    // Red spawn
+    this._bg.circle(ox + aw - SPAWN_OFFSET, oy + ah / 2, 35).fill({ color: 0xcc4444, alpha: 0.06 });
+    this._bg.circle(ox + aw - SPAWN_OFFSET, oy + ah / 2, 35).stroke({ color: 0xcc4444, width: 1.5, alpha: 0.25 });
+    this._bg.circle(ox + aw - SPAWN_OFFSET, oy + ah / 2, 20).stroke({ color: 0xcc4444, width: 0.5, alpha: 0.15 });
+
+    // War Horn aura
     if (state.warHornTimer > 0) {
       const pulse = 0.08 + Math.sin(Date.now() / 150) * 0.04;
-      this._bg.rect(ox, oy, KothConfig.ARENA_W, KothConfig.ARENA_H).fill({ color: 0xffcc44, alpha: pulse });
+      this._bg.rect(ox, oy, aw, ah).fill({ color: 0xffcc44, alpha: pulse });
     }
   }
 
@@ -304,55 +347,96 @@ export class KothRenderer {
 
   private _drawUnitShape(x: number, y: number, s: number, color: number, shape: string, angle?: number): void {
     const g = this._entityGfx;
-    const a = angle ?? 0; // facing angle
+    const sc = s * 1.3; // scale up slightly for detail
+    const a = angle ?? 0;
     const cos = Math.cos(a), sin = Math.sin(a);
-    const rot = (px: number, py: number) => [x + px * cos - py * sin, y + px * sin + py * cos] as const;
+    const rot = (px: number, py: number): [number, number] => [x + px * cos - py * sin, y + px * sin + py * cos];
 
+    // Body (rounded torso)
+    g.roundRect(x - sc * 0.5, y - sc * 0.6, sc, sc * 1.2, sc * 0.2).fill({ color });
+    // Body highlight
+    g.roundRect(x - sc * 0.35, y - sc * 0.5, sc * 0.3, sc * 0.15, 1).fill({ color: 0xffffff, alpha: 0.12 });
+
+    // Head
+    const headY = y - sc * 0.9;
+    g.circle(x, headY, sc * 0.35).fill({ color: 0xffcc99 });
+    // Eyes (facing direction)
+    const [ex, ey] = rot(sc * 0.12, 0);
+    g.circle(ex, headY - sc * 0.05, sc * 0.06).fill({ color: 0x222222 });
+
+    // Weapon/class detail
     switch (shape) {
       case "diamond": {
-        const [x0, y0] = rot(s, 0); // point in facing direction
-        const [x1, y1] = rot(0, s * 0.6);
-        const [x2, y2] = rot(-s * 0.6, 0);
-        const [x3, y3] = rot(0, -s * 0.6);
-        g.moveTo(x0, y0).lineTo(x1, y1).lineTo(x2, y2).lineTo(x3, y3).closePath().fill({ color });
+        // Cavalry — lance pointing forward + horse ear shapes
+        const [lx, ly] = rot(sc * 1.2, 0);
+        const [lb, lby] = rot(sc * 0.3, 0);
+        g.moveTo(lb, lby).lineTo(lx, ly).stroke({ color: 0xccccdd, width: 2 });
+        // Shield on side
+        const [sx2, sy2] = rot(0, -sc * 0.5);
+        g.circle(sx2, sy2, sc * 0.25).fill({ color, alpha: 0.8 });
+        g.circle(sx2, sy2, sc * 0.25).stroke({ color: 0xffd700, width: 1 });
         break;
       }
-      case "square":
-        g.rect(x - s * 0.7, y - s * 0.7, s * 1.4, s * 1.4).fill({ color });
+      case "square": {
+        // Pikeman — long spear + square shield
+        const [lx, ly] = rot(sc * 1.5, 0);
+        const [lb, lby] = rot(sc * 0.2, 0);
+        g.moveTo(lb, lby).lineTo(lx, ly).stroke({ color: 0x887766, width: 1.5 });
+        // Spearhead
+        g.circle(lx, ly, sc * 0.12).fill({ color: 0xccccdd });
+        // Shield
+        const [sx2, sy2] = rot(-sc * 0.15, -sc * 0.3);
+        g.roundRect(sx2 - sc * 0.2, sy2 - sc * 0.3, sc * 0.4, sc * 0.6, 2).fill({ color });
+        g.roundRect(sx2 - sc * 0.2, sy2 - sc * 0.3, sc * 0.4, sc * 0.6, 2).stroke({ color: 0x888888, width: 1 });
         break;
+      }
       case "triangle": {
-        // Points in facing direction
-        const [x0, y0] = rot(s, 0); // tip
-        const [x1, y1] = rot(-s * 0.6, s * 0.7);
-        const [x2, y2] = rot(-s * 0.6, -s * 0.7);
-        g.moveTo(x0, y0).lineTo(x1, y1).lineTo(x2, y2).closePath().fill({ color });
+        // Archer/Crossbow — bow drawn
+        const [bx, by] = rot(sc * 0.5, 0);
+        g.arc(bx, by, sc * 0.5, a - 0.8, a + 0.8).stroke({ color: 0x886644, width: 1.5 });
+        // Arrow
+        const [ax, ay] = rot(sc * 1.0, 0);
+        g.moveTo(bx, by).lineTo(ax, ay).stroke({ color: 0xcccccc, width: 1 });
+        // Quiver on back
+        const [qx, qy] = rot(-sc * 0.4, sc * 0.2);
+        g.roundRect(qx - 1, qy - sc * 0.3, 3, sc * 0.5, 1).fill({ color: 0x664422 });
         break;
       }
       case "star": {
-        const inner = s * 0.45;
-        const startAngle = a - Math.PI / 2;
-        g.moveTo(x + Math.cos(startAngle) * s, y + Math.sin(startAngle) * s);
-        for (let i = 1; i < 8; i++) {
-          const sa = startAngle + (i / 8) * Math.PI * 2;
-          const r = i % 2 === 0 ? s : inner;
-          g.lineTo(x + Math.cos(sa) * r, y + Math.sin(sa) * r);
-        }
-        g.closePath().fill({ color });
+        // Mage — staff with orb
+        const [sx2, sy2] = rot(sc * 0.8, sc * 0.15);
+        g.moveTo(x, y + sc * 0.3).lineTo(sx2, sy2 - sc * 0.8).stroke({ color: 0x553322, width: 1.5 });
+        // Orb glow
+        g.circle(sx2, sy2 - sc * 0.85, sc * 0.15).fill({ color: 0x8866ff, alpha: 0.8 });
+        g.circle(sx2, sy2 - sc * 0.85, sc * 0.25).fill({ color: 0x6644cc, alpha: 0.2 });
+        // Robe hem
+        g.roundRect(x - sc * 0.55, y + sc * 0.3, sc * 1.1, sc * 0.3, 2).fill({ color });
         break;
       }
       case "hex": {
-        const startAngle = a;
-        g.moveTo(x + Math.cos(startAngle) * s, y + Math.sin(startAngle) * s);
-        for (let i = 1; i < 6; i++) {
-          const ha = startAngle + (i / 6) * Math.PI * 2;
-          g.lineTo(x + Math.cos(ha) * s, y + Math.sin(ha) * s);
-        }
-        g.closePath().fill({ color });
+        // Paladin — shield + sword + halo
+        const [sx2, sy2] = rot(sc * 0.8, 0);
+        g.moveTo(x, y - sc * 0.2).lineTo(sx2, sy2 - sc * 0.1).stroke({ color: 0xddddee, width: 2 });
+        // Shield
+        const [shx, shy] = rot(-sc * 0.2, -sc * 0.3);
+        g.circle(shx, shy, sc * 0.3).fill({ color: 0xffd700 });
+        g.moveTo(shx, shy - sc * 0.2).lineTo(shx, shy + sc * 0.2).stroke({ color: 0xcc2222, width: 1.5 });
+        g.moveTo(shx - sc * 0.15, shy).lineTo(shx + sc * 0.15, shy).stroke({ color: 0xcc2222, width: 1.5 });
+        // Halo
+        g.circle(x, headY - sc * 0.3, sc * 0.2).stroke({ color: 0xffd700, width: 1, alpha: 0.5 });
         break;
       }
-      default:
-        g.circle(x, y, s).fill({ color });
+      default: {
+        // Swordsman — sword + small shield
+        const [sx2, sy2] = rot(sc * 0.9, -sc * 0.1);
+        g.moveTo(x, y).lineTo(sx2, sy2).stroke({ color: 0xccccdd, width: 1.5 });
+        // Crossguard
+        const [cx2, cy2] = rot(sc * 0.3, -sc * 0.05);
+        g.moveTo(cx2 - sin * sc * 0.15, cy2 + cos * sc * 0.15)
+          .lineTo(cx2 + sin * sc * 0.15, cy2 - cos * sc * 0.15)
+          .stroke({ color: 0x888888, width: 1.5 });
         break;
+      }
     }
   }
 

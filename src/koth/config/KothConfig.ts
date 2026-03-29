@@ -213,14 +213,14 @@ export const VET_MAX_LEVEL = 3;
 export const VET_COLORS = [0x000000, 0xcccc88, 0xffdd44, 0xff6644]; // border glow per level
 
 export const KothConfig = {
-  // Arena
-  ARENA_W: 800,
-  ARENA_H: 600,
+  // Arena (scales to fill screen, these are logical coords)
+  ARENA_W: Math.max(1200, typeof window !== "undefined" ? window.innerWidth - 40 : 1200),
+  ARENA_H: Math.max(700, typeof window !== "undefined" ? window.innerHeight - 100 : 700),
 
-  // Hill zone
-  HILL_RADIUS: 80,
-  HILL_CENTER_X: 400,
-  HILL_CENTER_Y: 300,
+  // Hill zone (centered)
+  HILL_RADIUS: 100,
+  get HILL_CENTER_X() { return this.ARENA_W / 2; },
+  get HILL_CENTER_Y() { return this.ARENA_H / 2; },
 
   // Capture meter
   CAPTURE_RATE: 15,
