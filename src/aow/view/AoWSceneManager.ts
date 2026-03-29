@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import * as THREE from "three";
+import davinciBg from "../../diablo/davinci.jpg";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
@@ -129,6 +130,24 @@ export class AoWSceneManager {
     this._rimLight = new THREE.DirectionalLight(0x4466aa, 0.3);
     this._rimLight.position.set(-15, 10, -20);
     this.scene.add(this._rimLight);
+
+    // Background plane with davinci image beneath the hex grid
+    const bgLoader = new THREE.TextureLoader();
+    bgLoader.load(davinciBg, (tex) => {
+      tex.wrapS = THREE.MirroredRepeatWrapping;
+      tex.wrapT = THREE.MirroredRepeatWrapping;
+      tex.repeat.set(2, 2);
+      const bgMat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.12,
+        depthWrite: false,
+      });
+      const bgPlane = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), bgMat);
+      bgPlane.rotation.x = -Math.PI / 2;
+      bgPlane.position.y = -0.5;
+      this.scene.add(bgPlane);
+    });
 
     // Add groups
     this.scene.add(this.terrainGroup);
