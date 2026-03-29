@@ -16,7 +16,7 @@ const TS = B.TILE_SIZE;
 const FONT = "Georgia, serif";
 
 function mkStyle(opts: Partial<TextStyle>): TextStyle {
-  return new TextStyle({ fontFamily: FONT, ...opts } as any);
+  return new TextStyle({ fontFamily: FONT, ...opts, fontSize: ((opts.fontSize as number) || 10) * 3 } as any);
 }
 
 function lerpColor(a: number, b: number, t: number): number {

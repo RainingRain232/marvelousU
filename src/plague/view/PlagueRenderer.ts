@@ -16,7 +16,7 @@ import { getAvailableActions, getInfectionStats } from "../systems/PlagueSystem"
 
 const TS = PlagueConfig.TILE_SIZE;
 const FONT = "Georgia, serif";
-function mkStyle(opts: Partial<TextStyle>): TextStyle { return new TextStyle({ fontFamily: FONT, ...opts } as any); }
+function mkStyle(opts: Partial<TextStyle>): TextStyle { return new TextStyle({ fontFamily: FONT, ...opts, fontSize: ((opts.fontSize as number) || 10) * 3 } as any); }
 
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: number; size: number; }
 
