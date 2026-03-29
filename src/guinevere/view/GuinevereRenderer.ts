@@ -993,179 +993,321 @@ export class GuinevereRenderer {
 
     switch (enemy.type) {
       case "wisp": {
-        const core = new THREE.Mesh(
-          new THREE.SphereGeometry(0.5, 16, 12),
-          new THREE.MeshStandardMaterial({ color: 0x88ddff, emissive: 0x44aaff, emissiveIntensity: 0.8, transparent: true, opacity: 0.8 })
-        );
-        core.position.y = 1;
-        group.add(core);
-        // Trail wisps
-        for (let i = 0; i < 3; i++) {
-          const trail = new THREE.Mesh(
-            new THREE.SphereGeometry(0.2, 12, 10),
-            new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.5 })
-          );
-          trail.position.set(Math.sin(i * TAU / 3) * 0.5, 0.8, Math.cos(i * TAU / 3) * 0.5);
+        // Ethereal orb with layered glow
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 16),
+          new THREE.MeshStandardMaterial({ color: 0x88ddff, emissive: 0x44aaff, emissiveIntensity: 0.8, transparent: true, opacity: 0.8 }));
+        core.position.y = 1; group.add(core);
+        // Inner bright core
+        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10),
+          new THREE.MeshBasicMaterial({ color: 0xeeffff, transparent: true, opacity: 0.9 }));
+        inner.position.y = 1; group.add(inner);
+        // Outer aura
+        const aura = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 12),
+          new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.1, depthWrite: false }));
+        aura.position.y = 1; group.add(aura);
+        // Orbiting trail wisps
+        for (let i = 0; i < 5; i++) {
+          const trail = new THREE.Mesh(new THREE.SphereGeometry(0.12 + i * 0.02, 10, 8),
+            new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.4 - i * 0.05 }));
+          trail.position.set(Math.sin(i * TAU / 5) * 0.6, 0.7 + i * 0.1, Math.cos(i * TAU / 5) * 0.6);
           group.add(trail);
         }
+        // Sparkle ring
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.02, 8, 20),
+          new THREE.MeshBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 0.3 }));
+        ring.position.y = 1; ring.rotation.x = Math.PI / 2; group.add(ring);
+        // Light
+        const wLight = new THREE.PointLight(0x44aaff, 0.4, 6);
+        wLight.position.y = 1; group.add(wLight);
         break;
       }
       case "crawler": {
-        const body = new THREE.Mesh(
-          new THREE.BoxGeometry(1, 0.6, 1.4),
-          new THREE.MeshStandardMaterial({ color: 0x553388, roughness: 0.6, emissive: 0x221144, emissiveIntensity: 0 })
-        );
-        body.position.y = 0.4;
-        group.add(body);
-        // Eyes
-        for (const sx of [-0.3, 0.3]) {
-          const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 12, 10),
-            new THREE.MeshBasicMaterial({ color: 0xff44ff })
-          );
-          eye.position.set(sx, 0.6, 0.6);
-          group.add(eye);
+        const cMat = new THREE.MeshStandardMaterial({ color: 0x553388, roughness: 0.6 });
+        const cDark = new THREE.MeshStandardMaterial({ color: 0x442266, roughness: 0.7 });
+        // Segmented body
+        const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 0.6, 10, 16), cMat);
+        torso.position.y = 0.5; torso.rotation.z = Math.PI / 2; group.add(torso);
+        // Head
+        const cHead = new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 10), cMat);
+        cHead.position.set(0, 0.5, 0.65); group.add(cHead);
+        // Mandibles
+        for (const sx of [-1, 1]) {
+          const mand = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 8), cDark);
+          mand.position.set(sx * 0.2, 0.4, 0.9); mand.rotation.x = 0.8;
+          group.add(mand);
         }
-        // Legs
-        for (let i = 0; i < 4; i++) {
-          const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.06, 0.06, 0.5, 10),
-            new THREE.MeshStandardMaterial({ color: 0x442266 })
-          );
-          leg.position.set(i < 2 ? -0.5 : 0.5, 0.1, i % 2 === 0 ? 0.3 : -0.3);
-          leg.rotation.z = i < 2 ? 0.3 : -0.3;
-          group.add(leg);
+        // Eyes (4 compound eyes)
+        for (const [ex, ey] of [[-0.15, 0.6], [0.15, 0.6], [-0.22, 0.5], [0.22, 0.5]]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff44ff }));
+          eye.position.set(ex, ey, 0.85); group.add(eye);
+        }
+        // Legs (6 spider-like)
+        for (let i = 0; i < 6; i++) {
+          const side = i < 3 ? -1 : 1;
+          const zOff = (i % 3 - 1) * 0.4;
+          // Upper leg
+          const uLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 8), cDark);
+          uLeg.position.set(side * 0.45, 0.5, zOff); uLeg.rotation.z = side * 0.6;
+          group.add(uLeg);
+          // Lower leg
+          const lLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.4, 8), cDark);
+          lLeg.position.set(side * 0.75, 0.15, zOff); lLeg.rotation.z = side * -0.3;
+          group.add(lLeg);
+        }
+        // Abdomen
+        const abd = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), cDark);
+        abd.position.set(0, 0.45, -0.5); group.add(abd);
+        // Poison markings
+        for (let pm = 0; pm < 3; pm++) {
+          const mark = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xaa22ff, transparent: true, opacity: 0.5 }));
+          mark.position.set((pm - 1) * 0.15, 0.55, -0.4); group.add(mark);
         }
         break;
       }
       case "stag": {
-        const body = new THREE.Mesh(
-          new THREE.BoxGeometry(1, 1.2, 2),
-          new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.7, emissive: 0x221111, emissiveIntensity: 0 })
-        );
-        body.position.y = 1;
-        group.add(body);
-        // Antlers
-        for (const sx of [-0.4, 0.4]) {
-          const antler = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 1.2, 10),
-            new THREE.MeshStandardMaterial({ color: 0x554433, metalness: 0.3 })
-          );
-          antler.position.set(sx, 2, 0.3);
-          antler.rotation.z = sx > 0 ? -0.3 : 0.3;
-          group.add(antler);
+        const sMat = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.7 });
+        const sDark = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.8 });
+        // Body (capsule, more organic)
+        const sBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.45, 1.2, 10, 16), sMat);
+        sBody.position.set(0, 1.1, 0); sBody.rotation.z = Math.PI / 2; group.add(sBody);
+        // Chest
+        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), sMat);
+        chest.position.set(0, 1.2, 0.5); group.add(chest);
+        // Neck
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.6, 12), sMat);
+        neck.position.set(0, 1.6, 0.6); neck.rotation.x = -0.3; group.add(neck);
+        // Head
+        const sHead = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.3, 10, 14), sMat);
+        sHead.position.set(0, 1.9, 0.85); sHead.rotation.x = 0.3; group.add(sHead);
+        // Snout
+        const snout = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.2, 8, 10), sDark);
+        snout.position.set(0, 1.8, 1.1); snout.rotation.x = 0.5; group.add(snout);
+        // Eyes
+        for (const sx of [-0.15, 0.15]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffcc44 }));
+          eye.position.set(sx, 1.95, 0.95); group.add(eye);
         }
-        // Legs
+        // Ears
+        for (const sx of [-0.2, 0.2]) {
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 8), sMat);
+          ear.position.set(sx, 2.15, 0.75); ear.rotation.z = sx > 0 ? -0.3 : 0.3;
+          group.add(ear);
+        }
+        // Antlers (branching)
+        const antlerMat = new THREE.MeshStandardMaterial({ color: 0x665544, metalness: 0.2, roughness: 0.6 });
+        for (const sx of [-1, 1]) {
+          // Main beam
+          const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 1.0, 8), antlerMat);
+          beam.position.set(sx * 0.25, 2.4, 0.7); beam.rotation.z = sx * -0.4;
+          group.add(beam);
+          // Tine 1
+          const t1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.5, 6), antlerMat);
+          t1.position.set(sx * 0.35, 2.6, 0.65); t1.rotation.z = sx * -0.7;
+          group.add(t1);
+          // Tine 2
+          const t2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.35, 6), antlerMat);
+          t2.position.set(sx * 0.15, 2.7, 0.8); t2.rotation.z = sx * -0.2;
+          group.add(t2);
+        }
+        // Legs (4, with joints)
         for (let i = 0; i < 4; i++) {
-          const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 1, 10),
-            new THREE.MeshStandardMaterial({ color: 0x332211 })
-          );
-          leg.position.set(i < 2 ? -0.35 : 0.35, 0.15, i % 2 === 0 ? 0.6 : -0.6);
-          group.add(leg);
+          const lx = i < 2 ? -0.3 : 0.3;
+          const lz = i % 2 === 0 ? 0.45 : -0.45;
+          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.55, 10), sMat);
+          upper.position.set(lx, 0.65, lz); group.add(upper);
+          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.5, 10), sDark);
+          lower.position.set(lx, 0.2, lz); group.add(lower);
+          // Hoof
+          const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 8),
+            new THREE.MeshStandardMaterial({ color: 0x222211 }));
+          hoof.position.set(lx, -0.02, lz); group.add(hoof);
         }
+        // Tail
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 8), sMat);
+        tail.position.set(0, 1.1, -0.7); tail.rotation.x = -0.5; group.add(tail);
         break;
       }
       case "moth": {
-        const body = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.25, 0.8, 4, 6),
-          new THREE.MeshStandardMaterial({ color: 0x88aa44, roughness: 0.5, emissive: 0x446622, emissiveIntensity: 0 })
-        );
-        body.position.y = GUIN.MOTH_FLY_HEIGHT;
-        group.add(body);
-        // Wings
+        const mFly = GUIN.MOTH_FLY_HEIGHT;
+        const mMat = new THREE.MeshStandardMaterial({ color: 0x88aa44, roughness: 0.5 });
+        // Segmented body (head + thorax + abdomen)
+        const thorax = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.4, 10, 14), mMat);
+        thorax.position.y = mFly; group.add(thorax);
+        const abdomen = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.5, 8, 12),
+          new THREE.MeshStandardMaterial({ color: 0x77993a, roughness: 0.6 }));
+        abdomen.position.set(0, mFly, 0.4); group.add(abdomen);
+        const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), mMat);
+        mHead.position.set(0, mFly + 0.05, -0.4); group.add(mHead);
+        // Antennae
         for (const sx of [-1, 1]) {
-          const wing = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.5, 1),
-            new THREE.MeshStandardMaterial({
-              color: 0xaaff44, emissive: 0x66aa22, emissiveIntensity: 0.3,
-              side: THREE.DoubleSide, transparent: true, opacity: 0.7,
-            })
-          );
-          wing.position.set(sx * 0.8, GUIN.MOTH_FLY_HEIGHT, 0);
-          wing.rotation.z = sx * 0.3;
-          group.add(wing);
+          const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 0.5, 6),
+            new THREE.MeshStandardMaterial({ color: 0x556622 }));
+          ant.position.set(sx * 0.1, mFly + 0.3, -0.5); ant.rotation.z = sx * 0.4;
+          group.add(ant);
+          const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xaaff44 }));
+          tip.position.set(sx * 0.25, mFly + 0.5, -0.55); group.add(tip);
+        }
+        // Eyes
+        for (const sx of [-0.08, 0.08]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffaa22 }));
+          eye.position.set(sx, mFly + 0.08, -0.55); group.add(eye);
+        }
+        // Wings (double-layered, with veins)
+        const wingMat = new THREE.MeshStandardMaterial({ color: 0xaaff44, emissive: 0x66aa22, emissiveIntensity: 0.3, side: THREE.DoubleSide, transparent: true, opacity: 0.65 });
+        const wingInner = new THREE.MeshStandardMaterial({ color: 0x88dd33, emissive: 0x558822, emissiveIntensity: 0.2, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+        for (const sx of [-1, 1]) {
+          // Forewing
+          const fw = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1, 4, 3), wingMat);
+          fw.position.set(sx * 0.9, mFly + 0.1, -0.1); fw.rotation.z = sx * 0.25;
+          group.add(fw);
+          // Hindwing
+          const hw = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.7, 3, 2), wingInner);
+          hw.position.set(sx * 0.7, mFly - 0.1, 0.2); hw.rotation.z = sx * 0.35;
+          group.add(hw);
+          // Wing vein
+          const vein = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.015, 0.015),
+            new THREE.MeshBasicMaterial({ color: 0x446622, transparent: true, opacity: 0.4 }));
+          vein.position.set(sx * 0.8, mFly + 0.12, -0.1); vein.rotation.z = sx * 0.2;
+          group.add(vein);
+        }
+        // Wing spots (eye patterns)
+        for (const sx of [-1, 1]) {
+          const spot = new THREE.Mesh(new THREE.CircleGeometry(0.15, 12),
+            new THREE.MeshBasicMaterial({ color: 0x224488, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+          spot.position.set(sx * 1.0, mFly + 0.13, -0.15); group.add(spot);
+          const spotInner = new THREE.Mesh(new THREE.CircleGeometry(0.06, 10),
+            new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
+          spotInner.position.set(sx * 1.0, mFly + 0.14, -0.16); group.add(spotInner);
+        }
+        // Legs
+        for (let li = 0; li < 6; li++) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 6),
+            new THREE.MeshStandardMaterial({ color: 0x556622 }));
+          leg.position.set((li % 2 === 0 ? -0.1 : 0.1), mFly - 0.3, -0.2 + (Math.floor(li / 2)) * 0.2);
+          group.add(leg);
         }
         break;
       }
       case "shambler": {
-        // Bulky mushroom body
-        const shBody = new THREE.Mesh(
-          new THREE.SphereGeometry(0.7, 16, 12),
-          new THREE.MeshStandardMaterial({ color: 0x556633, roughness: 0.8, emissive: 0x224411, emissiveIntensity: 0 })
-        );
-        shBody.position.y = 0.7;
-        group.add(shBody);
-        // Mushroom cap
-        const cap = new THREE.Mesh(
-          new THREE.SphereGeometry(0.5, 16, 12),
-          new THREE.MeshStandardMaterial({ color: 0x338866, emissive: 0x22aa66, emissiveIntensity: 0.3, roughness: 0.5 })
-        );
-        cap.position.y = 1.4;
-        cap.scale.set(1.3, 0.6, 1.3);
-        group.add(cap);
-        // Spore dots
-        for (let sp = 0; sp < 5; sp++) {
-          const spore = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 12, 10),
-            new THREE.MeshBasicMaterial({ color: 0xaaff88 })
-          );
-          const a = (sp / 5) * TAU;
-          spore.position.set(Math.cos(a) * 0.5, 0.6 + Math.random() * 0.6, Math.sin(a) * 0.5);
+        const shMat = new THREE.MeshStandardMaterial({ color: 0x556633, roughness: 0.8 });
+        const shDark = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.85 });
+        // Trunk body
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 0.9, 14), shDark);
+        trunk.position.y = 0.5; group.add(trunk);
+        // Bulbous upper body
+        const upper = new THREE.Mesh(new THREE.SphereGeometry(0.6, 18, 14), shMat);
+        upper.position.y = 1.1; group.add(upper);
+        // Mushroom cap (with detail)
+        const capMat = new THREE.MeshStandardMaterial({ color: 0x338866, emissive: 0x22aa66, emissiveIntensity: 0.3, roughness: 0.5 });
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.7, 20, 14, 0, TAU, 0, Math.PI * 0.5), capMat);
+        cap.position.y = 1.65; cap.scale.set(1.2, 0.5, 1.2); group.add(cap);
+        // Cap underside (gills)
+        const gills = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.06, 20),
+          new THREE.MeshStandardMaterial({ color: 0x557755, roughness: 0.7 }));
+        gills.position.y = 1.45; group.add(gills);
+        // Bioluminescent spots on cap
+        for (let sp = 0; sp < 8; sp++) {
+          const a = (sp / 8) * TAU;
+          const spore = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xaaff88, transparent: true, opacity: 0.6 }));
+          spore.position.set(Math.cos(a) * 0.45, 1.5 + Math.random() * 0.2, Math.sin(a) * 0.45);
           group.add(spore);
         }
-        // Stubby legs
-        for (let l = 0; l < 3; l++) {
-          const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.1, 0.1, 0.4, 10),
-            new THREE.MeshStandardMaterial({ color: 0x443322 })
-          );
-          const a = (l / 3) * TAU;
-          leg.position.set(Math.cos(a) * 0.4, 0.1, Math.sin(a) * 0.4);
+        // Eyes (tucked in body)
+        for (const sx of [-0.2, 0.2]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8),
+            new THREE.MeshBasicMaterial({ color: 0x66ff66 }));
+          eye.position.set(sx, 0.95, 0.45); group.add(eye);
+        }
+        // Stubby root-like legs (5)
+        for (let l = 0; l < 5; l++) {
+          const a = (l / 5) * TAU;
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.35, 10), shDark);
+          leg.position.set(Math.cos(a) * 0.35, 0.15, Math.sin(a) * 0.35);
           group.add(leg);
         }
+        // Moss patches
+        for (let mp = 0; mp < 4; mp++) {
+          const a = Math.random() * TAU;
+          const moss = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6),
+            new THREE.MeshStandardMaterial({ color: 0x448833, roughness: 0.9, transparent: true, opacity: 0.6 }));
+          moss.position.set(Math.cos(a) * 0.4, 0.6 + Math.random() * 0.4, Math.sin(a) * 0.4);
+          group.add(moss);
+        }
+        // Spore cloud (point light)
+        const sporeLight = new THREE.PointLight(0x44ff44, 0.2, 4);
+        sporeLight.position.y = 1.3; group.add(sporeLight);
         break;
       }
       case "wither_lord": {
-        // Large dark figure
-        const body = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.8, 1.2, 3, 8),
-          new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.3, emissive: 0x220033, emissiveIntensity: 0 })
-        );
-        body.position.y = 1.5;
-        group.add(body);
-        // Head
-        const head = new THREE.Mesh(
-          new THREE.SphereGeometry(0.6, 16, 12),
-          new THREE.MeshStandardMaterial({ color: 0x110022, emissive: 0x440066, emissiveIntensity: 0.5 })
-        );
-        head.position.y = 3.3;
-        group.add(head);
-        // Eyes
-        for (const sx of [-0.2, 0.2]) {
-          const eye = new THREE.Mesh(
-            new THREE.SphereGeometry(0.15, 12, 10),
-            new THREE.MeshBasicMaterial({ color: 0xff0044 })
-          );
-          eye.position.set(sx, 3.5, 0.4);
-          group.add(eye);
+        const wMat = new THREE.MeshStandardMaterial({ color: 0x220033, roughness: 0.3 });
+        const wDark = new THREE.MeshStandardMaterial({ color: 0x110022, roughness: 0.4 });
+        // Robed body (layered)
+        const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.4, 3, 16), wMat);
+        robe.position.y = 1.5; group.add(robe);
+        const robeInner = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 1.2, 2.8, 14), wDark);
+        robeInner.position.y = 1.5; group.add(robeInner);
+        // Hood
+        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12, 0, TAU, 0, Math.PI * 0.7), wMat);
+        hood.position.y = 3.3; group.add(hood);
+        // Face (sunken, skeletal)
+        const face = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 10), wDark);
+        face.position.set(0, 3.2, 0.2); group.add(face);
+        // Eyes (glowing)
+        for (const sx of [-0.15, 0.15]) {
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8),
+            new THREE.MeshBasicMaterial({ color: 0x220000 }));
+          eyeSocket.position.set(sx, 3.35, 0.5); group.add(eyeSocket);
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff0044 }));
+          eye.position.set(sx, 3.35, 0.55); group.add(eye);
         }
-        // Crown of thorns
-        const crownGeo = new THREE.TorusGeometry(0.5, 0.08, 10, 8);
-        const crown = new THREE.Mesh(crownGeo, new THREE.MeshStandardMaterial({ color: 0x442200, metalness: 0.6 }));
-        crown.position.y = 3.8;
-        crown.rotation.x = Math.PI / 2;
-        group.add(crown);
-        // Arms / tendrils
+        // Crown of thorns (detailed)
+        const thornMat = new THREE.MeshStandardMaterial({ color: 0x442200, metalness: 0.6, roughness: 0.5 });
+        const crown2 = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 12, 16), thornMat);
+        crown2.position.y = 3.75; crown2.rotation.x = Math.PI / 2; group.add(crown2);
+        for (let ti = 0; ti < 8; ti++) {
+          const ta = (ti / 8) * TAU;
+          const thorn = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.2, 6), thornMat);
+          thorn.position.set(Math.cos(ta) * 0.5, 3.85, Math.sin(ta) * 0.5);
+          thorn.rotation.z = Math.cos(ta) * 0.5; thorn.rotation.x = Math.sin(ta) * 0.5;
+          group.add(thorn);
+        }
+        // Arms (skeletal with clawed hands)
         for (const sx of [-1, 1]) {
-          const arm = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.08, 2, 10),
-            new THREE.MeshStandardMaterial({ color: 0x220033 })
-          );
-          arm.position.set(sx * 1.2, 2, 0);
-          arm.rotation.z = sx * 0.5;
-          group.add(arm);
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 1.2, 10), wMat);
+          upperArm.position.set(sx * 1.0, 2.5, 0); upperArm.rotation.z = sx * 0.4;
+          group.add(upperArm);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 1.0, 10), wDark);
+          forearm.position.set(sx * 1.4, 1.8, 0.2); forearm.rotation.z = sx * 0.6;
+          group.add(forearm);
+          // Clawed fingers
+          for (let fi = 0; fi < 3; fi++) {
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2, 6), thornMat);
+            claw.position.set(sx * 1.55 + fi * sx * 0.05, 1.3, 0.2 + fi * 0.06);
+            claw.rotation.x = 0.5; group.add(claw);
+          }
         }
+        // Dark aura sphere
+        const wAura = new THREE.Mesh(new THREE.SphereGeometry(1.8, 16, 12),
+          new THREE.MeshBasicMaterial({ color: 0x440066, transparent: true, opacity: 0.06, depthWrite: false }));
+        wAura.position.y = 2; group.add(wAura);
+        // Floating rune particles
+        for (let ri = 0; ri < 4; ri++) {
+          const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.08, 0),
+            new THREE.MeshBasicMaterial({ color: 0xaa00ff, transparent: true, opacity: 0.5 }));
+          const ra = (ri / 4) * TAU;
+          rune.position.set(Math.cos(ra) * 1.2, 2 + ri * 0.3, Math.sin(ra) * 1.2);
+          group.add(rune);
+        }
+        // Glow
+        const wLight = new THREE.PointLight(0x8800ff, 0.4, 8);
+        wLight.position.y = 2; group.add(wLight);
         break;
       }
     }
