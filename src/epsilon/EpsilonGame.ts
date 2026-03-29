@@ -574,13 +574,33 @@ export class EpsilonGame {
     this._playerShadow.position.y = 0.01;
     this._scene.add(this._playerShadow);
 
+    // starfield (distant stars above and around)
+    const starCount = 400;
+    const starPositions = new Float32Array(starCount * 3);
+    const starSizes = new Float32Array(starCount);
+    for (let i = 0; i < starCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI;
+      const sr = 60 + Math.random() * 40;
+      starPositions[i * 3] = Math.sin(phi) * Math.cos(theta) * sr;
+      starPositions[i * 3 + 1] = Math.cos(phi) * sr * 0.6 + 10;
+      starPositions[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * sr;
+      starSizes[i] = 0.05 + Math.random() * 0.15;
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+    starGeo.setAttribute("size", new THREE.BufferAttribute(starSizes, 1));
+    this._scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+      color: 0xccccff, size: 0.12, transparent: true, opacity: 0.6, depthWrite: false, sizeAttenuation: true,
+    })));
+
     // void particles (cosmic dust in the abyss below)
-    const voidCount = 500;
+    const voidCount = 800;
     this._voidPositions = new Float32Array(voidCount * 3);
     for (let i = 0; i < voidCount; i++) {
-      this._voidPositions[i * 3] = (Math.random() - 0.5) * 80;
-      this._voidPositions[i * 3 + 1] = -2 - Math.random() * 30;
-      this._voidPositions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+      this._voidPositions[i * 3] = (Math.random() - 0.5) * 100;
+      this._voidPositions[i * 3 + 1] = -2 - Math.random() * 40;
+      this._voidPositions[i * 3 + 2] = (Math.random() - 0.5) * 100;
     }
     const voidGeo = new THREE.BufferGeometry();
     voidGeo.setAttribute("position", new THREE.BufferAttribute(this._voidPositions, 3));
@@ -589,38 +609,85 @@ export class EpsilonGame {
     }));
     this._scene.add(this._voidParticles);
 
-    // nebula clouds (large translucent colored planes floating in the void)
-    const nebulaColors = [0x4422aa, 0x662288, 0x2244aa, 0x882266, 0x224488];
-    for (let ni = 0; ni < 8; ni++) {
-      const nw = 8 + Math.random() * 15, nh = 6 + Math.random() * 10;
+    // nebula clouds (larger, more varied, layered)
+    const nebulaColors = [0x4422aa, 0x662288, 0x2244aa, 0x882266, 0x224488, 0x3344cc, 0x993388];
+    for (let ni = 0; ni < 14; ni++) {
+      const nw = 10 + Math.random() * 20, nh = 8 + Math.random() * 14;
       const nebMat = new THREE.MeshBasicMaterial({
         color: nebulaColors[ni % nebulaColors.length],
-        transparent: true, opacity: 0.06 + Math.random() * 0.04,
+        transparent: true, opacity: 0.04 + Math.random() * 0.05,
         side: THREE.DoubleSide, depthWrite: false,
       });
       const neb = new THREE.Mesh(new THREE.PlaneGeometry(nw, nh), nebMat);
       const na = Math.random() * Math.PI * 2;
-      const nr = 20 + Math.random() * 25;
-      neb.position.set(Math.cos(na) * nr, -5 - Math.random() * 15, Math.sin(na) * nr);
+      const nr = 18 + Math.random() * 30;
+      const ny = ni < 7 ? -5 - Math.random() * 20 : 5 + Math.random() * 15;
+      neb.position.set(Math.cos(na) * nr, ny, Math.sin(na) * nr);
       neb.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.3);
       this._scene.add(neb);
       this._nebulae.push(neb);
     }
 
-    // distant floating ruin chunks
-    for (let ri = 0; ri < 6; ri++) {
-      const ra = (ri / 6) * Math.PI * 2 + Math.random() * 0.5;
-      const rd = 22 + Math.random() * 10;
-      const ruinGeo = new THREE.BoxGeometry(0.5 + Math.random() * 1.5, 0.3 + Math.random() * 1.0, 0.5 + Math.random() * 1.5);
-      const ruinMat = new THREE.MeshStandardMaterial({
-        color: 0x2a2a35, roughness: 0.9, metalness: 0.1,
-        emissive: 0x110022, emissiveIntensity: 0.3,
-      });
-      const ruin = new THREE.Mesh(ruinGeo, ruinMat);
-      ruin.position.set(Math.cos(ra) * rd, -1 - Math.random() * 4, Math.sin(ra) * rd);
-      ruin.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.3);
-      this._scene.add(ruin);
-      this._ruinChunks.push(ruin);
+    // distant floating ruin chunks (more, varied shapes)
+    const ruinMat = new THREE.MeshStandardMaterial({
+      color: 0x2a2a35, roughness: 0.9, metalness: 0.1,
+      emissive: 0x110022, emissiveIntensity: 0.3,
+    });
+    for (let ri = 0; ri < 12; ri++) {
+      const ra = (ri / 12) * Math.PI * 2 + Math.random() * 0.5;
+      const rd = 20 + Math.random() * 15;
+      const ruinGroup = new THREE.Group();
+      // main block
+      const mainBlock = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5 + Math.random() * 2, 0.3 + Math.random() * 1.5, 0.5 + Math.random() * 2),
+        ruinMat
+      );
+      ruinGroup.add(mainBlock);
+      // smaller debris attached
+      for (let d = 0; d < 2 + Math.floor(Math.random() * 3); d++) {
+        const debris = new THREE.Mesh(
+          new THREE.BoxGeometry(0.2 + Math.random() * 0.5, 0.2 + Math.random() * 0.4, 0.2 + Math.random() * 0.5),
+          ruinMat
+        );
+        debris.position.set((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.5);
+        debris.rotation.set(Math.random(), Math.random(), Math.random());
+        ruinGroup.add(debris);
+      }
+      // faint rune glow on some ruins
+      if (Math.random() > 0.5) {
+        const runeGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3),
+          new THREE.MeshBasicMaterial({ color: 0x6644cc, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false }));
+        runeGlow.position.set(0, 0, 0.8);
+        ruinGroup.add(runeGlow);
+      }
+      ruinGroup.position.set(Math.cos(ra) * rd, -1 - Math.random() * 6, Math.sin(ra) * rd);
+      ruinGroup.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.3);
+      this._scene.add(ruinGroup);
+      this._ruinChunks.push(ruinGroup);
+    }
+
+    // distant broken arches (arcane gateway fragments)
+    for (let ai = 0; ai < 4; ai++) {
+      const aa = (ai / 4) * Math.PI * 2 + 0.4;
+      const ad = 35 + Math.random() * 10;
+      const archGroup = new THREE.Group();
+      const archMat = new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.8, metalness: 0.2, emissive: 0x110022, emissiveIntensity: 0.2 });
+      // left pillar
+      const lp = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 0.6), archMat);
+      lp.position.set(-1.5, 2, 0);
+      archGroup.add(lp);
+      // right pillar (broken/shorter)
+      const rp = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.5, 0.6), archMat);
+      rp.position.set(1.5, 1.25, 0);
+      archGroup.add(rp);
+      // lintel (broken, tilted)
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.4, 0.5), archMat);
+      lintel.position.set(0, 3.8, 0);
+      lintel.rotation.z = 0.15;
+      archGroup.add(lintel);
+      archGroup.position.set(Math.cos(aa) * ad, -3 + Math.random() * 2, Math.sin(aa) * ad);
+      archGroup.rotation.y = aa + Math.PI / 2;
+      this._scene.add(archGroup);
     }
 
     // platform underglow (emissive ring beneath the platform)
@@ -702,24 +769,70 @@ export class EpsilonGame {
     }));
     this._scene.add(this._spellParticles);
 
-    // rune pillars at platform edge (decorative)
+    // rune pillars at platform edge (decorative, detailed)
+    const pillarStoneMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.7, metalness: 0.3 });
+    const pillarDarkMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.8, metalness: 0.2 });
+    const pillarGoldMat = new THREE.MeshStandardMaterial({ color: 0xaa8844, roughness: 0.3, metalness: 0.7, emissive: 0x442200, emissiveIntensity: 0.3 });
     for (let p = 0; p < 6; p++) {
       const angle = (p / 6) * Math.PI * 2;
       const px = Math.cos(angle) * (PLATFORM_RADIUS - 0.3);
       const pz = Math.sin(angle) * (PLATFORM_RADIUS - 0.3);
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.0, 12),
-        new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.7, metalness: 0.3 }));
-      pillar.position.set(px, 1.0, pz);
-      pillar.castShadow = true;
-      this._scene.add(pillar);
-      // glowing orb on top
+      // base plinth (wider square)
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.7), pillarDarkMat);
+      base.position.set(px, 0.1, pz);
+      this._scene.add(base);
+      // base molding
+      const baseMold = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.35, 0.15, 12), pillarStoneMat);
+      baseMold.position.set(px, 0.28, pz);
+      this._scene.add(baseMold);
+      // main shaft (fluted column)
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 1.5, 12), pillarStoneMat);
+      shaft.position.set(px, 1.1, pz);
+      shaft.castShadow = true;
+      this._scene.add(shaft);
+      // fluting grooves
+      for (let fl = 0; fl < 6; fl++) {
+        const fa = (fl / 6) * Math.PI * 2;
+        const groove = new THREE.Mesh(new THREE.BoxGeometry(0.015, 1.3, 0.04), pillarDarkMat);
+        groove.position.set(px + Math.cos(fa) * 0.2, 1.1, pz + Math.sin(fa) * 0.2);
+        groove.rotation.y = fa;
+        this._scene.add(groove);
+      }
+      // capital (ornate top)
+      const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.22, 0.2, 12), pillarStoneMat);
+      capital.position.set(px, 1.95, pz);
+      this._scene.add(capital);
+      // capital scroll detail
+      const scroll = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.025, 6, 12), pillarGoldMat);
+      scroll.rotation.x = Math.PI / 2;
+      scroll.position.set(px, 1.9, pz);
+      this._scene.add(scroll);
+      // rune band on shaft
+      const runeBand = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 6, 12), pillarGoldMat);
+      runeBand.rotation.x = Math.PI / 2;
+      runeBand.position.set(px, 0.8, pz);
+      this._scene.add(runeBand);
+      // glowing orb on top (larger, with cradle)
+      for (let c = 0; c < 3; c++) {
+        const ca = (c / 3) * Math.PI * 2;
+        const prong = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.18, 0.02), pillarGoldMat);
+        prong.position.set(px + Math.cos(ca) * 0.08, 2.15, pz + Math.sin(ca) * 0.08);
+        prong.rotation.z = Math.cos(ca) * 0.3;
+        prong.rotation.x = Math.sin(ca) * 0.3;
+        this._scene.add(prong);
+      }
       const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12),
         new THREE.MeshStandardMaterial({ color: 0x8866dd, emissive: 0x6644cc, emissiveIntensity: 1.5, roughness: 1, metalness: 0 }));
       orb.position.set(px, 2.2, pz);
       this._scene.add(orb);
       this._pillarOrbs.push(orb);
-      // point light
-      const pl = new THREE.PointLight(0x6644cc, 1.0, 8, 1.5);
+      // orb glow aura
+      const orbGlow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8),
+        new THREE.MeshBasicMaterial({ color: 0x6644cc, transparent: true, opacity: 0.08, depthWrite: false }));
+      orbGlow.position.set(px, 2.2, pz);
+      this._scene.add(orbGlow);
+      // point light (slightly reduced for performance)
+      const pl = new THREE.PointLight(0x6644cc, 0.8, 6, 1.5);
       pl.position.set(px, 2.5, pz);
       this._scene.add(pl);
     }
@@ -1251,16 +1364,54 @@ export class EpsilonGame {
   private _buildPlayerMesh(): void {
     if (this._playerMesh) this._scene.remove(this._playerMesh);
     const g = new THREE.Group();
-    // robe body
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, 1.2, 8),
-      new THREE.MeshStandardMaterial({ color: 0x2a1a44, roughness: 0.8, metalness: 0.1 }));
+    const robeMat = new THREE.MeshStandardMaterial({ color: 0x2a1a44, roughness: 0.8, metalness: 0.1 });
+    const robeDarkMat = new THREE.MeshStandardMaterial({ color: 0x221144, roughness: 0.85, metalness: 0.05 });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0x331155, roughness: 0.8, metalness: 0.1, emissive: 0x220044, emissiveIntensity: 0.3 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.3, metalness: 0.7, emissive: 0x554400, emissiveIntensity: 0.2 });
+
+    // robe body (higher poly, layered)
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.42, 1.2, 16), robeMat);
     body.position.y = 0.6; body.castShadow = true;
     g.add(body);
-    // head (hood)
+    // robe outer layer (slightly larger, transparent edges)
+    const outerRobe = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.45, 1.15, 16),
+      new THREE.MeshStandardMaterial({ color: 0x1e1238, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.6 }));
+    outerRobe.position.y = 0.6;
+    g.add(outerRobe);
+    // robe fold lines (vertical seams)
+    for (let f = 0; f < 6; f++) {
+      const fa = (f / 6) * Math.PI * 2;
+      const fold = new THREE.Mesh(new THREE.BoxGeometry(0.015, 1.0, 0.015), robeDarkMat);
+      fold.position.set(Math.cos(fa) * 0.36, 0.55, Math.sin(fa) * 0.36);
+      g.add(fold);
+    }
+    // belt/sash
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.03, 8, 16), goldMat);
+    belt.rotation.x = Math.PI / 2;
+    belt.position.y = 0.85;
+    g.add(belt);
+    // belt buckle
+    const buckle = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 0), goldMat);
+    buckle.position.set(0, 0.85, 0.3);
+    g.add(buckle);
+
+    // head (hood with pointed tip)
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12),
       new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.9, metalness: 0 }));
     head.position.y = 1.35;
     g.add(head);
+    // hood point
+    const hoodPoint = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.9 }));
+    hoodPoint.position.set(0, 1.55, -0.08);
+    hoodPoint.rotation.x = -0.3;
+    g.add(hoodPoint);
+    // hood rim
+    const hoodRim = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 8, 16), trimMat);
+    hoodRim.rotation.x = Math.PI / 2 - 0.3;
+    hoodRim.position.set(0, 1.3, 0.05);
+    g.add(hoodRim);
+
     // glowing eyes
     for (const sx of [-0.06, 0.06]) {
       const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10),
@@ -1268,45 +1419,97 @@ export class EpsilonGame {
       eye.position.set(sx, 1.38, 0.18);
       g.add(eye);
     }
-    // arms (sleeve cylinders extending from body)
+
+    // shoulder pads
+    for (const side of [-1, 1]) {
+      const pad = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), robeDarkMat);
+      pad.scale.set(1.2, 0.6, 1);
+      pad.position.set(side * 0.32, 1.1, 0);
+      g.add(pad);
+      // shoulder trim
+      const sTrim = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 6, 10), goldMat);
+      sTrim.rotation.x = Math.PI / 2;
+      sTrim.position.set(side * 0.32, 1.05, 0);
+      g.add(sTrim);
+    }
+
+    // arms with forearm wraps
     for (const side of [-1, 1]) {
       const armPivot = new THREE.Group();
       armPivot.position.set(side * 0.3, 0.95, 0);
-      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 12),
-        new THREE.MeshStandardMaterial({ color: 0x221144, roughness: 0.85, metalness: 0.05 }));
-      sleeve.position.y = -0.25;
+      // upper sleeve
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.3, 10), robeDarkMat);
+      sleeve.position.y = -0.15;
       sleeve.rotation.z = side * 0.3;
       armPivot.add(sleeve);
-      // hand sphere
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10),
+      // forearm
+      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 0.25, 10), robeMat);
+      forearm.position.set(0, -0.38, 0);
+      forearm.rotation.z = side * 0.2;
+      armPivot.add(forearm);
+      // wrist wrap
+      const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 6, 10), goldMat);
+      wrap.rotation.x = Math.PI / 2;
+      wrap.position.set(0, -0.48, 0);
+      armPivot.add(wrap);
+      // hand
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8),
         new THREE.MeshStandardMaterial({ color: 0x997788, roughness: 0.7, metalness: 0.1 }));
       hand.position.set(0, -0.52, 0);
       armPivot.add(hand);
       g.add(armPivot);
     }
-    // robe hem detail (bottom fringe)
-    const hem = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.03, 10, 16),
-      new THREE.MeshStandardMaterial({ color: 0x331155, roughness: 0.9, metalness: 0, emissive: 0x220044, emissiveIntensity: 0.3 }));
+
+    // robe hem detail (bottom fringe, layered)
+    const hem = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.035, 10, 20), trimMat);
     hem.rotation.x = Math.PI / 2;
     hem.position.y = 0.02;
     g.add(hem);
+    // second hem ring
+    const hem2 = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.02, 8, 16), goldMat);
+    hem2.rotation.x = Math.PI / 2;
+    hem2.position.y = 0.08;
+    g.add(hem2);
     // robe collar
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 10, 12),
-      new THREE.MeshStandardMaterial({ color: 0x331155, roughness: 0.8, metalness: 0.1, emissive: 0x220044, emissiveIntensity: 0.2 }));
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 10, 16), trimMat);
     collar.rotation.x = Math.PI / 2;
     collar.position.y = 1.22;
     g.add(collar);
 
-    // staff
+    // staff (more detailed)
     const staff = new THREE.Group();
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.8, 12),
-      new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.7, metalness: 0.1 }));
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.7, metalness: 0.1 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.8, 10), poleMat);
     pole.position.y = 0.9;
     staff.add(pole);
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0),
-      new THREE.MeshStandardMaterial({ color: 0xff4422, emissive: 0xff4422, emissiveIntensity: 1.5, roughness: 0.2, metalness: 0.5 }));
-    gem.position.y = 1.85;
+    // staff spiral wrap
+    for (let sw = 0; sw < 8; sw++) {
+      const sa = (sw / 8) * Math.PI * 6;
+      const sy = 0.2 + (sw / 8) * 1.5;
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 4), goldMat);
+      knot.position.set(Math.cos(sa) * 0.04, sy, Math.sin(sa) * 0.04);
+      staff.add(knot);
+    }
+    // staff head cradle (metal prongs holding gem)
+    for (let p = 0; p < 4; p++) {
+      const pa = (p / 4) * Math.PI * 2;
+      const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.2, 4),
+        new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.7 }));
+      prong.position.set(Math.cos(pa) * 0.06, 1.78, Math.sin(pa) * 0.06);
+      prong.rotation.z = Math.cos(pa) * 0.3;
+      prong.rotation.x = Math.sin(pa) * 0.3;
+      staff.add(prong);
+    }
+    // gem (larger, faceted)
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 0),
+      new THREE.MeshStandardMaterial({ color: 0xff4422, emissive: 0xff4422, emissiveIntensity: 1.8, roughness: 0.15, metalness: 0.6 }));
+    gem.position.y = 1.88;
     staff.add(gem);
+    // gem glow aura
+    const gemGlow = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff4422, transparent: true, opacity: 0.12, depthWrite: false }));
+    gemGlow.position.y = 1.88;
+    staff.add(gemGlow);
     staff.position.set(0.35, 0, 0.1);
     g.add(staff);
     this._staffMesh = staff;
@@ -1466,33 +1669,87 @@ export class EpsilonGame {
   private _buildEnemyMesh(e: Enemy): void {
     const g = new THREE.Group();
     const color = ENEMY_COLORS[e.type] ?? 0xff3366;
+    const r = e.radius;
     let geo: THREE.BufferGeometry;
-    if (e.type === EnemyType.SEEKER) geo = new THREE.OctahedronGeometry(e.radius, 0);
-    else if (e.type === EnemyType.ORBITER) geo = new THREE.TetrahedronGeometry(e.radius, 0);
-    else if (e.type === EnemyType.DASHER) geo = new THREE.ConeGeometry(e.radius, e.radius * 2, 10);
-    else if (e.type === EnemyType.TITAN) geo = new THREE.IcosahedronGeometry(e.radius, 1);
-    else if (e.type === EnemyType.SPLITTER) geo = new THREE.DodecahedronGeometry(e.radius, 0);
-    else geo = new THREE.IcosahedronGeometry(e.radius, 2); // boss — smooth sphere
+    if (e.type === EnemyType.SEEKER) geo = new THREE.OctahedronGeometry(r, 1);
+    else if (e.type === EnemyType.ORBITER) geo = new THREE.TetrahedronGeometry(r, 1);
+    else if (e.type === EnemyType.DASHER) geo = new THREE.ConeGeometry(r, r * 2, 12);
+    else if (e.type === EnemyType.TITAN) geo = new THREE.IcosahedronGeometry(r, 2);
+    else if (e.type === EnemyType.SPLITTER) geo = new THREE.DodecahedronGeometry(r, 1);
+    else geo = new THREE.IcosahedronGeometry(r, 3);
 
     const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.4, transparent: true, opacity: 0.85 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     g.add(mesh);
-    // wireframe overlay for ethereal holographic look
-    const wireColor = e.isElite ? 0xffd866 : color; // elites have golden wireframe
+
+    // inner core (brighter, smaller)
+    const coreGeo = new THREE.IcosahedronGeometry(r * 0.4, 1);
+    const coreMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 2.0, roughness: 0.1, metalness: 0.5 });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    g.add(core);
+
+    // wireframe overlay
+    const wireColor = e.isElite ? 0xffd866 : color;
     const wireMat = new THREE.MeshBasicMaterial({ color: wireColor, wireframe: true, transparent: true, opacity: e.isElite ? 0.5 : 0.25, depthWrite: false });
     const wire = new THREE.Mesh(geo.clone(), wireMat);
     wire.scale.setScalar(e.isElite ? 1.25 : 1.15);
     g.add(wire);
-    // hp bar (small plane above)
-    const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(e.radius * 2, 0.08),
+
+    // orbital ring (unique per type)
+    if (e.type === EnemyType.ORBITER || e.type === EnemyType.TITAN) {
+      const ringGeo = new THREE.TorusGeometry(r * 1.4, 0.02, 8, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2 + 0.3;
+      g.add(ring);
+    }
+    if (e.type === EnemyType.SEEKER) {
+      // floating eye-like slit
+      const slit = new THREE.Mesh(new THREE.PlaneGeometry(r * 0.6, r * 0.15),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, depthWrite: false, side: THREE.DoubleSide }));
+      slit.position.z = r * 0.85;
+      g.add(slit);
+    }
+    if (e.type === EnemyType.DASHER) {
+      // trailing fin spikes
+      for (let f = 0; f < 3; f++) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, r * 0.4, r * 0.3),
+          new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.6 }));
+        fin.position.set(0, r * 0.3, -r * 0.8 - f * 0.15);
+        fin.rotation.x = -0.2 * f;
+        g.add(fin);
+      }
+    }
+    if (e.type === EnemyType.SPLITTER) {
+      // fracture lines
+      for (let fl = 0; fl < 4; fl++) {
+        const fa = (fl / 4) * Math.PI * 2;
+        const fLine = new THREE.Mesh(new THREE.BoxGeometry(r * 1.6, 0.015, 0.015),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false }));
+        fLine.rotation.y = fa;
+        g.add(fLine);
+      }
+    }
+    // elite crown ring
+    if (e.isElite) {
+      const crownGeo = new THREE.TorusGeometry(r * 0.6, 0.025, 6, 12);
+      const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 1.0, roughness: 0.3, metalness: 0.8 });
+      const crown = new THREE.Mesh(crownGeo, crownMat);
+      crown.rotation.x = Math.PI / 2;
+      crown.position.y = r + 0.15;
+      g.add(crown);
+    }
+
+    // hp bar
+    const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, 0.08),
       new THREE.MeshBasicMaterial({ color: 0x333333, depthWrite: false }));
-    hpBg.position.y = e.radius + 0.5;
-    hpBg.rotation.x = -0.5; // tilt toward camera
+    hpBg.position.y = r + 0.5;
+    hpBg.rotation.x = -0.5;
     g.add(hpBg);
-    const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(e.radius * 2, 0.08),
+    const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, 0.08),
       new THREE.MeshBasicMaterial({ color, depthWrite: false }));
-    hpFill.position.y = e.radius + 0.5;
+    hpFill.position.y = r + 0.5;
     hpFill.rotation.x = -0.5;
     g.add(hpFill);
 
