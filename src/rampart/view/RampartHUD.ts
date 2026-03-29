@@ -246,31 +246,53 @@ export class RampartHUD {
 
     // Pause overlay
     this._pauseOverlay = document.createElement("div");
-    this._pauseOverlay.style.cssText = "pointer-events:auto;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;flex-direction:column;align-items:center;justify-content:center;";
+    this._pauseOverlay.style.cssText = "pointer-events:auto;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;flex-direction:column;align-items:center;justify-content:center;";
     this._root.appendChild(this._pauseOverlay);
 
-    const pauseTitle = document.createElement("div");
-    pauseTitle.style.cssText = "font-size:48px;font-weight:bold;letter-spacing:4px;text-shadow:0 4px 20px rgba(0,0,0,0.9);margin-bottom:24px;";
-    pauseTitle.textContent = "PAUSED";
-    this._pauseOverlay.appendChild(pauseTitle);
+    const pauseBox = document.createElement("div");
+    pauseBox.style.cssText = "background:rgba(15,15,25,0.95);border:2px solid #5588bb;border-radius:12px;padding:32px 40px;max-width:480px;width:90%;text-align:center;";
+    this._pauseOverlay.appendChild(pauseBox);
 
-    const pauseHint = document.createElement("div");
-    pauseHint.style.cssText = "font-size:16px;opacity:0.7;margin-bottom:32px;";
-    pauseHint.textContent = "Press ESC to resume";
-    this._pauseOverlay.appendChild(pauseHint);
+    const pauseTitle = document.createElement("div");
+    pauseTitle.style.cssText = "font-size:42px;font-weight:bold;letter-spacing:4px;text-shadow:0 4px 20px rgba(0,0,0,0.9);margin-bottom:16px;color:#5588bb;";
+    pauseTitle.textContent = "PAUSED";
+    pauseBox.appendChild(pauseTitle);
+
+    const pauseDesc = document.createElement("div");
+    pauseDesc.style.cssText = "font-size:13px;line-height:1.6;color:#aaa;margin-bottom:20px;";
+    pauseDesc.textContent = "3D castle tower defense. Place archer towers, catapults, mage towers and more to defend your castle against 25 waves of medieval invaders.";
+    pauseBox.appendChild(pauseDesc);
+
+    const controlsHeader = document.createElement("div");
+    controlsHeader.style.cssText = "font-size:15px;font-weight:bold;color:#ccc;margin-bottom:10px;letter-spacing:1px;";
+    controlsHeader.textContent = "CONTROLS";
+    pauseBox.appendChild(controlsHeader);
+
+    const controlsList = document.createElement("div");
+    controlsList.style.cssText = "text-align:left;margin:0 auto 24px auto;max-width:320px;font-size:13px;line-height:2;color:#bbb;";
+    controlsList.innerHTML = [
+      ["Click", "Place tower / Select"],
+      ["1-6", "Tower hotkeys"],
+      ["U", "Upgrade selected tower"],
+      ["X", "Sell selected tower"],
+      ["ESC", "Resume"],
+    ].map(([key, desc]) =>
+      `<div><span style="display:inline-block;min-width:60px;color:#ffd700;font-weight:bold;">${key}</span> <span style="color:#999;">\u2014</span> ${desc}</div>`
+    ).join("");
+    pauseBox.appendChild(controlsList);
 
     const resumeBtn = document.createElement("button");
     resumeBtn.textContent = "RESUME";
-    resumeBtn.style.cssText = "pointer-events:auto;background:linear-gradient(180deg,#336699,#224466);color:#fff;border:2px solid #5588bb;padding:12px 36px;font-size:18px;font-weight:bold;cursor:pointer;letter-spacing:2px;border-radius:4px;margin-bottom:12px;";
+    resumeBtn.style.cssText = "pointer-events:auto;background:linear-gradient(180deg,#336699,#224466);color:#fff;border:2px solid #5588bb;padding:12px 36px;font-size:18px;font-weight:bold;cursor:pointer;letter-spacing:2px;border-radius:4px;margin-bottom:12px;width:100%;";
     resumeBtn.onclick = () => { /* toggled via state.paused from game */ };
     resumeBtn.dataset.action = "resume";
-    this._pauseOverlay.appendChild(resumeBtn);
+    pauseBox.appendChild(resumeBtn);
 
     const pauseExitBtn = document.createElement("button");
     pauseExitBtn.textContent = "EXIT TO MENU";
-    pauseExitBtn.style.cssText = "pointer-events:auto;background:#8b0000;color:#fff;border:2px solid #cc4444;padding:10px 30px;font-size:15px;font-weight:bold;cursor:pointer;letter-spacing:1px;border-radius:4px;";
+    pauseExitBtn.style.cssText = "pointer-events:auto;background:#8b0000;color:#fff;border:2px solid #cc4444;padding:10px 30px;font-size:15px;font-weight:bold;cursor:pointer;letter-spacing:1px;border-radius:4px;width:100%;";
     pauseExitBtn.onclick = () => this._onExit?.();
-    this._pauseOverlay.appendChild(pauseExitBtn);
+    pauseBox.appendChild(pauseExitBtn);
 
     // Tower tooltip (shown when a placed tower is selected)
     this._towerTooltip = document.createElement("div");

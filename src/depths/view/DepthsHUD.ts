@@ -202,7 +202,10 @@ export class DepthsHUD {
     this._pauseOverlay = document.createElement("div");
     this._pauseOverlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,15,30,0.85);pointer-events:auto;";
     this._pauseOverlay.innerHTML = `
-      <div style="font-size:36px;color:#44ccff;text-shadow:0 0 20px #0066aa;margin-bottom:30px;">PAUSED</div>
+      <div style="font-size:36px;color:#44ccff;text-shadow:0 0 20px #0066aa;margin-bottom:16px;">PAUSED</div>
+      <div style="font-size:13px;color:#7799aa;margin-bottom:20px;text-align:center;max-width:420px;line-height:1.6;font-style:italic;">
+        Deep-sea descent into the abyss beneath Avalon. Fight pressure-adapted horrors, manage oxygen, discover ancient ruins on the ocean floor. Recover sunken relics of Camelot.
+      </div>
       <div style="font-size:14px;color:#558899;margin-bottom:20px;text-align:center;line-height:1.8;">
         <b>WASD</b> — swim &nbsp; <b>Mouse</b> — look &nbsp; <b>Click/Hold</b> — attack/charge<br>
         <b>Right-click</b> — dash &nbsp; <b>E</b> — harpoon &nbsp; <b>Shift</b> — sprint<br>

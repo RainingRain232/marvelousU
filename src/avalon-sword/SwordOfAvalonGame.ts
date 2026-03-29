@@ -681,7 +681,7 @@ interface Fighter {
   isBoss: boolean;
 }
 
-type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training" | "vs_setup" | "vs_playing" | "vs_result" | "survival" | "replay" | "boss_rush" | "stats";
+type Phase = "title" | "intro" | "playing" | "shop" | "game_over" | "victory" | "tournament_end" | "training" | "vs_setup" | "vs_playing" | "vs_result" | "survival" | "replay" | "boss_rush" | "stats" | "paused";
 
 const ARMOR_PRESETS = [
   { name: "Steel", primary: "#777", accent: "#886622", skin: "#c4a080" },
@@ -813,6 +813,8 @@ export class SwordOfAvalonGame {
   private _titleOverlay: HTMLDivElement | null = null;
   private _resultOverlay: HTMLDivElement | null = null;
   private _shopOverlay: HTMLDivElement | null = null;
+  private _pauseOverlay: HTMLDivElement | null = null;
+  private _pausedPreviousPhase: Phase | null = null;
   private _destroyed = false;
 
   // Weapon selection
@@ -1085,6 +1087,7 @@ export class SwordOfAvalonGame {
     this._achievementsOverlay?.parentNode?.removeChild(this._achievementsOverlay);
     this._bossRushOverlay?.parentNode?.removeChild(this._bossRushOverlay);
     this._statsOverlay?.parentNode?.removeChild(this._statsOverlay);
+    this._pauseOverlay?.parentNode?.removeChild(this._pauseOverlay);
     this._canvas?.parentNode?.removeChild(this._canvas);
     this._stopMusic();
     this._audioCtx?.close().catch(() => {});
@@ -1100,15 +1103,8 @@ export class SwordOfAvalonGame {
 
   private _handleKeyDown(e: KeyboardEvent): void {
     if (e.key === "Escape") {
-      if (this._phase === "training") {
-        this._phase = "title";
-        this._showTitle();
-        return;
-      }
-      if (this._phase === "survival" as Phase) {
-        this._survivalMode = false;
-        this._phase = "title";
-        this._showTitle();
+      if (this._phase === "paused") {
+        this._resumeFromPause();
         return;
       }
       if (this._phase === "replay" as Phase) {
@@ -1116,19 +1112,9 @@ export class SwordOfAvalonGame {
         this._phase = "playing";
         return;
       }
-      if (this._bossRushMode) {
-        this._bossRushMode = false;
-        this._bossRushOverlay?.parentNode?.removeChild(this._bossRushOverlay);
-        this._bossRushOverlay = null;
-        this._phase = "title";
-        this._showTitle();
-        return;
-      }
-      if (this._phase === "vs_playing" as Phase || this._phase === "vs_result" as Phase) {
-        this._vsMode = false;
-        this._player2 = null;
-        this._phase = "title";
-        this._showTitle();
+      const pauseablePhases: Phase[] = ["playing", "training", "survival", "boss_rush", "vs_playing"];
+      if (pauseablePhases.includes(this._phase)) {
+        this._showPauseMenu();
         return;
       }
       this._cleanup(); return;
@@ -1195,6 +1181,76 @@ export class SwordOfAvalonGame {
     for (const k in this._keys) { this._justPressed[k] = this._keys[k] && !this._prevKeys[k]; this._prevKeys[k] = this._keys[k]; }
   }
   private _cleanup(): void { this.destroy(); window.dispatchEvent(new Event("swordOfAvalonExit")); }
+
+  private _showPauseMenu(): void {
+    this._pausedPreviousPhase = this._phase;
+    this._phase = "paused";
+    this._pauseOverlay?.parentNode?.removeChild(this._pauseOverlay);
+    this._pauseOverlay = document.createElement("div");
+    this._pauseOverlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;z-index:70;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(0,0,0,0.82);font-family:Georgia,serif;color:#e0d8c0;`;
+    this._pauseOverlay.innerHTML = `
+      <div style="text-align:center;max-width:560px;padding:32px;">
+        <h1 style="font-size:48px;color:#ffd700;margin:0 0 12px 0;text-shadow:0 0 20px rgba(255,215,0,0.5);letter-spacing:6px;">PAUSED</h1>
+        <p style="font-size:15px;color:#b0a888;margin:0 0 28px 0;line-height:1.5;">
+          2D souls-like sword combat. Duel 8 deadly knights in a torch-lit arena. Master parries, ripostes, combos, dodge rolls, and stance switching.
+        </p>
+        <div style="text-align:left;background:rgba(255,255,255,0.05);border:1px solid rgba(255,215,0,0.15);border-radius:8px;padding:16px 24px;margin:0 0 28px 0;">
+          <div style="font-size:16px;color:#ffd700;margin-bottom:10px;letter-spacing:2px;">CONTROLS</div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px;">
+            <span style="color:#ffd700;font-weight:bold;">A / D</span><span>Move left / right</span>
+            <span style="color:#ffd700;font-weight:bold;">W</span><span>Jump</span>
+            <span style="color:#ffd700;font-weight:bold;">J / Left Click</span><span>Attack</span>
+            <span style="color:#ffd700;font-weight:bold;">K / Right Click</span><span>Block / Parry</span>
+            <span style="color:#ffd700;font-weight:bold;">L</span><span>Heavy attack</span>
+            <span style="color:#ffd700;font-weight:bold;">SHIFT</span><span>Dodge roll</span>
+            <span style="color:#ffd700;font-weight:bold;">1 / 2 / 3</span><span>Switch stance</span>
+            <span style="color:#ffd700;font-weight:bold;">SPACE</span><span>Super move (when meter full)</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;justify-content:center;">
+          <div id="soa-pause-resume" style="background:linear-gradient(135deg,#2a5a1a,#1a3a0a);border:2px solid #4a8a2a;
+            border-radius:8px;padding:14px 36px;font-size:18px;color:#c0e0a0;cursor:pointer;letter-spacing:2px;
+            transition:all 0.2s;">RESUME</div>
+          <div id="soa-pause-quit" style="background:linear-gradient(135deg,#5a1a1a,#3a0a0a);border:2px solid #8a2a2a;
+            border-radius:8px;padding:14px 36px;font-size:18px;color:#e0a0a0;cursor:pointer;letter-spacing:2px;
+            transition:all 0.2s;">RETURN TO MENU</div>
+        </div>
+      </div>`;
+    document.body.appendChild(this._pauseOverlay);
+    this._pauseOverlay.querySelector("#soa-pause-resume")!.addEventListener("click", () => {
+      this._resumeFromPause();
+    });
+    this._pauseOverlay.querySelector("#soa-pause-quit")!.addEventListener("click", () => {
+      this._pauseOverlay?.parentNode?.removeChild(this._pauseOverlay);
+      this._pauseOverlay = null;
+      this._pausedPreviousPhase = null;
+      if (this._survivalMode) this._survivalMode = false;
+      if (this._bossRushMode) {
+        this._bossRushMode = false;
+        this._bossRushOverlay?.parentNode?.removeChild(this._bossRushOverlay);
+        this._bossRushOverlay = null;
+      }
+      if (this._vsMode) {
+        this._vsMode = false;
+        this._player2 = null;
+      }
+      this._phase = "title";
+      this._showTitle();
+    });
+  }
+
+  private _resumeFromPause(): void {
+    this._pauseOverlay?.parentNode?.removeChild(this._pauseOverlay);
+    this._pauseOverlay = null;
+    if (this._pausedPreviousPhase) {
+      this._phase = this._pausedPreviousPhase;
+      this._pausedPreviousPhase = null;
+    } else {
+      this._phase = "playing";
+    }
+  }
 
   // ── Audio ────────────────────────────────────────────────────────────────
 

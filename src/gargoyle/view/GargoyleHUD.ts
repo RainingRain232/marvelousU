@@ -303,7 +303,22 @@ export class GargoyleHUD {
       html += `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);
         pointer-events:auto;display:flex;align-items:center;justify-content:center;z-index:50;">
         <div style="text-align:center;">
-          <div style="font-size:48px;font-weight:bold;color:#eee;letter-spacing:6px;margin-bottom:32px;text-shadow:0 0 20px #ffffff40;">PAUSED</div>
+          <div style="font-size:48px;font-weight:bold;color:#eee;letter-spacing:6px;margin-bottom:24px;text-shadow:0 0 20px #ffffff40;">PAUSED</div>
+          <div style="max-width:420px;margin:0 auto 28px auto;padding:20px 28px;background:rgba(102,51,204,0.15);border:1px solid #6633cc55;border-radius:10px;text-align:left;">
+            <div style="font-size:13px;color:#ccbbee;line-height:1.7;margin-bottom:16px;font-style:italic;text-align:center;">
+              Cathedral guardian. Fly as a gargoyle, defend the cathedral from demons through the night. At dawn, turn to stone — position wisely to guard key approaches.
+            </div>
+            <div style="font-size:12px;color:#aa99cc;letter-spacing:1px;font-weight:bold;margin-bottom:8px;text-align:center;">CONTROLS</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;">
+              <span style="color:#bb99ff;font-weight:bold;font-family:monospace;">WASD</span><span style="color:#ccc;">Fly / Move</span>
+              <span style="color:#bb99ff;font-weight:bold;font-family:monospace;">Mouse</span><span style="color:#ccc;">Look around</span>
+              <span style="color:#bb99ff;font-weight:bold;font-family:monospace;">Left Click</span><span style="color:#ccc;">Claw attack</span>
+              <span style="color:#bb99ff;font-weight:bold;font-family:monospace;">Right Click</span><span style="color:#ccc;">Stone throw</span>
+              <span style="color:#bb99ff;font-weight:bold;font-family:monospace;">SPACE</span><span style="color:#ccc;">Dive bomb</span>
+              <span style="color:#bb99ff;font-weight:bold;font-family:monospace;">SHIFT</span><span style="color:#ccc;">Glide</span>
+              <span style="color:#bb99ff;font-weight:bold;font-family:monospace;">ESC</span><span style="color:#ccc;">Pause</span>
+            </div>
+          </div>
           <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
             <button id="gargoyle-pause-resume" style="pointer-events:auto;padding:12px 48px;font-size:16px;background:#6633cc;color:#fff;
               border:none;border-radius:8px;cursor:pointer;font-weight:bold;letter-spacing:2px;transition:all 0.2s;">RESUME</button>

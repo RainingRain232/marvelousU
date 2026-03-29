@@ -1052,9 +1052,22 @@ export class EpsilonGame {
         })()}
         <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}</style>`;
     } else if (mode === "pause") {
-      html = `<div style="font-size:48px;font-weight:bold;color:#8866dd;margin-bottom:16px">PAUSED</div>
-        <div style="font-size:15px;color:#ccc;margin-bottom:6px">ESC — Resume</div>
-        <div style="font-size:15px;color:#ccc">Q — Quit</div>`;
+      html = `<div style="font-size:42px;font-weight:bold;color:#8866dd;margin-bottom:16px;letter-spacing:4px;text-shadow:0 2px 10px rgba(100,60,200,0.5)">PAUSED</div>
+        <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(136,102,221,0.2);border-radius:8px;padding:16px 24px;margin-bottom:16px;max-width:420px;text-align:left">
+          <div style="font-size:14px;color:#8866dd;font-weight:bold;margin-bottom:6px">EPSILON</div>
+          <div style="font-size:12px;color:#aaa;margin-bottom:12px">3D arcane arena survival. Stand on a floating platform in the cosmic void. Waves of ethereal geometric enemies close in. Cast elemental spells to survive. Between waves, pick upgrades.</div>
+          <div style="font-size:12px;color:#888;display:grid;grid-template-columns:auto 1fr;gap:4px 12px">
+            <span style="color:#8866dd">WASD</span><span>Strafe on platform</span>
+            <span style="color:#8866dd">Mouse + Click</span><span>Aim & fire spell</span>
+            <span style="color:#8866dd">1/2/3</span><span>Switch element (Fire/Ice/Lightning)</span>
+            <span style="color:#8866dd">SPACE</span><span>Shield burst (cooldown)</span>
+            <span style="color:#8866dd">ESC</span><span>Resume</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+          <button data-action="pauseResume" style="padding:10px 32px;font-size:16px;font-weight:bold;color:#fff;background:rgba(136,102,221,0.3);border:1px solid #8866dd;border-radius:6px;cursor:pointer;letter-spacing:2px;font-family:inherit;pointer-events:auto">RESUME</button>
+          <button data-action="pauseQuit" style="padding:8px 24px;font-size:13px;color:#aaa;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:6px;cursor:pointer;font-family:inherit;pointer-events:auto">RETURN TO MENU</button>
+        </div>`;
     } else if (mode === "gameover") {
       const p = this._player;
       const hs = this._getHighscore();
@@ -1084,6 +1097,14 @@ export class EpsilonGame {
     }
     this._overlayDiv.innerHTML = html;
     this._overlayDiv.style.opacity = "1";
+
+    if (mode === "pause") {
+      this._overlayDiv.querySelector("[data-action='pauseResume']")?.addEventListener("click", () => this._handleEscape());
+      this._overlayDiv.querySelector("[data-action='pauseQuit']")?.addEventListener("click", () => {
+        this.destroy();
+        window.dispatchEvent(new Event("epsilonExit"));
+      });
+    }
   }
 
   private _hideOverlay(): void { if (this._overlayDiv) this._overlayDiv.style.opacity = "0"; }

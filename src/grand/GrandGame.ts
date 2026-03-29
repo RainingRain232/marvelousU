@@ -1418,9 +1418,22 @@ export class GrandGame {
         ${(() => { try { const w = parseInt(localStorage.getItem("grand_wins") ?? "0"); return w > 0 ? `<div style="font-size:10px;color:#444;margin-top:6px">Victories: ${w}</div>` : ""; } catch { return ""; } })()}
         <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}</style>`;
     } else if (mode === "pause") {
-      html = `<div style="font-size:48px;font-weight:bold;color:#ffd866;margin-bottom:16px">PAUSED</div>
-        <div style="font-size:15px;color:#ccc;margin-bottom:6px">ESC — Resume</div>
-        <div style="font-size:15px;color:#ccc">Q — Quit</div>`;
+      html = `<div style="background:linear-gradient(135deg,rgba(48,20,60,0.95),rgba(30,10,40,0.95));border:2px solid #ffd866;border-radius:16px;padding:36px 48px;max-width:520px;width:90%;text-align:center;box-shadow:0 0 40px rgba(255,216,102,0.15)">
+        <div style="font-size:48px;font-weight:bold;color:#ffd866;margin-bottom:12px;text-shadow:0 2px 12px rgba(255,216,102,0.4);letter-spacing:3px">PAUSED</div>
+        <div style="font-size:14px;color:#c8a0ff;margin-bottom:20px;line-height:1.6;border-bottom:1px solid rgba(255,216,102,0.2);padding-bottom:16px">Medieval chariot grand prix. Race armored war chariots around a floating sky track. Dodge obstacles, collect power-ups, use medieval weapons. 3 laps, 4 racers, winner takes the Grail Cup.</div>
+        <div style="margin-bottom:20px;text-align:left;display:inline-block">
+          <div style="font-size:16px;font-weight:bold;color:#ffd866;margin-bottom:8px">Controls</div>
+          <div style="font-size:13px;color:#ddd;margin:4px 0"><span style="color:#ffd866;font-weight:bold;display:inline-block;width:130px">W / Up</span> Accelerate</div>
+          <div style="font-size:13px;color:#ddd;margin:4px 0"><span style="color:#ffd866;font-weight:bold;display:inline-block;width:130px">S / Down</span> Brake</div>
+          <div style="font-size:13px;color:#ddd;margin:4px 0"><span style="color:#ffd866;font-weight:bold;display:inline-block;width:130px">A/D / Left/Right</span> Steer</div>
+          <div style="font-size:13px;color:#ddd;margin:4px 0"><span style="color:#ffd866;font-weight:bold;display:inline-block;width:130px">SPACE</span> Use power-up</div>
+          <div style="font-size:13px;color:#ddd;margin:4px 0"><span style="color:#ffd866;font-weight:bold;display:inline-block;width:130px">ESC</span> Resume</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:center;margin-top:8px">
+          <button id="grand-resume-btn" style="background:linear-gradient(180deg,#ffd866,#c8a020);color:#1a0a2e;border:none;border-radius:8px;padding:12px 40px;font-size:18px;font-weight:bold;cursor:pointer;width:220px;letter-spacing:1px;transition:transform 0.1s,box-shadow 0.1s;box-shadow:0 3px 10px rgba(255,216,102,0.3)">RESUME</button>
+          <button id="grand-exit-btn" style="background:transparent;color:#c8a0ff;border:1px solid #c8a0ff;border-radius:8px;padding:10px 40px;font-size:14px;cursor:pointer;width:220px;transition:background 0.2s,color 0.2s">RETURN TO MENU</button>
+        </div>
+      </div>`;
     } else if (mode === "results") {
       const sorted = [...this._racers].sort((a, b) => {
         if (a.finished && !b.finished) return -1;
@@ -1454,9 +1467,26 @@ export class GrandGame {
     }
     this._overlayDiv.innerHTML = html;
     this._overlayDiv.style.opacity = "1";
+    if (mode === "pause") {
+      this._overlayDiv.style.pointerEvents = "auto";
+      const resumeBtn = this._overlayDiv.querySelector("#grand-resume-btn") as HTMLButtonElement | null;
+      const exitBtn = this._overlayDiv.querySelector("#grand-exit-btn") as HTMLButtonElement | null;
+      if (resumeBtn) {
+        resumeBtn.onmouseenter = () => { resumeBtn.style.transform = "scale(1.05)"; resumeBtn.style.boxShadow = "0 5px 20px rgba(255,216,102,0.5)"; };
+        resumeBtn.onmouseleave = () => { resumeBtn.style.transform = "scale(1)"; resumeBtn.style.boxShadow = "0 3px 10px rgba(255,216,102,0.3)"; };
+        resumeBtn.onclick = () => { this._phase = GrandPhase.RACING; this._hideOverlay(); };
+      }
+      if (exitBtn) {
+        exitBtn.onmouseenter = () => { exitBtn.style.background = "rgba(200,160,255,0.15)"; exitBtn.style.color = "#ffd866"; };
+        exitBtn.onmouseleave = () => { exitBtn.style.background = "transparent"; exitBtn.style.color = "#c8a0ff"; };
+        exitBtn.onclick = () => { this.destroy(); window.dispatchEvent(new Event("grandExit")); };
+      }
+    } else {
+      this._overlayDiv.style.pointerEvents = "none";
+    }
   }
 
-  private _hideOverlay(): void { if (this._overlayDiv) this._overlayDiv.style.opacity = "0"; }
+  private _hideOverlay(): void { if (this._overlayDiv) { this._overlayDiv.style.opacity = "0"; this._overlayDiv.style.pointerEvents = "none"; } }
 
   private _updateHUD(): void {
     const p = this._racers[0];

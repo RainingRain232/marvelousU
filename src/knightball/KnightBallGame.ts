@@ -1864,9 +1864,29 @@ export class KnightBallGame {
       `;
     } else if (mode === "pause") {
       html = `
-        <div style="font-size:48px;font-weight:bold;color:#ffd866;margin-bottom:20px">PAUSED</div>
-        <div style="font-size:16px;color:#ccc;margin-bottom:8px">ESC — Resume</div>
-        <div style="font-size:16px;color:#ccc">Q — Quit to Menu</div>
+        <div style="font-size:42px;font-weight:bold;color:#ffd866;margin-bottom:16px;letter-spacing:4px;text-shadow:0 2px 10px rgba(255,216,102,0.3)">PAUSED</div>
+        <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,216,102,0.2);border-radius:8px;padding:16px 24px;margin-bottom:16px;max-width:420px;text-align:left">
+          <div style="font-size:14px;color:#ffd866;font-weight:bold;margin-bottom:8px;letter-spacing:1px">KNIGHT BALL</div>
+          <div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:12px">
+            2v2 medieval arena sport. Smash the leather ball into the opponent's goal
+            using kicks, tackles and shield bashes in a torch-lit stone arena.
+            First to 5 goals wins — or highest score when time runs out.
+          </div>
+          <div style="font-size:13px;color:#ffd866;font-weight:bold;margin-bottom:6px;letter-spacing:1px">CONTROLS</div>
+          <div style="font-size:12px;color:#bbb;line-height:1.8;display:grid;grid-template-columns:auto 1fr;gap:2px 12px">
+            <span style="color:#ffd866;font-weight:bold">WASD</span><span>Move</span>
+            <span style="color:#ffd866;font-weight:bold">SPACE</span><span>Charge kick (hold longer = harder)</span>
+            <span style="color:#ffd866;font-weight:bold">SHIFT</span><span>Sprint</span>
+            <span style="color:#ffd866;font-weight:bold">E</span><span>Tackle opponent</span>
+            <span style="color:#ffd866;font-weight:bold">F</span><span>Shield bash</span>
+            <span style="color:#ffd866;font-weight:bold">Q</span><span>Pass to teammate</span>
+            <span style="color:#ffd866;font-weight:bold">TAB</span><span>Switch controlled knight</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+          <button onclick="document.dispatchEvent(new Event('pauseResume'))" style="padding:10px 40px;font-size:16px;font-weight:bold;background:linear-gradient(180deg,#886622,#554411);color:#ffd866;border:2px solid #aa8833;border-radius:6px;cursor:pointer;letter-spacing:2px;pointer-events:auto">RESUME</button>
+          <button onclick="document.dispatchEvent(new Event('pauseQuit'))" style="padding:8px 32px;font-size:13px;background:none;color:#888;border:1px solid #555;border-radius:4px;cursor:pointer;pointer-events:auto">RETURN TO MENU</button>
+        </div>
       `;
     } else if (mode === "result") {
       const s = this._state;
@@ -1921,6 +1941,14 @@ export class KnightBallGame {
     }
     this._overlayDiv.innerHTML = html;
     this._overlayDiv.style.opacity = "1";
+    // Wire up pause menu buttons
+    if (mode === "pause") {
+      this._overlayDiv.querySelector("[onclick*='pauseResume']")?.addEventListener("click", () => this._handleEscape());
+      this._overlayDiv.querySelector("[onclick*='pauseQuit']")?.addEventListener("click", () => {
+        this.destroy();
+        window.dispatchEvent(new Event("knightBallExit"));
+      });
+    }
   }
 
   private _hideOverlay(): void {
