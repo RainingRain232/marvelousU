@@ -1357,62 +1357,84 @@ export class KingdomRenderer {
       const legH = h - (headR * 2) - torsoH - bob;
 
       // Shadow
-      g.ellipse(sx + w / 2, sy + h, w * 0.45, 3).fill({ color: 0x000000, alpha: 0.2 });
+      g.ellipse(sx + w / 2, sy + h, w * 0.45, 3).fill({ color: 0x000000, alpha: 0.25 });
 
-      // Legs
-      const lw = w * 0.3;
+      // Cape (Arthur, Lancelot) — draw behind body
+      if (char === KingdomChar.ARTHUR || char === KingdomChar.LANCELOT) {
+        const capeX = f > 0 ? sx - 4 : sx + w - 6;
+        const capeCol = char === KingdomChar.ARTHUR ? 0xAA0000 : 0x0033AA;
+        const capeW2 = 10;
+        const capeH2 = torsoH + legH * 0.4;
+        const wave = Math.sin(Date.now() / 200 + p.x) * 3;
+        // Cape body (flowing shape)
+        g.moveTo(capeX, torsoTop + 3)
+          .lineTo(capeX + capeW2, torsoTop + 3)
+          .lineTo(capeX + capeW2 + wave, torsoTop + capeH2)
+          .lineTo(capeX - 1 + wave * 0.5, torsoTop + capeH2 + 2)
+          .fill(capeCol);
+        // Cape highlight
+        g.moveTo(capeX + 1, torsoTop + 4)
+          .lineTo(capeX + capeW2 * 0.6, torsoTop + 4)
+          .lineTo(capeX + capeW2 * 0.5 + wave * 0.3, torsoTop + capeH2 * 0.5)
+          .lineTo(capeX + 1, torsoTop + capeH2 * 0.4)
+          .fill({ color: lighten(capeCol, 25), alpha: 0.4 });
+      }
+
+      // Legs (rounded)
+      const lw = w * 0.28;
       const l1off = legPhase === 1 ? 4 : legPhase === 3 ? -3 : 0;
       const l2off = legPhase === 1 ? -3 : legPhase === 3 ? 4 : 0;
       if (jumpFrame) {
-        // Legs tucked
-        g.rect(sx + w * 0.1, legTop, lw, legH * 0.7).fill(c.secondary);
-        g.rect(sx + w * 0.6, legTop, lw, legH * 0.7).fill(c.secondary);
+        g.roundRect(sx + w * 0.12, legTop, lw, legH * 0.65, 3).fill(c.secondary);
+        g.roundRect(sx + w * 0.6, legTop, lw, legH * 0.65, 3).fill(c.secondary);
       } else {
-        g.rect(sx + w * 0.1, legTop + l1off, lw, legH - l1off).fill(c.secondary);
-        g.rect(sx + w * 0.6, legTop + l2off, lw, legH - l2off).fill(c.secondary);
+        g.roundRect(sx + w * 0.12, legTop + l1off, lw, legH - l1off, 3).fill(c.secondary);
+        g.roundRect(sx + w * 0.6, legTop + l2off, lw, legH - l2off, 3).fill(c.secondary);
+        // Knee highlight
+        g.ellipse(sx + w * 0.26, legTop + legH * 0.35, lw * 0.3, 2).fill({ color: lighten(c.secondary, 20), alpha: 0.4 });
+        g.ellipse(sx + w * 0.74, legTop + legH * 0.35, lw * 0.3, 2).fill({ color: lighten(c.secondary, 20), alpha: 0.4 });
       }
-      // Shoes
-      g.rect(sx + w * 0.05, sy + h - 5, lw + 4, 5).fill(darken(c.secondary, 30));
-      g.rect(sx + w * 0.55, sy + h - 5, lw + 4, 5).fill(darken(c.secondary, 30));
+      // Shoes (rounded)
+      g.roundRect(sx + w * 0.06, sy + h - 6, lw + 4, 6, 2).fill(darken(c.secondary, 30));
+      g.roundRect(sx + w * 0.56, sy + h - 6, lw + 4, 6, 2).fill(darken(c.secondary, 30));
 
-      // Torso
-      g.roundRect(sx + 2, torsoTop, w - 4, torsoH, 3).fill(primary);
-      g.rect(sx + 3, torsoTop + 1, (w - 6) * 0.4, 2).fill(primaryLt); // shoulder highlight
+      // Torso (more rounded, with belt and highlights)
+      g.roundRect(sx + 2, torsoTop, w - 4, torsoH, 4).fill(primary);
+      g.roundRect(sx + 3, torsoTop + 1, (w - 6) * 0.5, 2, 1).fill({ color: primaryLt, alpha: 0.6 }); // shoulder highlight
+      // Belt
+      g.roundRect(sx + 3, torsoTop + torsoH - 5, w - 6, 4, 1).fill(darken(c.secondary, 15));
+      g.circle(sx + w / 2, torsoTop + torsoH - 3, 2).fill(0xCCAA33); // belt buckle
 
-      // Arms
-      const armW = w * 0.18;
-      const armH = torsoH * 0.8;
-      const armY = torsoTop + 4;
+      // Arms (rounded, with elbow)
+      const armW = w * 0.17;
+      const armH = torsoH * 0.75;
+      const armY = torsoTop + 5;
+      const armSwing = walk === 1 ? -4 : walk === 3 ? 4 : 0;
       if (f > 0) {
-        g.rect(sx - armW + 2, armY, armW, armH).fill(primary); // back arm
-        g.rect(sx + w - 2, armY + (walk === 1 ? -3 : walk === 3 ? 3 : 0), armW, armH).fill(primaryLt); // front arm
+        g.roundRect(sx - armW + 2, armY, armW, armH, 3).fill(primary); // back arm
+        g.roundRect(sx + w - 2, armY + armSwing, armW, armH, 3).fill(primaryLt); // front arm
+        // Hand
+        g.circle(sx + w - 2 + armW / 2, armY + armH + armSwing, armW * 0.35).fill(c.skin);
       } else {
-        g.rect(sx + w - 2, armY, armW, armH).fill(primary);
-        g.rect(sx - armW + 2, armY + (walk === 1 ? -3 : walk === 3 ? 3 : 0), armW, armH).fill(primaryLt);
-      }
-
-      // Cape (Arthur, Lancelot)
-      if (char === KingdomChar.ARTHUR || char === KingdomChar.LANCELOT) {
-        const capeX = f > 0 ? sx - 3 : sx + w - 5;
-        const capeCol = char === KingdomChar.ARTHUR ? 0xAA0000 : 0x0033AA;
-        const capeW2 = 8;
-        const capeH2 = torsoH + legH * 0.3;
-        g.rect(capeX, torsoTop + 3, capeW2, capeH2).fill(capeCol);
-        // Cape wave
-        const wave = Math.sin(Date.now() / 200 + p.x) * 2;
-        g.rect(capeX - 1, torsoTop + capeH2 * 0.6, capeW2 + 2 + wave, capeH2 * 0.4).fill(darken(capeCol, 20));
+        g.roundRect(sx + w - 2, armY, armW, armH, 3).fill(primary);
+        g.roundRect(sx - armW + 2, armY + armSwing, armW, armH, 3).fill(primaryLt);
+        g.circle(sx - armW + 2 + armW / 2, armY + armH + armSwing, armW * 0.35).fill(c.skin);
       }
 
       // Head
       const headCx = sx + w / 2;
       const headCy = sy + headR + bob;
       g.circle(headCx, headCy, headR).fill(c.skin);
-      g.circle(headCx - headR * 0.2, headCy - headR * 0.15, headR * 0.35).fill(lighten(c.skin, 20)); // cheek highlight
+      g.circle(headCx - headR * 0.2, headCy - headR * 0.15, headR * 0.3).fill({ color: lighten(c.skin, 20), alpha: 0.5 }); // cheek highlight
+      // Nose
+      g.circle(headCx + f * headR * 0.35, headCy + headR * 0.1, headR * 0.08).fill(darken(c.skin, 15));
 
-      // Eyes
+      // Eyes (with expression)
       const eyeX = f > 0 ? headCx + headR * 0.25 : headCx - headR * 0.45;
       g.circle(eyeX, headCy - headR * 0.1, headR * 0.22).fill(0xFFFFFF);
-      g.circle(eyeX + f * 1.5, headCy - headR * 0.1, headR * 0.13).fill(0x222222);
+      g.circle(eyeX + f * 1.5, headCy - headR * 0.12, headR * 0.13).fill(0x222222);
+      // Eyebrow
+      g.roundRect(eyeX - headR * 0.18, headCy - headR * 0.35, headR * 0.35, 2, 1).fill(darken(c.hair, 10));
 
       this._drawCharAccent(g, char, headCx, headCy, headR, w, h, f, fire, torsoTop, torsoH, sx, sy, c);
     } else {
@@ -1422,30 +1444,34 @@ export class KingdomRenderer {
       const bodyH = h - headR * 2 - bob;
 
       // Shadow
-      g.ellipse(sx + w / 2, sy + h, w * 0.4, 2).fill({ color: 0x000000, alpha: 0.2 });
+      g.ellipse(sx + w / 2, sy + h, w * 0.4, 2).fill({ color: 0x000000, alpha: 0.25 });
 
-      // Body
-      g.roundRect(sx + 2, bodyTop, w - 4, bodyH, 2).fill(primary);
+      // Body (rounded)
+      g.roundRect(sx + 1, bodyTop, w - 2, bodyH, 3).fill(primary);
+      // Body highlight
+      g.roundRect(sx + 2, bodyTop + 1, (w - 4) * 0.4, 2, 1).fill({ color: primaryLt, alpha: 0.5 });
 
-      // Legs
-      const lw = w * 0.28;
+      // Legs (rounded)
+      const lw = w * 0.26;
       const footY = sy + h - 4;
       if (jumpFrame) {
-        g.rect(sx + w * 0.1, bodyTop + bodyH * 0.6, lw, bodyH * 0.3).fill(c.secondary);
-        g.rect(sx + w * 0.62, bodyTop + bodyH * 0.6, lw, bodyH * 0.3).fill(c.secondary);
+        g.roundRect(sx + w * 0.12, bodyTop + bodyH * 0.58, lw, bodyH * 0.3, 2).fill(c.secondary);
+        g.roundRect(sx + w * 0.62, bodyTop + bodyH * 0.58, lw, bodyH * 0.3, 2).fill(c.secondary);
       } else {
         const lo = legPhase === 1 ? 2 : legPhase === 3 ? -2 : 0;
-        g.rect(sx + w * 0.1, bodyTop + bodyH * 0.55 + lo, lw, bodyH * 0.45 - lo).fill(c.secondary);
-        g.rect(sx + w * 0.62, bodyTop + bodyH * 0.55 - lo, lw, bodyH * 0.45 + lo).fill(c.secondary);
+        g.roundRect(sx + w * 0.12, bodyTop + bodyH * 0.55 + lo, lw, bodyH * 0.45 - lo, 2).fill(c.secondary);
+        g.roundRect(sx + w * 0.62, bodyTop + bodyH * 0.55 - lo, lw, bodyH * 0.45 + lo, 2).fill(c.secondary);
       }
-      // Shoes
-      g.rect(sx + w * 0.05, footY, lw + 3, 4).fill(darken(c.secondary, 30));
-      g.rect(sx + w * 0.57, footY, lw + 3, 4).fill(darken(c.secondary, 30));
+      // Shoes (rounded)
+      g.roundRect(sx + w * 0.06, footY, lw + 3, 4, 2).fill(darken(c.secondary, 30));
+      g.roundRect(sx + w * 0.58, footY, lw + 3, 4, 2).fill(darken(c.secondary, 30));
 
-      // Arms
-      const armLen = bodyH * 0.45;
+      // Arm (rounded)
+      const armLen = bodyH * 0.4;
       const armOff = walk === 1 ? -2 : walk === 3 ? 2 : 0;
-      g.rect(f > 0 ? sx + w - 1 : sx - w * 0.15 + 1, bodyTop + 4 + armOff, w * 0.15, armLen).fill(primaryLt);
+      g.roundRect(f > 0 ? sx + w - 1 : sx - w * 0.14 + 1, bodyTop + 4 + armOff, w * 0.14, armLen, 2).fill(primaryLt);
+      // Hand
+      g.circle(f > 0 ? sx + w - 1 + w * 0.07 : sx - w * 0.14 + 1 + w * 0.07, bodyTop + 4 + armOff + armLen, w * 0.06).fill(c.skin);
 
       // Head
       const headCx = sx + w / 2;
@@ -2549,23 +2575,47 @@ export class KingdomRenderer {
       const w = proj.width * ts;
 
       if (proj.fromPlayer) {
-        // Fireball with glow + trail
-        g.circle(sx + w / 2, sy + w / 2, w * 0.9).fill({ color: 0xFF6600, alpha: 0.25 });
-        g.circle(sx + w / 2, sy + w / 2, w * 0.65).fill(0xFF4400);
-        g.circle(sx + w / 2, sy + w / 2, w * 0.4).fill(0xFFAA00);
-        g.circle(sx + w / 2 - 1, sy + w / 2 - 1, w * 0.2).fill(0xFFEE66);
-        // Trail
-        for (let i = 1; i <= 3; i++) {
-          g.circle(sx + w / 2 - proj.vx * 0.008 * i * ts, sy + w / 2, w * (0.3 - i * 0.07))
-            .fill({ color: 0xFF4400, alpha: 0.3 - i * 0.08 });
+        const fcx = sx + w / 2, fcy = sy + w / 2;
+        const t = Date.now() / 60;
+        // Outer heat shimmer
+        g.circle(fcx, fcy, w * 1.2).fill({ color: 0xFF4400, alpha: 0.08 });
+        // Main fireball layers
+        g.circle(fcx, fcy, w * 0.85).fill({ color: 0xFF5500, alpha: 0.35 });
+        g.circle(fcx, fcy, w * 0.6).fill(0xFF4400);
+        g.circle(fcx, fcy, w * 0.4).fill(0xFFAA00);
+        g.circle(fcx - 1, fcy - 1, w * 0.2).fill(0xFFEE88);
+        // Flickering flame wisps
+        for (let fi = 0; fi < 4; fi++) {
+          const fa = t * 3 + fi * 1.5;
+          const fr = w * (0.3 + fi * 0.1);
+          g.circle(fcx + Math.cos(fa) * fr, fcy + Math.sin(fa) * fr, w * 0.12)
+            .fill({ color: 0xFF6600, alpha: 0.4 - fi * 0.08 });
         }
+        // Trail (longer, more particles)
+        for (let i = 1; i <= 5; i++) {
+          const tx = fcx - proj.vx * 0.008 * i * ts;
+          const ty = fcy + Math.sin(t + i * 2) * 1.5;
+          g.circle(tx, ty, w * (0.3 - i * 0.05))
+            .fill({ color: i < 3 ? 0xFF4400 : 0x883300, alpha: 0.35 - i * 0.06 });
+        }
+        // Smoke puff behind
+        g.circle(fcx - proj.vx * 0.05 * ts, fcy, w * 0.25)
+          .fill({ color: 0x444444, alpha: 0.12 });
       } else {
-        // Enemy projectile — bone or fireball
-        g.circle(sx + w / 2, sy + w / 2, w * 0.55).fill(0xDDDDCC);
-        g.circle(sx + w / 2 - 1, sy + w / 2 - 1, w * 0.25).fill(0xEEEEDD);
-        // Rotation visual
+        // Enemy projectile — bone with rotation
+        const ecx = sx + w / 2, ecy = sy + w / 2;
         const rot = Date.now() / 80;
-        g.rect(sx + w * 0.3, sy + w * 0.15, 2, w * 0.7).fill({ color: 0xBBBBAA, alpha: Math.abs(Math.sin(rot)) });
+        g.circle(ecx, ecy, w * 0.6).fill(0xDDDDCC);
+        g.circle(ecx, ecy, w * 0.35).fill(0xEEEEDD);
+        // Rotating cross-bone pattern
+        for (let ci = 0; ci < 2; ci++) {
+          const ca = rot + ci * Math.PI / 2;
+          g.roundRect(ecx - 1 + Math.cos(ca) * w * 0.15, ecy - w * 0.28 + Math.sin(ca) * w * 0.1, 2, w * 0.55, 1)
+            .fill({ color: 0xBBBBAA, alpha: 0.7 });
+        }
+        // Trail
+        g.circle(ecx - proj.vx * 0.005 * ts, ecy, w * 0.2)
+          .fill({ color: 0xCCCCBB, alpha: 0.15 });
       }
     }
   }
@@ -2639,26 +2689,51 @@ export class KingdomRenderer {
 
     // Slash arc
     const slashProgress = 1 - (p.swordTimer / 0.2);
-    const slashAlpha = 0.6 * (1 - slashProgress);
+    const slashAlpha = 0.7 * (1 - slashProgress);
     const slashX = p.facing > 0 ? sx + w : sx;
-    const slashLen = ts * 1.5;
+    const slashLen = ts * 1.6;
+    const centerY = sy + h * 0.4;
+    const baseAng = p.facing > 0 ? -0.8 : 2.3;
 
-    // Arc sweep
-    for (let i = 0; i < 5; i++) {
-      const ang = (p.facing > 0 ? -0.8 : 2.3) + (slashProgress + i * 0.05) * 1.6;
-      const r = slashLen * (0.5 + i * 0.12);
-      const px = slashX + Math.cos(ang) * r;
-      const py = sy + h * 0.4 + Math.sin(ang) * r;
-      const sz = 4 - i * 0.5;
-      g.circle(px, py, sz).fill({ color: 0xCCCCDD, alpha: slashAlpha * (1 - i * 0.15) });
+    // Outer glow aura
+    for (let r = 0; r < 3; r++) {
+      const glowR = slashLen * (0.8 + r * 0.15);
+      const glowAng = baseAng + slashProgress * 1.5;
+      g.circle(slashX + Math.cos(glowAng) * glowR * 0.7, centerY + Math.sin(glowAng) * glowR * 0.7, 12 - r * 3)
+        .fill({ color: 0xAABBFF, alpha: slashAlpha * 0.1 * (3 - r) });
     }
-    // Main slash line
-    const startAng = (p.facing > 0 ? -0.6 : 2.5) + slashProgress * 1.2;
-    const endAng = startAng + 0.8;
-    g.moveTo(slashX + Math.cos(startAng) * slashLen * 0.3, sy + h * 0.4 + Math.sin(startAng) * slashLen * 0.3)
-      .lineTo(slashX + Math.cos(endAng) * slashLen, sy + h * 0.4 + Math.sin(endAng) * slashLen)
-      .lineTo(slashX + Math.cos(endAng - 0.1) * slashLen * 0.9, sy + h * 0.4 + Math.sin(endAng - 0.1) * slashLen * 0.9)
-      .fill({ color: 0xFFFFFF, alpha: slashAlpha * 0.7 });
+
+    // Arc sweep trail (more particles, varied sizes)
+    for (let i = 0; i < 8; i++) {
+      const ang = baseAng + (slashProgress + i * 0.035) * 1.6;
+      const r = slashLen * (0.4 + i * 0.08);
+      const px = slashX + Math.cos(ang) * r;
+      const py = centerY + Math.sin(ang) * r;
+      const sz = 5 - i * 0.4;
+      g.circle(px, py, sz).fill({ color: 0xDDDDFF, alpha: slashAlpha * (1 - i * 0.1) });
+      // Spark at each point
+      if (i % 2 === 0) {
+        g.circle(px + (Math.random() - 0.5) * 6, py + (Math.random() - 0.5) * 6, 1.5)
+          .fill({ color: 0xFFFFFF, alpha: slashAlpha * 0.8 });
+      }
+    }
+
+    // Main slash arc (thicker, tapered)
+    const startAng = baseAng + slashProgress * 1.2;
+    const midAng = startAng + 0.4;
+    const endAng = startAng + 0.9;
+    // Blade shape (tapered from thick to thin)
+    g.moveTo(slashX + Math.cos(startAng) * slashLen * 0.25, centerY + Math.sin(startAng) * slashLen * 0.25)
+      .lineTo(slashX + Math.cos(midAng) * slashLen * 0.9, centerY + Math.sin(midAng) * slashLen * 0.9)
+      .lineTo(slashX + Math.cos(endAng) * slashLen, centerY + Math.sin(endAng) * slashLen)
+      .lineTo(slashX + Math.cos(endAng - 0.08) * slashLen * 0.85, centerY + Math.sin(endAng - 0.08) * slashLen * 0.85)
+      .lineTo(slashX + Math.cos(midAng - 0.06) * slashLen * 0.7, centerY + Math.sin(midAng - 0.06) * slashLen * 0.7)
+      .fill({ color: 0xFFFFFF, alpha: slashAlpha * 0.8 });
+    // Inner bright edge
+    g.moveTo(slashX + Math.cos(startAng + 0.1) * slashLen * 0.3, centerY + Math.sin(startAng + 0.1) * slashLen * 0.3)
+      .lineTo(slashX + Math.cos(endAng - 0.15) * slashLen * 0.9, centerY + Math.sin(endAng - 0.15) * slashLen * 0.9)
+      .lineTo(slashX + Math.cos(endAng - 0.2) * slashLen * 0.75, centerY + Math.sin(endAng - 0.2) * slashLen * 0.75)
+      .fill({ color: 0xFFFFFF, alpha: slashAlpha * 0.4 });
   }
 
   private _drawScorePopups(s: KingdomState): void {
