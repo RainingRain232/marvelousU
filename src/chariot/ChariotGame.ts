@@ -263,7 +263,7 @@ const TRACK_DEFS: {
   {
     name: "CAMELOT CIRCUIT",
     desc: "Castle streets & cobblestone — the classic",
-    seed: 42, curves: 12, hills: 0.3, length: 220,
+    seed: 42, curves: 8, hills: 0.3, length: 220,
     sceneryColor: 0x556644, groundColor: 0x887766,
     skyColor: 0x5588cc, fogColor: 0x5588cc,
     ambientColor: 0x445566, sunColor: 0xffeedd, sunDir: [1, 2, 0.5],
@@ -272,7 +272,7 @@ const TRACK_DEFS: {
   {
     name: "ENCHANTED FOREST",
     desc: "Twisting paths through Merlin's woods",
-    seed: 137, curves: 18, hills: 0.5, length: 260,
+    seed: 137, curves: 10, hills: 0.4, length: 260,
     sceneryColor: 0x224422, groundColor: 0x3a5530,
     skyColor: 0x223322, fogColor: 0x1a2a1a,
     ambientColor: 0x223322, sunColor: 0x88cc88, sunDir: [0.5, 1, -0.3],
@@ -281,7 +281,7 @@ const TRACK_DEFS: {
   {
     name: "CLIFFSIDE PASS",
     desc: "Mountain edges above the clouds",
-    seed: 256, curves: 14, hills: 0.9, length: 240,
+    seed: 256, curves: 9, hills: 0.7, length: 240,
     sceneryColor: 0x887766, groundColor: 0x776655,
     skyColor: 0x88aacc, fogColor: 0xccddee,
     ambientColor: 0x667788, sunColor: 0xffffff, sunDir: [0, 2, 1],
@@ -299,7 +299,7 @@ const TRACK_DEFS: {
   {
     name: "DRAGON'S MAW",
     desc: "Volcanic canyons of fire and shadow",
-    seed: 666, curves: 16, hills: 0.7, length: 280,
+    seed: 666, curves: 10, hills: 0.6, length: 280,
     sceneryColor: 0x331111, groundColor: 0x442211,
     skyColor: 0x220808, fogColor: 0x331111,
     ambientColor: 0x441111, sunColor: 0xff6622, sunDir: [0, 1, -1],
@@ -440,18 +440,22 @@ function generateTrack(def: (typeof TRACK_DEFS)[number]): TrackDef {
     }
   }
 
-  // Multiple smoothing passes: average each point with its neighbors to eliminate sharp corners
+  // Multiple smoothing passes with wider kernel to eliminate sharp corners
   let smoothInput = pts;
-  for (let pass = 0; pass < 4; pass++) {
+  for (let pass = 0; pass < 5; pass++) {
     const smoothOutput: THREE.Vector3[] = [];
-    for (let i = 0; i < smoothInput.length; i++) {
-      const prev = smoothInput[(i - 1 + smoothInput.length) % smoothInput.length];
-      const curr = smoothInput[i];
-      const next = smoothInput[(i + 1) % smoothInput.length];
+    const n = smoothInput.length;
+    for (let i = 0; i < n; i++) {
+      const p2 = smoothInput[(i - 2 + n) % n];
+      const p1 = smoothInput[(i - 1 + n) % n];
+      const c  = smoothInput[i];
+      const n1 = smoothInput[(i + 1) % n];
+      const n2 = smoothInput[(i + 2) % n];
+      // Gaussian-like kernel: [1, 2, 4, 2, 1] / 10
       smoothOutput.push(new THREE.Vector3(
-        (prev.x + curr.x * 2 + next.x) / 4,
-        Math.max(0, (prev.y + curr.y * 2 + next.y) / 4),
-        (prev.z + curr.z * 2 + next.z) / 4,
+        (p2.x + p1.x * 2 + c.x * 4 + n1.x * 2 + n2.x) / 10,
+        Math.max(0, (p2.y + p1.y * 2 + c.y * 4 + n1.y * 2 + n2.y) / 10),
+        (p2.z + p1.z * 2 + c.z * 4 + n1.z * 2 + n2.z) / 10,
       ));
     }
     smoothInput = smoothOutput;
@@ -3422,7 +3426,7 @@ export class ChariotGame {
     }
 
     racer.mesh.position.copy(racer.pos);
-    racer.mesh.rotation.y = racer.angle;
+    racer.mesh.rotation.y = racer.angle + Math.PI;
 
     // dust
     if (racer.isPlayer && racer.speed > MAX_SPEED * 0.5 && Math.random() > 0.65) {
@@ -4402,7 +4406,7 @@ export class ChariotGame {
     if (frameIdx < this._ghostBestFrames.length) {
       const f = this._ghostBestFrames[frameIdx];
       this._ghostMesh.position.set(f.x, f.y, f.z);
-      this._ghostMesh.rotation.y = f.angle;
+      this._ghostMesh.rotation.y = f.angle + Math.PI;
       this._ghostMesh.visible = true;
     } else {
       this._ghostMesh.visible = false;
