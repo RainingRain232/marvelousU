@@ -204,8 +204,15 @@ export function updatePlayer(s: KingdomState, input: InputKeys, dt: number): voi
   const decel = p.grounded ? DECELERATION : AIR_DECELERATION;
 
   p.skidding = false;
-  if (p.crouching && p.grounded) {
+  if (p.crouching && p.grounded && p.slideTimer > 0) {
+    // Sliding: decelerate naturally
     if (Math.abs(p.vx) < decel * dt) p.vx = 0; else p.vx -= Math.sign(p.vx) * decel * dt;
+  } else if (p.crouching && p.grounded) {
+    // Crouch-walking: slow movement allowed so player doesn't get stuck
+    const crouchSpeed = maxSpeed * 0.35;
+    if (input.left) { p.facing = -1; p.vx = Math.max(-crouchSpeed, p.vx - accel * 0.5 * dt); }
+    else if (input.right) { p.facing = 1; p.vx = Math.min(crouchSpeed, p.vx + accel * 0.5 * dt); }
+    else if (Math.abs(p.vx) < decel * dt) p.vx = 0; else p.vx -= Math.sign(p.vx) * decel * dt;
   } else if (input.left) {
     p.facing = -1;
     if (p.vx > 2 && p.grounded) { p.vx -= SKID_DECELERATION * dt; p.skidding = true; }
