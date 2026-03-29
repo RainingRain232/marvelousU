@@ -91,6 +91,9 @@ export class GrailBallGame {
   // Local multiplayer toggle
   private _localMultiplayerEnabled = false;
 
+  // Manager mode integration
+  private _fromManager = false;
+
   // ---------------------------------------------------------------------------
   // Boot
   // ---------------------------------------------------------------------------
@@ -100,6 +103,20 @@ export class GrailBallGame {
     window.addEventListener("keyup", _onKeyUp);
 
     this._showTeamSelect();
+  }
+
+  /** Boot directly into a match with specific team IDs (used by Manager mode) */
+  async bootWithTeams(homeTeamId: string, awayTeamId: string): Promise<void> {
+    viewManager.clearWorld();
+    window.addEventListener("keydown", _onKeyDown);
+    window.addEventListener("keyup", _onKeyUp);
+
+    this._fromManager = true;
+    const homeIdx = GB_TEAMS.findIndex(t => t.id === homeTeamId);
+    const awayIdx = GB_TEAMS.findIndex(t => t.id === awayTeamId);
+    this._selectedTeam1 = homeIdx >= 0 ? homeIdx : 0;
+    this._selectedTeam2 = awayIdx >= 0 ? awayIdx : 1;
+    this._startMatch();
   }
 
   // ---------------------------------------------------------------------------
@@ -618,14 +635,21 @@ export class GrailBallGame {
             simulateRemainingFixtures(s.careerState);
           }
 
-          // Return to team select (or career menu)
+          // Return to team select, career menu, or manager
           this._renderer.destroy();
           this._hud.destroy();
           if (this._tickerCb) {
             viewManager.app.ticker.remove(this._tickerCb);
             this._tickerCb = null;
           }
-          if (this._inCareerMode && this._state.careerState?.active) {
+          if (this._fromManager) {
+            // Send result back to manager and exit
+            window.dispatchEvent(new CustomEvent("grailBallMatchResult", {
+              detail: { homeGoals: s.scores[0], awayGoals: s.scores[1] },
+            }));
+            this.destroy();
+            window.dispatchEvent(new Event("grailballExit"));
+          } else if (this._inCareerMode && this._state.careerState?.active) {
             this._showCareerMenu();
           } else {
             this._showTeamSelect();

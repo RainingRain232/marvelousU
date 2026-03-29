@@ -70,6 +70,7 @@ export class GrailManagerRenderer {
       case GMScreen.DASHBOARD:     this._drawHeader(g, state, sw, sh); this._drawDashboard(g, state, sw, sh); break;
       case GMScreen.SQUAD:         this._drawHeader(g, state, sw, sh); this._drawSquad(g, state, sw, sh); break;
       case GMScreen.TACTICS:       this._drawHeader(g, state, sw, sh); this._drawTactics(g, state, sw, sh); break;
+      case GMScreen.PRE_MATCH:     this._drawPreMatch(g, state, sw, sh); break;
       case GMScreen.MATCH:         this._drawMatchDay(g, state, sw, sh); break;
       case GMScreen.TRANSFERS:     this._drawHeader(g, state, sw, sh); this._drawTransfers(g, state, sw, sh); break;
       case GMScreen.FACILITIES:    this._drawHeader(g, state, sw, sh); this._drawFacilities(g, state, sw, sh); break;
@@ -1036,6 +1037,60 @@ export class GrailManagerRenderer {
     g.fill({ color: ovrColor, alpha: 0.15 }).circle(x + 10, y - 10, 6).fill();
     g.stroke({ color: GOLD_DARK, alpha: 0.5, width: 0.5 }).circle(x + 10, y - 10, 7).stroke();
     this._addText(`${ovr}`, 6, GOLD, true, x + 6, y - 14);
+  }
+
+  // ---PRE-MATCH — choice to simulate or play in Grail Ball
+  private _drawPreMatch(g: Graphics, state: GrailManagerState, sw: number, sh: number): void {
+    const teams = state.preMatchTeams;
+    if (!teams) return;
+    const homeDef = TEAM_DEFS.find(t => t.id === teams.homeId);
+    const awayDef = TEAM_DEFS.find(t => t.id === teams.awayId);
+    const cx = sw / 2, cy = sh / 2;
+
+    // Dark overlay
+    g.rect(0, 0, sw, sh).fill({ color: 0x0a0806, alpha: 0.9 });
+
+    // Decorative border
+    g.roundRect(cx - 280, cy - 200, 560, 400, 12).stroke({ color: GOLD_DARK, width: 2, alpha: 0.6 });
+    g.roundRect(cx - 275, cy - 195, 550, 390, 10).fill({ color: DARK_BG, alpha: 0.95 });
+
+    // Title
+    this._addText("MATCH DAY", 28 * TEXT_SCALE, GOLD, true, cx - 90, cy - 180);
+    this._addText(`Week ${state.currentWeek}`, 12 * TEXT_SCALE, PARCHMENT_DARK, false, cx - 30, cy - 145);
+
+    // Teams
+    const homeCol = homeDef ? homeDef.primaryColor : 0xcccccc;
+    const awayCol = awayDef ? awayDef.primaryColor : 0xcccccc;
+
+    // Home team
+    g.circle(cx - 120, cy - 70, 20).fill(homeCol);
+    this._addText(homeDef?.name ?? teams.homeId, 14 * TEXT_SCALE, WHITE, true, cx - 120 - 50, cy - 40);
+
+    // VS
+    this._addText("vs", 16 * TEXT_SCALE, GOLD, true, cx - 10, cy - 75);
+
+    // Away team
+    g.circle(cx + 120, cy - 70, 20).fill(awayCol);
+    this._addText(awayDef?.name ?? teams.awayId, 14 * TEXT_SCALE, WHITE, true, cx + 120 - 50, cy - 40);
+
+    // Options
+    const optY = cy + 30;
+    // Option 1: Simulate
+    g.roundRect(cx - 240, optY, 220, 60, 8).fill({ color: 0x2a3a1a, alpha: 0.8 });
+    g.roundRect(cx - 240, optY, 220, 60, 8).stroke({ color: GREEN_GOOD, width: 1.5, alpha: 0.5 });
+    this._addText("[1] Simulate Match", 12 * TEXT_SCALE, GREEN_GOOD, true, cx - 225, optY + 8);
+    this._addText("Watch auto-simulation", 9 * TEXT_SCALE, PARCHMENT_DARK, false, cx - 225, optY + 35);
+    this.clickZones.push({ id: "preMatchSimulate", x: cx - 240, y: optY, w: 220, h: 60 });
+
+    // Option 2: Play in Grail Ball
+    g.roundRect(cx + 20, optY, 220, 60, 8).fill({ color: 0x1a2a3a, alpha: 0.8 });
+    g.roundRect(cx + 20, optY, 220, 60, 8).stroke({ color: BLUE_INFO, width: 1.5, alpha: 0.5 });
+    this._addText("[2] Play in Grail Ball", 12 * TEXT_SCALE, BLUE_INFO, true, cx + 35, optY + 8);
+    this._addText("Play the match yourself!", 9 * TEXT_SCALE, PARCHMENT_DARK, false, cx + 35, optY + 35);
+    this.clickZones.push({ id: "preMatchPlay", x: cx + 20, y: optY, w: 220, h: 60 });
+
+    // Hint
+    this._addText("Press 1 or 2 to choose", 9 * TEXT_SCALE, PARCHMENT_DARK, false, cx - 60, cy + 130);
   }
 
   // ---MATCH DAY — with animated pitch, ball trail, heat map hints

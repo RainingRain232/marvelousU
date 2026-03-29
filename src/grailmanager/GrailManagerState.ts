@@ -31,6 +31,7 @@ export enum GMScreen {
   NEW_GAME_SETUP = "new_game_setup",
   PLAYER_DETAIL = "player_detail",
   MATCH_RESULT = "match_result",
+  PRE_MATCH = "pre_match",
   SEASON_END = "season_end",
   SAVE_LOAD = "save_load",
 }
@@ -192,6 +193,7 @@ export interface GrailManagerState {
   // Match
   liveMatch: LiveMatchState | null;
   lastMatchResult: { home: string; away: string; homeGoals: number; awayGoals: number; commentary: MatchCommentary[] } | null;
+  preMatchTeams: { homeId: string; awayId: string } | null;
 
   // News
   news: NewsItem[];
@@ -262,6 +264,7 @@ export function createGrailManagerState(): GrailManagerState {
 
     liveMatch: null,
     lastMatchResult: null,
+    preMatchTeams: null,
 
     news: [],
 

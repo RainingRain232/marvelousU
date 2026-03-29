@@ -420,26 +420,47 @@ export class GrailBallRenderer {
     grass.receiveShadow = true;
     this._fieldGroup.add(grass);
     const glowLineMat = new THREE.MeshBasicMaterial({
-      color: 0xccddff, transparent: true, opacity: 0.55,
+      color: 0xddcc44, transparent: true, opacity: 0.6,
     });
     const brightLineMat = new THREE.MeshBasicMaterial({
-      color: 0xeeeeff, transparent: true, opacity: 0.7,
+      color: 0xffdd55, transparent: true, opacity: 0.75,
     });
+    // Center line
     const centerLine = new THREE.Mesh(new THREE.PlaneGeometry(0.18, GB_FIELD.WIDTH), brightLineMat);
     centerLine.rotation.x = -Math.PI / 2;
     centerLine.position.y = 0.03;
     this._fieldGroup.add(centerLine);
-    const ccGeo = new THREE.RingGeometry(GB_FIELD.CENTER_CIRCLE_RADIUS - 0.1, GB_FIELD.CENTER_CIRCLE_RADIUS + 0.1, 64);
-    const cc = new THREE.Mesh(ccGeo, new THREE.MeshBasicMaterial({
-      color: 0xaaccff, transparent: true, opacity: 0.5, side: THREE.DoubleSide,
+    // Center diamond (rotated square) instead of circle
+    const dR = GB_FIELD.CENTER_CIRCLE_RADIUS;
+    const diamondShape = new THREE.Shape();
+    diamondShape.moveTo(0, dR);
+    diamondShape.lineTo(dR, 0);
+    diamondShape.lineTo(0, -dR);
+    diamondShape.lineTo(-dR, 0);
+    diamondShape.lineTo(0, dR);
+    // Outline via hole (inner diamond slightly smaller)
+    const dInner = dR - 0.18;
+    const diamondHole = new THREE.Path();
+    diamondHole.moveTo(0, dInner);
+    diamondHole.lineTo(dInner, 0);
+    diamondHole.lineTo(0, -dInner);
+    diamondHole.lineTo(-dInner, 0);
+    diamondHole.lineTo(0, dInner);
+    diamondShape.holes.push(diamondHole);
+    const diamondGeo = new THREE.ShapeGeometry(diamondShape);
+    const diamond = new THREE.Mesh(diamondGeo, new THREE.MeshBasicMaterial({
+      color: 0xffdd44, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
     }));
-    cc.rotation.x = -Math.PI / 2;
-    cc.position.y = 0.03;
-    this._fieldGroup.add(cc);
-    const cd = new THREE.Mesh(new THREE.CircleGeometry(0.5, 20), brightLineMat);
+    diamond.rotation.x = -Math.PI / 2;
+    diamond.position.y = 0.03;
+    this._fieldGroup.add(diamond);
+    // Center dot
+    const cd = new THREE.Mesh(new THREE.CircleGeometry(0.5, 4), brightLineMat);
     cd.rotation.x = -Math.PI / 2;
+    cd.rotation.z = Math.PI / 4; // small diamond dot
     cd.position.y = 0.03;
     this._fieldGroup.add(cd);
+    // Boundary lines (yellow)
     const bps = [
       { x: 0, z: -GB_FIELD.HALF_WIDTH, w: GB_FIELD.LENGTH, h: 0.15 },
       { x: 0, z: GB_FIELD.HALF_WIDTH, w: GB_FIELD.LENGTH, h: 0.15 },
@@ -452,6 +473,7 @@ export class GrailBallRenderer {
       bl.position.set(bp.x, 0.025, bp.z);
       this._fieldGroup.add(bl);
     }
+    // Penalty areas (yellow)
     for (let side = 0; side < 2; side++) {
       const sign = side === 0 ? -1 : 1;
       const px = sign * (GB_FIELD.HALF_LENGTH - GB_FIELD.PENALTY_AREA_LENGTH / 2);
@@ -459,7 +481,7 @@ export class GrailBallRenderer {
         new THREE.PlaneGeometry(GB_FIELD.PENALTY_AREA_LENGTH, GB_FIELD.PENALTY_AREA_WIDTH)
       );
       const paLine = new THREE.LineSegments(paGeo, new THREE.LineBasicMaterial({
-        color: 0xaabbcc, transparent: true, opacity: 0.4,
+        color: 0xccaa33, transparent: true, opacity: 0.45,
       }));
       paLine.rotation.x = -Math.PI / 2;
       paLine.position.set(px, 0.025, 0);
@@ -633,7 +655,9 @@ export class GrailBallRenderer {
       }
     }
 
-    // End walls (behind gates) - with same stone detail treatment
+    // End walls (behind gates) - with full brick detail matching side walls
+    const endBlockW = 2.2;
+    const endBlockH = 0.45;
     for (const xSign of [-1, 1]) {
       for (const zOff of [-1, 1]) {
         const secLen = (GB_FIELD.WIDTH - GB_FIELD.GATE_WIDTH) / 2;
@@ -647,16 +671,56 @@ export class GrailBallRenderer {
         sec.castShadow = true;
         this._fieldGroup.add(sec);
 
-        // Stone block lines on end walls
-        const endRows = Math.floor(wallH / 0.45);
+        // Full brick pattern on end walls (outward-facing side)
+        const endRows = Math.floor(wallH / endBlockH);
+        const endCols = Math.floor(secLen / endBlockW);
         for (let row = 0; row < endRows; row++) {
-          const mortar = new THREE.Mesh(
-            new THREE.PlaneGeometry(secLen, 0.03),
-            mortarMat,
+          const rowOffset = (row % 2) * (endBlockW * 0.5);
+          for (let col = 0; col < endCols + 1; col++) {
+            const bz = secZ - secLen / 2 + col * endBlockW + rowOffset + (Math.random() - 0.5) * 0.1;
+            const by = row * endBlockH + endBlockH / 2 + (Math.random() - 0.5) * 0.02;
+            if (bz < secZ - secLen / 2 - 1 || bz > secZ + secLen / 2 + 1) continue;
+            // Horizontal mortar line
+            const hMortar = new THREE.Mesh(
+              new THREE.PlaneGeometry(endBlockW + 0.05, 0.04),
+              mortarMat,
+            );
+            hMortar.position.set(secX + xSign * (wallThick / 2 + 0.01), by + endBlockH / 2, bz);
+            hMortar.lookAt(secX + xSign * (wallThick / 2 + 1), by + endBlockH / 2, bz);
+            this._fieldGroup.add(hMortar);
+            // Vertical mortar joint
+            if (col < endCols) {
+              const vMortar = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.04, endBlockH + 0.02),
+                mortarMat,
+              );
+              vMortar.position.set(secX + xSign * (wallThick / 2 + 0.01), by, bz + endBlockW / 2);
+              vMortar.lookAt(secX + xSign * (wallThick / 2 + 1), by, bz + endBlockW / 2);
+              this._fieldGroup.add(vMortar);
+            }
+            // Stone color variation
+            if (Math.random() < 0.15) {
+              const varBlock = new THREE.Mesh(
+                new THREE.BoxGeometry(0.06, endBlockH * 0.85, endBlockW * 0.9),
+                Math.random() > 0.5 ? stoneDarkMat : stoneLightMat,
+              );
+              varBlock.position.set(secX + xSign * (wallThick / 2 + 0.02), by, bz);
+              this._fieldGroup.add(varBlock);
+            }
+          }
+        }
+        // Moss patches at end wall base
+        for (let i = 0; i < 4; i++) {
+          const mz = secZ - secLen / 2 + Math.random() * secLen;
+          const mossW = 0.6 + Math.random() * 1.2;
+          const mossH = 0.15 + Math.random() * 0.3;
+          const moss = new THREE.Mesh(
+            new THREE.PlaneGeometry(mossH, mossW),
+            new THREE.MeshPhysicalMaterial({ color: 0x3a5a2a, roughness: 0.95, transparent: true, opacity: 0.4 + Math.random() * 0.2 }),
           );
-          mortar.position.set(secX + xSign * (wallThick / 2 + 0.01), row * 0.45 + 0.45, secZ);
-          mortar.lookAt(secX + xSign * (wallThick / 2 + 1), row * 0.45 + 0.45, secZ);
-          this._fieldGroup.add(mortar);
+          moss.position.set(secX + xSign * (wallThick / 2 + 0.02), mossH / 2, mz);
+          moss.lookAt(secX + xSign * (wallThick / 2 + 1), mossH / 2, mz);
+          this._fieldGroup.add(moss);
         }
       }
     }
@@ -693,13 +757,116 @@ export class GrailBallRenderer {
     for (const [tx, tz] of sconcePositions) {
       this._environmentGroup.add(this._buildTorchSconce(tx, tz));
     }
-    const groundGeo = new THREE.PlaneGeometry(300, 300);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x5f503a, roughness: 0.95 });
+    // ── Surrounding ground (detailed terrain outside pitch) ──
+    const groundGeo = new THREE.PlaneGeometry(300, 300, 40, 40);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x5f503a, roughness: 0.95, vertexColors: true });
+    // Add vertex color variation for natural earth look
+    const gPositions = groundGeo.getAttribute("position");
+    const gColors = new Float32Array(gPositions.count * 3);
+    for (let i = 0; i < gPositions.count; i++) {
+      const x = gPositions.getX(i), z = gPositions.getY(i);
+      // Vary color based on position
+      const noise = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.1 + Math.sin(x * 0.7 + z * 0.5) * 0.05;
+      const distFromCenter = Math.sqrt(x * x + z * z) / 150;
+      const base = 0.3 + noise - distFromCenter * 0.08;
+      gColors[i * 3] = base * 0.65;     // R (earthy brown)
+      gColors[i * 3 + 1] = base * 0.55; // G
+      gColors[i * 3 + 2] = base * 0.35; // B
+      // Displace vertices slightly for uneven terrain
+      gPositions.setZ(i, (Math.sin(x * 0.5) * Math.cos(z * 0.4) * 0.15 + Math.sin(x * 1.2 + z * 0.8) * 0.08));
+    }
+    groundGeo.setAttribute("color", new THREE.BufferAttribute(gColors, 3));
+    groundGeo.computeVertexNormals();
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.1;
     ground.receiveShadow = true;
     this._environmentGroup.add(ground);
+
+    // Cobblestone path around the pitch
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x6a6a5a, roughness: 0.85 });
+    const hl = GB_FIELD.HALF_LENGTH + 3, hw = GB_FIELD.HALF_WIDTH + 3;
+    const pw = 3; // path width
+    // North path
+    const northPath = new THREE.Mesh(new THREE.BoxGeometry(hl * 2 + pw * 2, 0.05, pw), pathMat);
+    northPath.position.set(0, -0.05, -hw - pw / 2);
+    this._environmentGroup.add(northPath);
+    // South path
+    const southPath = new THREE.Mesh(new THREE.BoxGeometry(hl * 2 + pw * 2, 0.05, pw), pathMat);
+    southPath.position.set(0, -0.05, hw + pw / 2);
+    this._environmentGroup.add(southPath);
+    // East path
+    const eastPath = new THREE.Mesh(new THREE.BoxGeometry(pw, 0.05, hw * 2 + pw * 2), pathMat);
+    eastPath.position.set(hl + pw / 2, -0.05, 0);
+    this._environmentGroup.add(eastPath);
+    // West path
+    const westPath = new THREE.Mesh(new THREE.BoxGeometry(pw, 0.05, hw * 2 + pw * 2), pathMat);
+    westPath.position.set(-hl - pw / 2, -0.05, 0);
+    this._environmentGroup.add(westPath);
+
+    // Cobblestone detail lines on paths
+    const cobbleMat = new THREE.MeshStandardMaterial({ color: 0x555545, roughness: 0.9 });
+    for (let ci = 0; ci < 40; ci++) {
+      const cx = -hl + ci * (hl * 2) / 40;
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, pw), cobbleMat);
+      line.position.set(cx, -0.04, -hw - pw / 2);
+      this._environmentGroup.add(line);
+      const line2 = line.clone();
+      line2.position.set(cx, -0.04, hw + pw / 2);
+      this._environmentGroup.add(line2);
+    }
+
+    // Grass patches outside the pitch
+    const grassOutMat = new THREE.MeshStandardMaterial({ color: 0x3a5a2a, roughness: 0.9 });
+    for (let gi = 0; gi < 20; gi++) {
+      const angle = (gi / 20) * Math.PI * 2;
+      const dist = 55 + Math.sin(gi * 3.7) * 15;
+      const gx = Math.cos(angle) * dist;
+      const gz = Math.sin(angle) * dist;
+      const patch = new THREE.Mesh(new THREE.CircleGeometry(1.5 + Math.random() * 2, 8), grassOutMat);
+      patch.rotation.x = -Math.PI / 2;
+      patch.position.set(gx, -0.05, gz);
+      this._environmentGroup.add(patch);
+    }
+
+    // Scattered rocks/boulders
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.85 });
+    for (let ri = 0; ri < 12; ri++) {
+      const angle = (ri / 12) * Math.PI * 2 + 0.3;
+      const dist = 52 + Math.sin(ri * 2.3) * 12;
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.5, 0),
+        rockMat,
+      );
+      rock.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+      rock.rotation.set(Math.random(), Math.random(), Math.random());
+      this._environmentGroup.add(rock);
+    }
+
+    // Wooden barrels / crates near entrances
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+    const barrelBand = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.4 });
+    for (const [bx, bz] of [[hl + 5, -8], [hl + 5, 8], [-hl - 5, -8], [-hl - 5, 8]]) {
+      const barrel = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.2, 12), barrelMat);
+      barrel.add(body);
+      const band1 = new THREE.Mesh(new THREE.TorusGeometry(0.61, 0.04, 8, 16), barrelBand);
+      band1.position.y = 0.3; band1.rotation.x = Math.PI / 2;
+      barrel.add(band1);
+      const band2 = band1.clone(); band2.position.y = -0.3;
+      barrel.add(band2);
+      barrel.position.set(bx, 0.6, bz);
+      this._environmentGroup.add(barrel);
+    }
+
+    // Hay bales near the pitch
+    const hayMat = new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.95 });
+    for (const [hx, hz] of [[hl + 7, 0], [-hl - 7, 0], [0, hw + 8], [0, -hw - 8]]) {
+      const hay = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.4, 10), hayMat);
+      hay.rotation.z = Math.PI / 2;
+      hay.position.set(hx, 0.7, hz);
+      this._environmentGroup.add(hay);
+    }
   }
 
   private _buildTower(x: number, z: number, mainMat: THREE.Material, darkMat: THREE.Material): THREE.Group {
@@ -1446,9 +1613,22 @@ export class GrailBallRenderer {
     this._mistData = [];
     const mistGeo = new THREE.BufferGeometry();
     mistGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(MIST_POOL * 3), 3));
+    // Create soft round particle texture (avoids square pixel look)
+    const _makeParticleTex = (): THREE.Texture => {
+      const c = document.createElement("canvas"); c.width = 32; c.height = 32;
+      const ctx = c.getContext("2d")!;
+      const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      grad.addColorStop(0, "rgba(255,255,255,1)");
+      grad.addColorStop(0.4, "rgba(255,255,255,0.5)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
+      const tex = new THREE.CanvasTexture(c);
+      return tex;
+    };
+    const softTex = _makeParticleTex();
     this._mistParticles = new THREE.Points(mistGeo, new THREE.PointsMaterial({
-      color: 0xbbccdd, size: 1.2, transparent: true, opacity: 0.12,
-      depthWrite: false,
+      color: 0xbbccdd, size: 1.8, transparent: true, opacity: 0.12,
+      depthWrite: false, map: softTex, blending: THREE.NormalBlending,
     }));
     for (let i = 0; i < MIST_POOL; i++)
       this._mistData.push({ alive: false, life: 0, maxLife: 0, pos: [0, 0, 0], vel: [0, 0, 0] });
@@ -2456,47 +2636,132 @@ export class GrailBallRenderer {
   private _animatePlayer(mesh: THREE.Group, player: GBPlayer, anim: PlayerAnimData, _dt: number): void {
     const blend = anim.currentBlend;
     const phase = anim.runPhase;
+    const isSprinting = player.stamina < player.maxStamina * 0.9 && blend > 0.5;
+    const sprintMult = isSprinting ? 1.4 : 1.0;
+
     mesh.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
-      // Store original base positions on first visit
       if ((child as any)._baseY === undefined) {
         (child as any)._baseY = child.position.y;
         (child as any)._baseX = child.position.x;
+        (child as any)._baseZ = child.position.z;
       }
       const name = child.name;
-      const legSwing = Math.sin(phase) * 0.4 * blend;
-      const armSwing = Math.sin(phase + Math.PI) * 0.3 * blend;
+      const b = blend * sprintMult;
+
+      // Leg animation — proper rotation-based with knee bend
+      const legFwd = Math.sin(phase) * 0.55 * b;   // forward/back swing
+      const legBack = Math.sin(phase + Math.PI) * 0.55 * b;
+      const kneeBendL = Math.max(0, -Math.sin(phase)) * 0.4 * b;  // bend when leg goes back
+      const kneeBendR = Math.max(0, -Math.sin(phase + Math.PI)) * 0.4 * b;
+      const footLiftL = Math.abs(Math.sin(phase)) * 0.2 * b;
+      const footLiftR = Math.abs(Math.sin(phase + Math.PI)) * 0.2 * b;
+
+      // Arm swing (opposite to legs, natural running motion)
+      const armFwdL = Math.sin(phase + Math.PI) * 0.45 * b;
+      const armFwdR = Math.sin(phase) * 0.45 * b;
+      const elbowBendL = 0.3 + Math.max(0, Math.sin(phase + Math.PI)) * 0.35 * b;
+      const elbowBendR = 0.3 + Math.max(0, Math.sin(phase)) * 0.35 * b;
+
+      // Body bounce and lean
+      const bodyBounce = Math.abs(Math.sin(phase * 2)) * 0.06 * b;
+      const bodyLean = blend * 0.12;
+      const bodySway = Math.sin(phase) * 0.04 * b;
+
       switch (name) {
-        case "leftFoot": case "leftShin":
-          child.position.y = (child as any)._baseY + Math.abs(Math.sin(phase)) * 0.15 * blend;
-          child.position.x = (child as any)._baseX + Math.sin(phase) * 0.08 * blend; break;
-        case "rightFoot": case "rightShin":
-          child.position.y = (child as any)._baseY + Math.abs(Math.sin(phase + Math.PI)) * 0.15 * blend;
-          child.position.x = (child as any)._baseX + Math.sin(phase + Math.PI) * 0.08 * blend; break;
-        case "leftThigh": child.rotation.x = legSwing; break;
-        case "rightThigh": child.rotation.x = -legSwing; break;
-        case "leftUpperArm": case "leftHand": child.rotation.x = -armSwing; break;
-        case "rightUpperArm": case "rightHand": child.rotation.x = armSwing; break;
+        // ── Left leg ──
+        case "leftThigh":
+          child.rotation.x = legFwd;
+          child.position.z = (child as any)._baseZ + Math.sin(phase) * 0.05 * b;
+          break;
+        case "leftShin":
+          child.rotation.x = -kneeBendL;
+          child.position.y = (child as any)._baseY + footLiftL * 0.5;
+          child.position.z = (child as any)._baseZ + Math.sin(phase) * 0.08 * b;
+          break;
+        case "leftFoot":
+          child.position.y = (child as any)._baseY + footLiftL;
+          child.position.z = (child as any)._baseZ + Math.sin(phase) * 0.12 * b;
+          child.rotation.x = -kneeBendL * 0.5; // toe follows shin
+          break;
+        // ── Right leg ──
+        case "rightThigh":
+          child.rotation.x = legBack;
+          child.position.z = (child as any)._baseZ + Math.sin(phase + Math.PI) * 0.05 * b;
+          break;
+        case "rightShin":
+          child.rotation.x = -kneeBendR;
+          child.position.y = (child as any)._baseY + footLiftR * 0.5;
+          child.position.z = (child as any)._baseZ + Math.sin(phase + Math.PI) * 0.08 * b;
+          break;
+        case "rightFoot":
+          child.position.y = (child as any)._baseY + footLiftR;
+          child.position.z = (child as any)._baseZ + Math.sin(phase + Math.PI) * 0.12 * b;
+          child.rotation.x = -kneeBendR * 0.5;
+          break;
+        // ── Arms ──
+        case "leftUpperArm":
+          child.rotation.x = armFwdL;
+          child.rotation.z = -0.1 * blend; // slight outward swing
+          break;
+        case "leftHand":
+          child.rotation.x = armFwdL - elbowBendL; // elbow bends
+          child.position.z = (child as any)._baseZ + Math.sin(phase + Math.PI) * 0.06 * b;
+          break;
+        case "rightUpperArm":
+          child.rotation.x = armFwdR;
+          child.rotation.z = 0.1 * blend;
+          break;
+        case "rightHand":
+          child.rotation.x = armFwdR - elbowBendR;
+          child.position.z = (child as any)._baseZ + Math.sin(phase) * 0.06 * b;
+          break;
+        // ── Torso ──
         case "torso":
-          child.scale.y = 1 + Math.sin(anim.breathPhase) * 0.008;
-          child.rotation.x = blend * 0.1; break;
+          child.scale.y = 1 + Math.sin(anim.breathPhase) * 0.012;
+          child.rotation.x = bodyLean;
+          child.rotation.z = bodySway;
+          child.position.y = (child as any)._baseY + bodyBounce;
+          break;
+        // ── Head ──
         case "head":
-          child.position.y = (child as any)._baseY + Math.sin(phase * 2) * 0.02 * blend; break;
+          child.position.y = (child as any)._baseY + bodyBounce + Math.sin(phase * 2) * 0.015 * b;
+          child.rotation.z = bodySway * 0.5; // head follows torso sway slightly
+          break;
+        // ── Shield ──
+        case "shield":
+          child.rotation.x = armFwdL * 0.5; // shield follows left arm
+          break;
       }
+
+      // ── Action overrides ──
       if (player.action === GBPlayerAction.CELEBRATING) {
-        if (name === "leftUpperArm" || name === "rightUpperArm")
+        if (name === "leftUpperArm" || name === "leftHand") {
+          child.rotation.x = -1.5 + Math.sin(this._time * 6) * 0.3;
           child.rotation.z = Math.sin(this._time * 5) * 0.5;
+        }
+        if (name === "rightUpperArm" || name === "rightHand") {
+          child.rotation.x = -1.5 + Math.sin(this._time * 6 + 1) * 0.3;
+          child.rotation.z = Math.sin(this._time * 5 + 1) * 0.5;
+        }
+        if (name === "head") child.position.y = (child as any)._baseY + 0.05 + Math.sin(this._time * 4) * 0.04;
       }
       if (player.action === GBPlayerAction.STUNNED) {
         if (name === "torso" || name === "head")
-          child.rotation.z = Math.sin(this._time * 10) * 0.15;
+          child.rotation.z = Math.sin(this._time * 10) * 0.2;
+        if (name === "leftUpperArm" || name === "rightUpperArm")
+          child.rotation.z = Math.sin(this._time * 8 + 0.5) * 0.3;
       }
       if (player.action === GBPlayerAction.THROWING) {
-        if (name === "rightUpperArm" || name === "rightHand")
-          child.rotation.x = -1.2;
+        if (name === "rightUpperArm") child.rotation.x = -1.5;
+        if (name === "rightHand") child.rotation.x = -1.8;
+        if (name === "torso") child.rotation.x = 0.2;
       }
       if (player.action === GBPlayerAction.TACKLING) {
-        if (name === "torso") child.rotation.x = 0.4;
+        if (name === "torso") { child.rotation.x = 0.5; child.position.y = (child as any)._baseY - 0.15; }
+        if (name === "head") child.position.y = (child as any)._baseY - 0.1;
+        if (name === "leftUpperArm" || name === "rightUpperArm") child.rotation.x = -0.8;
+        if (name === "leftThigh" || name === "rightThigh") child.rotation.x = 0.3;
       }
     });
   }

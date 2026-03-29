@@ -4283,13 +4283,42 @@ async function _bootGrailManagerGame(): Promise<void> {
   await _grailManagerGame.boot();
   const _onExit = () => {
     window.removeEventListener("gameExit", _onExit);
+    window.removeEventListener("grailManagerPlayMatch", _onPlayMatch);
     if (_grailManagerGame) {
       _grailManagerGame.destroy();
       _grailManagerGame = null;
     }
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
+  const _onPlayMatch = async (e: Event) => {
+    const { homeId, awayId } = (e as CustomEvent).detail;
+    // Hide manager renderer temporarily
+    const managerCanvas = document.querySelector("canvas[style*='z-index']") as HTMLCanvasElement | null;
+    if (managerCanvas) managerCanvas.style.display = "none";
+    // Boot Grail Ball with these teams
+    const { GrailBallGame } = await import("./grailball/GrailBallGame");
+    const gbGame = new GrailBallGame();
+    // Listen for result
+    const _onResult = (re: Event) => {
+      window.removeEventListener("grailBallMatchResult", _onResult);
+      window.removeEventListener("grailballExit", _onGBExit);
+      const { homeGoals, awayGoals } = (re as CustomEvent).detail;
+      if (managerCanvas) managerCanvas.style.display = "";
+      if (_grailManagerGame) {
+        _grailManagerGame.applyGrailBallResult(homeGoals, awayGoals);
+      }
+    };
+    const _onGBExit = () => {
+      window.removeEventListener("grailBallMatchResult", _onResult);
+      window.removeEventListener("grailballExit", _onGBExit);
+      if (managerCanvas) managerCanvas.style.display = "";
+    };
+    window.addEventListener("grailBallMatchResult", _onResult);
+    window.addEventListener("grailballExit", _onGBExit);
+    await gbGame.bootWithTeams(homeId, awayId);
+  };
   window.addEventListener("gameExit", _onExit);
+  window.addEventListener("grailManagerPlayMatch", _onPlayMatch);
 }
 
 // ---------------------------------------------------------------------------

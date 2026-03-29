@@ -139,6 +139,9 @@ export class GrailManagerGame {
         this._handleNavigation();
         this._handleScreenSpecific();
         break;
+      case GMScreen.PRE_MATCH:
+        this._handlePreMatch();
+        break;
       case GMScreen.MATCH:
         this._handleMatchDay(dt);
         break;
@@ -281,6 +284,76 @@ export class GrailManagerGame {
   }
 
   // -------------------------------------------------------------------------
+  // Pre-Match (choose simulate vs play)
+  // -------------------------------------------------------------------------
+  private _handlePreMatch(): void {
+    const state = this._state;
+    // Press 1 or Enter to simulate
+    if (_justPressed("Digit1") || _justPressed("Enter")) {
+      this._startSimulatedMatch();
+    }
+    // Press 2 to play in Grail Ball
+    if (_justPressed("Digit2")) {
+      this._launchGrailBallMatch();
+    }
+  }
+
+  private _startSimulatedMatch(): void {
+    const state = this._state;
+    if (!state.preMatchTeams) return;
+    const { homeId, awayId } = state.preMatchTeams;
+    state.liveMatch = initLiveMatch(state, homeId, awayId);
+    state.screen = GMScreen.MATCH;
+    state.preMatchTeams = null;
+    this._matchSimTimer = 0;
+  }
+
+  private _launchGrailBallMatch(): void {
+    const state = this._state;
+    if (!state.preMatchTeams) return;
+    const { homeId, awayId } = state.preMatchTeams;
+
+    // Dispatch event to launch Grail Ball with these team IDs
+    window.dispatchEvent(new CustomEvent("grailManagerPlayMatch", {
+      detail: { homeId, awayId },
+    }));
+  }
+
+  /** Called from outside when the Grail Ball match finishes */
+  applyGrailBallResult(homeGoals: number, awayGoals: number): void {
+    const state = this._state;
+    if (!state.preMatchTeams) return;
+    const { homeId, awayId } = state.preMatchTeams;
+    state.preMatchTeams = null;
+
+    // Record the result as if it were a simulated match
+    state.lastMatchResult = {
+      home: homeId,
+      away: awayId,
+      homeGoals,
+      awayGoals,
+      commentary: [{ minute: 90, text: "Full Time — played in Grail Ball!", type: "info" as any }],
+    };
+
+    // Update fixture
+    const fixture = state.fixtures.find(f =>
+      (f.homeTeamId === homeId && f.awayTeamId === awayId) && !f.played
+    );
+    if (fixture) {
+      fixture.played = true;
+      fixture.homeGoals = homeGoals;
+      fixture.awayGoals = awayGoals;
+    }
+
+    updateLeagueTable(state);
+    updateMoraleAfterMatch(state, homeId, awayId, homeGoals, awayGoals);
+    this._processRemainingMatches();
+    recalcFinances(state);
+
+    state.screen = GMScreen.MATCH_RESULT;
+  }
+
+  // -------------------------------------------------------------------------
   // Match Day
   // -------------------------------------------------------------------------
   private _handleMatchDay(dt: number): void {
@@ -411,6 +484,15 @@ export class GrailManagerGame {
     // Advance week
     if (clickedId === "advance_week") {
       this._advanceWeek();
+      return;
+    }
+    // Pre-match choices
+    if (clickedId === "preMatchSimulate") {
+      this._startSimulatedMatch();
+      return;
+    }
+    if (clickedId === "preMatchPlay") {
+      this._launchGrailBallMatch();
       return;
     }
 
@@ -577,25 +659,20 @@ export class GrailManagerGame {
     }
 
     if (playerFixture) {
-      // Start live match for player
+      // Show pre-match screen with option to play or simulate
       const homeId = playerFixture.homeTeamId;
       const awayId = playerFixture.awayTeamId;
-
-      // AI match-day decisions for opponent
       aiMatchDayDecisions(state, homeId === state.playerTeamId ? awayId : homeId);
-
-      state.liveMatch = initLiveMatch(state, homeId, awayId);
-      state.screen = GMScreen.MATCH;
-      this._matchSimTimer = 0;
+      state.preMatchTeams = { homeId, awayId };
+      state.screen = GMScreen.PRE_MATCH;
     } else if (this._pendingCupMatch) {
-      // Player cup match
+      // Player cup match — also show pre-match
       const cm = this._pendingCupMatch;
       const homeId = cm.team1Id;
       const awayId = cm.team2Id;
       aiMatchDayDecisions(state, homeId === state.playerTeamId ? awayId : homeId);
-      state.liveMatch = initLiveMatch(state, homeId, awayId);
-      state.screen = GMScreen.MATCH;
-      this._matchSimTimer = 0;
+      state.preMatchTeams = { homeId, awayId };
+      state.screen = GMScreen.PRE_MATCH;
       this._pendingCupMatch = null;
     } else {
       // No player match this week - simulate AI matches and stay on dashboard
