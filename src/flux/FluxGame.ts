@@ -122,35 +122,35 @@ export class FluxGame {
     const s = this._state;
 
     if (s.phase === FluxPhase.PLAYING) {
-      // WASD = movement, Arrows = aiming (independent)
+      // Arrow keys = movement, WASD = aim direction
       let mx = 0, my = 0;
-      if (this._keys.has("KeyW")) my -= 1;
-      if (this._keys.has("KeyS")) my += 1;
-      if (this._keys.has("KeyA")) mx -= 1;
-      if (this._keys.has("KeyD")) mx += 1;
+      if (this._keys.has("ArrowUp")) my -= 1;
+      if (this._keys.has("ArrowDown")) my += 1;
+      if (this._keys.has("ArrowLeft")) mx -= 1;
+      if (this._keys.has("ArrowRight")) mx += 1;
 
-      // Arrows = aim (if no WASD, arrows also move)
+      // WASD = aim only (no movement)
       let ax = 0, ay = 0;
-      if (this._keys.has("ArrowUp")) ay -= 1;
-      if (this._keys.has("ArrowDown")) ay += 1;
-      if (this._keys.has("ArrowLeft")) ax -= 1;
-      if (this._keys.has("ArrowRight")) ax += 1;
+      if (this._keys.has("KeyW")) ay -= 1;
+      if (this._keys.has("KeyS")) ay += 1;
+      if (this._keys.has("KeyA")) ax -= 1;
+      if (this._keys.has("KeyD")) ax += 1;
 
-      const hasWASD = mx !== 0 || my !== 0;
-      const hasArrows = ax !== 0 || ay !== 0;
+      const hasMove = mx !== 0 || my !== 0;
+      const hasAim = ax !== 0 || ay !== 0;
 
-      if (hasWASD) {
+      if (hasMove) {
         applyPlayerInput(s, mx, my, dt);
-        if (hasArrows) {
-          // WASD moves, arrows aim
+        if (hasAim) {
+          // Arrows move, WASD aims
           this._aimAngle = Math.atan2(ay, ax);
         } else {
-          // WASD moves and aims
+          // Arrows move and aim
           this._aimAngle = Math.atan2(my, mx);
         }
-      } else if (hasArrows) {
-        // Arrows move and aim
-        applyPlayerInput(s, ax, ay, dt);
+      } else if (hasAim) {
+        // WASD aims only (no movement), apply friction
+        applyPlayerInput(s, 0, 0, dt);
         this._aimAngle = Math.atan2(ay, ax);
       } else {
         applyPlayerInput(s, 0, 0, dt); // apply friction

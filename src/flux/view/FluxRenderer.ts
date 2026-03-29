@@ -57,28 +57,70 @@ export class FluxRenderer {
     if (s.screenShake > 0) { sx = (Math.random() - 0.5) * B.SHAKE_INTENSITY * 2; sy = (Math.random() - 0.5) * B.SHAKE_INTENSITY * 2; }
     const ox = pad + sx, oy = pad + sy;
 
-    // Deep space background with nebula and star layers
+    // Deep space background with vibrant nebulae, galaxy arms, and star layers
     g.rect(0, 0, sw, sh).fill(B.COLOR_BG);
-    // Nebula clouds (large soft color patches)
-    for (let ni = 0; ni < 8; ni++) {
-      const nx = ((ni * 311 + 7) % 100) / 100 * sw;
-      const ny = ((ni * 197 + 13) % 100) / 100 * sh;
-      const nr = 50 + ni * 25;
-      const nc = [0x0a1133, 0x1a0a33, 0x0a2222, 0x1a1a0a][ni % 4];
-      g.circle(nx, ny, nr).fill({ color: nc, alpha: 0.06 + 0.02 * Math.sin(s.time * 0.2 + ni) });
+
+    // Large nebula clouds (vivid color patches with pulsing)
+    const nebulaConfigs = [
+      { x: 0.15, y: 0.3, r: 120, c: 0x1a0844, a: 0.18 },
+      { x: 0.75, y: 0.2, r: 140, c: 0x0a1844, a: 0.15 },
+      { x: 0.5, y: 0.7, r: 110, c: 0x2a0a2a, a: 0.14 },
+      { x: 0.85, y: 0.65, r: 100, c: 0x0a2a1a, a: 0.12 },
+      { x: 0.25, y: 0.8, r: 90, c: 0x1a1a08, a: 0.10 },
+      { x: 0.6, y: 0.35, r: 130, c: 0x140828, a: 0.13 },
+    ];
+    for (let ni = 0; ni < nebulaConfigs.length; ni++) {
+      const n = nebulaConfigs[ni];
+      const pulse = 0.04 * Math.sin(s.time * 0.15 + ni * 1.3);
+      // Outer glow
+      g.circle(n.x * sw, n.y * sh, n.r * 1.5).fill({ color: n.c, alpha: (n.a * 0.3) + pulse * 0.5 });
+      // Core
+      g.circle(n.x * sw, n.y * sh, n.r).fill({ color: n.c, alpha: n.a + pulse });
+      // Bright center
+      g.circle(n.x * sw, n.y * sh, n.r * 0.4).fill({ color: n.c, alpha: (n.a * 1.5) + pulse });
     }
-    // Background star field (3 layers: dim distant, medium, bright close)
-    for (let si = 0; si < 80; si++) {
+
+    // Galaxy spiral arm streaks
+    for (let gi = 0; gi < 12; gi++) {
+      const ga = (gi / 12) * Math.PI * 2 + s.time * 0.02;
+      const gr = 60 + gi * 15;
+      const gx1 = sw * 0.5 + Math.cos(ga) * gr;
+      const gy1 = sh * 0.5 + Math.sin(ga) * gr;
+      const gx2 = sw * 0.5 + Math.cos(ga + 0.4) * (gr + 40);
+      const gy2 = sh * 0.5 + Math.sin(ga + 0.4) * (gr + 40);
+      g.moveTo(gx1, gy1).lineTo(gx2, gy2).stroke({ color: 0x2244aa, width: 2 + gi * 0.3, alpha: 0.04 + 0.01 * Math.sin(s.time * 0.3 + gi) });
+    }
+
+    // Dense star field (150 stars, 3 layers with varied colors)
+    const starColors = [0x445577, 0x556688, 0x6688bb, 0x88aadd, 0xaaccff, 0xffddaa, 0xffaa88];
+    for (let si = 0; si < 150; si++) {
       const stx = ((si * 73 + 42) % 1000) / 1000 * sw;
       const sty = ((si * 137 + 42) % 1000) / 1000 * sh;
       const layer = si % 3;
-      const starSize = layer === 0 ? 0.4 : layer === 1 ? 0.7 : 1.1;
-      const starAlpha = (layer === 0 ? 0.03 : layer === 1 ? 0.05 : 0.08) + 0.03 * Math.sin(s.time * (0.3 + layer * 0.2) + si * 1.7);
-      const starColor = layer === 2 ? 0x6688bb : 0x445577;
-      g.circle(stx, sty, starSize).fill({ color: starColor, alpha: starAlpha });
-      // Bright stars get a tiny glow
-      if (layer === 2 && si % 5 === 0) {
-        g.circle(stx, sty, starSize * 3).fill({ color: starColor, alpha: starAlpha * 0.3 });
+      const starSize = layer === 0 ? 0.5 : layer === 1 ? 0.9 : 1.4;
+      const twinkle = Math.sin(s.time * (0.5 + layer * 0.3) + si * 1.7);
+      const starAlpha = (layer === 0 ? 0.08 : layer === 1 ? 0.14 : 0.22) + 0.06 * twinkle;
+      const sc = starColors[si % starColors.length];
+      g.circle(stx, sty, starSize).fill({ color: sc, alpha: starAlpha });
+      // Bright stars get cross-shaped glow
+      if (layer === 2 && si % 4 === 0) {
+        const glowA = starAlpha * 0.4;
+        g.circle(stx, sty, starSize * 3).fill({ color: sc, alpha: glowA });
+        // Horizontal flare
+        g.moveTo(stx - 6, sty).lineTo(stx + 6, sty).stroke({ color: sc, width: 0.5, alpha: glowA * 0.7 });
+        // Vertical flare
+        g.moveTo(stx, sty - 6).lineTo(stx, sty + 6).stroke({ color: sc, width: 0.5, alpha: glowA * 0.7 });
+      }
+    }
+
+    // Distant galaxy cluster (tiny bright dots grouped together)
+    for (let gc = 0; gc < 3; gc++) {
+      const gcx = ((gc * 347 + 89) % 100) / 100 * sw;
+      const gcy = ((gc * 211 + 53) % 100) / 100 * sh;
+      for (let gd = 0; gd < 15; gd++) {
+        const gdx = gcx + (Math.sin(gd * 2.1 + gc) * 12);
+        const gdy = gcy + (Math.cos(gd * 1.7 + gc) * 10);
+        g.circle(gdx, gdy, 0.4 + Math.random() * 0.3).fill({ color: 0xaabbcc, alpha: 0.1 + Math.random() * 0.08 });
       }
     }
 
