@@ -146,35 +146,157 @@ export class RampartRenderer {
   private _buildTerrain(): void {
     const cols = RAMPART.GRID_COLS;
     const rows = RAMPART.GRID_ROWS;
+    const mapW = cols * CS;
+    const mapD = rows * CS;
 
-    // Ground plane with vertex displacement
+    // Ground plane with higher resolution vertex displacement
     const geo = new THREE.PlaneGeometry(
-      cols * CS + 20, rows * CS + 20,
-      cols * 2, rows * 2,
+      mapW + 20, mapD + 20,
+      cols * 4, rows * 4,
     );
     geo.rotateX(-Math.PI / 2);
 
+    // Vertex colors for grass variation
     const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const baseColor = new THREE.Color(RAMPART.COLOR_GROUND);
+    const darkGrass = new THREE.Color(0x3a6830);
+    const lightGrass = new THREE.Color(0x5a9048);
+    const dirtColor = new THREE.Color(0x6a5a3a);
+
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const z = pos.getZ(i);
-      // Map z to row
-      const row = (z + rows * CS / 2) / CS;
+      const row = (z + mapD / 2) / CS;
       const h = getTerrainHeight(Math.max(0, Math.min(rows - 1, row)));
-      pos.setY(i, h - 0.1 + Math.sin(x * 0.3) * 0.2 + Math.cos(z * 0.4) * 0.15);
+      // More varied terrain displacement
+      const noise1 = Math.sin(x * 0.3 + z * 0.1) * 0.25;
+      const noise2 = Math.cos(z * 0.4 - x * 0.2) * 0.2;
+      const noise3 = Math.sin(x * 1.2) * Math.cos(z * 0.8) * 0.08;
+      pos.setY(i, h - 0.1 + noise1 + noise2 + noise3);
+
+      // Vertex color variation
+      const n = Math.sin(x * 0.7 + z * 0.5) * 0.5 + 0.5;
+      const n2 = Math.cos(x * 1.3 - z * 0.9) * 0.5 + 0.5;
+      const c = baseColor.clone();
+      if (n > 0.6) c.lerp(lightGrass, (n - 0.6) * 2);
+      else if (n < 0.3) c.lerp(darkGrass, (0.3 - n) * 2);
+      if (n2 > 0.8) c.lerp(dirtColor, (n2 - 0.8) * 1.5);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
     }
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
 
     const groundMat = new THREE.MeshStandardMaterial({
-      color: RAMPART.COLOR_GROUND,
+      vertexColors: true,
       roughness: 0.9,
       metalness: 0,
       flatShading: true,
     });
     const ground = new THREE.Mesh(geo, groundMat);
-    ground.position.set(cols * CS / 2, 0, rows * CS / 2);
+    ground.position.set(mapW / 2, 0, mapD / 2);
     ground.receiveShadow = true;
     this._terrainGroup.add(ground);
+
+    // Scatter trees around map edges (outside buildable area)
+    const treeTrunkMat = this._getMat(0x5a3a1a);
+    const treeLeafMats = [this._getMat(0x2a7a2a), this._getMat(0x3a8a30), this._getMat(0x2a6a28)];
+    const rng = (seed: number) => {
+      let s = seed;
+      return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+    };
+    const r = rng(42);
+    for (let t = 0; t < 40; t++) {
+      const tx = r() * (mapW + 16) - 8;
+      const tz = r() * (mapD + 16) - 8;
+      // Only place outside the playable grid or at far edges
+      const gc = tx / CS;
+      const gr = tz / CS;
+      if (gc > 1 && gc < cols - 1 && gr > 1 && gr < rows - 1) continue;
+      const rowH = getTerrainHeight(Math.max(0, Math.min(rows - 1, gr)));
+      const tree = new THREE.Group();
+      // Trunk
+      const trunkH = 2 + r() * 2;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, trunkH, 6), treeTrunkMat);
+      trunk.position.y = trunkH / 2;
+      trunk.castShadow = true;
+      tree.add(trunk);
+      // Canopy layers
+      const leafMat = treeLeafMats[Math.floor(r() * 3)];
+      for (let l = 0; l < 3; l++) {
+        const canopyR = 1.2 - l * 0.25 + r() * 0.3;
+        const canopy = new THREE.Mesh(new THREE.ConeGeometry(canopyR, 1.8 - l * 0.3, 6), leafMat);
+        canopy.position.y = trunkH + l * 1.0;
+        canopy.castShadow = true;
+        tree.add(canopy);
+      }
+      tree.position.set(tx, rowH, tz);
+      this._terrainGroup.add(tree);
+    }
+
+    // Scatter rocks
+    const rockMats = [this._getMat(0x777770), this._getMat(0x666660), this._getMat(0x888880)];
+    for (let i = 0; i < 25; i++) {
+      const rx = r() * mapW;
+      const rz = r() * mapD;
+      const gc = rx / CS;
+      const gr = rz / CS;
+      if (gc > 2 && gc < cols - 2 && gr > 2 && gr < rows - 2) continue;
+      const rowH = getTerrainHeight(Math.max(0, Math.min(rows - 1, gr)));
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.3 + r() * 0.5, 0),
+        rockMats[Math.floor(r() * 3)]
+      );
+      rock.position.set(rx, rowH + 0.15, rz);
+      rock.rotation.set(r() * 2, r() * 2, r() * 2);
+      rock.scale.y = 0.5 + r() * 0.3;
+      rock.castShadow = true;
+      this._terrainGroup.add(rock);
+    }
+
+    // Grass tufts (small cone clusters)
+    const grassMat = this._getMat(0x4a8a38);
+    const grassDarkMat = this._getMat(0x3a7028);
+    for (let i = 0; i < 60; i++) {
+      const gx = r() * mapW;
+      const gz = r() * mapD;
+      const gr = gz / CS;
+      const rowH = getTerrainHeight(Math.max(0, Math.min(rows - 1, gr)));
+      const tuft = new THREE.Group();
+      for (let s = 0; s < 3 + Math.floor(r() * 3); s++) {
+        const blade = new THREE.Mesh(
+          new THREE.ConeGeometry(0.04, 0.3 + r() * 0.2, 3),
+          r() > 0.5 ? grassMat : grassDarkMat
+        );
+        blade.position.set((r() - 0.5) * 0.15, 0.12, (r() - 0.5) * 0.15);
+        blade.rotation.z = (r() - 0.5) * 0.3;
+        tuft.add(blade);
+      }
+      tuft.position.set(gx, rowH, gz);
+      this._terrainGroup.add(tuft);
+    }
+
+    // Wildflowers
+    const flowerColors = [0xff6666, 0xffaa44, 0xffff66, 0xaa66ff, 0xff66aa];
+    for (let i = 0; i < 30; i++) {
+      const fx = r() * mapW;
+      const fz = r() * mapD;
+      const gr = fz / CS;
+      const rowH = getTerrainHeight(Math.max(0, Math.min(rows - 1, gr)));
+      const flower = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 6, 4),
+        new THREE.MeshStandardMaterial({
+          color: flowerColors[Math.floor(r() * 5)],
+          emissive: flowerColors[Math.floor(r() * 5)],
+          emissiveIntensity: 0.3,
+          roughness: 0.8,
+        })
+      );
+      flower.position.set(fx, rowH + 0.08 + r() * 0.05, fz);
+      this._terrainGroup.add(flower);
+    }
 
   }
 
@@ -185,7 +307,9 @@ export class RampartRenderer {
       color: RAMPART.COLOR_PATH,
       roughness: 0.95,
       metalness: 0,
-      flatShading: true,
+    });
+    const pathEdgeMat = new THREE.MeshStandardMaterial({
+      color: 0x7a6a50, roughness: 0.9, metalness: 0,
     });
 
     // Build path quads based on default grid layout
