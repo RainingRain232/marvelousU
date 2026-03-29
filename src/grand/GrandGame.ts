@@ -649,7 +649,7 @@ export class GrandGame {
       const lateral = (Math.random() - 0.5) * 1.2;
       const kind = kinds[i % kinds.length];
       const pos = this._getTrackPosWorld(segIdx, lateral);
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8),
+      const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 0),
         new THREE.MeshStandardMaterial({ color: colors[kind], emissive: colors[kind], emissiveIntensity: 0.8, roughness: 0.3, metalness: 0.5 }));
       mesh.position.set(pos.x, pos.y + 0.6, pos.z);
       this._scene.add(mesh);
@@ -676,34 +676,66 @@ export class GrandGame {
 
   private _buildRacerMesh(r: Racer): void {
     const g = new THREE.Group();
-    // chariot body
+    // chariot body (tapered platform)
     const bodyMat = new THREE.MeshStandardMaterial({ color: r.color, roughness: 0.5, metalness: 0.4 });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 1.8), bodyMat);
-    body.position.y = 0.4; body.castShadow = true;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.15, 1.8), bodyMat);
+    body.position.y = 0.35; body.castShadow = true;
     g.add(body);
+    // raised front wall
+    const frontWall = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 0.08), bodyMat);
+    frontWall.position.set(0, 0.6, -0.85);
+    g.add(frontWall);
+    // side walls (curved inward at top)
+    const sideMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(r.color).multiplyScalar(0.85).getHex(), roughness: 0.5, metalness: 0.4 });
+    for (const side of [-1, 1]) {
+      const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 1.6), sideMat);
+      sideWall.position.set(side * 0.52, 0.52, -0.05);
+      g.add(sideWall);
+    }
+    // gold trim along top edges
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, roughness: 0.3, metalness: 0.7, emissive: 0x554400, emissiveIntensity: 0.2 });
+    const frontTrim = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.04, 0.04), trimMat);
+    frontTrim.position.set(0, 0.87, -0.85);
+    g.add(frontTrim);
+    for (const side of [-1, 1]) {
+      const sideTrim = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 1.65), trimMat);
+      sideTrim.position.set(side * 0.55, 0.72, -0.05);
+      g.add(sideTrim);
+    }
     // wheels with spokes + axle
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.7, metalness: 0.2 });
     const spokeMat = new THREE.MeshStandardMaterial({ color: 0x776644, roughness: 0.6, metalness: 0.15 });
     const rimMat = new THREE.MeshStandardMaterial({ color: 0x888866, roughness: 0.4, metalness: 0.5 });
+    const ironBandMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.3, metalness: 0.7 });
     for (const side of [-1, 1]) {
       const wheelGroup = new THREE.Group();
-      // outer rim
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.04, 12, 16), rimMat);
+      // outer rim (thicker for visibility)
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.05, 12, 24), rimMat);
       wheelGroup.add(rim);
-      // hub
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8), wheelMat);
+      // iron band around rim
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.025, 8, 24), ironBandMat);
+      band.position.z = 0.04;
+      wheelGroup.add(band);
+      // hub (wider, more detailed)
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.14, 12), wheelMat);
       hub.rotation.x = Math.PI / 2;
       wheelGroup.add(hub);
-      // spokes
-      for (let si = 0; si < 6; si++) {
-        const sa = (si / 6) * Math.PI * 2;
-        const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.28, 0.02), spokeMat);
-        spoke.position.set(Math.cos(sa) * 0.16, Math.sin(sa) * 0.16, 0);
+      // hub cap
+      const hubCap = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), ironBandMat);
+      hubCap.position.z = side * 0.08;
+      wheelGroup.add(hubCap);
+      // spokes (8 for more detail)
+      for (let si = 0; si < 8; si++) {
+        const sa = (si / 8) * Math.PI * 2;
+        const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.32, 0.02), spokeMat);
+        spoke.position.set(Math.cos(sa) * 0.19, Math.sin(sa) * 0.19, 0);
         spoke.rotation.z = sa;
         wheelGroup.add(spoke);
       }
-      wheelGroup.rotation.z = Math.PI / 2;
-      wheelGroup.position.set(side * 0.65, 0.25, -0.4);
+      // Face the wheel inward (flat side toward chariot body)
+      wheelGroup.rotation.y = side * Math.PI / 2;
+      wheelGroup.position.set(side * 0.7, 0.3, -0.4);
+      wheelGroup.name = side === -1 ? "wheelL" : "wheelR";
       g.add(wheelGroup);
     }
     // axle
@@ -712,50 +744,109 @@ export class GrandGame {
     axle.rotation.z = Math.PI / 2;
     axle.position.set(0, 0.25, -0.4);
     g.add(axle);
-    // rider (simple knight)
-    const rider = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.7, 12),
-      new THREE.MeshStandardMaterial({ color: r.color, roughness: 0.4, metalness: 0.6 }));
-    rider.position.set(0, 0.95, -0.2);
-    g.add(rider);
-    // helmet
-    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10),
-      new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.8 }));
-    helm.position.set(0, 1.35, -0.2);
+    // rider (knight with torso, arms, helmet)
+    const armorMat = new THREE.MeshStandardMaterial({ color: r.color, roughness: 0.4, metalness: 0.6 });
+    const helmMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.8 });
+    // torso
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 0.5, 10), armorMat);
+    torso.position.set(0, 0.85, -0.2);
+    g.add(torso);
+    // shoulders
+    const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.1, 0.2), armorMat);
+    shoulders.position.set(0, 1.1, -0.2);
+    g.add(shoulders);
+    // arms
+    for (const armSide of [-1, 1]) {
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.35, 6), armorMat);
+      arm.position.set(armSide * 0.22, 0.9, -0.15);
+      arm.rotation.x = 0.3;
+      g.add(arm);
+    }
+    // helmet (sphere + visor slit)
+    const helm = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), helmMat);
+    helm.position.set(0, 1.28, -0.2);
     g.add(helm);
+    // visor slit
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.025, 0.05),
+      new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    visor.position.set(0, 1.27, -0.34);
+    g.add(visor);
+    // plume on helmet
+    const plumeMat = new THREE.MeshStandardMaterial({ color: r.color, emissive: r.color, emissiveIntensity: 0.3, roughness: 0.8 });
+    const plume = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.2), plumeMat);
+    plume.position.set(0, 1.42, -0.15);
+    g.add(plume);
     // shield indicator (invisible, shown when shield active)
     const shield = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 8),
       new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
     shield.position.y = 0.5;
     g.add(shield);
-    // horses (2 simplified horse shapes in front)
-    for (const side of [-0.3, 0.3]) {
-      const horse = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.4, 0.9),
-        new THREE.MeshStandardMaterial({ color: 0x775533, roughness: 0.8, metalness: 0.05 }));
-      horse.position.set(side, 0.4, 1.0);
-      g.add(horse);
-      // horse head
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.3),
-        new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.8 }));
-      head.position.set(side, 0.65, 1.4);
-      head.rotation.x = -0.3;
-      g.add(head);
-    }
-    // horse manes + tails
+    // horses (2 shaped horse bodies in named groups)
+    const horseMat = new THREE.MeshStandardMaterial({ color: 0x775533, roughness: 0.7, metalness: 0.05 });
+    const horseDarkMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.7 });
     const maneMat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.9 });
     for (const side of [-0.3, 0.3]) {
-      // mane (small box on top of head)
-      const mane = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.2), maneMat);
-      mane.position.set(side, 0.78, 1.35);
-      g.add(mane);
-      // tail (thin box behind body)
-      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), maneMat);
-      tail.position.set(side, 0.5, 0.4);
-      tail.rotation.x = 0.3;
-      g.add(tail);
+      const horseGroup = new THREE.Group();
+      horseGroup.name = "horse";
+      // torso (capsule-like with sphere + cylinder)
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.8, 10), horseMat);
+      torso.rotation.x = Math.PI / 2;
+      torso.position.set(0, 0, 0);
+      horseGroup.add(torso);
+      // chest (front sphere)
+      const chest = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), horseMat);
+      chest.position.set(0, 0, 0.35);
+      horseGroup.add(chest);
+      // rump (back sphere)
+      const rump = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), horseMat);
+      rump.position.set(0, 0, -0.4);
+      horseGroup.add(rump);
+      // neck (angled cylinder)
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.4, 8), horseDarkMat);
+      neck.position.set(0, 0.18, 0.45);
+      neck.rotation.x = -0.6;
+      horseGroup.add(neck);
+      // head (elongated sphere)
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), horseDarkMat);
+      head.scale.set(0.8, 0.8, 1.5);
+      head.position.set(0, 0.3, 0.6);
+      head.rotation.x = -0.3;
+      horseGroup.add(head);
+      // ears
+      for (const ear of [-0.04, 0.04]) {
+        const earMesh = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 4), horseDarkMat);
+        earMesh.position.set(ear, 0.4, 0.55);
+        horseGroup.add(earMesh);
+      }
+      // legs (4 per horse)
+      for (const lz of [-0.3, 0.2]) {
+        for (const lx of [-0.06, 0.06]) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.35, 6), horseDarkMat);
+          leg.position.set(lx, -0.27, lz);
+          horseGroup.add(leg);
+        }
+      }
+      // mane
+      const mane = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.25), maneMat);
+      mane.position.set(0, 0.36, 0.4);
+      horseGroup.add(mane);
+      // tail
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.01, 0.35, 4), maneMat);
+      tail.position.set(0, 0.03, -0.55);
+      tail.rotation.x = 0.5;
+      horseGroup.add(tail);
+      horseGroup.position.set(side, 0.42, 1.0);
+      g.add(horseGroup);
     }
-    // reins (connecting rod)
-    const reins = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.02),
-      new THREE.MeshBasicMaterial({ color: 0x553322 }));
+    // reins (two lines connecting rider to horses)
+    const reinMat = new THREE.MeshBasicMaterial({ color: 0x553322 });
+    for (const side of [-0.3, 0.3]) {
+      const rein = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.7, 4), reinMat);
+      rein.position.set(side, 0.6, 0.85);
+      rein.rotation.x = Math.PI / 2 + 0.15;
+      g.add(rein);
+    }
+    const reins = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.02), reinMat);
     reins.position.set(0, 0.55, 0.5);
     g.add(reins);
     // pennant flag
@@ -862,12 +953,23 @@ export class GrandGame {
       const segIdx = (10 + Math.floor((i / OBSTACLE_COUNT) * TRACK_SEGMENTS)) % TRACK_SEGMENTS;
       const lateral = (Math.random() - 0.5) * 1.6;
       const pos = this._getTrackPosWorld(segIdx, lateral);
-      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.8, 12),
-        new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8, metalness: 0.1 }));
-      mesh.position.set(pos.x, pos.y + 0.4, pos.z);
-      mesh.castShadow = true;
-      this._scene.add(mesh);
-      this._obstacles.push({ segIdx, lateral, mesh });
+      // Wooden barrel obstacle (smaller, more visible)
+      const obsGroup = new THREE.Group();
+      const barrelMat = new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8, metalness: 0.1 });
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.28, 0.55, 10), barrelMat);
+      barrel.position.y = 0.28;
+      obsGroup.add(barrel);
+      // barrel bands
+      const bandMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.4, metalness: 0.6 });
+      for (const by of [0.1, 0.45]) {
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.015, 6, 12), bandMat);
+        band.rotation.x = Math.PI / 2;
+        band.position.y = by;
+        obsGroup.add(band);
+      }
+      obsGroup.position.set(pos.x, pos.y, pos.z);
+      this._scene.add(obsGroup);
+      this._obstacles.push({ segIdx, lateral, mesh: obsGroup as any });
     }
   }
 
@@ -1894,9 +1996,9 @@ export class GrandGame {
         if (r.finished) continue;
         const rw = this._getTrackPosWorld(r.trackPos, r.lateralOffset);
         const dx = rw.x - ow.x, dz = rw.z - ow.z;
-        if (dx * dx + dz * dz < 1.0 && r.shieldTimer <= 0) {
-          r.speed *= 0.4;
-          r.stunTimer = Math.max(r.stunTimer, 15);
+        if (dx * dx + dz * dz < 0.5 && r.shieldTimer <= 0) {
+          r.speed *= 0.6;
+          r.stunTimer = Math.max(r.stunTimer, 8);
           this._spawnStunSparks(ow.x, ow.y + 0.5, ow.z);
           if (r.isPlayer) { this._shakeIntensity = 0.2; this._chromaticTarget = 0.04; this._playSound("hit"); }
         }
@@ -2086,10 +2188,11 @@ export class GrandGame {
         const steerTilt = r.isPlayer ? (this._keys["KeyA"] || this._keys["ArrowLeft"] ? 0.15 : this._keys["KeyD"] || this._keys["ArrowRight"] ? -0.15 : 0) : r.steerSmooth * 0.3;
         r.mesh.rotation.z = lerp(r.mesh.rotation.z, steerTilt, 0.1);
       }
-      // wheel spin (children[1] and [2] are wheel groups)
-      for (let wi = 1; wi <= 2; wi++) {
-        if (r.mesh.children[wi]) r.mesh.children[wi].rotation.x += r.speed * 0.1;
-      }
+      // wheel spin
+      const wL = r.mesh.getObjectByName("wheelL");
+      const wR = r.mesh.getObjectByName("wheelR");
+      if (wL) wL.rotation.z += r.speed * 0.1;
+      if (wR) wR.rotation.z -= r.speed * 0.1;
     }
 
     // racer shadows
@@ -2099,14 +2202,17 @@ export class GrandGame {
       this._racerShadows[ri].position.set(rw.x, rw.y - 0.28, rw.z);
     }
 
-    // horse gallop animation (bob horse bodies based on speed)
+    // horse gallop animation (bob horse groups based on speed)
     for (const r of this._racers) {
       if (!r.mesh) continue;
       const time2 = this._frame / 60;
       const gallop = r.speed > 2 ? Math.sin(time2 * 12 + r.trackPos) * 0.06 : 0;
-      // horses are children[5] and [7] (body meshes after body/wheels/rider/helm/shield)
-      for (let hi = 5; hi < r.mesh.children.length; hi += 2) {
-        if (hi < r.mesh.children.length) r.mesh.children[hi].position.y = 0.4 + gallop;
+      let horseIdx = 0;
+      for (const child of r.mesh.children) {
+        if (child.name === "horse") {
+          child.position.y = 0.42 + gallop * (horseIdx === 0 ? 1 : -0.5);
+          horseIdx++;
+        }
       }
     }
 
