@@ -228,6 +228,9 @@ export class PlagueRTRenderer {
 
   private _drawGround(state: PlagueRTState, ox: number, oy: number): void {
     const g = this._gfx;
+    const gridPxW = state.gridW * TS;
+    const gridPxH = state.gridH * TS;
+
     for (let y = 0; y < state.gridH; y++) {
       for (let x = 0; x < state.gridW; x++) {
         const tile = state.tiles[y][x];
@@ -237,9 +240,10 @@ export class PlagueRTRenderer {
         let color: number;
         switch (tile) {
           case TileType.GRASS: {
-            // Variation
+            // Enhanced variation with darker patches
             const seed = (x * 7 + y * 13) % 5;
-            const base = 0x3a5a2a;
+            const darkSeed = (x * 31 + y * 47) % 11;
+            const base = darkSeed < 2 ? 0x2e4e22 : 0x3a5a2a;
             color = base + seed * 0x020302;
             break;
           }
@@ -260,7 +264,85 @@ export class PlagueRTRenderer {
 
         g.rect(px, py, TS, TS).fill({ color, alpha: 1 });
         g.rect(px, py, TS, TS).stroke({ color: 0x000000, width: 0.5, alpha: 0.15 });
+
+        // Grass detail: wildflower dots and grass tufts
+        if (tile === TileType.GRASS) {
+          const flowerSeed = (x * 53 + y * 97) % 37;
+          if (flowerSeed < 3) {
+            // Wildflower dot
+            const flowerColors = [0xdddd44, 0xdd88aa, 0x88aadd];
+            const fx = px + (flowerSeed * 13 + 7) % (TS - 8) + 4;
+            const fy = py + (flowerSeed * 19 + 5) % (TS - 8) + 4;
+            g.circle(fx, fy, 1.5).fill({ color: flowerColors[flowerSeed % 3], alpha: 0.7 });
+          }
+          // Grass tuft marks
+          const tuftSeed = (x * 41 + y * 67) % 19;
+          if (tuftSeed < 4) {
+            const tx = px + (tuftSeed * 11 + 3) % (TS - 6) + 3;
+            const ty = py + (tuftSeed * 7 + 9) % (TS - 6) + 3;
+            g.moveTo(tx, ty).lineTo(tx - 1, ty - 4).stroke({ color: 0x4a6a3a, width: 0.8, alpha: 0.5 });
+            g.moveTo(tx + 2, ty).lineTo(tx + 3, ty - 3).stroke({ color: 0x4a6a3a, width: 0.8, alpha: 0.5 });
+          }
+        }
+
+        // Path detail: cobblestone pattern
+        if (tile === TileType.PATH) {
+          const cobbleSeed = (x * 23 + y * 59) % 7;
+          // Draw small cobblestone circles/rects
+          for (let ci = 0; ci < 3 + cobbleSeed % 3; ci++) {
+            const cx = px + ((ci * 17 + cobbleSeed * 7 + 4) % (TS - 10)) + 5;
+            const cy = py + ((ci * 13 + cobbleSeed * 11 + 3) % (TS - 10)) + 5;
+            const cw = 5 + (ci * 3 + cobbleSeed) % 4;
+            const ch = 4 + (ci * 5 + cobbleSeed) % 3;
+            const shade = (ci + cobbleSeed) % 3 === 0 ? 0x6a5a3a : 0x8a7a5a;
+            g.roundRect(cx, cy, cw, ch, 2).fill({ color: shade, alpha: 0.6 });
+            g.roundRect(cx, cy, cw, ch, 2).stroke({ color: 0x554a32, width: 0.5, alpha: 0.35 });
+          }
+        }
       }
+    }
+
+    // Ambient edge vignette
+    const vigW = 40;
+    // Top edge
+    for (let i = 0; i < vigW; i++) {
+      const a = (1 - i / vigW) * 0.35;
+      g.rect(ox, oy + i, gridPxW, 1).fill({ color: 0x000000, alpha: a });
+    }
+    // Bottom edge
+    for (let i = 0; i < vigW; i++) {
+      const a = (1 - i / vigW) * 0.35;
+      g.rect(ox, oy + gridPxH - i, gridPxW, 1).fill({ color: 0x000000, alpha: a });
+    }
+    // Left edge
+    for (let i = 0; i < vigW; i++) {
+      const a = (1 - i / vigW) * 0.35;
+      g.rect(ox + i, oy, 1, gridPxH).fill({ color: 0x000000, alpha: a });
+    }
+    // Right edge
+    for (let i = 0; i < vigW; i++) {
+      const a = (1 - i / vigW) * 0.35;
+      g.rect(ox + gridPxW - i, oy, 1, gridPxH).fill({ color: 0x000000, alpha: a });
+    }
+
+    // Scattered leaves along edges
+    const leafColors = [0x5a3a1a, 0x6a4a22, 0x4a3a18, 0x7a5a2a];
+    for (let li = 0; li < state.gridW + state.gridH; li++) {
+      const leafSeed = (li * 73 + 31) % 100;
+      if (leafSeed > 30) continue;
+      let lx: number, ly: number;
+      if (li < state.gridW) {
+        // Top/bottom edges
+        lx = ox + li * TS + (leafSeed * 7) % TS;
+        ly = leafSeed % 2 === 0 ? oy + (leafSeed % 20) : oy + gridPxH - (leafSeed % 20);
+      } else {
+        // Left/right edges
+        const yi = li - state.gridW;
+        ly = oy + yi * TS + (leafSeed * 11) % TS;
+        lx = leafSeed % 2 === 0 ? ox + (leafSeed % 20) : ox + gridPxW - (leafSeed % 20);
+      }
+      const lc = leafColors[leafSeed % leafColors.length];
+      g.ellipse(lx, ly, 3 + leafSeed % 2, 1.5).fill({ color: lc, alpha: 0.4 });
     }
   }
 

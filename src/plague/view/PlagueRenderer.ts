@@ -110,8 +110,28 @@ export class PlagueRenderer {
     const dayPhase = (state.day % 3) / 3; // 0..1 cycling
     const nightAlpha = Math.max(0, Math.sin(dayPhase * Math.PI * 2 - Math.PI / 2) * 0.08);
 
-    // Background
+    // Background with grass texture noise
     this._gfx.rect(0, 0, sw, sh).fill({ color: 0x0e0e0a });
+    // Grass noise patches outside the grid
+    const gridLeft = ox, gridRight = ox + gridW, gridTop = oy, gridBottom = oy + gridH;
+    for (let gy = 0; gy < sh; gy += 11) {
+      for (let gx = 0; gx < sw; gx += 13) {
+        // Skip areas inside the grid
+        if (gx >= gridLeft - 2 && gx <= gridRight + 2 && gy >= gridTop - 2 && gy <= gridBottom + 2) continue;
+        const hash = ((gx * 7 + gy * 13 + 37) * 2654435761) >>> 0;
+        const r = (hash % 100) / 100;
+        if (r < 0.45) {
+          const shade = 0x0a1a08 + ((hash >> 8) % 3) * 0x010200;
+          const sz = 2 + (hash >> 12) % 4;
+          this._gfx.circle(gx + (hash % 7) - 3, gy + ((hash >> 4) % 7) - 3, sz).fill({ color: shade, alpha: 0.25 + r * 0.3 });
+        }
+        if (r > 0.85) {
+          // Occasional brighter tuft
+          this._gfx.circle(gx, gy, 1.5).fill({ color: 0x1a2a12, alpha: 0.3 });
+          this._gfx.circle(gx + 2, gy - 1, 1).fill({ color: 0x162410, alpha: 0.25 });
+        }
+      }
+    }
 
     // Grid
     for (let y = 0; y < state.rows; y++) {
@@ -414,10 +434,27 @@ export class PlagueRenderer {
 
     if (tile.type === TileType.WALL) {
       this._gfx.rect(tx, ty, TS - 1, TS - 1).fill({ color: 0x555555 });
+      // Stone bricks with variation and mortar lines
       for (let sy = 0; sy < TS; sy += 8) {
-        const offset = (sy / 8) % 2 === 0 ? 0 : 10;
+        const rowIdx = sy / 8;
+        const offset = rowIdx % 2 === 0 ? 0 : 10;
+        // Horizontal mortar line
+        this._gfx.moveTo(tx, ty + sy).lineTo(tx + TS - 1, ty + sy)
+          .stroke({ color: 0x3a3a32, width: 0.8, alpha: 0.7 });
         for (let sx = offset; sx < TS - 1; sx += 20) {
-          this._gfx.rect(tx + sx, ty + sy, 18, 6).stroke({ color: 0x444444, width: 0.5, alpha: 0.5 });
+          const brickW = Math.min(18, TS - 1 - sx);
+          // Stone color variation per brick
+          const hash = ((tx + sx) * 31 + (ty + sy) * 17) >>> 0;
+          const variation = (hash % 30) - 15;
+          const stoneR = Math.max(0, Math.min(255, 0x55 + variation));
+          const stoneColor = (stoneR << 16) | (stoneR << 8) | (stoneR - 5);
+          this._gfx.rect(tx + sx + 1, ty + sy + 1, brickW - 2, 5).fill({ color: stoneColor, alpha: 0.5 });
+          // Vertical mortar between bricks
+          this._gfx.moveTo(tx + sx, ty + sy).lineTo(tx + sx, ty + sy + 7)
+            .stroke({ color: 0x3a3a32, width: 0.6, alpha: 0.6 });
+          // Subtle highlight on top edge of brick
+          this._gfx.moveTo(tx + sx + 1, ty + sy + 1).lineTo(tx + sx + brickW - 1, ty + sy + 1)
+            .stroke({ color: 0x666666, width: 0.4, alpha: 0.3 });
         }
       }
       return;
@@ -426,10 +463,32 @@ export class PlagueRenderer {
     if (tile.type === TileType.ROAD) {
       const distColor = DISTRICT_COLORS[tile.district] ?? 0x504030;
       this._gfx.rect(tx, ty, TS - 1, TS - 1).fill({ color: distColor, alpha: 0.6 });
+      // Cobblestone pattern
       for (let cy = 2; cy < TS - 4; cy += 7) {
         for (let cx = 2 + ((cy / 7) % 2) * 4; cx < TS - 4; cx += 9) {
-          this._gfx.roundRect(tx + cx, ty + cy, 7, 5, 1).fill({ color: distColor, alpha: 0.3 });
-          this._gfx.roundRect(tx + cx, ty + cy, 7, 5, 1).stroke({ color: 0x333322, width: 0.3, alpha: 0.4 });
+          const hash = ((tx + cx) * 23 + (ty + cy) * 41) >>> 0;
+          const sizeVar = (hash % 3) - 1;
+          const cw = 7 + sizeVar, ch = 5 + ((hash >> 4) % 2);
+          // Slight color variation per cobble
+          const bright = (hash >> 8) % 20 - 10;
+          const cobbleAlpha = 0.25 + ((hash >> 12) % 15) / 100;
+          this._gfx.roundRect(tx + cx, ty + cy, cw, ch, 1).fill({ color: distColor, alpha: cobbleAlpha });
+          this._gfx.roundRect(tx + cx, ty + cy, cw, ch, 1).stroke({ color: 0x333322, width: 0.3, alpha: 0.5 });
+          // Highlight on one edge
+          if (bright > 0) {
+            this._gfx.moveTo(tx + cx + 1, ty + cy + 1).lineTo(tx + cx + cw - 1, ty + cy + 1)
+              .stroke({ color: 0x665544, width: 0.3, alpha: 0.25 });
+          }
+        }
+      }
+      // Scattered loose stone details
+      for (let i = 0; i < 3; i++) {
+        const hash2 = ((tx * 7 + ty * 13 + i * 31 + 97) * 2654435761) >>> 0;
+        const sx = 3 + (hash2 % (TS - 8));
+        const sy = 3 + ((hash2 >> 8) % (TS - 8));
+        const sr = 0.8 + ((hash2 >> 16) % 10) / 10;
+        if ((hash2 >> 24) % 3 === 0) {
+          this._gfx.circle(tx + sx, ty + sy, sr).fill({ color: 0x44392c, alpha: 0.3 });
         }
       }
       return;

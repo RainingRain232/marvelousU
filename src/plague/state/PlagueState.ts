@@ -368,7 +368,8 @@ function getUnlocks(): { wins: number; startPerk: string | null } {
 }
 
 export function createPlagueState(difficulty: number = 1, difficultyIndex: number = 1): PlagueState {
-  const cols = 18, rows = 14;
+  const cols = Math.max(18, Math.floor((typeof window !== "undefined" ? window.innerWidth - 40 : 800) / 44));
+  const rows = Math.max(14, Math.floor((typeof window !== "undefined" ? window.innerHeight - 120 : 620) / 44));
   const seed = Date.now() % 2147483647;
   const rng = seededRandom(seed);
   const templates = [MapTemplate.STANDARD, MapTemplate.RIVER, MapTemplate.FORTRESS, MapTemplate.SPRAWL];

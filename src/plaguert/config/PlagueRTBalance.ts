@@ -4,8 +4,8 @@
 
 export const PLAGUE_RT_BALANCE = {
   // Grid
-  GRID_W: 16,
-  GRID_H: 12,
+  GRID_W: Math.max(16, Math.floor((typeof window !== "undefined" ? window.innerWidth - 40 : 800) / 48)),
+  GRID_H: Math.max(12, Math.floor((typeof window !== "undefined" ? window.innerHeight - 120 : 600) / 48)),
   TILE_SIZE: 48,
 
   // Player

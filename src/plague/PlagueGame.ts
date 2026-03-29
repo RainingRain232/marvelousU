@@ -313,11 +313,11 @@ export class PlagueGame {
     bg.eventMode = "static";
     c.addChild(bg);
 
-    const pw = 420, ph = 340, px = (sw - pw) / 2, py = (sh - ph) / 2;
+    const pw = 520, ph = 460, px = (sw - pw) / 2, py = (sh - ph) / 2;
     const panel = new Graphics();
     panel.roundRect(px, py, pw, ph, 10).fill({ color: 0x0a0806, alpha: 0.97 });
-    panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0x66aa44, width: 2, alpha: 0.5 });
-    panel.roundRect(px + 4, py + 4, pw - 8, ph - 8, 8).stroke({ color: 0x66aa44, width: 0.5, alpha: 0.15 });
+    panel.roundRect(px, py, pw, ph, 10).stroke({ color: 0x44aa44, width: 2, alpha: 0.5 });
+    panel.roundRect(px + 4, py + 4, pw - 8, ph - 8, 8).stroke({ color: 0x44aa44, width: 0.5, alpha: 0.15 });
     c.addChild(panel);
 
     const addText = (str: string, x: number, y: number, opts: Partial<TextStyle>, center = false) => {
@@ -325,61 +325,158 @@ export class PlagueGame {
       if (center) t.anchor.set(0.5, 0);
       t.position.set(x, y);
       c.addChild(t);
+      return t;
     };
-    addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0x66aa44, fontWeight: "bold", letterSpacing: 4 }, true);
+    addText("PAUSED", sw / 2, py + 16, { fontSize: 22, fill: 0x44aa44, fontWeight: "bold", letterSpacing: 4 }, true);
 
+    // Tab state
+    const tabContainer = new Container();
+    c.addChild(tabContainer);
     const contentContainer = new Container();
     c.addChild(contentContainer);
     const clearContent = () => { while (contentContainer.children.length > 0) { const ch = contentContainer.removeChildAt(0); ch.destroy(); } };
+    const clearTabs = () => { while (tabContainer.children.length > 0) { const ch = tabContainer.removeChildAt(0); ch.destroy(); } };
 
-    const showButtons = () => {
-      clearContent();
-      const makeBtn = (label: string, y: number, color: number, cb: () => void) => {
+    let activeTab = 0;
+    const tabNames = ["Controls", "Introduction", "Game Concepts"];
+    const tabY = py + 50;
+    const contentY = tabY + 38;
+
+    const drawTabs = () => {
+      clearTabs();
+      const tabW = Math.floor((pw - 30) / tabNames.length);
+      for (let i = 0; i < tabNames.length; i++) {
+        const tx = px + 12 + i * (tabW + 3);
+        const isActive = i === activeTab;
         const btn = new Graphics();
-        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
-        btn.roundRect(sw / 2 - 100, y, 200, 36, 5).stroke({ color, width: 1.5, alpha: 0.6 });
+        btn.roundRect(tx, tabY, tabW, 30, 4).fill({ color: isActive ? 0x1a1a14 : 0x0a0a06, alpha: 0.95 });
+        btn.roundRect(tx, tabY, tabW, 30, 4).stroke({ color: isActive ? 0x44aa44 : 0x555544, width: isActive ? 1.5 : 0.8, alpha: isActive ? 0.7 : 0.3 });
+        if (isActive) btn.rect(tx + 2, tabY + 28, tabW - 4, 2).fill({ color: 0x44aa44, alpha: 0.6 });
         btn.eventMode = "static"; btn.cursor = "pointer";
-        btn.on("pointerdown", cb);
-        contentContainer.addChild(btn);
-        const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
-        t.anchor.set(0.5, 0.5); t.position.set(sw / 2, y + 18);
-        contentContainer.addChild(t);
-      };
-      makeBtn("RESUME", py + 70, 0x44cc66, () => this._hidePauseMenu());
-      makeBtn("CONTROLS", py + 120, 0xccaa44, () => {
-        clearContent();
-        const t = new Text({ text: "WASD/Arrows: Move\nT: Treat house | H: Gather herbs\nC: Craft remedy | R: Rest at church\nQ: Quarantine | F: Fumigate\nK: Kill rat | B: Buy from market\nU: Undo turn | Esc: Pause", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0xccccaa, align: "center", lineHeight: 22 } as any) });
-        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
-        contentContainer.addChild(t);
-        makeBackBtn();
-      });
-      makeBtn("INSTRUCTIONS", py + 170, 0xccaa44, () => {
-        clearContent();
-        const t = new Text({ text: "Navigate a plague-ravaged city as the lone doctor.\nTreat the sick, gather herbs, craft remedies.\nStop the plague from spreading to all houses.\nBeware of rats and plague mutations.\nEarn perks every 5 days. Survive the waves.", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: 0xccccaa, align: "center", wordWrap: true, wordWrapWidth: 380, lineHeight: 20 } as any) });
-        t.anchor.set(0.5, 0); t.position.set(sw / 2, py + 70);
-        contentContainer.addChild(t);
-        makeBackBtn();
-      });
-      makeBtn("MAIN MENU", py + 250, 0xcc4444, () => {
-        this._hidePauseMenu();
-        this.destroy();
-        window.dispatchEvent(new Event("plagueExit"));
-      });
+        const idx = i;
+        btn.on("pointerdown", () => { activeTab = idx; drawTabs(); showTabContent(idx); });
+        tabContainer.addChild(btn);
+        const label = new Text({ text: tabNames[i], style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: isActive ? 0x44aa44 : 0x888877, fontWeight: isActive ? "bold" : "normal", letterSpacing: 1 } as any) });
+        label.anchor.set(0.5, 0.5); label.position.set(tx + tabW / 2, tabY + 15);
+        tabContainer.addChild(label);
+      }
     };
 
-    const makeBackBtn = () => {
+    const showTabContent = (tab: number) => {
+      clearContent();
+      const cy = contentY + 8;
+
+      if (tab === 0) {
+        // Controls tab
+        const controls = [
+          ["WASD / Arrow Keys", "Move around the city"],
+          ["Click tile", "Move along path to tile"],
+          ["F", "Fumigate adjacent tiles"],
+          ["T", "Treat infected house"],
+          ["G", "Gather herbs from herb garden"],
+          ["C", "Craft remedy (requires herbs)"],
+          ["R", "Rest at church (restore health)"],
+          ["Q", "Quarantine an infected house"],
+          ["K", "Kill a rat on your tile"],
+          ["N", "Warn a healthy house"],
+          ["X", "Attack the Harbinger"],
+          ["U", "Undo last turn"],
+          ["Space / Enter", "End current turn"],
+          ["1 / 2 / 3", "Use ability or buy at market"],
+          ["L", "Toggle event log"],
+          ["Esc", "Pause / Resume"],
+        ];
+        let row = 0;
+        for (const [key, desc] of controls) {
+          const ky = cy + row * 18;
+          const kt = new Text({ text: key, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0xccaa44, fontWeight: "bold" } as any) });
+          kt.position.set(px + 30, ky);
+          contentContainer.addChild(kt);
+          const dt = new Text({ text: desc, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0xbbbbaa } as any) });
+          dt.position.set(px + 170, ky);
+          contentContainer.addChild(dt);
+          row++;
+        }
+      } else if (tab === 1) {
+        // Introduction tab
+        const introLines = [
+          "You are a Plague Doctor, the last hope of a medieval town",
+          "ravaged by the Black Death. The pestilence spreads through",
+          "the districts, infecting homes and killing the innocent.",
+          "",
+          "Your mission: move through the city streets, treating the",
+          "sick, gathering medicinal herbs, and crafting remedies to",
+          "save as many citizens as possible before the plague",
+          "consumes the entire settlement.",
+          "",
+          "Each day you have limited moves. Spend them wisely --",
+          "treat the critically ill first, gather herbs when you can,",
+          "and use your special abilities (Holy Water, Bonfire,",
+          "Barricade) to contain outbreaks.",
+          "",
+          "Beware: rats carry the plague to new houses, storms",
+          "worsen the spread, and the dreaded Harbinger -- a dark",
+          "figure -- accelerates death wherever it roams.",
+          "",
+          "Survive the waves. Earn perks. Save the town.",
+        ];
+        let row = 0;
+        for (const line of introLines) {
+          const lt = new Text({ text: line, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: line === "" ? 0x000000 : 0xccccaa, lineHeight: 18 } as any) });
+          lt.position.set(px + 24, cy + row * 17);
+          contentContainer.addChild(lt);
+          row++;
+        }
+      } else if (tab === 2) {
+        // Game Concepts tab
+        const concepts = [
+          { title: "Infection Levels", text: "Healthy > Exposed > Infected > Dying > Dead. Treat before it's too late." },
+          { title: "Districts", text: "The city is divided into districts. Plague spreads faster within a district than across boundaries." },
+          { title: "Fumigation (F)", text: "Costs 1 herb. Slows infection on all adjacent tiles for several turns. Essential for containment." },
+          { title: "Herbs & Remedies", text: "Gather herbs at herb gardens (G). Craft remedies (C) from herbs for more effective treatment of severe cases." },
+          { title: "Quarantine (Q)", text: "Seal off an infected house to prevent spread. The occupants may die, but the plague stays contained." },
+          { title: "Abilities (1/2/3)", text: "Holy Water: purify area. Bonfire: burn plague from tiles. Barricade: block a road to stop rat movement." },
+          { title: "Rats", text: "Rats carry plague to healthy houses. Kill them (K) when adjacent. They multiply if left unchecked." },
+          { title: "Weather", text: "Sun is neutral. Rain slows you. Storms accelerate plague spread and reduce visibility." },
+          { title: "Perks", text: "Every 5 days, choose a perk to help you. Perks stack and persist for the rest of the run." },
+          { title: "The Harbinger", text: "A cloaked figure that appears on later waves. It accelerates death in nearby houses. Attack it (X) to drive it away." },
+        ];
+        let row = 0;
+        for (const concept of concepts) {
+          const titleT = new Text({ text: concept.title, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 10, fill: 0xccaa44, fontWeight: "bold" } as any) });
+          titleT.position.set(px + 24, cy + row);
+          contentContainer.addChild(titleT);
+          row += 15;
+          const descT = new Text({ text: concept.text, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 9, fill: 0xaaaaaa, wordWrap: true, wordWrapWidth: pw - 50 } as any) });
+          descT.position.set(px + 24, cy + row);
+          contentContainer.addChild(descT);
+          row += descT.height + 6;
+        }
+      }
+    };
+
+    // Bottom buttons: RESUME and EXIT TO MENU
+    const btnY = py + ph - 50;
+    const makeBottomBtn = (label: string, x: number, w: number, color: number, cb: () => void) => {
       const btn = new Graphics();
-      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).fill({ color: 0x0a0a0a, alpha: 0.8 });
-      btn.roundRect(sw / 2 - 60, py + ph - 60, 120, 32, 4).stroke({ color: 0x888866, width: 1, alpha: 0.5 });
+      btn.roundRect(x, btnY, w, 36, 5).fill({ color: 0x0a0a0a, alpha: 0.8 });
+      btn.roundRect(x, btnY, w, 36, 5).stroke({ color, width: 1.5, alpha: 0.6 });
       btn.eventMode = "static"; btn.cursor = "pointer";
-      btn.on("pointerdown", () => showButtons());
-      contentContainer.addChild(btn);
-      const t = new Text({ text: "BACK", style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 11, fill: 0x888888, fontWeight: "bold" } as any) });
-      t.anchor.set(0.5, 0.5); t.position.set(sw / 2, py + ph - 44);
-      contentContainer.addChild(t);
+      btn.on("pointerdown", cb);
+      c.addChild(btn);
+      const t = new Text({ text: label, style: new TextStyle({ fontFamily: "Georgia, serif", fontSize: 12, fill: color, fontWeight: "bold", letterSpacing: 1 } as any) });
+      t.anchor.set(0.5, 0.5); t.position.set(x + w / 2, btnY + 18);
+      c.addChild(t);
     };
+    makeBottomBtn("RESUME", sw / 2 - 160, 150, 0x44cc66, () => this._hidePauseMenu());
+    makeBottomBtn("EXIT TO MENU", sw / 2 + 10, 150, 0xcc4444, () => {
+      this._hidePauseMenu();
+      this.destroy();
+      window.dispatchEvent(new Event("plagueExit"));
+    });
 
-    showButtons();
+    drawTabs();
+    showTabContent(0);
     this._pauseMenu = c;
     viewManager.addToLayer("ui", c);
   }
