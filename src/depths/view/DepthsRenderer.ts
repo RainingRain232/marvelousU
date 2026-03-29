@@ -308,6 +308,7 @@ export class DepthsRenderer {
   // Particle system
   private _particleMesh!: THREE.Points;
   private _particleGeo!: THREE.BufferGeometry;
+  private _tmpColor = new THREE.Color();
   private _particlePositions!: Float32Array;
   private _particleColors!: Float32Array;
   private _particleSizes!: Float32Array;
@@ -1599,24 +1600,22 @@ export class DepthsRenderer {
 
       let sprite = this._enemyHpBars.get(e.id);
       if (!sprite) {
-        const tex = new THREE.CanvasTexture(this._hpBarCanvas);
+        const ownCanvas = document.createElement("canvas");
+        ownCanvas.width = 64;
+        ownCanvas.height = 8;
+        const tex = new THREE.CanvasTexture(ownCanvas);
         const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
         sprite = new THREE.Sprite(mat);
         sprite.scale.set(e.isBoss ? 4 : 2, e.isBoss ? 0.4 : 0.25, 1);
         this._scene.add(sprite);
         this._enemyHpBars.set(e.id, sprite);
-      } else {
-        // Update texture
-        (sprite.material.map as THREE.CanvasTexture).needsUpdate = true;
       }
 
-      // Copy canvas to texture (need fresh canvas per sprite)
-      const freshCanvas = document.createElement("canvas");
-      freshCanvas.width = 64;
-      freshCanvas.height = 8;
-      const freshCtx = freshCanvas.getContext("2d")!;
-      freshCtx.drawImage(this._hpBarCanvas, 0, 0);
-      (sprite.material as THREE.SpriteMaterial).map = new THREE.CanvasTexture(freshCanvas);
+      // Copy shared canvas to sprite's own canvas and flag update
+      const tex = (sprite.material as THREE.SpriteMaterial).map as THREE.CanvasTexture;
+      const ownCtx = tex.image.getContext("2d");
+      if (ownCtx) ownCtx.drawImage(this._hpBarCanvas, 0, 0);
+      tex.needsUpdate = true;
 
       sprite.position.set(e.x, e.y + e.radius * 2 + 0.5, e.z);
     }
@@ -1818,11 +1817,11 @@ export class DepthsRenderer {
         this._particlePositions[i * 3] = p.x;
         this._particlePositions[i * 3 + 1] = p.y;
         this._particlePositions[i * 3 + 2] = p.z;
-        const c = new THREE.Color(p.color);
+        this._tmpColor.setHex(p.color);
         const alpha = p.life / p.maxLife;
-        this._particleColors[i * 3] = c.r * alpha;
-        this._particleColors[i * 3 + 1] = c.g * alpha;
-        this._particleColors[i * 3 + 2] = c.b * alpha;
+        this._particleColors[i * 3] = this._tmpColor.r * alpha;
+        this._particleColors[i * 3 + 1] = this._tmpColor.g * alpha;
+        this._particleColors[i * 3 + 2] = this._tmpColor.b * alpha;
         this._particleSizes[i] = p.size * 10 * alpha;
       } else {
         this._particleSizes[i] = 0;
@@ -1838,32 +1837,57 @@ export class DepthsRenderer {
   // ---- Damage Numbers ----
 
   private _updateDamageNumbers(state: DepthsState): void {
-    for (const s of this._dmgSprites) { this._scene.remove(s); s.material.dispose(); }
-    this._dmgSprites = [];
+    const needed = state.damageNumbers.length;
 
-    for (const dn of state.damageNumbers) {
+    // Grow pool if needed
+    while (this._dmgSprites.length < needed) {
       const canvas = document.createElement("canvas");
       canvas.width = 64;
       canvas.height = 32;
+      const tex = new THREE.CanvasTexture(canvas);
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(1.5, 0.75, 1);
+      this._dmgSprites.push(sprite);
+    }
+
+    // Update active sprites
+    for (let i = 0; i < needed; i++) {
+      const dn = state.damageNumbers[i];
+      const sprite = this._dmgSprites[i];
+      const tex = (sprite.material as THREE.SpriteMaterial).map as THREE.CanvasTexture;
+      const canvas = tex.image as HTMLCanvasElement;
       const ctx = canvas.getContext("2d")!;
+      ctx.clearRect(0, 0, 64, 32);
       ctx.font = "bold 24px monospace";
       ctx.fillStyle = dn.color === 0xff4444 ? "#ff4444" : "#ffcc00";
       ctx.textAlign = "center";
       ctx.fillText(String(dn.value), 32, 24);
-
-      const tex = new THREE.CanvasTexture(canvas);
-      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: dn.life });
-      const sprite = new THREE.Sprite(mat);
+      tex.needsUpdate = true;
+      (sprite.material as THREE.SpriteMaterial).opacity = dn.life;
       sprite.position.set(dn.x, dn.y, dn.z);
-      sprite.scale.set(1.5, 0.75, 1);
-      this._scene.add(sprite);
-      this._dmgSprites.push(sprite);
+      if (!sprite.parent) this._scene.add(sprite);
+      sprite.visible = true;
+    }
+
+    // Hide excess sprites
+    for (let i = needed; i < this._dmgSprites.length; i++) {
+      if (this._dmgSprites[i].visible) {
+        this._dmgSprites[i].visible = false;
+      }
     }
   }
 
   // ---- Fish Schools ----
 
   private _updateFishSchools(state: DepthsState): void {
+    // Remove excess schools
+    while (this._fishSchoolMeshes.length > state.fishSchools.length) {
+      const old = this._fishSchoolMeshes.pop()!;
+      this._scene.remove(old);
+      old.geometry.dispose();
+      (old.material as THREE.Material).dispose();
+    }
     // Lazy create instanced meshes
     while (this._fishSchoolMeshes.length < state.fishSchools.length) {
       const fishColors = [0xff8844, 0xffcc44, 0x44aadd, 0x88ccaa, 0xddaa66];
@@ -2196,6 +2220,16 @@ export class DepthsRenderer {
   // ---- Whirlpools ----
 
   private _updateWhirlpools(state: DepthsState): void {
+    // Remove excess whirlpools
+    while (this._whirlpoolMeshes.length > state.whirlpools.length) {
+      const old = this._whirlpoolMeshes.pop()!;
+      this._scene.remove(old);
+      old.traverse((child: any) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        if (child.dispose) child.dispose();
+      });
+    }
     // Lazy create
     while (this._whirlpoolMeshes.length < state.whirlpools.length) {
       const group = new THREE.Group();
