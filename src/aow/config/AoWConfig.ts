@@ -28,6 +28,8 @@ export const AOW_BALANCE = {
   LEVEL_DEF_BONUS: 1,
   WALL_DEFENSE_BONUS: 3,
   WALL_BUILD_COST: 80,
+  CITY_UPGRADE_COST_2: 100, // cost to upgrade city to level 2
+  CITY_UPGRADE_COST_3: 200, // cost to upgrade city to level 3
   RESEARCH_PER_TURN: 10,
   MAP_RADIUS_SMALL: 6,
   MAP_RADIUS_MEDIUM: 9,

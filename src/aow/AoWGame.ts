@@ -1006,12 +1006,16 @@ export class AoWGame {
       color:#e0d5c0;min-width:300px;
     `;
 
+    const cityLevel = city.level || 1;
+    const tierNames = ["", "I", "II", "III"];
+
     let html = `
       <div style="font-size:18px;font-weight:bold;color:#daa520;margin-bottom:4px">${city.name}</div>
-      <div style="color:#888;font-size:11px;margin-bottom:12px">
+      <div style="color:#888;font-size:11px;margin-bottom:4px">
         Pop: ${city.population} | Gold: +${city.goldPerTurn}/turn | Mana: +${city.manaPerTurn}/turn
         ${city.walls ? " | Walled" : ""}
       </div>
+      <div style="color:#aa8833;font-size:12px;margin-bottom:10px">City Level: ${tierNames[cityLevel]} ${cityLevel < 3 ? "(upgrade to unlock higher tier units)" : "(max level)"}</div>
       <div style="color:#aaa;font-size:12px;margin-bottom:8px">Recruit Units (Gold: ${player.gold})</div>
     `;
 
@@ -1020,18 +1024,37 @@ export class AoWGame {
     }
 
     for (const def of factionUnits) {
-      const canAfford = player.gold >= def.cost && !armyFull;
+      const tierLocked = def.tier > cityLevel;
+      const canAfford = player.gold >= def.cost && !armyFull && !tierLocked;
+      const tierLabel = tierLocked ? ` [Tier ${tierNames[def.tier]} — upgrade city]` : "";
       html += `
         <button class="aow-buy-btn" data-unit="${def.id}" style="
           display:block;width:100%;padding:8px 12px;margin-bottom:4px;
-          border:1px solid ${canAfford ? "#daa520" : "#333"};border-radius:4px;
-          background:rgba(20,15,10,0.6);color:${canAfford ? "#ddd" : "#555"};
+          border:1px solid ${tierLocked ? "#442222" : canAfford ? "#daa520" : "#333"};border-radius:4px;
+          background:rgba(20,15,10,0.6);color:${tierLocked ? "#664444" : canAfford ? "#ddd" : "#555"};
           cursor:${canAfford ? "pointer" : "not-allowed"};font-family:inherit;
           font-size:11px;text-align:left;
           pointer-events:${canAfford ? "auto" : "none"};
         ">
-          <b>${def.name}</b> — ${def.cost}g
+          <b>${def.name}</b> — ${def.cost}g${tierLabel}
           <span style="color:#888;font-size:10px"> | HP:${def.hp} ATK:${def.attack} DEF:${def.defense} SPD:${def.speed}</span>
+        </button>
+      `;
+    }
+
+    // Upgrade city button
+    if (cityLevel < 3) {
+      const upgradeCost = cityLevel === 1 ? AOW_BALANCE.CITY_UPGRADE_COST_2 : AOW_BALANCE.CITY_UPGRADE_COST_3;
+      const canUpgrade = player.gold >= upgradeCost;
+      html += `
+        <button id="aow-upgrade-city" style="
+          display:block;width:100%;padding:8px 12px;margin-top:8px;
+          border:1px solid ${canUpgrade ? "#daa520" : "#333"};border-radius:4px;
+          background:rgba(40,30,10,0.6);color:${canUpgrade ? "#daa520" : "#555"};
+          cursor:${canUpgrade ? "pointer" : "not-allowed"};font-family:inherit;font-size:11px;
+          pointer-events:${canUpgrade ? "auto" : "none"};font-weight:bold;
+        ">
+          Upgrade City to Level ${tierNames[cityLevel + 1]} — ${upgradeCost}g
         </button>
       `;
     }
@@ -1074,6 +1097,23 @@ export class AoWGame {
         this._showCityMenu(city); // Refresh
       };
     });
+
+    // Wire upgrade city button
+    const upgradeBtn = div.querySelector("#aow-upgrade-city");
+    if (upgradeBtn) {
+      (upgradeBtn as HTMLElement).onclick = () => {
+        const cost = (city.level || 1) === 1 ? AOW_BALANCE.CITY_UPGRADE_COST_2 : AOW_BALANCE.CITY_UPGRADE_COST_3;
+        if (player.gold >= cost) {
+          player.gold -= cost;
+          city.level = (city.level || 1) + 1;
+          this._state!.log.push(`${city.name} upgraded to Level ${["", "I", "II", "III"][city.level]}!`);
+          document.body.removeChild(div);
+          this._showCityMenu(city); // Refresh
+          this._hud.update(this._state!);
+          this._hexRenderer.updateCities(this._state!);
+        }
+      };
+    }
 
     const wallsBtn = div.querySelector("#aow-build-walls");
     if (wallsBtn) {

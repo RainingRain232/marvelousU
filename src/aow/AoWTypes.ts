@@ -114,6 +114,7 @@ export interface AoWCity {
   buildQueue: string[];
   turnsLeft: number;
   garrisonUnits: AoWUnit[];
+  level: number; // 1-3, gates unit tier access
 }
 
 export interface AoWSpellDef {

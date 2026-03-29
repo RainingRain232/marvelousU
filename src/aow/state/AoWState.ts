@@ -180,6 +180,7 @@ function _placeCities(hexes: Map<string, AoWHex>, radius: number, playerFactions
       buildQueue: [],
       turnsLeft: 0,
       garrisonUnits: [],
+      level: 1,
     };
     bestHex.cityId = city.id;
     cities.push(city);
@@ -216,6 +217,7 @@ function _placeCities(hexes: Map<string, AoWHex>, radius: number, playerFactions
       buildQueue: [],
       turnsLeft: 0,
       garrisonUnits: [],
+      level: 1,
     };
     h.cityId = city.id;
     h.terrain = AoWTerrain.PLAINS;

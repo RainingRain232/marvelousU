@@ -136,10 +136,25 @@ export class AoWAISystem {
       }
     }
 
-    const t2Units = factionUnits.filter(u => u.tier === 2).sort((a, b) => b.cost - a.cost);
-    const t1Units = factionUnits.filter(u => u.tier === 1).sort((a, b) => b.cost - a.cost);
+    // Upgrade cities when we can afford it and have spare gold
+    for (const city of myCities) {
+      const lvl = city.level || 1;
+      if (lvl >= 3) continue;
+      const cost = lvl === 1 ? AOW_BALANCE.CITY_UPGRADE_COST_2 : AOW_BALANCE.CITY_UPGRADE_COST_3;
+      if (player.gold >= cost + 50) { // keep 50g reserve
+        player.gold -= cost;
+        city.level = lvl + 1;
+        state.log.push(`AI upgraded ${city.name} to Level ${["", "I", "II", "III"][city.level]}`);
+      }
+    }
 
     for (const city of myCities) {
+      const cityLevel = city.level || 1;
+      const available = factionUnits.filter(u => u.tier <= cityLevel);
+      const t3Units = available.filter(u => u.tier === 3).sort((a, b) => b.cost - a.cost);
+      const t2Units = available.filter(u => u.tier === 2).sort((a, b) => b.cost - a.cost);
+      const t1Units = available.filter(u => u.tier === 1).sort((a, b) => b.cost - a.cost);
+
       let army = state.armies.find(
         a => a.playerId === playerId && a.q === city.q && a.r === city.r,
       );
@@ -147,8 +162,8 @@ export class AoWAISystem {
       // If army is full, skip
       if (army && army.units.length >= AOW_BALANCE.MAX_ARMY_SIZE) continue;
 
-      // Try to buy T2 first, then fall back to T1
-      const candidates = [...t2Units, ...t1Units];
+      // Try to buy T3 first, then T2, then T1
+      const candidates = [...t3Units, ...t2Units, ...t1Units];
       const affordable = candidates.filter(u => u.cost <= player.gold);
       if (affordable.length === 0) continue;
 
