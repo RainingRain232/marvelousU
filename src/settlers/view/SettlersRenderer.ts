@@ -2066,10 +2066,10 @@ export class SettlersRenderer {
     const def = BUILDING_DEFS[building.type];
     const g = new THREE.Group();
     const playerColor = this._getPlayerColor(building.owner, state);
-    const roofMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.75 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.75, side: THREE.DoubleSide });
     const roofDarkMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(playerColor).multiplyScalar(0.7).getHex(),
-      roughness: 0.8,
+      roughness: 0.8, side: THREE.DoubleSide,
     });
 
     const ts = SB.TILE_SIZE;
