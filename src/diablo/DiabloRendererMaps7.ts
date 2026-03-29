@@ -2823,15 +2823,14 @@ export function buildWyrmscarCanyon(mctx: MapBuildContext, w: number, d: number)
 }
 
 export function buildPlaguerotSewers(mctx: MapBuildContext, w: number, d: number): void {
-    mctx.scene.fog = new THREE.FogExp2(0x334422, 0.018);
-    mctx.applyTerrainColors(0x3a4a32, 0x4a5a43, 0.4);
-    mctx.dirLight.color.setHex(0x99bb55);
-    mctx.dirLight.intensity = 0.8;
-    mctx.ambientLight.color.setHex(0x3a4a22);
-    mctx.ambientLight.intensity = 0.6;
-    mctx.hemiLight.color.setHex(0x778844);
-    mctx.hemiLight.groundColor.setHex(0x2a3a11);
-    mctx.hemiLight.intensity = 0.6;
+    mctx.scene.fog = new THREE.FogExp2(0x334422, 0.03);
+    mctx.applyTerrainColors(0x2a3a22, 0x3a4a33, 0.4);
+    mctx.dirLight.color.setHex(0x88aa44);
+    mctx.dirLight.intensity = 0.4;
+    mctx.ambientLight.color.setHex(0x1a2a11);
+    mctx.ambientLight.intensity = 0.3;
+    mctx.hemiLight.color.setHex(0x556633);
+    mctx.hemiLight.groundColor.setHex(0x111a00);
 
     const brickMat = new THREE.MeshStandardMaterial({ color: 0x554444, roughness: 0.9 });
     const slimeMat = new THREE.MeshStandardMaterial({ color: 0x66aa22, emissive: 0x448800, emissiveIntensity: 0.5, roughness: 0.2 });

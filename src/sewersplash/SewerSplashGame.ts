@@ -63,32 +63,32 @@ interface ThemeDef {
 
 const THEME_DEFS: Record<TunnelTheme, ThemeDef> = {
   sewer: {
-    wallColor: 0x3a3028, floorColor: 0x222018, brickColor: 0x1a1510,
-    fogColor: 0x050808, waterColor: 0x225533, waterEmissive: 0x112211,
-    waterOpacity: 0.7, torchColor: 0xff6622, torchIntensity: 1.2,
-    ambientColor: 0x223322, ambientIntensity: 0.3, stalColor: 0x445544,
-    pipeColor: 0x556655, extraProps: false,
+    wallColor: 0x4a4038, floorColor: 0x333028, brickColor: 0x2a2520,
+    fogColor: 0x0a1210, waterColor: 0x225533, waterEmissive: 0x112211,
+    waterOpacity: 0.7, torchColor: 0xff6622, torchIntensity: 1.8,
+    ambientColor: 0x334433, ambientIntensity: 0.5, stalColor: 0x556655,
+    pipeColor: 0x667766, extraProps: false,
   },
   toxic: {
-    wallColor: 0x2a3020, floorColor: 0x1a2010, brickColor: 0x152010,
-    fogColor: 0x051005, waterColor: 0x33cc22, waterEmissive: 0x22aa11,
-    waterOpacity: 0.8, torchColor: 0x44ff22, torchIntensity: 1.5,
-    ambientColor: 0x224422, ambientIntensity: 0.4, stalColor: 0x335522,
-    pipeColor: 0x446633, extraProps: true,
+    wallColor: 0x3a4030, floorColor: 0x2a3020, brickColor: 0x253020,
+    fogColor: 0x0a1a0a, waterColor: 0x33cc22, waterEmissive: 0x22aa11,
+    waterOpacity: 0.8, torchColor: 0x44ff22, torchIntensity: 2.0,
+    ambientColor: 0x335533, ambientIntensity: 0.6, stalColor: 0x446633,
+    pipeColor: 0x557744, extraProps: true,
   },
   catacombs: {
-    wallColor: 0x352820, floorColor: 0x201510, brickColor: 0x181010,
-    fogColor: 0x080505, waterColor: 0x332222, waterEmissive: 0x221111,
-    waterOpacity: 0.5, torchColor: 0xff4411, torchIntensity: 0.9,
-    ambientColor: 0x221111, ambientIntensity: 0.2, stalColor: 0x443322,
-    pipeColor: 0x554433, extraProps: true,
+    wallColor: 0x453830, floorColor: 0x302520, brickColor: 0x282020,
+    fogColor: 0x100a0a, waterColor: 0x443333, waterEmissive: 0x221111,
+    waterOpacity: 0.5, torchColor: 0xff4411, torchIntensity: 1.5,
+    ambientColor: 0x332222, ambientIntensity: 0.4, stalColor: 0x554433,
+    pipeColor: 0x665544, extraProps: true,
   },
   flooded: {
-    wallColor: 0x283038, floorColor: 0x182028, brickColor: 0x101820,
-    fogColor: 0x050810, waterColor: 0x224466, waterEmissive: 0x112244,
-    waterOpacity: 0.85, torchColor: 0x4488ff, torchIntensity: 1.0,
-    ambientColor: 0x112233, ambientIntensity: 0.35, stalColor: 0x334455,
-    pipeColor: 0x445566, extraProps: true,
+    wallColor: 0x384048, floorColor: 0x283038, brickColor: 0x202830,
+    fogColor: 0x0a0e18, waterColor: 0x224466, waterEmissive: 0x112244,
+    waterOpacity: 0.85, torchColor: 0x4488ff, torchIntensity: 1.5,
+    ambientColor: 0x223344, ambientIntensity: 0.5, stalColor: 0x445566,
+    pipeColor: 0x556677, extraProps: true,
   },
 };
 
@@ -488,26 +488,26 @@ export class SewerSplashGame {
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this._renderer.toneMappingExposure = 0.5;
+    this._renderer.toneMappingExposure = 1.0;
 
     this._scene = new THREE.Scene();
-    this._scene.background = new THREE.Color(0x050808);
-    this._scene.fog = new THREE.FogExp2(0x050808, 0.012);
+    this._scene.background = new THREE.Color(0x0a1210);
+    this._scene.fog = new THREE.FogExp2(0x0a1210, 0.009);
 
     this._camera = new THREE.PerspectiveCamera(70, w / h, 0.1, 200);
     this._camera.position.set(0, PLAYER_Y_BASE + 2.5, 5);
     this._camera.lookAt(0, PLAYER_Y_BASE + 0.5, -10);
 
     // Ambient
-    this._scene.add(new THREE.AmbientLight(0x445544, 0.8));
+    this._scene.add(new THREE.AmbientLight(0x556655, 1.2));
 
     // Directional fill
-    const dirLight = new THREE.DirectionalLight(0x889977, 0.6);
+    const dirLight = new THREE.DirectionalLight(0x99aa88, 0.9);
     dirLight.position.set(0, 5, -10);
     this._scene.add(dirLight);
 
     // Headlight following the player so the path ahead is always visible
-    this._scene.add(new THREE.HemisphereLight(0x667766, 0x223322, 0.5));
+    this._scene.add(new THREE.HemisphereLight(0x778877, 0x334433, 0.7));
   }
 
   // ── Water ──────────────────────────────────────────────────────────────
@@ -3281,7 +3281,7 @@ export class SewerSplashGame {
       mat.opacity = theme.waterOpacity;
 
       // Update scene fog & background
-      this._scene.fog = new THREE.FogExp2(theme.fogColor, 0.012);
+      this._scene.fog = new THREE.FogExp2(theme.fogColor, 0.009);
       (this._scene.background as THREE.Color).setHex(theme.fogColor);
 
       // Update ambient hum

@@ -481,7 +481,7 @@ export const MAP_CONFIGS: Record<DiabloMapId, DiabloMapConfig> = {
     width: 90, depth: 90,
     enemyTypes: [EnemyType.SEWER_RAT_SWARM, EnemyType.PLAGUE_BEARER, EnemyType.BILE_ELEMENTAL, EnemyType.AFFLICTED_BRUTE, EnemyType.PESTILENCE_LORD, EnemyType.BLOAT_RAT, EnemyType.PESTILENT_SLIME, EnemyType.SEWER_HARPY],
     maxEnemies: 28, spawnInterval: 4, treasureCount: 3,
-    ambientColor: '#3a4a22', groundColor: '#3a4a32', fogDensity: 0.018, fogColor: '#334422',
+    ambientColor: '#1a2a11', groundColor: '#2a3a22', fogDensity: 0.03, fogColor: '#334422',
     backgroundMusic: 'plaguerot_sewers',
   },
   [DiabloMapId.ETHEREAL_SANCTUM]: {
