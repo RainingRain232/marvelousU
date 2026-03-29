@@ -457,6 +457,8 @@ function _showLoading(mode: string): void {
     [GameMode.EPSILON]: 65,
     [GameMode.GRAND]: 66,
     [GameMode.RAMPART]: 67,
+    [GameMode.IGWAINE]: 68,
+    [GameMode.KINGDOM]: 69,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -962,6 +964,16 @@ function _showLoading(mode: string): void {
       menuScreen.hide();
       _showLoading(menuScreen.selectedGameMode);
       _bootRampartGame().then(() => loadingScreen.hide());
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.IGWAINE) {
+      menuScreen.hide();
+      _bootIgwaineGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.KINGDOM) {
+      menuScreen.hide();
+      _bootKingdomGame();
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -3986,6 +3998,46 @@ async function _bootRampartGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("rampartExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Igwaine boot
+// ---------------------------------------------------------------------------
+
+let _igwaineGame: any = null;
+
+async function _bootIgwaineGame(): Promise<void> {
+  if (_igwaineGame) { _igwaineGame.destroy(); _igwaineGame = null; }
+  const { IgwaineGame } = await import("./igwaine/IgwaineGame");
+
+  _igwaineGame = new IgwaineGame();
+  await _igwaineGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("igwaineExit", _onExit);
+    if (_igwaineGame) { _igwaineGame.destroy(); _igwaineGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("igwaineExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Kingdom (Mario-style platformer) mode boot
+// ---------------------------------------------------------------------------
+
+let _kingdomGame: any = null;
+
+async function _bootKingdomGame(): Promise<void> {
+  if (_kingdomGame) { _kingdomGame.destroy(); _kingdomGame = null; }
+  const { KingdomGame } = await import("./kingdom/KingdomGame");
+
+  _kingdomGame = new KingdomGame();
+  await _kingdomGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("kingdomExit", _onExit);
+    if (_kingdomGame) { _kingdomGame.destroy(); _kingdomGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("kingdomExit", _onExit);
 }
 
 // ---------------------------------------------------------------------------

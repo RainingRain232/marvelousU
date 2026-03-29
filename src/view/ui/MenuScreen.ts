@@ -611,6 +611,8 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.GARGOYLE, label: "GARGOYLE", desc: "3D cathedral guardian — fly as a gargoyle, defend the cathedral from demons through the night, turn to stone at dawn & position wisely", skipSetup: true, tag: "3D" },
   { mode: GameMode.SWORD_OF_AVALON, label: "SWORD OF AVALON", desc: "3D action RPG — seek the legendary blade in a vast open world, battle mythic creatures, master combat arts & forge your destiny", skipSetup: true, tag: "3D" },
   { mode: GameMode.DEPTHS, label: "DEPTHS", desc: "3D deep-sea descent — dive into the abyss, fight pressure-adapted horrors, manage oxygen & discover ancient ruins on the ocean floor", skipSetup: true, tag: "3D" },
+  { mode: GameMode.IGWAINE, label: "IGWAINE", desc: "Solar knight arena survival — your power waxes and wanes with the sun. Fight spectral enemies, collect pentangle virtues, defeat the Green Knight", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.KINGDOM, label: "KINGDOM", desc: "Mario-style platformer — play as Arthur, Merlin, Guinevere or Lancelot. 4 worlds, power-ups, bosses & Camelot flavour", skipSetup: true, tag: "NEW" },
 ];
 
 // ---------------------------------------------------------------------------

@@ -741,6 +741,8 @@ export enum GameMode {
   EPSILON = "epsilon",
   GRAND = "grand",
   RAMPART = "rampart",
+  IGWAINE = "igwaine",
+  KINGDOM = "kingdom",
 }
 
 // ---------------------------------------------------------------------------
