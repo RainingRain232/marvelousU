@@ -3085,6 +3085,222 @@ export class ChariotGame {
       }
     }
 
+    // ── INFIELD CENTERS (interesting landmarks inside each track loop) ──
+    if (def.specialScenery !== "castle") {
+      const cx2 = track.points.reduce((s, p) => s + p.pos.x, 0) / track.points.length;
+      const cz2 = track.points.reduce((s, p) => s + p.pos.z, 0) / track.points.length;
+      const infieldRng = mulberry32(def.seed + 9999);
+
+      if (def.specialScenery === "forest") {
+        // ── Enchanted lake with ancient tree ──
+        // Lake
+        const lake = new THREE.Mesh(new THREE.CircleGeometry(12, 32),
+          new THREE.MeshStandardMaterial({ color: 0x2255aa, transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.4 }));
+        lake.rotation.x = -Math.PI / 2; lake.position.set(cx2 - 5, 0.05, cz2);
+        this._scene.add(lake); this._sceneryObjects.push(lake);
+        // Lily pads
+        for (let lp = 0; lp < 8; lp++) {
+          const la = infieldRng() * Math.PI * 2, lr = 3 + infieldRng() * 8;
+          const pad = new THREE.Mesh(new THREE.CircleGeometry(0.5 + infieldRng() * 0.3, 12),
+            new THREE.MeshStandardMaterial({ color: 0x228833, roughness: 0.7 }));
+          pad.rotation.x = -Math.PI / 2; pad.position.set(cx2 - 5 + Math.cos(la) * lr, 0.08, cz2 + Math.sin(la) * lr);
+          this._scene.add(pad); this._sceneryObjects.push(pad);
+        }
+        // Ancient tree (massive, center of forest)
+        const treeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a15, roughness: 0.85 });
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.0, 12, 16), treeMat);
+        trunk.position.set(cx2 + 8, 6, cz2); trunk.castShadow = true;
+        this._scene.add(trunk); this._sceneryObjects.push(trunk);
+        // Roots
+        for (let ri = 0; ri < 6; ri++) {
+          const ra2 = (ri / 6) * Math.PI * 2;
+          const root = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.6, 5, 8), treeMat);
+          root.position.set(cx2 + 8 + Math.cos(ra2) * 2.5, 0.5, cz2 + Math.sin(ra2) * 2.5);
+          root.rotation.z = Math.cos(ra2) * 0.5; root.rotation.x = Math.sin(ra2) * 0.5;
+          this._scene.add(root); this._sceneryObjects.push(root);
+        }
+        // Canopy
+        const canopyMat = new THREE.MeshStandardMaterial({ color: 0x1a4a1a, roughness: 0.7 });
+        for (let ci = 0; ci < 5; ci++) {
+          const cr2 = 4 + infieldRng() * 3;
+          const canopy = new THREE.Mesh(new THREE.SphereGeometry(cr2, 16, 12), canopyMat);
+          canopy.position.set(cx2 + 8 + (infieldRng() - 0.5) * 5, 11 + infieldRng() * 3, cz2 + (infieldRng() - 0.5) * 5);
+          this._scene.add(canopy); this._sceneryObjects.push(canopy);
+        }
+        // Stone circle (druid ring) near the lake
+        for (let si = 0; si < 8; si++) {
+          const sa2 = (si / 8) * Math.PI * 2;
+          const sR = 6;
+          const stone = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.5 + infieldRng() * 1.5, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.9 }));
+          stone.position.set(cx2 - 5 + Math.cos(sa2) * sR, 1.5, cz2 + 15 + Math.sin(sa2) * sR);
+          stone.rotation.y = sa2; stone.castShadow = true;
+          this._scene.add(stone); this._sceneryObjects.push(stone);
+        }
+        // Fairy lights (small glowing orbs among trees)
+        for (let fi = 0; fi < 12; fi++) {
+          const glow = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xaaff88, transparent: true, opacity: 0.6 }));
+          glow.position.set(cx2 + (infieldRng() - 0.5) * 30, 1 + infieldRng() * 8, cz2 + (infieldRng() - 0.5) * 30);
+          this._scene.add(glow); this._sceneryObjects.push(glow);
+        }
+      }
+
+      if (def.specialScenery === "mountain") {
+        // ── Frozen lake with ice formations ──
+        const iceLake = new THREE.Mesh(new THREE.CircleGeometry(15, 32),
+          new THREE.MeshStandardMaterial({ color: 0x88bbdd, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.8 }));
+        iceLake.rotation.x = -Math.PI / 2; iceLake.position.set(cx2, 0.02, cz2);
+        this._scene.add(iceLake); this._sceneryObjects.push(iceLake);
+        // Ice crystals erupting from lake
+        const iceMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.8 });
+        for (let ic = 0; ic < 6; ic++) {
+          const ia = infieldRng() * Math.PI * 2, ir = 2 + infieldRng() * 10;
+          const crystal = new THREE.Mesh(new THREE.ConeGeometry(0.5 + infieldRng() * 0.5, 3 + infieldRng() * 4, 6), iceMat);
+          crystal.position.set(cx2 + Math.cos(ia) * ir, (1.5 + infieldRng() * 2), cz2 + Math.sin(ia) * ir);
+          crystal.rotation.z = (infieldRng() - 0.5) * 0.3;
+          this._scene.add(crystal); this._sceneryObjects.push(crystal);
+        }
+        // Stone cabin / mountain hut
+        const hutMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.85 });
+        const hut = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 5), hutMat);
+        hut.position.set(cx2 + 15, 1.5, cz2 - 8); hut.castShadow = true;
+        this._scene.add(hut); this._sceneryObjects.push(hut);
+        // Hut roof
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(4, 2, 4),
+          new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.8 }));
+        roof.position.set(cx2 + 15, 3.5, cz2 - 8); roof.rotation.y = Math.PI / 4;
+        this._scene.add(roof); this._sceneryObjects.push(roof);
+        // Snow pile
+        const snow = new THREE.Mesh(new THREE.SphereGeometry(2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+          new THREE.MeshStandardMaterial({ color: 0xeeeeff, roughness: 0.9 }));
+        snow.position.set(cx2 + 18, 0, cz2 - 8);
+        this._scene.add(snow); this._sceneryObjects.push(snow);
+        // Pine trees around the lake
+        const pineMat = new THREE.MeshStandardMaterial({ color: 0x1a3a1a, roughness: 0.7 });
+        const pineTrunk = new THREE.MeshStandardMaterial({ color: 0x3a2a15, roughness: 0.85 });
+        for (let pt2 = 0; pt2 < 10; pt2++) {
+          const pa = infieldRng() * Math.PI * 2, pr = 16 + infieldRng() * 8;
+          const pGroup = new THREE.Group();
+          pGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 4, 8), pineTrunk));
+          pGroup.children[0].position.y = 2;
+          for (let tier = 0; tier < 3; tier++) {
+            const cone = new THREE.Mesh(new THREE.ConeGeometry(2 - tier * 0.5, 2.5, 8), pineMat);
+            cone.position.y = 3.5 + tier * 1.5; pGroup.add(cone);
+          }
+          pGroup.position.set(cx2 + Math.cos(pa) * pr, 0, cz2 + Math.sin(pa) * pr);
+          pGroup.castShadow = true;
+          this._scene.add(pGroup); this._sceneryObjects.push(pGroup);
+        }
+      }
+
+      if (def.specialScenery === "volcanic") {
+        // ── Lava lake with obsidian island ──
+        const lavaLake = new THREE.Mesh(new THREE.CircleGeometry(14, 32),
+          new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8, roughness: 0.3, toneMapped: false }));
+        lavaLake.rotation.x = -Math.PI / 2; lavaLake.position.set(cx2, 0.05, cz2);
+        this._scene.add(lavaLake); this._sceneryObjects.push(lavaLake);
+        // Lava glow
+        const lavaLight = new THREE.PointLight(0xff4400, 1.0, 30);
+        lavaLight.position.set(cx2, 2, cz2); this._scene.add(lavaLight);
+        // Obsidian island in the middle
+        const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.2, metalness: 0.8 });
+        const island = new THREE.Mesh(new THREE.CylinderGeometry(4, 5, 3, 12), obsidianMat);
+        island.position.set(cx2, 1.5, cz2); this._scene.add(island); this._sceneryObjects.push(island);
+        // Dark obelisk on island
+        const obelisk = new THREE.Mesh(new THREE.BoxGeometry(1, 8, 1), obsidianMat);
+        obelisk.position.set(cx2, 7, cz2); this._scene.add(obelisk); this._sceneryObjects.push(obelisk);
+        // Obelisk rune glow
+        const runeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.6),
+          new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.6 }));
+        runeGlow.position.set(cx2, 8, cz2); this._scene.add(runeGlow); this._sceneryObjects.push(runeGlow);
+        // Ruined pillars around the lava
+        for (let rp = 0; rp < 5; rp++) {
+          const ra3 = (rp / 5) * Math.PI * 2;
+          const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 3 + infieldRng() * 3, 10),
+            new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.85 }));
+          pillar.position.set(cx2 + Math.cos(ra3) * 12, 1.5, cz2 + Math.sin(ra3) * 12);
+          pillar.castShadow = true; this._scene.add(pillar); this._sceneryObjects.push(pillar);
+        }
+        // Scattered bones/skulls
+        const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.8 });
+        for (let bi = 0; bi < 8; bi++) {
+          const ba = infieldRng() * Math.PI * 2, br = 6 + infieldRng() * 12;
+          const bone = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.5, 6, 8), boneMat);
+          bone.position.set(cx2 + Math.cos(ba) * br, 0.15, cz2 + Math.sin(ba) * br);
+          bone.rotation.set(infieldRng(), infieldRng(), infieldRng());
+          this._scene.add(bone); this._sceneryObjects.push(bone);
+        }
+      }
+
+      if (def.specialScenery === "shore") {
+        // ── Island village with dock ──
+        // Sandy island mound
+        const sandMat = new THREE.MeshStandardMaterial({ color: 0xddcc88, roughness: 0.9 });
+        const mound = new THREE.Mesh(new THREE.CylinderGeometry(10, 14, 2, 20), sandMat);
+        mound.position.set(cx2, 0, cz2); this._scene.add(mound); this._sceneryObjects.push(mound);
+        // Fishing huts
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.8 });
+        const hutDefs = [[-4, -3], [3, -5], [6, 2], [-2, 5]];
+        for (const [hx, hz] of hutDefs) {
+          const hutG = new THREE.Group();
+          const walls = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 3.5), woodMat);
+          walls.position.y = 1.75; hutG.add(walls);
+          const hRoof = new THREE.Mesh(new THREE.ConeGeometry(3, 1.5, 4),
+            new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.8 }));
+          hRoof.position.y = 3.5; hRoof.rotation.y = Math.PI / 4; hutG.add(hRoof);
+          // Door
+          const door = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.05),
+            new THREE.MeshStandardMaterial({ color: 0x443311 }));
+          door.position.set(0, 1.25, -1.76); hutG.add(door);
+          hutG.position.set(cx2 + hx, 1, cz2 + hz); hutG.castShadow = true;
+          this._scene.add(hutG); this._sceneryObjects.push(hutG);
+        }
+        // Dock / pier extending from island
+        const dock = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 12), woodMat);
+        dock.position.set(cx2 - 10, 1.2, cz2); this._scene.add(dock); this._sceneryObjects.push(dock);
+        // Dock posts
+        for (let dp = 0; dp < 4; dp++) {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3, 8), woodMat);
+          post.position.set(cx2 - 10 + (dp % 2 === 0 ? -0.8 : 0.8), 0.5, cz2 - 4 + dp * 3);
+          this._scene.add(post); this._sceneryObjects.push(post);
+        }
+        // Boat tied to dock
+        const boatMat = new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.7 });
+        const boat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 3), boatMat);
+        boat.position.set(cx2 - 12, 0.3, cz2 - 2); boat.rotation.y = 0.2;
+        this._scene.add(boat); this._sceneryObjects.push(boat);
+        // Palm trees on the island
+        const palmTrunk = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.8 });
+        const palmLeaf = new THREE.MeshStandardMaterial({ color: 0x228833, roughness: 0.6, side: THREE.DoubleSide });
+        for (let pi = 0; pi < 5; pi++) {
+          const pa2 = infieldRng() * Math.PI * 2, pr2 = 3 + infieldRng() * 6;
+          const pG = new THREE.Group();
+          // Curved trunk
+          const pTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 5, 10), palmTrunk);
+          pTrunk.position.y = 2.5; pTrunk.rotation.z = (infieldRng() - 0.5) * 0.3; pG.add(pTrunk);
+          // Fronds
+          for (let fr = 0; fr < 6; fr++) {
+            const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 3), palmLeaf);
+            const fa = (fr / 6) * Math.PI * 2;
+            frond.position.set(Math.cos(fa) * 0.8, 5.2, Math.sin(fa) * 0.8);
+            frond.rotation.set(-0.5, fa, 0); pG.add(frond);
+          }
+          pG.position.set(cx2 + Math.cos(pa2) * pr2, 1, cz2 + Math.sin(pa2) * pr2);
+          this._scene.add(pG); this._sceneryObjects.push(pG);
+        }
+        // Campfire
+        const firePit = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.15, 12),
+          new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 }));
+        firePit.position.set(cx2, 1.1, cz2); this._scene.add(firePit); this._sceneryObjects.push(firePit);
+        const fireGlow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8),
+          new THREE.MeshStandardMaterial({ color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 2, toneMapped: false }));
+        fireGlow.position.set(cx2, 1.5, cz2); this._scene.add(fireGlow); this._sceneryObjects.push(fireGlow);
+        const campLight = new THREE.PointLight(0xff6622, 0.5, 12);
+        campLight.position.set(cx2, 2, cz2); this._scene.add(campLight);
+      }
+    }
+
     // track-specific decorations
     if (def.specialScenery === "castle") {
       // torch posts along walls
