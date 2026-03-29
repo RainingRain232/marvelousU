@@ -472,30 +472,65 @@ export class GrandGame {
     dir.shadow.camera.top = 60; dir.shadow.camera.bottom = -60;
     this._scene.add(dir);
 
-    // sky gradient dome
-    const skyGeo = new THREE.SphereGeometry(150, 32, 16);
+    // sky gradient dome (richer sunset gradient)
+    const skyGeo = new THREE.SphereGeometry(150, 48, 24);
     const skyCanvas = document.createElement("canvas");
-    skyCanvas.width = 256; skyCanvas.height = 256;
+    skyCanvas.width = 512; skyCanvas.height = 512;
     const sctx = skyCanvas.getContext("2d")!;
-    const grad = sctx.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0, "#1a2a5a"); grad.addColorStop(0.3, "#3a4a7a");
-    grad.addColorStop(0.5, "#ff8844"); grad.addColorStop(0.7, "#ffaa66");
-    grad.addColorStop(1, "#ffddaa");
-    sctx.fillStyle = grad; sctx.fillRect(0, 0, 256, 256);
-    // stars in upper portion
-    for (let i = 0; i < 80; i++) {
-      sctx.fillStyle = `rgba(255,255,255,${0.3 + Math.random() * 0.7})`;
-      sctx.fillRect(Math.random() * 256, Math.random() * 100, Math.random() > 0.8 ? 2 : 1, 1);
+    const grad = sctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, "#0a1535"); grad.addColorStop(0.15, "#1a2a5a");
+    grad.addColorStop(0.3, "#3a4a7a"); grad.addColorStop(0.45, "#cc6633");
+    grad.addColorStop(0.55, "#ff8844"); grad.addColorStop(0.7, "#ffaa66");
+    grad.addColorStop(0.85, "#ffccaa"); grad.addColorStop(1, "#ffe8d0");
+    sctx.fillStyle = grad; sctx.fillRect(0, 0, 512, 512);
+    // stars in upper portion (more, varied)
+    for (let i = 0; i < 200; i++) {
+      const starY = Math.random() * 200;
+      const brightness = 0.2 + Math.random() * 0.8;
+      sctx.fillStyle = `rgba(255,255,${200 + Math.floor(Math.random() * 55)},${brightness})`;
+      const sz = Math.random() > 0.9 ? 3 : Math.random() > 0.7 ? 2 : 1;
+      sctx.fillRect(Math.random() * 512, starY, sz, sz);
+      // diffraction spikes on bright stars
+      if (sz >= 2 && brightness > 0.6) {
+        sctx.fillRect(Math.random() * 512 - 1, starY - 2, 1, 5);
+        sctx.fillRect(Math.random() * 512 - 2, starY, 5, 1);
+      }
+    }
+    // subtle nebula patches in sky
+    for (let ni = 0; ni < 5; ni++) {
+      const nx = Math.random() * 512, ny = Math.random() * 180;
+      const ng = sctx.createRadialGradient(nx, ny, 0, nx, ny, 30 + Math.random() * 40);
+      ng.addColorStop(0, `rgba(80,50,120,0.08)`);
+      ng.addColorStop(1, `rgba(40,30,80,0)`);
+      sctx.fillStyle = ng;
+      sctx.fillRect(0, 0, 512, 512);
     }
     this._skybox = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyCanvas), side: THREE.BackSide }));
     this._scene.add(this._skybox);
 
-    // clouds
-    const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffeedd, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
-    for (let ci = 0; ci < 20; ci++) {
-      const cw = 5 + Math.random() * 15, ch = 2 + Math.random() * 5;
-      const cloud = new THREE.Mesh(new THREE.PlaneGeometry(cw, ch), cloudMat.clone());
-      cloud.position.set((Math.random() - 0.5) * 200, -10 + Math.random() * 30, (Math.random() - 0.5) * 200);
+    // Sun/moon in the sunset sky
+    const sunGeo = new THREE.SphereGeometry(3, 16, 12);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffcc66 });
+    const sun = new THREE.Mesh(sunGeo, sunMat);
+    sun.position.set(-80, 40, -60);
+    this._scene.add(sun);
+    // Sun glow
+    const sunGlow = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.08, depthWrite: false }));
+    sunGlow.position.copy(sun.position);
+    this._scene.add(sunGlow);
+
+    // clouds (volumetric-looking, layered)
+    const cloudColors = [0xffeedd, 0xffddcc, 0xeeddcc, 0xffd8c0];
+    for (let ci = 0; ci < 30; ci++) {
+      const cw = 5 + Math.random() * 20, ch = 2 + Math.random() * 5;
+      const cloudMat = new THREE.MeshBasicMaterial({
+        color: cloudColors[ci % cloudColors.length],
+        transparent: true, opacity: 0.15 + Math.random() * 0.2,
+        side: THREE.DoubleSide, depthWrite: false,
+      });
+      const cloud = new THREE.Mesh(new THREE.PlaneGeometry(cw, ch), cloudMat);
+      cloud.position.set((Math.random() - 0.5) * 250, -10 + Math.random() * 40, (Math.random() - 0.5) * 250);
       cloud.rotation.x = -0.3 + Math.random() * 0.2;
       cloud.rotation.y = Math.random() * Math.PI;
       this._scene.add(cloud); this._clouds.push(cloud);
@@ -1028,15 +1063,140 @@ export class GrandGame {
         this._scene.add(canopy);
       }
     }
-    // distant ruins
-    for (let ri = 0; ri < 4; ri++) {
-      const ra = (ri / 4) * Math.PI * 2 + 0.5;
-      const rd2 = TRACK_RADIUS * 2 + Math.random() * 15;
-      const ruin = new THREE.Mesh(new THREE.BoxGeometry(2 + Math.random() * 3, 4 + Math.random() * 6, 1.5 + Math.random() * 2),
-        new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.85, metalness: 0.1 }));
-      ruin.position.set(Math.cos(ra) * rd2, -2 + Math.random() * 4, Math.sin(ra) * rd2);
-      ruin.rotation.y = Math.random() * Math.PI;
-      this._scene.add(ruin);
+    // distant ruins (more detailed)
+    const ruinMat = new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.85, metalness: 0.1 });
+    for (let ri = 0; ri < 6; ri++) {
+      const ra = (ri / 6) * Math.PI * 2 + 0.5;
+      const rd2 = TRACK_RADIUS * 2 + Math.random() * 20;
+      const ruinGroup = new THREE.Group();
+      // Main wall
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(2 + Math.random() * 3, 4 + Math.random() * 6, 1), ruinMat);
+      ruinGroup.add(wall);
+      // Broken column
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 3 + Math.random() * 2, 8), ruinMat);
+      col.position.set(1.5 + Math.random(), -0.5, 0);
+      ruinGroup.add(col);
+      // Rubble
+      for (let rb = 0; rb < 3; rb++) {
+        const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.4, 0), ruinMat);
+        rubble.position.set((Math.random() - 0.5) * 3, -1.5, (Math.random() - 0.5) * 2);
+        rubble.rotation.set(Math.random(), Math.random(), Math.random());
+        ruinGroup.add(rubble);
+      }
+      ruinGroup.position.set(Math.cos(ra) * rd2, -2 + Math.random() * 4, Math.sin(ra) * rd2);
+      ruinGroup.rotation.y = Math.random() * Math.PI;
+      this._scene.add(ruinGroup);
+    }
+
+    // === FLOATING CASTLE in the center of the track ===
+    const castleGroup = new THREE.Group();
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8888a0, roughness: 0.7, metalness: 0.15 });
+    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x666680, roughness: 0.8, metalness: 0.1 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x3333aa, roughness: 0.6 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.3, metalness: 0.8, emissive: 0x554400, emissiveIntensity: 0.3 });
+
+    // Floating island base (inverted cone)
+    const baseIsland = new THREE.Mesh(new THREE.CylinderGeometry(8, 3, 6, 12), stoneDarkMat);
+    baseIsland.position.y = -3;
+    castleGroup.add(baseIsland);
+    // Grass top
+    const grassTop = new THREE.Mesh(new THREE.CylinderGeometry(8.5, 8, 0.5, 12),
+      new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.9 }));
+    grassTop.position.y = 0;
+    castleGroup.add(grassTop);
+
+    // Main keep
+    const keep = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), stoneMat);
+    keep.position.y = 4.5; keep.castShadow = true;
+    castleGroup.add(keep);
+    // Keep stone bands
+    for (let b = 0; b < 4; b++) {
+      const band = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.15, 5.2), stoneDarkMat);
+      band.position.y = 1.5 + b * 2;
+      castleGroup.add(band);
+    }
+
+    // 4 corner towers
+    for (const [tx, tz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) {
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 10, 10), stoneMat);
+      tower.position.set(tx, 5, tz); tower.castShadow = true;
+      castleGroup.add(tower);
+      // Tower roof
+      const tRoof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3, 10), roofMat);
+      tRoof.position.set(tx, 11.5, tz);
+      castleGroup.add(tRoof);
+      // Tower flag
+      const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2, 4), goldMat);
+      flagPole.position.set(tx, 14, tz);
+      castleGroup.add(flagPole);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.7),
+        new THREE.MeshBasicMaterial({ color: 0xcc2222, side: THREE.DoubleSide }));
+      flag.position.set(tx + 0.6, 14.5, tz);
+      castleGroup.add(flag);
+      // Crenellations
+      for (let m = 0; m < 5; m++) {
+        const ma = (m / 5) * Math.PI * 2;
+        const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), stoneMat);
+        merlon.position.set(tx + Math.cos(ma) * 1.3, 10.2, tz + Math.sin(ma) * 1.3);
+        castleGroup.add(merlon);
+      }
+    }
+
+    // Main tower (tall central spire)
+    const mainTower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 14, 12), stoneMat);
+    mainTower.position.y = 7.5; mainTower.castShadow = true;
+    castleGroup.add(mainTower);
+    const mainRoof = new THREE.Mesh(new THREE.ConeGeometry(2.2, 5, 12), roofMat);
+    mainRoof.position.y = 17;
+    castleGroup.add(mainRoof);
+    // Gold finial
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), goldMat);
+    finial.position.y = 19.7;
+    castleGroup.add(finial);
+
+    // Castle gate
+    const gate = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x442200, roughness: 0.8 }));
+    gate.position.set(0, 2, 2.6);
+    castleGroup.add(gate);
+
+    // Window lights
+    const windowMat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+    for (let wi = 0; wi < 8; wi++) {
+      const wa = (wi / 8) * Math.PI * 2 + 0.3;
+      const wnd = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.6), windowMat);
+      wnd.position.set(Math.cos(wa) * 1.55, 6 + (wi % 3) * 2.5, Math.sin(wa) * 1.55);
+      wnd.rotation.y = wa + Math.PI;
+      castleGroup.add(wnd);
+    }
+
+    // Courtyard walls
+    for (const side of [-1, 1]) {
+      const cWall = new THREE.Mesh(new THREE.BoxGeometry(10, 2, 0.4), stoneDarkMat);
+      cWall.position.set(0, 1.2, side * 5);
+      castleGroup.add(cWall);
+      const sWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2, 10), stoneDarkMat);
+      sWall.position.set(side * 5, 1.2, 0);
+      castleGroup.add(sWall);
+    }
+
+    // Castle glow
+    const castleGlow = new THREE.PointLight(0xffdd88, 1.5, 30);
+    castleGlow.position.y = 10;
+    castleGroup.add(castleGlow);
+
+    // Position at track center, slightly below track level
+    castleGroup.position.set(0, -2, 0);
+    this._scene.add(castleGroup);
+
+    // Floating rock debris around the castle
+    for (let fd = 0; fd < 12; fd++) {
+      const fa = (fd / 12) * Math.PI * 2;
+      const fr = 12 + Math.random() * 8;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + Math.random() * 1, 0), stoneDarkMat);
+      rock.position.set(Math.cos(fa) * fr, -4 + Math.random() * 6, Math.sin(fa) * fr);
+      rock.rotation.set(Math.random(), Math.random(), Math.random());
+      this._scene.add(rock);
     }
   }
 
