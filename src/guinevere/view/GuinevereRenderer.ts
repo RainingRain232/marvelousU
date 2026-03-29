@@ -221,68 +221,176 @@ export class GuinevereRenderer {
     this._stars = new THREE.Points(starGeo, starMat);
     this._scene.add(this._stars);
 
-    // Sky dome — gradient sphere
-    const skyGeo = new THREE.SphereGeometry(190, 32, 16);
-    const skyMat = new THREE.MeshBasicMaterial({
-      color: 0x0a0820,
-      side: THREE.BackSide,
-    });
+    // Sky dome — gradient sphere (vertex-colored for depth gradient)
+    const skyGeo = new THREE.SphereGeometry(190, 32, 24);
+    const skyColors = new Float32Array(skyGeo.attributes.position.count * 3);
+    const skyTop = new THREE.Color(0x050510);
+    const skyMid = new THREE.Color(0x0a0825);
+    const skyBot = new THREE.Color(0x151040);
+    for (let i = 0; i < skyGeo.attributes.position.count; i++) {
+      const y = skyGeo.attributes.position.getY(i);
+      const t = (y + 190) / 380;
+      const c = t > 0.5 ? skyTop.clone().lerp(skyMid, (1 - t) * 2) : skyMid.clone().lerp(skyBot, (0.5 - t) * 2);
+      skyColors[i * 3] = c.r; skyColors[i * 3 + 1] = c.g; skyColors[i * 3 + 2] = c.b;
+    }
+    skyGeo.setAttribute("color", new THREE.BufferAttribute(skyColors, 3));
+    const skyMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide });
     this._skyDome = new THREE.Mesh(skyGeo, skyMat);
     this._scene.add(this._skyDome);
 
-    // Moon mesh — glowing sphere
-    const moonGeo = new THREE.SphereGeometry(3, 16, 16);
-    const moonMat = new THREE.MeshBasicMaterial({ color: 0xeeeeff });
+    // Nebula clouds in the sky dome
+    const nebulaColors = [0x2211aa, 0x441188, 0x112266, 0x661155, 0x223388, 0x113355];
+    for (let ni = 0; ni < 10; ni++) {
+      const nw = 20 + Math.random() * 40, nh = 12 + Math.random() * 20;
+      const nebMat = new THREE.MeshBasicMaterial({
+        color: nebulaColors[ni % nebulaColors.length],
+        transparent: true, opacity: 0.03 + Math.random() * 0.03,
+        side: THREE.DoubleSide, depthWrite: false,
+      });
+      const neb = new THREE.Mesh(new THREE.PlaneGeometry(nw, nh), nebMat);
+      const na = Math.random() * TAU;
+      const nr = 120 + Math.random() * 50;
+      neb.position.set(Math.cos(na) * nr, 30 + Math.random() * 80, Math.sin(na) * nr);
+      neb.rotation.set(Math.random() * 0.5, na + Math.PI, Math.random() * 0.3);
+      this._scene.add(neb);
+    }
+
+    // Moon mesh — detailed with craters
+    const moonGeo = new THREE.SphereGeometry(3, 24, 20);
+    const moonMat = new THREE.MeshStandardMaterial({ color: 0xddddee, roughness: 0.8, metalness: 0.05 });
     this._moonMesh = new THREE.Mesh(moonGeo, moonMat);
     this._moonMesh.position.set(-40, 80, -60);
     this._moonMesh.visible = false;
     this._scene.add(this._moonMesh);
+    // Moon craters
+    const craterMat = new THREE.MeshStandardMaterial({ color: 0xaaaabb, roughness: 0.9 });
+    for (let ci = 0; ci < 6; ci++) {
+      const ca = (ci / 6) * TAU + 0.3;
+      const cp = Math.random() * 0.8 - 0.4;
+      const crater = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 8, 6), craterMat);
+      crater.position.set(Math.cos(ca) * Math.cos(cp) * 2.9, Math.sin(cp) * 2.9, Math.sin(ca) * Math.cos(cp) * 2.9);
+      crater.scale.y = 0.3;
+      crater.lookAt(0, 0, 0);
+      this._moonMesh.add(crater);
+    }
+    // Moon glow aura
+    const moonGlow = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0x8899cc, transparent: true, opacity: 0.06, depthWrite: false }));
+    this._moonMesh.add(moonGlow);
 
     this._moonPointLight = new THREE.PointLight(0x8899cc, 0.3, 100);
     this._moonPointLight.position.set(-40, 80, -60);
     this._moonPointLight.visible = false;
     this._scene.add(this._moonPointLight);
 
-    // Northern lights — semi-transparent curtains in the sky
-    const auroraColors = [0x22ff88, 0x4488ff, 0x8844ff, 0x22ccaa];
-    for (let i = 0; i < 4; i++) {
-      const geo = new THREE.PlaneGeometry(80, 15, 16, 4);
+    // Northern lights — wider, more curtains, with vertex displacement for wave shapes
+    const auroraColors = [0x22ff88, 0x4488ff, 0x8844ff, 0x22ccaa, 0x44ffcc, 0x6644ff];
+    for (let i = 0; i < 6; i++) {
+      const geo = new THREE.PlaneGeometry(100, 20, 24, 6);
+      // Wave displacement on vertices
+      const aPos = geo.attributes.position;
+      for (let v = 0; v < aPos.count; v++) {
+        const x = aPos.getX(v), y = aPos.getY(v);
+        aPos.setZ(v, Math.sin(x * 0.1 + i) * 3 + Math.cos(y * 0.3) * 2);
+      }
+      geo.computeVertexNormals();
       const mat = new THREE.MeshBasicMaterial({
         color: auroraColors[i], transparent: true, opacity: 0,
         side: THREE.DoubleSide, depthWrite: false,
       });
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(-40 + i * 25, 110 + i * 3, -50 + i * 15);
-      mesh.rotation.x = -0.3;
-      mesh.rotation.y = i * 0.4;
+      mesh.position.set(-50 + i * 22, 105 + i * 4 + Math.random() * 5, -55 + i * 12);
+      mesh.rotation.x = -0.25 + Math.random() * 0.1;
+      mesh.rotation.y = i * 0.35;
       this._scene.add(mesh);
       this._auroraMeshes.push(mesh);
     }
   }
 
   private _buildIslands(): void {
-    // Central island — flat cylinder with grass-like top
+    // Materials
     const islandMat = new THREE.MeshStandardMaterial({ color: 0x334422, roughness: 0.9, flatShading: true });
     const islandEdgeMat = new THREE.MeshStandardMaterial({ color: 0x221133, roughness: 0.8, flatShading: true });
+    const mossyMat = new THREE.MeshStandardMaterial({ color: 0x2a5522, roughness: 0.95 });
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x443355, roughness: 0.85, metalness: 0.1 });
+    const glowVineMat = new THREE.MeshStandardMaterial({ color: 0x44ffaa, emissive: 0x22cc88, emissiveIntensity: 0.6, roughness: 0.5 });
 
     for (let i = 0; i < 5; i++) {
-      // Top surface
       const r = i === 0 ? GUIN.ISLAND_RADIUS : GUIN.ISLAND_RADIUS * 0.8;
-      const topGeo = new THREE.CylinderGeometry(r, r * 1.1, 2, 32);
+
+      // Top surface with vertex displacement for natural terrain
+      const topGeo = new THREE.CylinderGeometry(r, r * 1.1, 2, 48, 4);
+      const tPos = topGeo.attributes.position;
+      for (let v = 0; v < tPos.count; v++) {
+        const x = tPos.getX(v), y = tPos.getY(v), z = tPos.getZ(v);
+        if (y > 0.5) {
+          tPos.setY(v, y + Math.sin(x * 1.5) * 0.15 + Math.cos(z * 1.2) * 0.12);
+        }
+      }
+      topGeo.computeVertexNormals();
       const top = new THREE.Mesh(topGeo, islandMat);
 
-      // Bottom rocky part
-      const botGeo = new THREE.CylinderGeometry(r * 1.1, r * 0.6, 8, 16);
+      // Bottom rocky part with jagged edges
+      const botGeo = new THREE.CylinderGeometry(r * 1.1, r * 0.6, 8, 24);
+      const bPos = botGeo.attributes.position;
+      for (let v = 0; v < bPos.count; v++) {
+        const x = bPos.getX(v), z = bPos.getZ(v), y = bPos.getY(v);
+        if (y < 2) {
+          const dist = Math.sqrt(x * x + z * z);
+          const jag = Math.sin(Math.atan2(z, x) * 8 + i * 3) * 0.3;
+          bPos.setX(v, x + (x / dist) * jag);
+          bPos.setZ(v, z + (z / dist) * jag);
+        }
+      }
+      botGeo.computeVertexNormals();
       const bot = new THREE.Mesh(botGeo, islandEdgeMat);
       bot.position.y = -5;
 
       const group = new THREE.Group();
       group.add(top, bot);
-      group.visible = i === 0; // only first island visible initially
+
+      // Surface rocks scattered on island top
+      for (let ri = 0; ri < 6; ri++) {
+        const ra = Math.random() * TAU;
+        const rd = Math.random() * r * 0.7;
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2 + Math.random() * 0.3, 0), rockMat);
+        rock.position.set(Math.cos(ra) * rd, 1.1, Math.sin(ra) * rd);
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
+        rock.scale.y = 0.5 + Math.random() * 0.3;
+        group.add(rock);
+      }
+
+      // Mossy patches on the ground
+      for (let mi = 0; mi < 4; mi++) {
+        const ma = Math.random() * TAU;
+        const md = Math.random() * r * 0.6;
+        const moss = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 0.8, 8), mossyMat);
+        moss.rotation.x = -Math.PI / 2;
+        moss.position.set(Math.cos(ma) * md, 1.05, Math.sin(ma) * md);
+        group.add(moss);
+      }
+
+      // Glowing vine strands clinging to the underside
+      for (let vi = 0; vi < 5; vi++) {
+        const va = (vi / 5) * TAU + i * 1.2;
+        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 2 + Math.random() * 3, 4), glowVineMat);
+        vine.position.set(Math.cos(va) * r * 0.95, -2 - Math.random() * 2, Math.sin(va) * r * 0.95);
+        group.add(vine);
+      }
+
+      // Floating smaller rocks around edge (debris)
+      for (let di = 0; di < 4; di++) {
+        const da = Math.random() * TAU;
+        const dd = r * 1.1 + Math.random() * 2;
+        const debris = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.2, 0), islandEdgeMat);
+        debris.position.set(Math.cos(da) * dd, -1 + Math.random() * 2, Math.sin(da) * dd);
+        debris.rotation.set(Math.random(), Math.random(), Math.random());
+        group.add(debris);
+      }
+
+      group.visible = i === 0;
       this._scene.add(group);
       this._islandMeshes.push(top);
-
-      // Store group reference on the mesh for visibility toggling
       (top as any)._group = group;
     }
 
@@ -684,12 +792,26 @@ export class GuinevereRenderer {
     // Aurora shield visual
     if (p.auroraShieldHp > 0) {
       if (!this._auroraShield) {
-        const shieldGeo = new THREE.SphereGeometry(2, 16, 12);
+        const shieldGroup = new THREE.Group();
+        // Outer shell
+        const shieldGeo = new THREE.SphereGeometry(2, 24, 16);
         const shieldMat = new THREE.MeshBasicMaterial({
-          color: 0x88ccff, transparent: true, opacity: 0.2, side: THREE.DoubleSide,
+          color: 0x88ccff, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
         });
-        this._auroraShield = new THREE.Mesh(shieldGeo, shieldMat);
-        this._scene.add(this._auroraShield);
+        shieldGroup.add(new THREE.Mesh(shieldGeo, shieldMat));
+        // Wireframe overlay
+        const wireMat = new THREE.MeshBasicMaterial({ color: 0x88ccff, wireframe: true, transparent: true, opacity: 0.15, depthWrite: false });
+        shieldGroup.add(new THREE.Mesh(shieldGeo.clone(), wireMat));
+        // Horizontal ring bands
+        for (let ri = 0; ri < 3; ri++) {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(1.6 + ri * 0.15, 0.02, 6, 24),
+            new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.2, depthWrite: false }));
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = -0.5 + ri * 0.5;
+          shieldGroup.add(ring);
+        }
+        this._auroraShield = shieldGroup as any;
+        this._scene.add(shieldGroup);
       }
       this._auroraShield.visible = true;
       this._auroraShield.position.set(p.pos.x, p.pos.y + 1, p.pos.z);
@@ -741,34 +863,68 @@ export class GuinevereRenderer {
     const group = new THREE.Group();
     const colors = PLANT_COLORS[plant.type];
 
-    // Stem
-    const stemGeo = new THREE.CylinderGeometry(0.08, 0.12, 1, 12);
+    // Stem (curved, tapered)
+    const stemGeo = new THREE.CylinderGeometry(0.06, 0.1, 1, 8);
     const stemMat = new THREE.MeshStandardMaterial({ color: colors.stem, roughness: 0.7 });
     const stem = new THREE.Mesh(stemGeo, stemMat);
     stem.position.y = 0.5;
     stem.name = "stem";
     group.add(stem);
 
-    // Bloom head (grows with stage)
-    const bloomGeo = new THREE.DodecahedronGeometry(0.3, 1);
-    const bloomMat = new THREE.MeshStandardMaterial({
-      color: colors.bloom, emissive: colors.glow, emissiveIntensity: 0,
-      roughness: 0.3, metalness: 0.2, transparent: true, opacity: 0.9,
-    });
-    const bloom = new THREE.Mesh(bloomGeo, bloomMat);
-    bloom.position.y = 1;
-    bloom.name = "bloom";
-    group.add(bloom);
+    // Stem node bumps
+    for (let n = 0; n < 2; n++) {
+      const node = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), stemMat);
+      node.position.y = 0.3 + n * 0.4;
+      node.scale.set(1, 0.5, 1);
+      group.add(node);
+    }
 
-    // Leaves (2-3)
-    const leafGeo = new THREE.PlaneGeometry(0.4, 0.2);
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa44, side: THREE.DoubleSide, roughness: 0.7 });
-    for (let i = 0; i < 3; i++) {
-      const leaf = new THREE.Mesh(leafGeo, leafMat);
-      leaf.position.y = 0.3 + i * 0.25;
-      leaf.rotation.y = (i / 3) * TAU;
-      leaf.rotation.z = 0.5;
-      group.add(leaf);
+    // Bloom head — petal ring around a core
+    const bloomCore = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8),
+      new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 1.0, roughness: 0.2, metalness: 0.3 }));
+    bloomCore.position.y = 1;
+    bloomCore.name = "bloom";
+    group.add(bloomCore);
+
+    // Petals (arranged around the core)
+    const petalMat = new THREE.MeshStandardMaterial({
+      color: colors.bloom, emissive: colors.glow, emissiveIntensity: 0,
+      roughness: 0.3, metalness: 0.2, transparent: true, opacity: 0.9, side: THREE.DoubleSide,
+    });
+    const petalCount = plant.type === "aurora_tree" ? 5 : plant.type === "void_lily" ? 6 : 8;
+    for (let p = 0; p < petalCount; p++) {
+      const pa = (p / petalCount) * TAU;
+      const petal = new THREE.Mesh(new THREE.CircleGeometry(0.18, 6), petalMat);
+      petal.position.set(Math.cos(pa) * 0.15, 1, Math.sin(pa) * 0.15);
+      petal.rotation.y = pa;
+      petal.rotation.x = -0.5;
+      petal.scale.set(0.8, 1.2, 1);
+      group.add(petal);
+    }
+
+    // Bloom glow aura
+    const glowMat = new THREE.MeshBasicMaterial({ color: colors.glow, transparent: true, opacity: 0, depthWrite: false });
+    const glowSphere = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), glowMat);
+    glowSphere.position.y = 1;
+    glowSphere.name = "glow";
+    group.add(glowSphere);
+
+    // Leaves (varied sizes, angled outward)
+    const leafMat = new THREE.MeshStandardMaterial({ color: colors.stem, side: THREE.DoubleSide, roughness: 0.7 });
+    for (let i = 0; i < 4; i++) {
+      const leafGroup = new THREE.Group();
+      // Leaf blade (tapered ellipse shape)
+      const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.2 + i * 0.02, 6), leafMat);
+      leaf.scale.set(0.6, 1, 1);
+      leafGroup.add(leaf);
+      // Leaf vein (center line)
+      const vein = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.18, 0.005),
+        new THREE.MeshStandardMaterial({ color: 0x338833, roughness: 0.8 }));
+      leafGroup.add(vein);
+      leafGroup.position.y = 0.25 + i * 0.2;
+      leafGroup.rotation.y = (i / 4) * TAU + 0.3;
+      leafGroup.rotation.z = 0.6 - i * 0.05;
+      group.add(leafGroup);
     }
 
     return group;
