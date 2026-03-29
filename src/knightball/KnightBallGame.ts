@@ -308,6 +308,7 @@ export class KnightBallGame {
   private _selectedDifficulty = 1;
   private _selectedMode = 0; // 0=quick match, 1=tournament
   private _selectedTeamSize = 0; // 0=2v2, 1=3v3
+  private _selectedMap = 0; // 0=stone arena, 1=frozen lake, 2=volcanic pit
   private _teamSize = 2;
 
   // power-up HUD indicator
@@ -663,22 +664,47 @@ export class KnightBallGame {
     dir.shadow.camera.bottom = -15;
     this._scene.add(dir);
 
+    // Map theme colors
+    const mapThemes = [
+      { // Stone Arena (default)
+        floorBase: "#5a5545", slabRange: [75, 95], pitchA: "#4e6232", pitchB: "#456028",
+        fogColor: 0x1a1a2e, ambientColor: 0x334455, dirColor: 0xffeedd, bgColor: 0x1a1a2e,
+        wallColor: 0x665544,
+      },
+      { // Frozen Lake
+        floorBase: "#7788aa", slabRange: [130, 160], pitchA: "#88aacc", pitchB: "#7799bb",
+        fogColor: 0x2a3a5a, ambientColor: 0x6688aa, dirColor: 0xccddff, bgColor: 0x2a3a5a,
+        wallColor: 0x6688aa,
+      },
+      { // Volcanic Pit
+        floorBase: "#3a2a1a", slabRange: [45, 70], pitchA: "#4a3020", pitchB: "#3a2818",
+        fogColor: 0x1a0a05, ambientColor: 0x553322, dirColor: 0xff8844, bgColor: 0x1a0a05,
+        wallColor: 0x553322,
+      },
+    ];
+    const theme = mapThemes[this._selectedMap] || mapThemes[0];
+
+    // Apply map theme to scene
+    this._scene.background = new THREE.Color(theme.bgColor);
+    this._scene.fog = new THREE.FogExp2(theme.fogColor, 0.015);
+
     // floor with stone surround texture
     const floorCanvas = document.createElement("canvas");
     floorCanvas.width = 256; floorCanvas.height = 256;
     const fctx = floorCanvas.getContext("2d")!;
-    // dirt/stone base
-    fctx.fillStyle = "#5a5545";
+    fctx.fillStyle = theme.floorBase;
     fctx.fillRect(0, 0, 256, 256);
     // stone slab pattern
     for (let sr = 0; sr < 8; sr++) {
       for (let sc = 0; sc < 8; sc++) {
         const sx2 = sc * 32 + (sr % 2) * 16;
         const sy2 = sr * 32;
-        const shade = 75 + Math.floor(Math.random() * 20);
-        fctx.fillStyle = `rgb(${shade},${shade - 5},${shade - 10})`;
+        const shade = theme.slabRange[0] + Math.floor(Math.random() * (theme.slabRange[1] - theme.slabRange[0]));
+        const tint = this._selectedMap === 1 ? `rgb(${shade - 10},${shade},${shade + 10})` :
+          this._selectedMap === 2 ? `rgb(${shade},${shade - 15},${shade - 25})` :
+          `rgb(${shade},${shade - 5},${shade - 10})`;
+        fctx.fillStyle = tint;
         fctx.fillRect(sx2 + 1, sy2 + 1, 30, 30);
-        // cracks
         fctx.strokeStyle = `rgba(40,35,30,0.3)`;
         fctx.lineWidth = 1;
         if (Math.random() > 0.6) {
@@ -686,6 +712,16 @@ export class KnightBallGame {
           fctx.moveTo(sx2 + Math.random() * 30, sy2 + Math.random() * 30);
           fctx.lineTo(sx2 + Math.random() * 30, sy2 + Math.random() * 30);
           fctx.stroke();
+        }
+        // Frozen: ice cracks / Volcanic: lava veins
+        if (this._selectedMap === 1 && Math.random() > 0.7) {
+          fctx.strokeStyle = "rgba(200,220,255,0.15)";
+          fctx.beginPath(); fctx.moveTo(sx2, sy2 + 15); fctx.lineTo(sx2 + 30, sy2 + 15 + (Math.random() - 0.5) * 10); fctx.stroke();
+        }
+        if (this._selectedMap === 2 && Math.random() > 0.8) {
+          fctx.strokeStyle = "rgba(255,100,20,0.2)";
+          fctx.lineWidth = 2;
+          fctx.beginPath(); fctx.moveTo(sx2 + Math.random() * 30, sy2); fctx.lineTo(sx2 + Math.random() * 30, sy2 + 30); fctx.stroke();
         }
       }
     }
@@ -703,10 +739,10 @@ export class KnightBallGame {
     const grassCanvas = document.createElement("canvas");
     grassCanvas.width = 512; grassCanvas.height = 512;
     const gctx = grassCanvas.getContext("2d")!;
-    // base color with mowing stripes
+    // base color with mowing stripes (themed)
     for (let row = 0; row < 512; row++) {
       const stripe = Math.floor(row / 32) % 2 === 0;
-      gctx.fillStyle = stripe ? "#4e6232" : "#456028";
+      gctx.fillStyle = stripe ? theme.pitchA : theme.pitchB;
       gctx.fillRect(0, row, 512, 1);
     }
     // scattered grass detail
@@ -876,6 +912,7 @@ export class KnightBallGame {
     this._buildTorches();
     this._buildBanners();
     this._buildCrowd();
+    this._buildMapDecorations();
     this._buildDustParticles();
     this._buildSparkParticles();
     this._buildConfettiParticles();
@@ -1205,6 +1242,76 @@ export class KnightBallGame {
     armMesh.instanceMatrix.needsUpdate = true;
     (armMesh as any).instanceColor!.needsUpdate = true;
     this._scene.add(armMesh);
+  }
+
+  private _buildMapDecorations(): void {
+    if (this._selectedMap === 1) {
+      // Frozen Lake: ice pillars, snowdrifts, frozen crystals
+      const iceMat = new THREE.MeshStandardMaterial({ color: 0x88bbdd, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.7 });
+      const snowMat = new THREE.MeshStandardMaterial({ color: 0xddeeff, roughness: 0.9 });
+      // Ice pillars around the arena
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const r = Math.max(ARENA_W, ARENA_H) / 2 + 6;
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3 + Math.random() * 2, 6), iceMat);
+        pillar.position.set(Math.cos(angle) * r, WALL_HEIGHT + 1.5, Math.sin(angle) * r);
+        this._scene.add(pillar);
+        // Icicles hanging from pillar
+        for (let ic = 0; ic < 3; ic++) {
+          const icicle = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4 + Math.random() * 0.3, 4), iceMat);
+          icicle.position.set(pillar.position.x + (Math.random() - 0.5) * 0.4, pillar.position.y + 1.5, pillar.position.z + (Math.random() - 0.5) * 0.4);
+          icicle.rotation.x = Math.PI;
+          this._scene.add(icicle);
+        }
+      }
+      // Snowdrifts along walls
+      for (let sd = 0; sd < 12; sd++) {
+        const sx = (Math.random() - 0.5) * (ARENA_W + 4);
+        const sz = (Math.random() > 0.5 ? 1 : -1) * (ARENA_H / 2 + 1.5);
+        const drift = new THREE.Mesh(new THREE.SphereGeometry(0.5 + Math.random() * 0.8, 8, 6), snowMat);
+        drift.scale.set(1 + Math.random(), 0.3, 1 + Math.random() * 0.5);
+        drift.position.set(sx, WALL_HEIGHT * 0.5, sz);
+        this._scene.add(drift);
+      }
+      // Frost mist (ground fog)
+      const mistMat = new THREE.MeshBasicMaterial({ color: 0xaaccff, transparent: true, opacity: 0.04, side: THREE.DoubleSide, depthWrite: false });
+      const mist = new THREE.Mesh(new THREE.PlaneGeometry(ARENA_W + 2, ARENA_H + 2), mistMat);
+      mist.rotation.x = -Math.PI / 2;
+      mist.position.y = 0.15;
+      this._scene.add(mist);
+    } else if (this._selectedMap === 2) {
+      // Volcanic Pit: lava pools, ember particles, obsidian rocks
+      const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.8, roughness: 0.3 });
+      const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.6 });
+      // Lava pools outside arena
+      for (let lp = 0; lp < 8; lp++) {
+        const angle = (lp / 8) * Math.PI * 2 + 0.3;
+        const r = Math.max(ARENA_W, ARENA_H) / 2 + 5 + Math.random() * 3;
+        const pool = new THREE.Mesh(new THREE.CircleGeometry(0.8 + Math.random() * 1.2, 12), lavaMat);
+        pool.rotation.x = -Math.PI / 2;
+        pool.position.set(Math.cos(angle) * r, 0.05, Math.sin(angle) * r);
+        this._scene.add(pool);
+        // Lava glow light
+        const lavaLight = new THREE.PointLight(0xff4400, 0.5, 5);
+        lavaLight.position.set(pool.position.x, 0.5, pool.position.z);
+        this._scene.add(lavaLight);
+      }
+      // Obsidian spikes
+      for (let os = 0; os < 10; os++) {
+        const angle = (os / 10) * Math.PI * 2;
+        const r = Math.max(ARENA_W, ARENA_H) / 2 + 4 + Math.random() * 6;
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.3 + Math.random() * 0.3, 1.5 + Math.random() * 2, 5), obsidianMat);
+        spike.position.set(Math.cos(angle) * r, WALL_HEIGHT * 0.5 + Math.random(), Math.sin(angle) * r);
+        spike.rotation.set(Math.random() * 0.2, Math.random(), Math.random() * 0.2);
+        this._scene.add(spike);
+      }
+      // Smoke/heat haze (subtle overlay)
+      const smokeMat = new THREE.MeshBasicMaterial({ color: 0x331100, transparent: true, opacity: 0.03, side: THREE.DoubleSide, depthWrite: false });
+      const smoke = new THREE.Mesh(new THREE.PlaneGeometry(ARENA_W + 6, ARENA_H + 6), smokeMat);
+      smoke.rotation.x = -Math.PI / 2;
+      smoke.position.y = 1.5;
+      this._scene.add(smoke);
+    }
   }
 
   private _buildDustParticles(): void {
@@ -1656,6 +1763,10 @@ export class KnightBallGame {
         this._selectedTeamSize = (this._selectedTeamSize + 1) % 2;
         this._showOverlay("title");
       }
+      if (e.code === "KeyM" && this._screen === GameScreen.TITLE) {
+        this._selectedMap = (this._selectedMap + 1) % 3;
+        this._showOverlay("title");
+      }
       if (e.code === "KeyQ" && this._screen === GameScreen.PAUSED) {
         this.destroy();
         window.dispatchEvent(new Event("knightBallExit"));
@@ -1895,6 +2006,12 @@ export class KnightBallGame {
           <div style="font-size:12px;color:#888;margin-bottom:4px">A/D — DIFFICULTY</div>
           <div style="display:flex;gap:16px;justify-content:center">
             ${diffs.map((d, i) => `<span style="font-size:${i === this._selectedDifficulty ? 20 : 14}px;color:${i === this._selectedDifficulty ? diffColors[i] : '#555'};font-weight:${i === this._selectedDifficulty ? 'bold' : 'normal'};transition:all 0.2s">${d}</span>`).join("")}
+          </div>
+        </div>
+        <div style="margin-bottom:14px;text-align:center">
+          <div style="font-size:12px;color:#888;margin-bottom:4px">M — MAP</div>
+          <div style="display:flex;gap:16px;justify-content:center">
+            ${["Stone Arena", "Frozen Lake", "Volcanic Pit"].map((m, i) => `<span style="font-size:${i === this._selectedMap ? 16 : 12}px;color:${i === this._selectedMap ? (i === 0 ? '#aabb88' : i === 1 ? '#88ccff' : '#ff8844') : '#555'};font-weight:${i === this._selectedMap ? 'bold' : 'normal'};transition:all 0.2s">${m}</span>`).join("")}
           </div>
         </div>
         <div style="font-size:12px;color:#aaa;margin-bottom:20px">
