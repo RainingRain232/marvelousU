@@ -1526,7 +1526,7 @@ export class ChariotGame {
         <span style="color:#fff;">W / &#x2191;</span> Accelerate &nbsp;&nbsp; <span style="color:#fff;">S / &#x2193;</span> Brake<br>
         <span style="color:#fff;">A / &#x2190;</span> Steer Left &nbsp;&nbsp; <span style="color:#fff;">D / &#x2192;</span> Steer Right<br>
         <span style="color:#fff;">SPACE</span> Drift (hold while turning) &nbsp; <span style="color:#fff;">F</span> Whip<br>
-        <span style="color:#fff;">E</span> Use Power-Up &nbsp; <span style="color:#fff;">V</span> Rear View &nbsp; <span style="color:#fff;">M</span> Mute<br><br>
+        <span style="color:#fff;">E</span> Use Power-Up &nbsp; <span style="color:#fff;">R</span> U-Turn &nbsp; <span style="color:#fff;">V</span> Rear View &nbsp; <span style="color:#fff;">M</span> Mute<br><br>
         <div style="color:#daa520;font-size:15px;margin:12px 0 6px;">TIPS</div>
         <span style="color:#ff8800;">Drift Boost:</span> Hold SPACE while turning, release for speed burst<br>
         <span style="color:#ff8800;">Perfect Start:</span> Press W right when "GO!" appears<br>
@@ -2580,6 +2580,203 @@ export class ChariotGame {
         snow.position.copy(pos); snow.position.y = h * 0.85;
         this._scene.add(snow); this._sceneryObjects.push(snow);
       }
+
+      // --- Additional mountain scenery ---
+      {
+        const rng = mulberry32(def.seed + 5555);
+
+        // Ice crystals (12 translucent blue cone clusters)
+        for (let c = 0; c < 12; c++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 4 + rng() * 15;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const clusterGroup = new THREE.Group();
+          const crystalCount = 3 + Math.floor(rng() * 4);
+          for (let j = 0; j < crystalCount; j++) {
+            const ch = 1 + rng() * 2.5;
+            const crystal = new THREE.Mesh(
+              new THREE.ConeGeometry(0.2 + rng() * 0.3, ch, 5),
+              new THREE.MeshStandardMaterial({ color: 0x88ccff, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.4 })
+            );
+            crystal.position.set((rng() - 0.5) * 1.2, ch / 2, (rng() - 0.5) * 1.2);
+            crystal.rotation.z = (rng() - 0.5) * 0.3;
+            clusterGroup.add(crystal);
+          }
+          clusterGroup.position.copy(pos);
+          this._scene.add(clusterGroup); this._sceneryObjects.push(clusterGroup);
+        }
+
+        // Mountain goat figures (6)
+        for (let g = 0; g < 6; g++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 6 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const goatGroup = new THREE.Group();
+          const goatMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.8 });
+          const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.4), goatMat);
+          body.position.y = 0.5; goatGroup.add(body);
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), goatMat);
+          head.position.set(0.45, 0.7, 0); goatGroup.add(head);
+          // legs
+          for (const lx of [-0.25, 0.25]) {
+            for (const lz of [-0.12, 0.12]) {
+              const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 6), goatMat);
+              leg.position.set(lx, 0.17, lz); goatGroup.add(leg);
+            }
+          }
+          goatGroup.position.copy(pos);
+          goatGroup.rotation.y = rng() * Math.PI * 2;
+          this._scene.add(goatGroup); this._sceneryObjects.push(goatGroup);
+        }
+
+        // Rope bridges (3 suspended between peaks)
+        for (let b = 0; b < 3; b++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 15 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const bridgeGroup = new THREE.Group();
+          const ropeMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.9 });
+          const plankMat = new THREE.MeshStandardMaterial({ color: 0x775533, roughness: 0.85 });
+          const bridgeLen = 6 + rng() * 4;
+          // main rope
+          const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, bridgeLen, 6), ropeMat);
+          rope.rotation.z = Math.PI / 2; rope.position.y = 0; bridgeGroup.add(rope);
+          // railing ropes
+          for (const ry of [0.4, -0.4]) {
+            const railing = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, bridgeLen, 6), ropeMat);
+            railing.rotation.z = Math.PI / 2; railing.position.set(0, 0.5, ry); bridgeGroup.add(railing);
+          }
+          // planks
+          for (let p = -bridgeLen / 2 + 0.3; p < bridgeLen / 2; p += 0.5) {
+            const plank = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.8), plankMat);
+            plank.position.set(p, -0.02, 0); bridgeGroup.add(plank);
+          }
+          bridgeGroup.position.copy(pos);
+          bridgeGroup.position.y = 4 + rng() * 6;
+          bridgeGroup.rotation.y = rng() * Math.PI;
+          this._scene.add(bridgeGroup); this._sceneryObjects.push(bridgeGroup);
+        }
+
+        // Cave entrances (4 dark half-sphere openings)
+        for (let c = 0; c < 4; c++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 12 + rng() * 15;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const cave = new THREE.Mesh(
+            new THREE.SphereGeometry(2 + rng() * 1.5, 12, 8, 0, Math.PI),
+            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0, side: THREE.DoubleSide })
+          );
+          cave.position.copy(pos); cave.position.y = 0;
+          cave.rotation.y = rng() * Math.PI * 2;
+          this._scene.add(cave); this._sceneryObjects.push(cave);
+        }
+
+        // Alpine flowers (20 small colorful dots)
+        const flowerColors = [0xff66aa, 0xffaa33, 0xaa66ff, 0x66ccff, 0xffff55];
+        for (let f = 0; f < 20; f++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 2 + rng() * 8;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const flower = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08 + rng() * 0.06, 6, 4),
+            new THREE.MeshStandardMaterial({ color: flowerColors[Math.floor(rng() * flowerColors.length)], roughness: 0.5 })
+          );
+          flower.position.copy(pos); flower.position.y = 0.05;
+          this._scene.add(flower); this._sceneryObjects.push(flower);
+        }
+
+        // Eagle nests (4 twig-colored torus on spires)
+        for (let n = 0; n < 4; n++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 12 + rng() * 20;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const nest = new THREE.Mesh(
+            new THREE.TorusGeometry(0.6, 0.15, 8, 12),
+            new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.95 })
+          );
+          nest.position.copy(pos); nest.position.y = 8 + rng() * 6;
+          nest.rotation.x = Math.PI / 2;
+          this._scene.add(nest); this._sceneryObjects.push(nest);
+        }
+
+        // Avalanche debris (8 scattered rock piles)
+        for (let a = 0; a < 8; a++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 5 + rng() * 15;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const pileGroup = new THREE.Group();
+          const rockMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 });
+          const rockCount = 4 + Math.floor(rng() * 5);
+          for (let r = 0; r < rockCount; r++) {
+            const rock = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(0.3 + rng() * 0.5, 0),
+              rockMat
+            );
+            rock.position.set((rng() - 0.5) * 2, rng() * 0.4, (rng() - 0.5) * 2);
+            rock.rotation.set(rng() * Math.PI, rng() * Math.PI, 0);
+            pileGroup.add(rock);
+          }
+          pileGroup.position.copy(pos);
+          this._scene.add(pileGroup); this._sceneryObjects.push(pileGroup);
+        }
+
+        // Mountain stream (3 thin blue transparent ribbons)
+        for (let s = 0; s < 3; s++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 8 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const streamLen = 5 + rng() * 8;
+          const stream = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.05, streamLen),
+            new THREE.MeshStandardMaterial({ color: 0x4488cc, transparent: true, opacity: 0.5, roughness: 0.1, metalness: 0.2 })
+          );
+          stream.position.copy(pos); stream.position.y = 0.02;
+          stream.rotation.y = rng() * Math.PI;
+          stream.rotation.x = (rng() - 0.5) * 0.4; // slope
+          this._scene.add(stream); this._sceneryObjects.push(stream);
+        }
+
+        // Wind-bent flags (6 colored planes on poles)
+        const flagColors = [0xff3333, 0x3333ff, 0xffff33, 0x33ff33, 0xff33ff, 0xff8833];
+        for (let f = 0; f < 6; f++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 6;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const flagGroup = new THREE.Group();
+          const pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.04, 3, 6),
+            new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.8 })
+          );
+          pole.position.y = 1.5; flagGroup.add(pole);
+          const flag = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.8, 0.5),
+            new THREE.MeshStandardMaterial({ color: flagColors[f % flagColors.length], roughness: 0.6, side: THREE.DoubleSide })
+          );
+          flag.position.set(0.4, 2.8, 0);
+          flag.rotation.z = -0.15; // wind bent
+          flagGroup.add(flag);
+          flagGroup.position.copy(pos);
+          this._scene.add(flagGroup); this._sceneryObjects.push(flagGroup);
+        }
+      }
     }
 
     if (def.specialScenery === "forest") {
@@ -3390,19 +3587,19 @@ export class ChariotGame {
       if (Math.abs(lateral) > hw) {
         // Push racer inward (not just to edge — slightly inside to prevent sticking)
         racer.pos.copy(pt.pos).add(pt.right.clone().multiplyScalar(Math.sign(lateral) * (hw - 0.5)));
-        racer.speed *= 0.7;
+        racer.speed *= 0.88; // gentle speed loss on wall scrape
         // Only apply wall damage once per impact (cooldown-based)
         if (racer.wallHitCooldown <= 0) {
           racer.damage = Math.min(DAMAGE_MAX, racer.damage + WALL_DAMAGE);
           racer.wallHitCooldown = 0.5; // 500ms cooldown between wall damage ticks
         }
-        // Deflect angle away from wall so racers don't keep grinding against it
+        // Gentle nudge away from wall (not a dramatic deflection)
         const wallNormalAngle = Math.atan2(pt.right.x, pt.right.z) * -Math.sign(lateral);
         const angleDiff = racer.angle - wallNormalAngle;
-        racer.angle -= angleDiff * 0.3;
+        racer.angle -= angleDiff * 0.08;
         if (racer.isPlayer) {
-          this._spawnSparks(racer.pos.clone(), 8);
-          this._shakeIntensity = Math.max(this._shakeIntensity, 0.2);
+          this._spawnSparks(racer.pos.clone(), 4);
+          this._shakeIntensity = Math.max(this._shakeIntensity, 0.08);
           this._audio.playWallHit();
           this._wallHits++;
         }

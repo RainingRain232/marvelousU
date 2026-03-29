@@ -18,23 +18,63 @@ export class RaceRenderer {
   init(sw: number, sh: number): void {
     this.container.removeChildren();
     const bg = new Graphics();
-    bg.rect(0, 0, sw, sh).fill({ color: 0x1a2a1a });
-    // Rich grass texture with variation patches
-    for (let gy = 0; gy < sh; gy += 4) {
-      const shade = 0.04 + Math.sin(gy * 0.07) * 0.02;
-      bg.moveTo(0, gy).lineTo(sw, gy).stroke({ color: 0x1e3e1e, width: 0.5, alpha: shade });
+    // Sky gradient (top third)
+    bg.rect(0, 0, sw, sh * 0.3).fill({ color: 0x4488cc });
+    bg.rect(0, sh * 0.25, sw, sh * 0.1).fill({ color: 0x77aacc, alpha: 0.5 });
+    // Grass base
+    bg.rect(0, sh * 0.3, sw, sh * 0.7).fill({ color: 0x2a5522 });
+    // Grass texture stripes
+    for (let gy = Math.floor(sh * 0.3); gy < sh; gy += 3) {
+      const shade = 0.05 + Math.sin(gy * 0.05) * 0.03;
+      bg.moveTo(0, gy).lineTo(sw, gy).stroke({ color: 0x2e6028, width: 1, alpha: shade });
     }
-    // Grass clumps
-    for (let gi = 0; gi < 80; gi++) {
-      const gx = Math.random() * sw, gy = Math.random() * sh;
-      const gr = 3 + Math.random() * 8;
-      bg.circle(gx, gy, gr).fill({ color: gi % 2 === 0 ? 0x223a22 : 0x1a3018, alpha: 0.12 + Math.random() * 0.08 });
+    // Clouds in sky
+    for (let ci = 0; ci < 8; ci++) {
+      const cx = 50 + Math.random() * (sw - 100), cy = 20 + Math.random() * sh * 0.2;
+      for (let cc = 0; cc < 4; cc++) {
+        bg.circle(cx + cc * 15 - 20, cy + (Math.random() - 0.5) * 10, 12 + Math.random() * 10).fill({ color: 0xffffff, alpha: 0.2 + Math.random() * 0.1 });
+      }
     }
-    // Wildflower dots
-    for (let fi = 0; fi < 40; fi++) {
-      const fx = Math.random() * sw, fy = Math.random() * sh;
-      const fc = [0xffdd44, 0xff8866, 0xaaddff, 0xffaacc, 0xaaffaa][fi % 5];
-      bg.circle(fx, fy, 1 + Math.random()).fill({ color: fc, alpha: 0.15 + Math.random() * 0.1 });
+    // Sun
+    bg.circle(sw * 0.8, sh * 0.08, 25).fill({ color: 0xffee88, alpha: 0.4 });
+    bg.circle(sw * 0.8, sh * 0.08, 35).fill({ color: 0xffdd66, alpha: 0.1 });
+    // Rolling hills (horizon line)
+    for (let hx = 0; hx < sw; hx += 2) {
+      const hy = sh * 0.3 + Math.sin(hx * 0.008) * 15 + Math.sin(hx * 0.015) * 8;
+      bg.rect(hx, hy, 2, sh - hy).fill({ color: 0x2a5522 });
+    }
+    // Trees on horizon
+    for (let ti = 0; ti < 20; ti++) {
+      const tx = 30 + Math.random() * (sw - 60);
+      const tBase = sh * 0.28 + Math.sin(tx * 0.008) * 15;
+      // Trunk
+      bg.rect(tx - 2, tBase, 4, 15).fill({ color: 0x553311, alpha: 0.4 });
+      // Canopy
+      bg.circle(tx, tBase - 5, 8 + Math.random() * 6).fill({ color: [0x225522, 0x1a4418, 0x2a6628][ti % 3], alpha: 0.35 });
+    }
+    // Grass clumps (more, varied)
+    for (let gi = 0; gi < 150; gi++) {
+      const gx = Math.random() * sw, gy = sh * 0.35 + Math.random() * sh * 0.65;
+      const gr = 2 + Math.random() * 6;
+      bg.circle(gx, gy, gr).fill({ color: gi % 3 === 0 ? 0x2e6028 : gi % 3 === 1 ? 0x1a4418 : 0x336630, alpha: 0.08 + Math.random() * 0.06 });
+    }
+    // Wildflower patches
+    for (let fi = 0; fi < 80; fi++) {
+      const fx = Math.random() * sw, fy = sh * 0.4 + Math.random() * sh * 0.6;
+      const fc = [0xffdd44, 0xff8866, 0xaaddff, 0xffaacc, 0xaaffaa, 0xffff88, 0xff6688][fi % 7];
+      bg.circle(fx, fy, 1 + Math.random() * 1.5).fill({ color: fc, alpha: 0.2 + Math.random() * 0.15 });
+    }
+    // Distant buildings/castle silhouette on horizon
+    const castleX = sw * 0.15;
+    bg.rect(castleX, sh * 0.22, 12, 25).fill({ color: 0x334455, alpha: 0.25 });
+    bg.rect(castleX + 15, sh * 0.24, 20, 20).fill({ color: 0x334455, alpha: 0.2 });
+    bg.rect(castleX + 38, sh * 0.21, 10, 28).fill({ color: 0x334455, alpha: 0.25 });
+    // Tent/flags near track
+    for (let fli = 0; fli < 6; fli++) {
+      const flx = 30 + Math.random() * (sw - 60), fly = sh * 0.35 + Math.random() * sh * 0.5;
+      bg.rect(flx, fly, 2, 20).fill({ color: 0x886644, alpha: 0.3 });
+      const flagColor = [0xcc2222, 0x2244cc, 0xffcc22, 0x22cc44, 0xcc44cc, 0xff8822][fli];
+      bg.rect(flx + 2, fly, 10, 6).fill({ color: flagColor, alpha: 0.25 });
     }
     this.container.addChild(bg);
     this._gfx = new Graphics();

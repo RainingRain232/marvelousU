@@ -448,11 +448,11 @@ export class LancelotGame {
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this._renderer.toneMappingExposure = 1.0;
+    this._renderer.toneMappingExposure = 1.8;
 
     this._scene = new THREE.Scene();
-    this._scene.background = new THREE.Color(0x141010);
-    this._scene.fog = new THREE.Fog(0x141010, 25, 50);
+    this._scene.background = new THREE.Color(0x1a1515);
+    this._scene.fog = new THREE.Fog(0x1a1515, 30, 60);
 
     this._camera = new THREE.PerspectiveCamera(55, w / h, 0.1, 100);
   }
@@ -621,7 +621,7 @@ export class LancelotGame {
       this._scene.add(bracket);
 
       // Torch light
-      const torch = new THREE.PointLight(0xff8833, 1.8, 16, 2);
+      const torch = new THREE.PointLight(0xff8833, 3.0, 22, 2);
       torch.position.set(px * 0.92, WALL_HEIGHT - 0.8, pz * 0.92);
       torch.castShadow = i % 3 === 0; // shadow every 3rd torch for perf
       if (torch.castShadow) torch.shadow.mapSize.set(256, 256);
@@ -690,7 +690,7 @@ export class LancelotGame {
       fireGlow.position.set(bx, 1.2, bz);
       this._scene.add(fireGlow);
 
-      const bLight = new THREE.PointLight(0xff6622, 1.5, 12, 2);
+      const bLight = new THREE.PointLight(0xff6622, 2.5, 18, 2);
       bLight.position.set(bx, 1.5, bz);
       this._scene.add(bLight);
       this._torches.push(bLight);
@@ -735,15 +735,15 @@ export class LancelotGame {
     this._scene.add(fogLayer);
 
     // Ambient
-    const ambient = new THREE.AmbientLight(0x443830, 0.8);
+    const ambient = new THREE.AmbientLight(0x665850, 1.4);
     this._scene.add(ambient);
 
     // Hemisphere fill light
-    const hemi = new THREE.HemisphereLight(0x445566, 0x221111, 0.4);
+    const hemi = new THREE.HemisphereLight(0x667788, 0x332222, 0.8);
     this._scene.add(hemi);
 
     // Moonlight
-    const moon = new THREE.DirectionalLight(0x556688, 0.6);
+    const moon = new THREE.DirectionalLight(0x8899bb, 1.2);
     moon.position.set(5, 20, -5);
     moon.castShadow = true;
     moon.shadow.mapSize.set(1024, 1024);
@@ -1564,7 +1564,7 @@ export class LancelotGame {
     // Torch + flame mesh animation
     for (let i = 0; i < this._torches.length; i++) {
       this._torchFlicker[i] += dt * (3 + Math.random() * 2);
-      this._torches[i].intensity = 1.5 + Math.sin(this._torchFlicker[i]) * 0.4 + Math.random() * 0.2;
+      this._torches[i].intensity = 2.5 + Math.sin(this._torchFlicker[i]) * 0.5 + Math.random() * 0.3;
     }
     // Flame mesh scale/height flickering
     for (let i = 0; i < this._flameMeshes.length; i++) {

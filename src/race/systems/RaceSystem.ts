@@ -270,7 +270,7 @@ export function updateRace(state: RaceState, dt: number): void {
     }
 
     // Waypoint check
-    if (distToWP < 30) {
+    if (distToWP < 50) {
       racer.waypointIndex++;
       if (racer.waypointIndex >= wpCount) {
         racer.waypointIndex = 0;
@@ -310,6 +310,20 @@ export function updateRace(state: RaceState, dt: number): void {
         vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30,
         life: 0.4, maxLife: 0.4, color: 0x665533, size: 3,
       });
+    }
+  }
+
+  // Force-finish any stragglers after 10 seconds past first finisher
+  if (state.finishOrder.length > 0 && !state.racers.every(r => r.finished)) {
+    const firstFinishTime = state.racers.find(r => r.id === state.finishOrder[0])?.finishTime || 0;
+    if (state.elapsedTime - firstFinishTime > 10) {
+      for (const r of state.racers) {
+        if (!r.finished) {
+          r.finished = true;
+          r.finishTime = state.elapsedTime;
+          state.finishOrder.push(r.id);
+        }
+      }
     }
   }
 

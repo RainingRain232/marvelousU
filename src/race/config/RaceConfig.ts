@@ -35,62 +35,62 @@ export const HORSES: HorseDef[] = [
 
 export const TRACKS: TrackDef[] = [
   {
-    id: "meadow", name: "Meadow Circuit", laps: 3, width: 50,
+    id: "meadow", name: "Meadow Circuit", laps: 3, width: 70,
     waypoints: [
-      { x: 100, y: 350 }, { x: 300, y: 350 }, { x: 500, y: 300 },
-      { x: 600, y: 200 }, { x: 500, y: 100 }, { x: 300, y: 80 },
-      { x: 150, y: 150 }, { x: 100, y: 250 },
+      { x: 170, y: 580 }, { x: 510, y: 580 }, { x: 855, y: 500 },
+      { x: 1025, y: 335 }, { x: 855, y: 165 }, { x: 510, y: 135 },
+      { x: 255, y: 250 }, { x: 170, y: 415 },
     ],
     obstacles: [],
     color: 0x3a5a3a, weather: "clear", terrain: "grass",
   },
   {
-    id: "forest", name: "Forest Trail", laps: 2, width: 45,
+    id: "forest", name: "Forest Trail", laps: 2, width: 65,
     waypoints: [
-      { x: 80, y: 380 }, { x: 250, y: 380 }, { x: 400, y: 320 },
-      { x: 550, y: 200 }, { x: 600, y: 100 }, { x: 450, y: 60 },
-      { x: 250, y: 80 }, { x: 100, y: 150 }, { x: 80, y: 280 },
+      { x: 135, y: 635 }, { x: 425, y: 635 }, { x: 685, y: 535 },
+      { x: 940, y: 335 }, { x: 1025, y: 165 }, { x: 770, y: 100 },
+      { x: 425, y: 135 }, { x: 170, y: 250 }, { x: 135, y: 470 },
     ],
-    obstacles: [{ x: 350, y: 280, r: 15 }, { x: 500, y: 150, r: 12 }, { x: 200, y: 120, r: 14 }],
+    obstacles: [{ x: 600, y: 470, r: 20 }, { x: 855, y: 250, r: 18 }, { x: 340, y: 200, r: 20 }],
     color: 0x2a4a2a, weather: "rain", terrain: "dirt",
   },
   {
-    id: "castle", name: "Castle Grand Prix", laps: 3, width: 40,
+    id: "castle", name: "Castle Grand Prix", laps: 3, width: 60,
     waypoints: [
-      { x: 100, y: 400 }, { x: 350, y: 400 }, { x: 600, y: 350 },
-      { x: 650, y: 200 }, { x: 550, y: 80 }, { x: 350, y: 50 },
-      { x: 150, y: 80 }, { x: 50, y: 200 }, { x: 60, y: 300 },
+      { x: 170, y: 670 }, { x: 600, y: 670 }, { x: 1025, y: 580 },
+      { x: 1110, y: 335 }, { x: 940, y: 135 }, { x: 600, y: 85 },
+      { x: 255, y: 135 }, { x: 85, y: 335 }, { x: 100, y: 500 },
     ],
-    obstacles: [{ x: 400, y: 350, r: 12 }, { x: 600, y: 250, r: 10 }, { x: 250, y: 70, r: 13 }, { x: 100, y: 200, r: 11 }],
+    obstacles: [{ x: 685, y: 580, r: 18 }, { x: 1025, y: 415, r: 16 }, { x: 425, y: 115, r: 20 }, { x: 170, y: 335, r: 17 }],
     color: 0x4a4a5a, weather: "fog", terrain: "stone",
   },
   {
-    id: "marsh", name: "Marshland Dash", laps: 2, width: 42,
+    id: "marsh", name: "Marshland Dash", laps: 2, width: 62,
     waypoints: [
-      { x: 80, y: 400 }, { x: 200, y: 350 }, { x: 380, y: 380 },
-      { x: 500, y: 300 }, { x: 620, y: 350 }, { x: 650, y: 200 },
-      { x: 580, y: 80 }, { x: 400, y: 50 }, { x: 200, y: 80 },
-      { x: 80, y: 200 },
+      { x: 135, y: 670 }, { x: 340, y: 580 }, { x: 650, y: 635 },
+      { x: 855, y: 500 }, { x: 1060, y: 580 }, { x: 1110, y: 335 },
+      { x: 990, y: 135 }, { x: 685, y: 85 }, { x: 340, y: 135 },
+      { x: 135, y: 335 },
     ],
-    obstacles: [{ x: 300, y: 360, r: 14 }, { x: 560, y: 320, r: 12 }, { x: 630, y: 140, r: 13 }, { x: 300, y: 65, r: 11 }, { x: 140, y: 140, r: 12 }],
+    obstacles: [{ x: 510, y: 600, r: 20 }, { x: 960, y: 535, r: 18 }, { x: 1080, y: 235, r: 20 }, { x: 510, y: 110, r: 17 }, { x: 240, y: 235, r: 18 }],
     color: 0x3a4a3a, weather: "mud", terrain: "dirt",
   },
   {
-    id: "mountain", name: "Mountain Pass", laps: 2, width: 38,
+    id: "mountain", name: "Mountain Pass", laps: 2, width: 58,
     waypoints: [
-      { x: 60, y: 420 }, { x: 180, y: 380 }, { x: 350, y: 400 },
-      { x: 500, y: 350 }, { x: 620, y: 280 }, { x: 660, y: 150 },
-      { x: 580, y: 60 }, { x: 420, y: 40 }, { x: 280, y: 80 },
-      { x: 160, y: 140 }, { x: 80, y: 250 },
+      { x: 100, y: 700 }, { x: 310, y: 635 }, { x: 600, y: 670 },
+      { x: 855, y: 580 }, { x: 1060, y: 470 }, { x: 1130, y: 250 },
+      { x: 990, y: 100 }, { x: 720, y: 65 }, { x: 480, y: 135 },
+      { x: 275, y: 235 }, { x: 135, y: 415 },
     ],
-    obstacles: [{ x: 260, y: 390, r: 13 }, { x: 560, y: 310, r: 11 }, { x: 640, y: 200, r: 14 }, { x: 500, y: 50, r: 12 }, { x: 340, y: 60, r: 10 }, { x: 120, y: 190, r: 13 }],
+    obstacles: [{ x: 445, y: 650, r: 20 }, { x: 960, y: 515, r: 17 }, { x: 1095, y: 335, r: 21 }, { x: 855, y: 85, r: 18 }, { x: 580, y: 100, r: 16 }, { x: 205, y: 315, r: 20 }],
     color: 0x5a5a6a, weather: "clear", terrain: "stone",
   },
 ];
 
 export const RaceConfig = {
-  FIELD_WIDTH: 700,
-  FIELD_HEIGHT: 450,
+  FIELD_WIDTH: 1200,
+  FIELD_HEIGHT: 750,
   GALLOP_STAMINA_COST: 25, // per second
   SPRINT_SPEED_MULT: 1.4,
   OBSTACLE_SLOWDOWN: 0.3, // speed multiplier when hitting obstacle
