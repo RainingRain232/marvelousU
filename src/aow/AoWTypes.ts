@@ -155,6 +155,31 @@ export interface AoWCombatUnit {
   side: "attacker" | "defender";
 }
 
+export interface BattleEvent {
+  type: "round_start" | "ability" | "attack" | "dodge" | "kill" | "battle_end";
+  time: number;
+  actorIdx: number;
+  actorName: string;
+  actorSide: "attacker" | "defender";
+  targetIdx?: number;
+  targetName?: string;
+  targetSide?: "attacker" | "defender";
+  damage?: number;
+  heal?: number;
+  killed?: boolean;
+  message: string;
+  hpAfter?: number;
+  hpMax?: number;
+}
+
+export interface BattleTimeline {
+  events: BattleEvent[];
+  totalDuration: number;
+  result: "attacker_wins" | "defender_wins" | "draw";
+  attackerSnapshot: { name: string; defId: string; hp: number; maxHp: number; isHero: boolean }[];
+  defenderSnapshot: { name: string; defId: string; hp: number; maxHp: number; isHero: boolean }[];
+}
+
 export interface AoWCombatState {
   active: boolean;
   attackerArmy: AoWArmy;
@@ -166,6 +191,7 @@ export interface AoWCombatState {
   log: string[];
   result: "pending" | "attacker_wins" | "defender_wins" | "draw";
   autoResolve: boolean;
+  timeline?: BattleTimeline;
 }
 
 export interface AoWGameState {

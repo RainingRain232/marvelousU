@@ -59,6 +59,21 @@ export class AoWCombatSystem {
     if (!state.combat) return "draw";
     const combat = state.combat;
 
+    // Build timeline for animated replay
+    const events: import("../AoWTypes").BattleEvent[] = [];
+    let t = 0;
+    const emit = (ev: Omit<import("../AoWTypes").BattleEvent, "time">) => { events.push({ ...ev, time: t } as import("../AoWTypes").BattleEvent); };
+
+    // Snapshot units for animation
+    const attackerSnapshot = combat.combatUnits.filter(cu => cu.side === "attacker").map(cu => ({
+      name: cu.unit.isHero ? (cu.unit.heroName || cu.unit.defId) : cu.unit.defId,
+      defId: cu.unit.defId, hp: cu.combatHp, maxHp: cu.unit.maxHp, isHero: cu.unit.isHero,
+    }));
+    const defenderSnapshot = combat.combatUnits.filter(cu => cu.side === "defender").map(cu => ({
+      name: cu.unit.isHero ? (cu.unit.heroName || cu.unit.defId) : cu.unit.defId,
+      defId: cu.unit.defId, hp: cu.combatHp, maxHp: cu.unit.maxHp, isHero: cu.unit.isHero,
+    }));
+
     // Track which units have used their dive_attack
     const diveAttackUsed = new Set<string>();
 
@@ -66,6 +81,8 @@ export class AoWCombatSystem {
     for (let round = 0; round < maxRounds; round++) {
       combat.round = round + 1;
       combat.log.push(`--- Round ${combat.round} ---`);
+      emit({ type: "round_start", actorIdx: 0, actorName: `Round ${combat.round}`, actorSide: "attacker", message: `--- Round ${combat.round} ---` });
+      t += 0.8;
 
       // Each unit attacks once per round
       const alive = combat.combatUnits.filter(cu => cu.combatHp > 0);
@@ -187,9 +204,17 @@ export class AoWCombatSystem {
           }
 
           target.combatHp -= damage;
+          const killed = target.combatHp <= 0;
           combat.log.push(
-            `${cuName} hits ${targetName} for ${damage} damage${target.combatHp <= 0 ? " (SLAIN)" : ` (${target.combatHp}/${target.unit.maxHp} HP)`}`,
+            `${cuName} hits ${targetName} for ${damage} damage${killed ? " (SLAIN)" : ` (${target.combatHp}/${target.unit.maxHp} HP)`}`,
           );
+          const cuIdx = combat.combatUnits.indexOf(cu);
+          const tIdx = combat.combatUnits.indexOf(target);
+          emit({ type: killed ? "kill" : "attack", actorIdx: cuIdx, actorName: cuName || "", actorSide: cu.side,
+            targetIdx: tIdx, targetName: targetName || "", targetSide: target.side, damage, killed,
+            hpAfter: target.combatHp, hpMax: target.unit.maxHp,
+            message: `${cuName} hits ${targetName} for ${damage}` });
+          t += killed ? 1.0 : 0.6;
 
           // Life steal
           if (cu.unit.abilities.includes("life_steal")) {
@@ -223,6 +248,8 @@ export class AoWCombatSystem {
     }
 
     if (combat.result === "pending") combat.result = "draw";
+    emit({ type: "battle_end", actorIdx: 0, actorName: combat.result, actorSide: "attacker", message: combat.result });
+    combat.timeline = { events, totalDuration: t + 1, result: combat.result, attackerSnapshot, defenderSnapshot };
     return combat.result;
   }
 

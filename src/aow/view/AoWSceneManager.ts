@@ -472,6 +472,29 @@ export class AoWSceneManager {
     this._composer.render();
   }
 
+  // Save/restore camera for battle animation
+  private _savedCameraTarget = new THREE.Vector3();
+  private _savedCameraDistance = 15;
+  private _savedCameraRotation = 0;
+
+  setHexGroupVisible(visible: boolean): void {
+    this.terrainGroup.visible = visible;
+    if (!visible) {
+      this._savedCameraTarget.copy(this._cameraTarget);
+      this._savedCameraDistance = this._cameraDistance;
+      this._savedCameraRotation = this._cameraRotation;
+    }
+  }
+
+  restoreCamera(): void {
+    this._cameraTarget.copy(this._savedCameraTarget);
+    this._cameraTargetSmooth.copy(this._savedCameraTarget);
+    this._cameraDistance = this._savedCameraDistance;
+    this._cameraDistanceSmooth = this._savedCameraDistance;
+    this._cameraRotation = this._savedCameraRotation;
+    this._cameraRotationSmooth = this._savedCameraRotation;
+  }
+
   // ---------------------------------------------------------------------------
   // Resize & Cleanup
   // ---------------------------------------------------------------------------

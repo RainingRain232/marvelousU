@@ -34,6 +34,7 @@ export class AoWGame {
   private _unitRenderer!: AoWUnitRenderer;
   private _fxManager!: AoWFXManager;
   private _hud!: AoWHUD;
+  private _battleAnimator: import("./view/AoWBattleAnimator").AoWBattleAnimator | null = null;
 
   // Input
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -204,6 +205,13 @@ export class AoWGame {
 
   private _gameLoop(dt: number): void {
     if (!this._state) return;
+
+    // Battle animation mode
+    if (this._battleAnimator) {
+      this._battleAnimator.tick(dt / 60); // dt is in frames, convert to seconds
+      this._sceneManager.render();
+      return;
+    }
 
     // Camera movement from keys
     const panSpeed = 0.15;
@@ -685,27 +693,54 @@ export class AoWGame {
     this._fxManager.spawnExplosion(attackerArmy.q, attackerArmy.r, elev, 0xff4400);
     this._sceneManager.triggerShake(0.2, 0.4);
 
-    // Auto-resolve
+    // Auto-resolve (generates timeline for animation)
     const result = this._combatSystem.autoResolveCombat(this._state);
     const log = this._state.combat?.log || [];
+    const timeline = this._state.combat?.timeline;
 
-    // Apply results
-    this._combatSystem.applyCombatResults(this._state);
+    if (timeline) {
+      // Hide hex map objects during battle animation
+      this._sceneManager.setHexGroupVisible(false);
 
-    // Update visuals
-    this._unitRenderer.updateArmies(this._state);
-    this._hexRenderer.updateCities(this._state);
-
-    // Show combat result
-    const resultText = result === "attacker_wins" ? "Victory!" :
-      result === "defender_wins" ? "Defeat!" : "Draw!";
-    this._state.log.push(`Battle result: ${resultText}`);
-    this._hud.showCombatResult(log, result);
-    this._hud.update(this._state);
-
-    // Deselect if army was destroyed
-    if (!this._state.armies.find(a => a.id === this._state!.selectedArmyId)) {
-      this._state.selectedArmyId = null;
+      // Start animated battle replay
+      import("./view/AoWBattleAnimator").then(({ AoWBattleAnimator }) => {
+        this._battleAnimator = new AoWBattleAnimator(
+          this._sceneManager.scene,
+          this._sceneManager.camera,
+          this._sceneManager.renderer,
+          timeline,
+          () => {
+            // Animation complete — apply results
+            this._battleAnimator = null;
+            this._sceneManager.setHexGroupVisible(true);
+            this._sceneManager.restoreCamera();
+            this._combatSystem.applyCombatResults(this._state!);
+            this._unitRenderer.updateArmies(this._state!);
+            this._hexRenderer.updateCities(this._state!);
+            const resultText = result === "attacker_wins" ? "Victory!" :
+              result === "defender_wins" ? "Defeat!" : "Draw!";
+            this._state!.log.push(`Battle result: ${resultText}`);
+            this._hud.showCombatResult(log, result);
+            this._hud.update(this._state!);
+            if (!this._state!.armies.find(a => a.id === this._state!.selectedArmyId)) {
+              this._state!.selectedArmyId = null;
+            }
+          },
+        );
+      });
+    } else {
+      // Fallback: instant resolution (no timeline)
+      this._combatSystem.applyCombatResults(this._state);
+      this._unitRenderer.updateArmies(this._state);
+      this._hexRenderer.updateCities(this._state);
+      const resultText = result === "attacker_wins" ? "Victory!" :
+        result === "defender_wins" ? "Defeat!" : "Draw!";
+      this._state.log.push(`Battle result: ${resultText}`);
+      this._hud.showCombatResult(log, result);
+      this._hud.update(this._state);
+      if (!this._state.armies.find(a => a.id === this._state!.selectedArmyId)) {
+        this._state.selectedArmyId = null;
+      }
     }
   }
 
