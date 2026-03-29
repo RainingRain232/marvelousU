@@ -186,6 +186,21 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
     pattern: EnemyPattern.GROUND_STATIONARY, fireRate: 1.2,
     color: 0x440066, glowColor: 0xaa00ff, scoreValue: 180, isBoss: false, isGround: true,
   },
+  [DragoonEnemyType.GROUND_ARCHER]: {
+    type: DragoonEnemyType.GROUND_ARCHER, hp: 20, speed: 35, size: 1.0,
+    pattern: EnemyPattern.GROUND, fireRate: 2.2,
+    color: 0x553322, glowColor: 0xccaa66, scoreValue: 60, isBoss: false, isGround: true,
+  },
+  [DragoonEnemyType.GROUND_INFANTRYMAN]: {
+    type: DragoonEnemyType.GROUND_INFANTRYMAN, hp: 15, speed: 50, size: 0.9,
+    pattern: EnemyPattern.GROUND, fireRate: 0,
+    color: 0x666655, glowColor: 0x999988, scoreValue: 30, isBoss: false, isGround: true,
+  },
+  [DragoonEnemyType.GROUND_SPEARMAN]: {
+    type: DragoonEnemyType.GROUND_SPEARMAN, hp: 25, speed: 30, size: 1.1,
+    pattern: EnemyPattern.GROUND, fireRate: 5.0,
+    color: 0x554444, glowColor: 0xaa7766, scoreValue: 70, isBoss: false, isGround: true,
+  },
   // --- Chasers & Snipers ---
   [DragoonEnemyType.HELL_WASP]: {
     type: DragoonEnemyType.HELL_WASP, hp: 18, speed: 220, size: 0.9,
@@ -254,11 +269,11 @@ export const ENEMY_TEMPLATES: Record<string, EnemyTemplate> = {
 // Which enemies can appear in each wave tier
 export const WAVE_ENEMY_POOL: DragoonEnemyType[][] = [
   // Waves 1-4
-  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.HELL_WASP, DragoonEnemyType.DARK_ARCHER],
+  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.HELL_WASP, DragoonEnemyType.DARK_ARCHER, DragoonEnemyType.GROUND_ARCHER, DragoonEnemyType.GROUND_INFANTRYMAN],
   // Waves 5-8
-  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD, DragoonEnemyType.GROUND_CAVALRY, DragoonEnemyType.HELL_WASP, DragoonEnemyType.DARK_ARCHER],
+  [DragoonEnemyType.DARK_CROW, DragoonEnemyType.SHADOW_BAT, DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD, DragoonEnemyType.GROUND_CAVALRY, DragoonEnemyType.HELL_WASP, DragoonEnemyType.DARK_ARCHER, DragoonEnemyType.GROUND_ARCHER, DragoonEnemyType.GROUND_INFANTRYMAN, DragoonEnemyType.GROUND_SPEARMAN],
   // Waves 9-12
-  [DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD, DragoonEnemyType.GROUND_CAVALRY, DragoonEnemyType.GROUND_WAR_CATAPULT, DragoonEnemyType.HELL_WASP, DragoonEnemyType.DARK_ARCHER],
+  [DragoonEnemyType.WYVERN, DragoonEnemyType.FIRE_SPRITE, DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.GROUND_CATAPULT, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SKY_VIPER, DragoonEnemyType.DARK_FALCON_SQUAD, DragoonEnemyType.GROUND_CAVALRY, DragoonEnemyType.GROUND_WAR_CATAPULT, DragoonEnemyType.HELL_WASP, DragoonEnemyType.DARK_ARCHER, DragoonEnemyType.GROUND_ARCHER, DragoonEnemyType.GROUND_SPEARMAN],
   // Waves 13-16
   [DragoonEnemyType.STORM_HAWK, DragoonEnemyType.FLOATING_EYE, DragoonEnemyType.DARK_ANGEL, DragoonEnemyType.GROUND_MAGE_TOWER, DragoonEnemyType.GROUND_BALLISTA, DragoonEnemyType.SHADOW_WRAITH, DragoonEnemyType.GROUND_SIEGE_ENGINE, DragoonEnemyType.GROUND_SHIELD_WALL, DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE, DragoonEnemyType.HELL_WASP, DragoonEnemyType.DARK_ARCHER],
   // Waves 17-20

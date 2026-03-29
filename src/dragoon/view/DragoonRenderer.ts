@@ -298,7 +298,7 @@ export class DragoonRenderer {
         variant: Math.floor(Math.random() * 3),
       });
     }
-    // Near features (larger trees, rocks, ruins, grass clumps)
+    // Near features (larger trees, rocks, ruins, grass clumps, cities)
     for (let i = 0; i < 35; i++) {
       const r = Math.random();
       const type = r < 0.15 ? "rock" : r < 0.25 ? "ruin" : r < 0.4 ? "grass" : r < 0.6 ? "pine" : "tree";
@@ -307,6 +307,17 @@ export class DragoonRenderer {
         type,
         height: 18 + Math.random() * 40,
         color: r < 0.15 ? 0x444455 : r < 0.25 ? 0x555544 : 0x0a1a08,
+        layer: 2,
+        variant: Math.floor(Math.random() * 3),
+      });
+    }
+    // Small cities (scattered, rare)
+    for (let i = 0; i < 5; i++) {
+      this._groundFeatures.push({
+        x: 300 + i * 500 + Math.random() * 200,
+        type: "city",
+        height: 30 + Math.random() * 25,
+        color: 0x554433,
         layer: 2,
         variant: Math.floor(Math.random() * 3),
       });
@@ -544,6 +555,57 @@ export class DragoonRenderer {
           g.moveTo(gx, baseY3)
             .lineTo(gx + sway, baseY3 - gh)
             .stroke({ color: 0x1a3a0a, width: 1.5, alpha: 0.7 });
+        }
+      } else if (f.type === "city") {
+        // Small medieval city cluster
+        const h = f.height;
+        const v = f.variant;
+        // City wall
+        g.rect(x - h * 1.8, baseY3 - h * 0.2, h * 3.6, h * 0.25).fill({ color: 0x665544 });
+        // Wall crenellations
+        for (let ci = 0; ci < 8; ci++) {
+          g.rect(x - h * 1.7 + ci * h * 0.45, baseY3 - h * 0.3, h * 0.2, h * 0.12).fill({ color: 0x665544 });
+        }
+        // Gate
+        g.rect(x - h * 0.2, baseY3 - h * 0.15, h * 0.4, h * 0.38).fill({ color: 0x332211 });
+        g.moveTo(x - h * 0.2, baseY3 - h * 0.15).lineTo(x, baseY3 - h * 0.28).lineTo(x + h * 0.2, baseY3 - h * 0.15).fill({ color: 0x332211 });
+        // Buildings (3-5 houses)
+        const houseDefs = [
+          { ox: -h * 1.2, w: h * 0.5, bh: h * 0.6 },
+          { ox: -h * 0.5, w: h * 0.45, bh: h * 0.5 },
+          { ox: h * 0.2, w: h * 0.55, bh: h * 0.7 },
+          { ox: h * 0.9, w: h * 0.4, bh: h * 0.45 },
+        ];
+        for (const hd of houseDefs) {
+          const hx = x + hd.ox;
+          // Wall
+          g.rect(hx, baseY3 - hd.bh, hd.w, hd.bh - h * 0.2).fill({ color: 0x887766 });
+          // Roof
+          g.moveTo(hx - hd.w * 0.1, baseY3 - hd.bh + h * 0.02)
+            .lineTo(hx + hd.w * 0.5, baseY3 - hd.bh - h * 0.2)
+            .lineTo(hx + hd.w * 1.1, baseY3 - hd.bh + h * 0.02)
+            .fill({ color: v === 0 ? 0x884433 : v === 1 ? 0x556644 : 0x666655 });
+          // Window (glowing)
+          g.rect(hx + hd.w * 0.2, baseY3 - hd.bh + h * 0.12, hd.w * 0.25, h * 0.12).fill({ color: 0xffdd66, alpha: 0.7 });
+          // Door
+          g.rect(hx + hd.w * 0.35, baseY3 - h * 0.35, hd.w * 0.3, h * 0.15).fill({ color: 0x443311 });
+        }
+        // Tower (church/keep)
+        const towerX = x + (v === 1 ? -h * 0.3 : h * 0.5);
+        g.rect(towerX - h * 0.15, baseY3 - h * 1.1, h * 0.3, h * 0.9).fill({ color: 0x776655 });
+        // Tower roof (pointed)
+        g.moveTo(towerX - h * 0.2, baseY3 - h * 1.1)
+          .lineTo(towerX, baseY3 - h * 1.4)
+          .lineTo(towerX + h * 0.2, baseY3 - h * 1.1)
+          .fill({ color: 0x555566 });
+        // Tower window
+        g.circle(towerX, baseY3 - h * 0.85, h * 0.06).fill({ color: 0xffdd66, alpha: 0.6 });
+        // Smoke from chimney
+        const smokeX = x - h * 0.9;
+        for (let si = 0; si < 3; si++) {
+          const sy = baseY3 - h * 0.65 - si * h * 0.15;
+          const sd = Math.sin(state.gameTime * 1.5 + si * 1.3) * h * 0.08;
+          g.circle(smokeX + sd, sy, h * (0.06 + si * 0.03)).fill({ color: 0xaaaaaa, alpha: 0.15 - si * 0.04 });
         }
       }
     }
@@ -1249,10 +1311,26 @@ function _drawEnemyShape(g: Graphics, enemy: DragoonEnemy, time: number): void {
       break;
     case DragoonEnemyType.GROUND_CATAPULT:
     case DragoonEnemyType.GROUND_BALLISTA:
+    case DragoonEnemyType.GROUND_SIEGE_ENGINE:
+    case DragoonEnemyType.GROUND_WAR_CATAPULT:
       _drawGroundWeapon(g, s, enemy.color);
       break;
+    case DragoonEnemyType.GROUND_CAVALRY:
+    case DragoonEnemyType.GROUND_SHIELD_WALL:
+      _drawGroundInfantryman(g, s, time);
+      break;
+    case DragoonEnemyType.GROUND_DARK_MAGE_CIRCLE:
     case DragoonEnemyType.GROUND_MAGE_TOWER:
       _drawMageTower(g, s, time);
+      break;
+    case DragoonEnemyType.GROUND_ARCHER:
+      _drawGroundArcher(g, s, time);
+      break;
+    case DragoonEnemyType.GROUND_INFANTRYMAN:
+      _drawGroundInfantryman(g, s, time);
+      break;
+    case DragoonEnemyType.GROUND_SPEARMAN:
+      _drawGroundSpearman(g, s, time);
       break;
     case DragoonEnemyType.SHADOW_WRAITH:
       // Ghostly wraith shape
@@ -1822,6 +1900,110 @@ function _drawMageTower(g: Graphics, s: number, time: number): void {
   g.rect(-2 * s, 0, 4 * s, 0.5 * s).fill({ color: 0x554433, alpha: 0.5 }); // lintel
   // Mage silhouette in window
   g.circle(0, -10.5 * s, 1 * s).fill({ color: 0x332200, alpha: 0.5 });
+}
+
+function _drawGroundArcher(g: Graphics, s: number, time: number): void {
+  // Shadow
+  g.ellipse(0, 5 * s, 6 * s, 2 * s).fill({ color: 0x000000, alpha: 0.12 });
+  // Legs
+  g.rect(-3 * s, 0, 2.5 * s, 6 * s).fill({ color: 0x443322 });
+  g.rect(0.5 * s, 0, 2.5 * s, 6 * s).fill({ color: 0x443322 });
+  // Boots
+  g.rect(-3.5 * s, 4.5 * s, 3 * s, 2 * s).fill({ color: 0x332211 });
+  g.rect(0 * s, 4.5 * s, 3 * s, 2 * s).fill({ color: 0x332211 });
+  // Torso (leather tunic)
+  g.rect(-4 * s, -8 * s, 8 * s, 9 * s).fill({ color: 0x553322 });
+  g.rect(-3 * s, -7 * s, 6 * s, 3 * s).fill({ color: 0x664433, alpha: 0.5 });
+  // Belt
+  g.rect(-4 * s, -1 * s, 8 * s, 1.5 * s).fill({ color: 0x332211 });
+  g.rect(0, -1 * s, 1.5 * s, 1.5 * s).fill({ color: 0xaa8844 }); // buckle
+  // Head
+  g.circle(0, -11 * s, 3.5 * s).fill({ color: 0xddbbaa });
+  // Hood
+  g.circle(0, -12 * s, 4 * s).fill({ color: 0x443322, alpha: 0.7 });
+  g.ellipse(0, -13 * s, 4.5 * s, 2 * s).fill({ color: 0x443322 });
+  // Eyes
+  g.circle(-1.5 * s, -11 * s, 0.6 * s).fill({ color: 0x111111 });
+  g.circle(1.5 * s, -11 * s, 0.6 * s).fill({ color: 0x111111 });
+  // Quiver on back
+  g.rect(3 * s, -7 * s, 2.5 * s, 8 * s).fill({ color: 0x553311 });
+  // Arrow shafts in quiver
+  for (let i = 0; i < 3; i++) {
+    g.moveTo(3.5 * s + i * 0.7 * s, -7 * s).lineTo(3.5 * s + i * 0.7 * s, -10 * s).stroke({ color: 0xccaa66, width: 0.5 * s });
+  }
+  // Bow (held in left hand, aiming up)
+  const aimAngle = Math.sin(time * 2) * 0.1;
+  g.moveTo(-5 * s, -6 * s).lineTo(-8 * s, -14 * s + aimAngle * 10).stroke({ color: 0x664422, width: 1.2 * s });
+  g.moveTo(-5 * s, -2 * s).lineTo(-8 * s, -14 * s + aimAngle * 10).stroke({ color: 0xccaa88, width: 0.4 * s }); // string
+  // Right arm drawing arrow
+  g.moveTo(2 * s, -5 * s).lineTo(-4 * s, -5 * s).stroke({ color: 0xddbbaa, width: 1.5 * s });
+}
+
+function _drawGroundInfantryman(g: Graphics, s: number, _time: number): void {
+  // Shadow
+  g.ellipse(0, 5 * s, 5 * s, 1.5 * s).fill({ color: 0x000000, alpha: 0.1 });
+  // Legs (walking)
+  g.rect(-2.5 * s, 0, 2 * s, 5 * s).fill({ color: 0x555544 });
+  g.rect(0.5 * s, 0, 2 * s, 5 * s).fill({ color: 0x555544 });
+  // Boots
+  g.rect(-3 * s, 4 * s, 2.5 * s, 1.5 * s).fill({ color: 0x332211 });
+  g.rect(0 * s, 4 * s, 2.5 * s, 1.5 * s).fill({ color: 0x332211 });
+  // Torso (chainmail)
+  g.rect(-3.5 * s, -7 * s, 7 * s, 8 * s).fill({ color: 0x666655 });
+  // Chainmail texture
+  for (let row = 0; row < 3; row++) {
+    g.moveTo(-3 * s, (-6 + row * 2.5) * s).lineTo(3 * s, (-6 + row * 2.5) * s).stroke({ color: 0x777766, width: 0.3 * s, alpha: 0.4 });
+  }
+  // Belt
+  g.rect(-3.5 * s, -0.5 * s, 7 * s, 1 * s).fill({ color: 0x443311 });
+  // Head (iron helm)
+  g.circle(0, -10 * s, 3 * s).fill({ color: 0x888877 });
+  g.rect(-3 * s, -11 * s, 6 * s, 1.5 * s).fill({ color: 0x777766 }); // helm rim
+  // Face slit
+  g.rect(-2 * s, -10.5 * s, 4 * s, 1 * s).fill({ color: 0x222211 });
+  // Nose guard
+  g.rect(-0.3 * s, -11.5 * s, 0.6 * s, 3 * s).fill({ color: 0x888877 });
+  // Shield (left arm)
+  g.ellipse(-5 * s, -4 * s, 3 * s, 5 * s).fill({ color: 0x774422 });
+  g.ellipse(-5 * s, -4 * s, 2 * s, 3.5 * s).fill({ color: 0x885533, alpha: 0.5 });
+  g.circle(-5 * s, -4 * s, 1 * s).fill({ color: 0xaa8844 }); // boss
+  // Short sword (right arm)
+  g.moveTo(4 * s, -3 * s).lineTo(4 * s, -9 * s).stroke({ color: 0xaaaaaa, width: 1 * s });
+  g.rect(3 * s, -3 * s, 2 * s, 0.5 * s).fill({ color: 0x886644 }); // crossguard
+}
+
+function _drawGroundSpearman(g: Graphics, s: number, time: number): void {
+  // Shadow
+  g.ellipse(0, 5 * s, 6 * s, 2 * s).fill({ color: 0x000000, alpha: 0.12 });
+  // Legs
+  g.rect(-3 * s, 0, 2.5 * s, 6 * s).fill({ color: 0x554444 });
+  g.rect(0.5 * s, 0, 2.5 * s, 6 * s).fill({ color: 0x554444 });
+  // Boots (taller, armored)
+  g.rect(-3.5 * s, 3 * s, 3 * s, 3 * s).fill({ color: 0x555555 });
+  g.rect(0 * s, 3 * s, 3 * s, 3 * s).fill({ color: 0x555555 });
+  // Torso (breastplate)
+  g.rect(-4 * s, -8 * s, 8 * s, 9 * s).fill({ color: 0x554444 });
+  g.rect(-3.5 * s, -7 * s, 7 * s, 4 * s).fill({ color: 0x666655 }); // breastplate
+  g.rect(-3 * s, -6 * s, 6 * s, 1 * s).fill({ color: 0x777766, alpha: 0.4 }); // highlight
+  // Shoulder guards
+  g.ellipse(-4.5 * s, -7 * s, 2 * s, 1.5 * s).fill({ color: 0x666655 });
+  g.ellipse(4.5 * s, -7 * s, 2 * s, 1.5 * s).fill({ color: 0x666655 });
+  // Belt
+  g.rect(-4 * s, -0.5 * s, 8 * s, 1.5 * s).fill({ color: 0x443322 });
+  // Head (open helm with plume)
+  g.circle(0, -11 * s, 3.5 * s).fill({ color: 0x777766 });
+  g.rect(-3 * s, -12 * s, 6 * s, 2 * s).fill({ color: 0x777766 });
+  // Face
+  g.rect(-2 * s, -11.5 * s, 4 * s, 2 * s).fill({ color: 0xddbbaa });
+  g.circle(-1 * s, -11 * s, 0.5 * s).fill({ color: 0x111111 }); // eye
+  g.circle(1 * s, -11 * s, 0.5 * s).fill({ color: 0x111111 }); // eye
+  // Plume
+  g.moveTo(0, -14 * s).lineTo(-1 * s, -18 * s).lineTo(1 * s, -17 * s).lineTo(0, -14 * s).fill({ color: 0xcc3333 });
+  // Spear (held high, ready to throw)
+  const throwAnim = Math.sin(time * 1.5) * 2;
+  g.moveTo(5 * s, -6 * s).lineTo(5 * s, -22 * s + throwAnim).stroke({ color: 0x664422, width: 1 * s }); // shaft
+  // Spear tip
+  g.moveTo(4 * s, -22 * s + throwAnim).lineTo(5 * s, -25 * s + throwAnim).lineTo(6 * s, -22 * s + throwAnim).fill({ color: 0xaaaaaa });
 }
 
 function _drawBoss(g: Graphics, enemy: DragoonEnemy, time: number): void {

@@ -1176,58 +1176,133 @@ export class MatrixGame {
 
       // visual variety by projectile type
       const bodyColor = eType === "fireball" ? 0x220800 : eType === "axe" ? 0x0a0a15 : 0x110000;
+      const accentColor = eType === "fireball" ? 0x441100 : eType === "axe" ? 0x151525 : 0x220808;
       const eyeColor = eType === "fireball" ? 0xff4400 : eType === "axe" ? 0x8888ff : 0xff0000;
       const bodyH = eType === "axe" ? 1.5 : eType === "fireball" ? 1.0 : 1.2;
       const bodyW = eType === "axe" ? 0.35 : 0.25;
 
-      // body
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(bodyW, bodyW + 0.05, bodyH, 12),
-        new THREE.MeshStandardMaterial({ color: bodyColor, emissive: bodyColor, emissiveIntensity: 0.3 })
-      );
-      body.position.y = bodyH / 2; group.add(body);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, emissive: bodyColor, emissiveIntensity: 0.3 });
+      const accentMat = new THREE.MeshStandardMaterial({ color: accentColor, emissive: accentColor, emissiveIntensity: 0.2 });
+      const wireGlow = new THREE.MeshStandardMaterial({ color: eyeColor, emissive: eyeColor, emissiveIntensity: 1.2, toneMapped: false });
 
-      // head
-      const head = new THREE.Mesh(
-        new THREE.SphereGeometry(eType === "axe" ? 0.22 : 0.18, 12, 10),
-        new THREE.MeshStandardMaterial({ color: bodyColor, emissive: bodyColor, emissiveIntensity: 0.4 })
-      );
+      // ── Torso (layered) ──
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(bodyW, bodyH * 0.5, 12, 18), bodyMat);
+      torso.position.y = bodyH * 0.45; group.add(torso);
+      // Chest plate
+      const chest = new THREE.Mesh(new THREE.BoxGeometry(bodyW * 1.6, bodyH * 0.4, bodyW * 0.8), accentMat);
+      chest.position.y = bodyH * 0.5; group.add(chest);
+      // Circuit lines on chest
+      const circuitH = new THREE.Mesh(new THREE.BoxGeometry(bodyW * 1.2, 0.015, 0.01), wireGlow);
+      circuitH.position.set(0, bodyH * 0.55, -bodyW * 0.41); group.add(circuitH);
+      const circuitV = new THREE.Mesh(new THREE.BoxGeometry(0.015, bodyH * 0.25, 0.01), wireGlow);
+      circuitV.position.set(0, bodyH * 0.5, -bodyW * 0.41); group.add(circuitV);
+
+      // ── Head ──
+      const headR = eType === "axe" ? 0.22 : 0.18;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(headR, 18, 14), bodyMat);
       head.position.y = bodyH + 0.15; group.add(head);
+      // Visor / face plate
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(headR * 1.4, headR * 0.5, headR * 0.3), accentMat);
+      visor.position.set(0, bodyH + 0.12, -headR * 0.7); group.add(visor);
 
-      // eyes (two for axe type, one for others)
+      // Eyes (all types get two)
       const eyeMat = new THREE.MeshStandardMaterial({ color: eyeColor, emissive: eyeColor, emissiveIntensity: 3.0, toneMapped: false });
-      if (eType === "axe") {
-        for (const ex of [-0.07, 0.07]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), eyeMat);
-          eye.position.set(ex, bodyH + 0.15, -0.16); group.add(eye);
-        }
-      } else {
+      for (const ex of [-0.07, 0.07]) {
         const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), eyeMat);
-        eye.position.set(0, bodyH + 0.15, -0.15); group.add(eye);
+        eye.position.set(ex, bodyH + 0.14, -headR * 0.85); group.add(eye);
       }
 
-      // weapon visual
+      // ── Shoulders ──
+      for (const sx of [-1, 1]) {
+        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(bodyW * 0.45, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), accentMat);
+        shoulder.position.set(sx * (bodyW + 0.15), bodyH * 0.7, 0); group.add(shoulder);
+        // Shoulder glow dot
+        const sDot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), wireGlow);
+        sDot.position.set(sx * (bodyW + 0.15), bodyH * 0.75, -bodyW * 0.3); group.add(sDot);
+      }
+
+      // ── Arms ──
+      for (const sx of [-1, 1]) {
+        const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(bodyW * 0.2, bodyH * 0.2, 8, 12), bodyMat);
+        upperArm.position.set(sx * (bodyW + 0.18), bodyH * 0.45, 0); group.add(upperArm);
+        const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(bodyW * 0.15, bodyH * 0.18, 8, 12), accentMat);
+        forearm.position.set(sx * (bodyW + 0.2), bodyH * 0.22, -0.05); group.add(forearm);
+        // Hand
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(bodyW * 0.18, 10, 8), bodyMat);
+        hand.position.set(sx * (bodyW + 0.2), bodyH * 0.1, -0.08); group.add(hand);
+      }
+
+      // ── Legs ──
+      for (const lx of [-1, 1]) {
+        const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(bodyW * 0.22, bodyH * 0.18, 8, 12), bodyMat);
+        thigh.position.set(lx * bodyW * 0.5, bodyH * 0.05, 0); group.add(thigh);
+        const shin = new THREE.Mesh(new THREE.CapsuleGeometry(bodyW * 0.18, bodyH * 0.16, 8, 10), accentMat);
+        shin.position.set(lx * bodyW * 0.5, -bodyH * 0.12, 0); group.add(shin);
+        const boot = new THREE.Mesh(new THREE.BoxGeometry(bodyW * 0.35, bodyH * 0.06, bodyW * 0.5), accentMat);
+        boot.position.set(lx * bodyW * 0.5, -bodyH * 0.22, -0.03); group.add(boot);
+      }
+
+      // ── Weapon visuals ──
       if (eType === "arrow") {
-        // bow: thin curve
-        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.02, 12, 12, Math.PI),
-          new THREE.MeshStandardMaterial({ color: 0x663300, roughness: 0.7 }));
-        bow.position.set(-0.35, bodyH * 0.6, -0.1); bow.rotation.z = Math.PI / 2;
+        // Bow with bowstring
+        const bowMat = new THREE.MeshStandardMaterial({ color: 0x663300, roughness: 0.7 });
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.025, 14, 18, Math.PI), bowMat);
+        bow.position.set(-bodyW - 0.2, bodyH * 0.55, -0.12); bow.rotation.z = Math.PI / 2;
         group.add(bow);
-      } else if (eType === "fireball") {
-        // glowing hands
-        for (const sx of [-0.25, 0.25]) {
-          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10),
-            new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff4400, emissiveIntensity: 1.5, toneMapped: false }));
-          hand.position.set(sx, bodyH * 0.5, -0.2); group.add(hand);
+        // Bowstring
+        const string = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.65, 6),
+          new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.5 }));
+        string.position.set(-bodyW - 0.2, bodyH * 0.55, -0.12);
+        group.add(string);
+        // Quiver on back
+        const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.4, 10), bowMat);
+        quiver.position.set(0.1, bodyH * 0.5, 0.18); quiver.rotation.z = 0.15;
+        group.add(quiver);
+        // Arrow tips sticking out of quiver
+        for (let ar = 0; ar < 3; ar++) {
+          const aShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 6),
+            new THREE.MeshStandardMaterial({ color: 0xccaa66, roughness: 0.7 }));
+          aShaft.position.set(0.08 + ar * 0.02, bodyH * 0.75, 0.18);
+          group.add(aShaft);
         }
+      } else if (eType === "fireball") {
+        // Glowing energy hands with aura spheres
+        for (const sx of [-1, 1]) {
+          const handGlow = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10),
+            new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff4400, emissiveIntensity: 2.0, toneMapped: false }));
+          handGlow.position.set(sx * (bodyW + 0.2), bodyH * 0.1, -0.15); group.add(handGlow);
+          // Aura ring
+          const aura = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.015, 10, 16),
+            new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.4, depthWrite: false }));
+          aura.position.set(sx * (bodyW + 0.2), bodyH * 0.1, -0.15);
+          aura.rotation.x = Math.PI / 2;
+          group.add(aura);
+        }
+        // Rune on forehead
+        const rune = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.01, 8, 12), wireGlow);
+        rune.position.set(0, bodyH + 0.25, -headR * 0.6); group.add(rune);
       } else {
-        // axe weapon mesh
-        const axeHead = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 0.06),
-          new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 }));
-        axeHead.position.set(0.35, bodyH * 0.6, -0.1); group.add(axeHead);
-        const axeHaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 10),
-          new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 }));
-        axeHaft.position.set(0.35, bodyH * 0.4, -0.1); group.add(axeHaft);
+        // Axe: detailed weapon
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.85, roughness: 0.15 });
+        // Axe head (wider, shaped)
+        const axeHead = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.05), metalMat);
+        axeHead.position.set(bodyW + 0.3, bodyH * 0.55, -0.1); group.add(axeHead);
+        // Axe blade edge
+        const axeBlade = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16, 1, false, 0, Math.PI),
+          metalMat);
+        axeBlade.position.set(bodyW + 0.45, bodyH * 0.55, -0.1);
+        axeBlade.rotation.z = Math.PI / 2;
+        group.add(axeBlade);
+        // Haft
+        const haftMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 });
+        const axeHaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7, 10), haftMat);
+        axeHaft.position.set(bodyW + 0.25, bodyH * 0.3, -0.1); group.add(axeHaft);
+        // Leather wrap on haft
+        const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 10), new THREE.MeshStandardMaterial({ color: 0x443311, roughness: 0.9 }));
+        wrap.position.set(bodyW + 0.25, bodyH * 0.15, -0.1); group.add(wrap);
+        // Heavy shoulder armor
+        const heavyShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), metalMat);
+        heavyShoulder.position.set(bodyW + 0.15, bodyH * 0.72, 0); group.add(heavyShoulder);
       }
 
       group.position.copy(pos);
@@ -1310,7 +1385,7 @@ export class MatrixGame {
       // check if hit by deflected projectile
       for (const proj of this._projectiles) {
         if (!proj.alive) continue;
-        if (proj.vel.dot(new THREE.Vector3(dx, 0, dz).normalize()) < 0) continue; // only deflected ones moving toward enemy
+        if (proj.vel.dot(new THREE.Vector3(dx, 0, dz).normalize()) > 0) continue; // only deflected ones moving toward enemy
         const d = proj.mesh.position.distanceTo(e.pos);
         if (d < 1.5) {
           e.hp -= 25;

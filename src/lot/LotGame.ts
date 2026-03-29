@@ -183,6 +183,10 @@ export class LotGame {
     if (this._onContextMenu) window.removeEventListener("contextmenu", this._onContextMenu);
     if (this._onClick) this._renderer.canvas.removeEventListener("click", this._onClick);
     if (this._onPointerLockChange) document.removeEventListener("pointerlockchange", this._onPointerLockChange);
+  }
+
+  private _unregisterAll(): void {
+    this._unregisterInput();
     if (this._onStartHandler) window.removeEventListener("lotStartGame", this._onStartHandler);
     if (this._onRerollHandler) window.removeEventListener("lotReroll", this._onRerollHandler);
     if (this._onRestartHandler) window.removeEventListener("lotRestart", this._onRestartHandler);
@@ -198,11 +202,14 @@ export class LotGame {
     this._state.bestRound = bestRound;
     beginDrawPhase(this._state);
     this._simAccumulator = 0;
+    // Re-register input so closures capture the new state object
+    this._unregisterInput();
+    this._registerInput();
   }
 
   destroy(): void {
     if (this._rafId !== null) { cancelAnimationFrame(this._rafId); this._rafId = null; }
-    this._unregisterInput();
+    this._unregisterAll();
     this._renderer.cleanup();
     this._hud.cleanup();
     const pixiCanvas = document.querySelector("#pixi-container canvas") as HTMLCanvasElement | null;

@@ -217,6 +217,9 @@ export enum DragoonEnemyType {
   GROUND_SHIELD_WALL = "ground_shield_wall",
   GROUND_WAR_CATAPULT = "ground_war_catapult",
   GROUND_DARK_MAGE_CIRCLE = "ground_dark_mage_circle",
+  GROUND_ARCHER = "ground_archer",
+  GROUND_INFANTRYMAN = "ground_infantryman",
+  GROUND_SPEARMAN = "ground_spearman",
   // Bosses
   BOSS_DRAKE = "boss_drake",
   BOSS_CHIMERA = "boss_chimera",

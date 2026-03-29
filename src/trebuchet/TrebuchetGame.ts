@@ -275,6 +275,8 @@ export class TrebuchetGame {
 
   // Game state
   private _phase: Phase = "title";
+  private _lastRenderedPhase: Phase | null = null;
+  private _hudDirty = true;
   private _wave = 0;
   private _score = 0;
   private _gold = 0;
@@ -1207,6 +1209,12 @@ export class TrebuchetGame {
   }
 
   private _renderHUD(): void {
+    // Static phases: only re-render when phase changes or explicitly marked dirty
+    const isStaticPhase = this._phase === "title" || this._phase === "shop" || this._phase === "between_waves" || this._phase === "defeat" || this._phase === "victory" || this._phase === "paused";
+    if (isStaticPhase && this._lastRenderedPhase === this._phase && !this._hudDirty) return;
+    this._lastRenderedPhase = this._phase;
+    this._hudDirty = false;
+
     if (this._phase === "title") {
       this._hudContainer.innerHTML = `
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:rgba(0,0,0,0.5);">
@@ -1569,7 +1577,7 @@ export class TrebuchetGame {
     this._cachedSynergies = this._getUpgradeSynergies();
     this._updateTrebuchetVisuals();
     this._playSound("buy");
-    this._renderShopHUD();
+    this._hudDirty = true;
   }
 
   private _updateTrebuchetVisuals(): void {
@@ -1652,7 +1660,7 @@ export class TrebuchetGame {
     this._gold -= cost;
     this._unlockedAmmo.push(ammo);
     this._playSound("buy");
-    this._renderShopHUD();
+    this._hudDirty = true;
   }
 
   private _waveGoldReward(): number {
@@ -1716,10 +1724,9 @@ export class TrebuchetGame {
       if (e.button !== 0) return;
 
       if (this._phase === "title") {
-        this._phase = "between_waves";
         this._wave = 0;
         this._score = 0;
-        this._gold = 0;
+        this._gold = 20;
         this._gateHp = GATE_MAX_HP;
         this._gateMaxHp = GATE_MAX_HP;
         this._currentAmmo = "boulder";
@@ -1732,6 +1739,9 @@ export class TrebuchetGame {
         this._totalKills = 0; this._totalShots = 0; this._totalHits = 0; this._totalDamageDealt = 0;
         this._enemyProjectiles = [];
         this._startMusic();
+        // Go straight to shop so the player can prepare before wave 1
+        this._phase = "shop";
+        this._hudDirty = true;
         this._renderHUD();
         return;
       }

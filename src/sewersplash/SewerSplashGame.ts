@@ -249,6 +249,10 @@ export class SewerSplashGame {
   // Tunnel
   private _segments: TunnelSegment[] = [];
   private _nextSegZ = 0;
+  // Reusable collision objects (avoid per-frame allocation)
+  private _playerBox = new THREE.Box3();
+  private _boxMin = new THREE.Vector3();
+  private _boxMax = new THREE.Vector3();
   private _bossEvery = 500; // distance between bosses
   private _nextBossAt = 500;
   private _segmentsCreated = 0;
@@ -1821,17 +1825,18 @@ export class SewerSplashGame {
       </div>
     `;
 
-    // Bind shop click events
+    // Bind shop click events via delegation (no per-element listeners)
+    const shopHandler = (e: Event) => {
+      const target = (e.target as HTMLElement).closest("[data-upgrade]") as HTMLElement | null;
+      if (!target) return;
+      e.stopPropagation();
+      this._buyUpgrade(target.dataset.upgrade!);
+      // Re-render after purchase
+      this._hudScore.removeEventListener("click", shopHandler);
+    };
     setTimeout(() => {
       if (this._destroyed) return;
-      const items = this._hudScore.querySelectorAll("[data-upgrade]");
-      items.forEach(el => {
-        el.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const id = (el as HTMLElement).dataset.upgrade!;
-          this._buyUpgrade(id);
-        });
-      });
+      this._hudScore.addEventListener("click", shopHandler);
     }, 50);
   }
 
@@ -2372,9 +2377,17 @@ export class SewerSplashGame {
     // Water position follows camera
     this._waterMesh.position.z = 0;
 
-    // Remove segments that are behind
+    // Remove segments that are behind — dispose GPU resources
     while (this._segments.length > 0 && this._segments[0].zStart > TUNNEL_SEG_LENGTH * 2) {
       const old = this._segments.shift()!;
+      old.group.traverse((obj) => {
+        if (obj instanceof THREE.Mesh || obj instanceof THREE.Points) {
+          obj.geometry?.dispose();
+          const mat = obj.material;
+          if (Array.isArray(mat)) mat.forEach(m => m.dispose());
+          else if (mat instanceof THREE.Material) mat.dispose();
+        }
+      });
       this._scene.remove(old.group);
     }
 
@@ -2392,12 +2405,12 @@ export class SewerSplashGame {
   // ── Collisions ────────────────────────────────────────────────────────
 
   private _updateCollisions(): void {
-    const playerBox = new THREE.Box3();
+    const playerBox = this._playerBox;
     const halfW = 0.4;
     const height = this._isDucking ? 0.4 : 1.0;
     playerBox.set(
-      new THREE.Vector3(this._playerX - halfW, this._playerY - 0.3, -1.0),
-      new THREE.Vector3(this._playerX + halfW, this._playerY + height, 0.5),
+      this._boxMin.set(this._playerX - halfW, this._playerY - 0.3, -1.0),
+      this._boxMax.set(this._playerX + halfW, this._playerY + height, 0.5),
     );
 
     for (const seg of this._segments) {

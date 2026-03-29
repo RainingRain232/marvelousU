@@ -2789,19 +2789,22 @@ export class LancelotGame {
       switch (dir) {
         case "left":
           sg.rotation.z = wp * 1.2;
-          sg.rotation.x = -0.3 - wp * 0.5;
+          sg.rotation.x = -0.3 - wp * 0.9;
+          sg.position.z = -wp * 0.3;
           break;
         case "right":
           sg.rotation.z = -wp * 1.2;
-          sg.rotation.x = -0.3 - wp * 0.5;
+          sg.rotation.x = -0.3 - wp * 0.9;
+          sg.position.z = -wp * 0.3;
           break;
         case "overhead":
-          sg.rotation.x = -0.3 - wp * 1.8;
+          sg.rotation.x = -0.3 - wp * 2.0;
           sg.rotation.z = wp * 0.2;
+          sg.position.z = -wp * 0.25;
           break;
         case "thrust":
           sg.rotation.x = -0.3 - wp * 0.8;
-          sg.position.z = -wp * 0.3;
+          sg.position.z = -wp * 0.4;
           break;
       }
     } else if (progress < activeEnd) {
@@ -2809,19 +2812,22 @@ export class LancelotGame {
       switch (dir) {
         case "left":
           sg.rotation.z = 1.2 - ap * 2.4;
-          sg.rotation.x = -0.8 + ap * 0.8;
+          sg.rotation.x = -1.2 + ap * 1.0;
+          sg.position.z = -0.3 - ap * 0.5;
           break;
         case "right":
           sg.rotation.z = -1.2 + ap * 2.4;
-          sg.rotation.x = -0.8 + ap * 0.8;
+          sg.rotation.x = -1.2 + ap * 1.0;
+          sg.position.z = -0.3 - ap * 0.5;
           break;
         case "overhead":
-          sg.rotation.x = -2.1 + ap * 3.0;
+          sg.rotation.x = -2.3 + ap * 3.2;
           sg.rotation.z = 0.2 - ap * 0.4;
+          sg.position.z = -0.25 - ap * 0.55;
           break;
         case "thrust":
           sg.rotation.x = -1.1 + ap * 0.5;
-          sg.position.z = -0.3 - ap * 0.6;
+          sg.position.z = -0.4 - ap * 0.7;
           break;
       }
     } else {

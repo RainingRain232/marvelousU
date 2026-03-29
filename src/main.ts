@@ -548,7 +548,6 @@ function _showLoading(mode: string): void {
     }
     if (menuScreen.selectedGameMode === GameMode.THREE_DRAGON) {
       menuScreen.hide();
-      _showLoading(menuScreen.selectedGameMode);
       _bootThreeDragonGame().then(() => loadingScreen.hide());
       return;
     }

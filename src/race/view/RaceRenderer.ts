@@ -87,7 +87,7 @@ export class RaceRenderer {
     this._gfx.clear();
     while (this._ui.children.length > 0) this._ui.removeChildAt(0);
     const g = this._gfx;
-    const ox = (sw - RaceConfig.FIELD_WIDTH) / 2, oy = 50;
+    const ox = (sw - RaceConfig.FIELD_WIDTH) / 2, oy = (sh - RaceConfig.FIELD_HEIGHT) / 2;
     const track = state.track;
     const wp = track.waypoints;
 
