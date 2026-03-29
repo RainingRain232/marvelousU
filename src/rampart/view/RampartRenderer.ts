@@ -273,6 +273,35 @@ export class RampartRenderer {
     keep.receiveShadow = true;
     this._castleGroup.add(keep);
 
+    // Keep brick coursing (horizontal mortar lines)
+    const mortarMat = this._getMat(0x4a4a42);
+    for (let row = 0; row < 6; row++) {
+      const my = baseY + 1 + row * 1.2;
+      for (const side of [-1, 1]) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 6.1), mortarMat);
+        line.position.set(cx + side * 5.02, my, cz);
+        this._castleGroup.add(line);
+      }
+      // front/back
+      for (const fz of [-3.02, 3.02]) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(10.1, 0.04, 0.04), mortarMat);
+        line.position.set(cx, my, cz + fz);
+        this._castleGroup.add(line);
+      }
+    }
+
+    // Keep corner quoins (alternating stone blocks at corners)
+    const quoinMat = this._getMat(0x7a7a70);
+    for (const ox of [-5, 5]) {
+      for (const oz of [-3, 3]) {
+        for (let q = 0; q < 5; q++) {
+          const quoin = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.6), quoinMat);
+          quoin.position.set(cx + ox, baseY + 1 + q * 1.6, cz + oz);
+          this._castleGroup.add(quoin);
+        }
+      }
+    }
+
     // Roof
     const roofGeo = new THREE.ConeGeometry(7, 4, 10);
     const roof = new THREE.Mesh(roofGeo, this._getMat(RAMPART.COLOR_CASTLE_ROOF));
@@ -309,6 +338,14 @@ export class RampartRenderer {
     wall.position.set(cx, baseY + 2.5, cz + 3);
     wall.receiveShadow = true;
     this._castleGroup.add(wall);
+
+    // Wall brick coursing
+    for (let row = 0; row < 4; row++) {
+      const my = baseY + 0.8 + row * 1.2;
+      const line = new THREE.Mesh(new THREE.BoxGeometry(18.1, 0.04, 0.04), mortarMat);
+      line.position.set(cx, my, cz + 3.52);
+      this._castleGroup.add(line);
+    }
 
     // Battlements
     for (let i = -8; i <= 8; i += 2) {
@@ -607,6 +644,17 @@ export class RampartRenderer {
       towerMesh.position.y = def.height / 2 + 0.5;
       towerMesh.castShadow = true;
       group.add(towerMesh);
+
+      // Brick bands on tower
+      const bandMat = this._getMat(0x555550);
+      for (let b = 0; b < 3; b++) {
+        const by = 1.5 + b * (def.height / 3);
+        const r = CS * 0.25 + (CS * 0.35 - CS * 0.25) * (1 - by / (def.height + 0.5));
+        const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.04, 6, 8), bandMat);
+        band.rotation.x = Math.PI / 2;
+        band.position.y = by;
+        group.add(band);
+      }
 
       // Top platform
       const topGeo = new THREE.CylinderGeometry(CS * 0.35, CS * 0.3, 0.4, 8);

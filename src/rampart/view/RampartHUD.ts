@@ -258,28 +258,76 @@ export class RampartHUD {
     pauseTitle.textContent = "PAUSED";
     pauseBox.appendChild(pauseTitle);
 
-    const pauseDesc = document.createElement("div");
-    pauseDesc.style.cssText = "font-size:13px;line-height:1.6;color:#aaa;margin-bottom:20px;";
-    pauseDesc.textContent = "3D castle tower defense. Place archer towers, catapults, mage towers and more to defend your castle against 25 waves of medieval invaders.";
-    pauseBox.appendChild(pauseDesc);
+    // Tab buttons
+    const tabRow = document.createElement("div");
+    tabRow.style.cssText = "display:flex;gap:4px;margin-bottom:16px;justify-content:center;";
+    pauseBox.appendChild(tabRow);
 
-    const controlsHeader = document.createElement("div");
-    controlsHeader.style.cssText = "font-size:15px;font-weight:bold;color:#ccc;margin-bottom:10px;letter-spacing:1px;";
-    controlsHeader.textContent = "CONTROLS";
-    pauseBox.appendChild(controlsHeader);
+    const tabContent = document.createElement("div");
+    tabContent.style.cssText = "text-align:left;margin-bottom:20px;min-height:160px;";
+    pauseBox.appendChild(tabContent);
 
-    const controlsList = document.createElement("div");
-    controlsList.style.cssText = "text-align:left;margin:0 auto 24px auto;max-width:320px;font-size:13px;line-height:2;color:#bbb;";
-    controlsList.innerHTML = [
-      ["Click", "Place tower / Select"],
-      ["1-6", "Tower hotkeys"],
-      ["U", "Upgrade selected tower"],
-      ["X", "Sell selected tower"],
-      ["ESC", "Resume"],
-    ].map(([key, desc]) =>
-      `<div><span style="display:inline-block;min-width:60px;color:#ffd700;font-weight:bold;">${key}</span> <span style="color:#999;">\u2014</span> ${desc}</div>`
-    ).join("");
-    pauseBox.appendChild(controlsList);
+    const tabs = ["Controls", "Introduction", "Game Concepts"];
+    const tabBtns: HTMLButtonElement[] = [];
+
+    const showTab = (idx: number) => {
+      tabBtns.forEach((b, i) => {
+        b.style.background = i === idx ? "#336699" : "rgba(50,50,80,0.5)";
+        b.style.color = i === idx ? "#fff" : "#888";
+        b.style.borderColor = i === idx ? "#5588bb" : "#444";
+      });
+      if (idx === 0) {
+        tabContent.innerHTML = [
+          ["Click", "Place tower / Select"],
+          ["1-6", "Tower hotkeys"],
+          ["U", "Upgrade selected tower"],
+          ["X", "Sell selected tower"],
+          ["WASD", "Move camera"],
+          ["Scroll", "Zoom in/out"],
+          ["T", "Toggle speed (1x/2x)"],
+          ["ESC", "Pause / Resume"],
+        ].map(([key, desc]) =>
+          `<div style="line-height:2;font-size:13px;color:#bbb;"><span style="display:inline-block;min-width:70px;color:#ffd700;font-weight:bold;">${key}</span> <span style="color:#666;">\u2014</span> ${desc}</div>`
+        ).join("");
+      } else if (idx === 1) {
+        tabContent.innerHTML = `
+          <div style="font-size:14px;font-weight:bold;color:#5588bb;margin-bottom:8px;">RAMPART</div>
+          <div style="font-size:13px;line-height:1.7;color:#aaa;">
+            Defend your castle against 25 waves of medieval invaders! Place and upgrade
+            towers strategically during the preparation phase, then watch your defenses
+            hold the line as enemies march toward your gates.<br><br>
+            Earn gold from defeating enemies and spend it on new towers or upgrades.
+            Harder difficulties spawn stronger enemies and give less gold.
+            Can you survive all 25 waves?
+          </div>`;
+      } else {
+        tabContent.innerHTML = `
+          <div style="font-size:13px;line-height:1.7;color:#aaa;">
+            <div style="color:#ffd700;font-weight:bold;margin-bottom:4px;">Tower Types</div>
+            <b style="color:#ccc;">Archer</b> — Fast attack, low damage, cheap<br>
+            <b style="color:#ccc;">Catapult</b> — Slow, high AoE splash damage<br>
+            <b style="color:#ccc;">Ballista</b> — Long range, piercing bolts<br>
+            <b style="color:#ccc;">Mage</b> — Magic damage, slows enemies<br>
+            <b style="color:#ccc;">Flame</b> — Short range, burns over time<br><br>
+            <div style="color:#ffd700;font-weight:bold;margin-bottom:4px;">Upgrading</div>
+            Towers can be upgraded up to level 3. Each level increases damage,
+            range, and attack speed. Upgraded towers change appearance.<br><br>
+            <div style="color:#ffd700;font-weight:bold;margin-bottom:4px;">Strategy Tips</div>
+            Place towers near chokepoints. Mix tower types for best coverage.
+            Upgrade key towers before building new ones. Save gold for tough waves.
+          </div>`;
+      }
+    };
+
+    for (let i = 0; i < tabs.length; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = tabs[i];
+      btn.style.cssText = "pointer-events:auto;padding:6px 14px;font-size:12px;font-weight:bold;border:1px solid #444;border-radius:4px;cursor:pointer;letter-spacing:1px;transition:all 0.15s;";
+      btn.onclick = () => showTab(i);
+      tabRow.appendChild(btn);
+      tabBtns.push(btn);
+    }
+    showTab(0);
 
     const resumeBtn = document.createElement("button");
     resumeBtn.textContent = "RESUME";
