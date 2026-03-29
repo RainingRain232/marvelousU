@@ -1377,15 +1377,12 @@ export class SettlersRenderer {
     this._depositsGroup.clear();
     const map = state.map;
 
-    const depositColors: Record<number, number> = {
-      [Deposit.IRON]: 0x7a4e2e,
-      [Deposit.GOLD]: 0xffd700,
-      [Deposit.COAL]: 0x333333,
-      [Deposit.STONE]: 0x999999,
-      [Deposit.FISH]: 0x5599bb,
-    };
-
-    const depositGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 12);
+    // Materials per deposit type
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.35, roughness: 0.3, metalness: 0.8 });
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x8a6642, emissive: 0x5a3a1a, emissiveIntensity: 0.2, roughness: 0.7, metalness: 0.5 });
+    const coalMat = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0x111111, emissiveIntensity: 0.1, roughness: 0.9, metalness: 0.1 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x999999, emissive: 0x666666, emissiveIntensity: 0.15, roughness: 0.8, metalness: 0.1 });
+    const fishMat = new THREE.MeshStandardMaterial({ color: 0x5599bb, emissive: 0x3377aa, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.1 });
 
     for (let tz = 0; tz < map.height; tz++) {
       for (let tx = 0; tx < map.width; tx++) {
@@ -1393,21 +1390,78 @@ export class SettlersRenderer {
         const deposit = map.deposits[idx];
         if (deposit === Deposit.NONE) continue;
 
-        const color = depositColors[deposit] || 0xffffff;
-        const mat = new THREE.MeshStandardMaterial({
-          color,
-          emissive: color,
-          emissiveIntensity: 0.3,
-          roughness: 0.5,
-          metalness: deposit === Deposit.GOLD ? 0.6 : 0.2,
-        });
-
-        const marker = new THREE.Mesh(depositGeo, mat);
         const wx = (tx + 0.5) * SB.TILE_SIZE;
         const wz = (tz + 0.5) * SB.TILE_SIZE;
-        const wy = getHeightAt(map, wx, wz) + 0.05;
-        marker.position.set(wx, wy, wz);
-        this._depositsGroup.add(marker);
+        const wy = getHeightAt(map, wx, wz);
+        const group = new THREE.Group();
+        group.position.set(wx, wy, wz);
+
+        if (deposit === Deposit.GOLD) {
+          // Gold bars (small stacked ingots)
+          const barGeo = new THREE.BoxGeometry(0.14, 0.06, 0.08);
+          for (let i = 0; i < 3; i++) {
+            const bar = new THREE.Mesh(barGeo, goldMat);
+            bar.position.set((i - 1) * 0.12, 0.04, 0);
+            bar.rotation.y = i * 0.2;
+            group.add(bar);
+          }
+          // Top bar across
+          const topBar = new THREE.Mesh(barGeo, goldMat);
+          topBar.position.set(0, 0.1, 0);
+          topBar.rotation.y = Math.PI * 0.4;
+          group.add(topBar);
+        } else if (deposit === Deposit.IRON) {
+          // Iron ore chunks (irregular dark rocks with reddish tint)
+          const chunkGeo = new THREE.DodecahedronGeometry(0.08, 0);
+          for (let i = 0; i < 3; i++) {
+            const chunk = new THREE.Mesh(chunkGeo, ironMat);
+            chunk.position.set((i - 1) * 0.11, 0.06, (i % 2) * 0.06 - 0.03);
+            chunk.rotation.set(i * 1.2, i * 0.8, i * 0.5);
+            chunk.scale.set(1 + i * 0.1, 0.8, 1.1);
+            group.add(chunk);
+          }
+        } else if (deposit === Deposit.COAL) {
+          // Coal pile (dark jagged lumps)
+          const lumpGeo = new THREE.OctahedronGeometry(0.07, 0);
+          for (let i = 0; i < 4; i++) {
+            const lump = new THREE.Mesh(lumpGeo, coalMat);
+            const angle = (i / 4) * Math.PI * 2;
+            lump.position.set(Math.cos(angle) * 0.08, 0.05, Math.sin(angle) * 0.08);
+            lump.rotation.set(i * 1.5, i * 0.9, i * 0.6);
+            group.add(lump);
+          }
+          // Center top lump
+          const top = new THREE.Mesh(lumpGeo, coalMat);
+          top.position.y = 0.11;
+          group.add(top);
+        } else if (deposit === Deposit.STONE) {
+          // Stone boulders (rounded gray rocks)
+          const bigGeo = new THREE.DodecahedronGeometry(0.12, 1);
+          const big = new THREE.Mesh(bigGeo, stoneMat);
+          big.position.y = 0.08;
+          big.scale.set(1, 0.7, 1);
+          group.add(big);
+          const smallGeo = new THREE.DodecahedronGeometry(0.07, 1);
+          const sm = new THREE.Mesh(smallGeo, stoneMat);
+          sm.position.set(0.12, 0.05, 0.06);
+          sm.scale.set(1, 0.7, 0.9);
+          group.add(sm);
+        } else if (deposit === Deposit.FISH) {
+          // Fish shape (elongated ellipsoid with tail)
+          const bodyGeo = new THREE.SphereGeometry(0.08, 12, 8);
+          const body = new THREE.Mesh(bodyGeo, fishMat);
+          body.scale.set(1.8, 0.7, 0.7);
+          body.position.y = 0.06;
+          group.add(body);
+          // Tail fin
+          const tailGeo = new THREE.ConeGeometry(0.06, 0.1, 4);
+          const tail = new THREE.Mesh(tailGeo, fishMat);
+          tail.position.set(-0.16, 0.06, 0);
+          tail.rotation.z = Math.PI * 0.5;
+          group.add(tail);
+        }
+
+        this._depositsGroup.add(group);
       }
     }
   }
