@@ -164,12 +164,12 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "war_tent", x: 1100, y: 440, w: 80, h: 60, label: "War Tent", mode: GameMode.BATTLEFIELD, type: "training" },
   { id: "stable", x: 750, y: 700, w: 90, h: 60, label: "The Stables", mode: GameMode.MEDIEVAL_GTA_3D, type: "barracks" },
   { id: "crypt", x: 400, y: 600, w: 80, h: 70, label: "The Crypt", mode: GameMode.GAME, type: "church" },
-  { id: "aviary", x: 1100, y: 220, w: 80, h: 60, label: "The Aviary", mode: GameMode.EAGLE_FLIGHT, type: "tower" },
+  { id: "aviary", x: 800, y: 770, w: 80, h: 60, label: "The Aviary", mode: GameMode.EAGLE_FLIGHT, type: "tower" },
   { id: "witch_hut", x: 80, y: 480, w: 80, h: 60, label: "Witch's Hut", mode: GameMode.MORGAN, type: "tower" },
   { id: "exodus_gate", x: 650, y: 750, w: 120, h: 70, label: "The Exodus Gate", mode: GameMode.EXODUS, type: "gate" },
   { id: "coven_cottage", x: 160, y: 160, w: 80, h: 70, label: "Morgan's Cottage", mode: GameMode.COVEN, type: "tower" },
   { id: "wyrm_lair", x: 1000, y: 700, w: 100, h: 80, label: "The Wyrm's Lair", mode: GameMode.WYRM, type: "tower" },
-  { id: "prince_tower", x: 1100, y: 300, w: 110, h: 90, label: "Prince's Tower", mode: GameMode.PRINCE_CAMELOT, type: "castle" },
+  { id: "prince_tower", x: 900, y: 770, w: 110, h: 90, label: "Prince's Tower", mode: GameMode.PRINCE_CAMELOT, type: "castle" },
   { id: "phantom_crypt", x: 1050, y: 520, w: 90, h: 70, label: "The Phantom's Crypt", mode: GameMode.PHANTOM, type: "tower" },
   { id: "conjurer_arena", x: 900, y: 150, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.CONJURER, type: "tower" },
   { id: "flux_void", x: 750, y: 700, w: 100, h: 80, label: "The Gravity Void", mode: GameMode.FLUX, type: "tower" },
@@ -180,7 +180,7 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "grail_crypt", x: 150, y: 50, w: 100, h: 80, label: "The Grail Crypt", mode: GameMode.GRAIL_QUEST, type: "tower" },
   { id: "arcane_dueling", x: 500, y: 50, w: 100, h: 80, label: "The Arcane Arena", mode: GameMode.MERLIN_DUEL, type: "tower" },
   { id: "runeblade_forge", x: 150, y: 700, w: 100, h: 80, label: "The Runeblade Forge", mode: GameMode.RUNEBLADE, type: "forge" },
-  { id: "sword_arena", x: 1050, y: 150, w: 110, h: 90, label: "Sword of Avalon Arena", mode: GameMode.SWORD_OF_AVALON, type: "colosseum" },
+  { id: "sword_arena", x: 900, y: 650, w: 110, h: 90, label: "Sword of Avalon Arena", mode: GameMode.SWORD_OF_AVALON, type: "colosseum" },
   { id: "ball_pitch", x: 1050, y: 650, w: 110, h: 90, label: "The Ball Pitch", mode: GameMode.KNIGHT_BALL, type: "training" },
   { id: "epsilon_void", x: 100, y: 600, w: 100, h: 80, label: "The Epsilon Void", mode: GameMode.EPSILON, type: "tower" },
   { id: "grand_track", x: 900, y: 700, w: 110, h: 80, label: "The Grand Track", mode: GameMode.GRAND, type: "stable" },
@@ -220,10 +220,10 @@ const MAP_BUILDINGS: MapBuilding[] = [
   { id: "keeper_vault", x: 350, y: 50, w: 70, h: 55, label: "Keeper's Vault", mode: GameMode.GRAIL_KEEPER, type: "church" },
   { id: "enchanted_forest", x: 50, y: 550, w: 80, h: 55, label: "Enchanted Forest", mode: GameMode.FOREST, type: "stable" },
   { id: "pendulum_pit", x: 450, y: 770, w: 70, h: 50, label: "Pendulum Pit", mode: GameMode.PENDULUM, type: "tower" },
-  { id: "leviathan_pool", x: 1000, y: 50, w: 80, h: 55, label: "Leviathan Pool", mode: GameMode.LEVIATHAN, type: "harbor" },
+  { id: "leviathan_pool", x: 50, y: 770, w: 80, h: 55, label: "Leviathan Pool", mode: GameMode.LEVIATHAN, type: "harbor" },
   { id: "chariot_track", x: 600, y: 770, w: 80, h: 55, label: "Chariot Track", mode: GameMode.CHARIOT, type: "stable" },
-  { id: "compass_room", x: 1100, y: 100, w: 60, h: 50, label: "Compass Room", mode: GameMode.BEARING, type: "tower" },
-  { id: "matrix_void", x: 1100, y: 50, w: 70, h: 55, label: "The Matrix", mode: GameMode.MATRIX, type: "tower" },
+  { id: "compass_room", x: 500, y: 770, w: 60, h: 50, label: "Compass Room", mode: GameMode.BEARING, type: "tower" },
+  { id: "matrix_void", x: 700, y: 770, w: 70, h: 55, label: "The Matrix", mode: GameMode.MATRIX, type: "tower" },
 ];
 
 const CITY = { x: 250, y: 150, w: 700, h: 580 };
@@ -259,7 +259,7 @@ const HOUSES = [
   { x: 690, y: 620, w: 45, h: 35 }, { x: 300, y: 350, w: 35, h: 30 },
   { x: 770, y: 350, w: 40, h: 30 },
   { x: 120, y: 450, w: 50, h: 40 }, { x: 180, y: 480, w: 40, h: 35 },
-  { x: 1060, y: 200, w: 45, h: 40 }, { x: 1100, y: 250, w: 40, h: 35 },
+  { x: 960, y: 600, w: 45, h: 40 }, { x: 920, y: 550, w: 40, h: 35 },
   { x: 150, y: 700, w: 45, h: 40 }, { x: 1000, y: 650, w: 40, h: 35 },
 ];
 

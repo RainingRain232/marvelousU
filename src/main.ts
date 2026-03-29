@@ -379,9 +379,9 @@ function _showLoading(mode: string): void {
   } else if (settingsScreen.showIntroEnabled) {
     startScreen.show();
   } else {
-    // Skip start screen & intro — go straight to hub
+    // Skip start screen & intro — go straight to the normal menu
     startScreen.hide();
-    camelotHubScreen.show();
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   }
 
   // Start menu music as soon as the app is interactive
@@ -390,7 +390,7 @@ function _showLoading(mode: string): void {
   startScreen.onStart = () => {
     startScreen.hide();
     introPlayer.onDone = () => {
-      camelotHubScreen.show();
+      menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
     };
     introPlayer.play();
   };

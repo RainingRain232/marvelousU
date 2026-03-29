@@ -6403,26 +6403,75 @@ export class EagleFlightRenderer {
   // ---------------------------------------------------------------------------
 
   private _buildNPCs(): void {
-    const peasantMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.9 });
-    const knightMat = new THREE.MeshStandardMaterial({ color: 0x556677, metalness: 0.3, roughness: 0.6 });
-    const merchantMat = new THREE.MeshStandardMaterial({ color: 0x668844, roughness: 0.8 });
+    // ── Shared materials ──
+    const peasantTunic = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.9 });
+    const peasantTrousers = new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.92 });
+    const knightArmor = new THREE.MeshStandardMaterial({ color: 0x556677, metalness: 0.5, roughness: 0.4 });
+    const knightChainmail = new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness: 0.6, roughness: 0.35 });
+    const merchantRobe = new THREE.MeshStandardMaterial({ color: 0x668844, roughness: 0.8 });
+    const merchantApron = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.85 });
     const skinMat = new THREE.MeshStandardMaterial({ color: 0xddbbaa, roughness: 0.8 });
+    const skinDark = new THREE.MeshStandardMaterial({ color: 0xbb9977, roughness: 0.8 });
+    const hairBrown = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.95 });
+    const hairBlack = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.95 });
+    const hairBlonde = new THREE.MeshStandardMaterial({ color: 0xccaa55, roughness: 0.95 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x3b2510, roughness: 0.9 });
+    const beltMat = new THREE.MeshStandardMaterial({ color: 0x442200, roughness: 0.85 });
+    const shieldMat = new THREE.MeshStandardMaterial({ color: 0x556677, metalness: 0.4, roughness: 0.5 });
+    const crestRed = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.7 });
+    const crestBlue = new THREE.MeshStandardMaterial({ color: 0x2244aa, roughness: 0.7 });
+    const sackMat = new THREE.MeshStandardMaterial({ color: 0xaa8855, roughness: 0.95 });
+    const spearWood = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.9 });
+    const spearTip = new THREE.MeshStandardMaterial({ color: 0xaabbcc, metalness: 0.7, roughness: 0.3 });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
     const woolMat = new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.98, metalness: 0.0 });
     const sheepFaceMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
     const sheepLegMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
 
+    const hairMats = [hairBrown, hairBlack, hairBlonde];
+    const skinMats = [skinMat, skinDark];
+    const peasantColors = [
+      new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0x7a5533, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0x996655, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0x6b5540, roughness: 0.9 }),
+    ];
+    const merchantColors = [
+      new THREE.MeshStandardMaterial({ color: 0x668844, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: 0x995533, roughness: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: 0x557755, roughness: 0.8 }),
+    ];
+
     // Build mesh for each NPC type. Order must match _createNPCs():
-    // 30 city peasant/knight/merchant, 8 market merchants, 6 wall knights, then ~36 sheep
+    // 60 city, 20 market, 10 cathedral, 8 tavern, 5 blacksmith,
+    // 6 noble, 8 training, 16 gates, 6 wall knights, then ~36 sheep
     const npcTypes: ("peasant" | "knight" | "merchant" | "sheep")[] = [];
-    // City streets (30): mixed types
-    for (let ci = 0; ci < 30; ci++) npcTypes.push(["peasant", "knight", "merchant"][ci % 3] as "peasant" | "knight" | "merchant");
-    // Market (8)
-    for (let mi = 0; mi < 8; mi++) npcTypes.push("merchant");
+    // City streets (60): mixed types
+    for (let ci = 0; ci < 60; ci++) npcTypes.push(["peasant", "knight", "merchant"][ci % 3] as "peasant" | "knight" | "merchant");
+    // Market (20): merchants + peasants
+    for (let mi = 0; mi < 20; mi++) npcTypes.push(mi % 3 === 0 ? "peasant" : "merchant");
+    // Cathedral (10)
+    for (let i = 0; i < 10; i++) npcTypes.push("peasant");
+    // Tavern (8)
+    for (let i = 0; i < 8; i++) npcTypes.push(i < 3 ? "knight" : "peasant");
+    // Blacksmith (5)
+    for (let i = 0; i < 5; i++) npcTypes.push("peasant");
+    // Noble quarter (6)
+    for (let i = 0; i < 6; i++) npcTypes.push(i < 2 ? "knight" : "merchant");
+    // Training yard (8)
+    for (let i = 0; i < 8; i++) npcTypes.push("knight");
+    // Gates (16)
+    for (let i = 0; i < 16; i++) npcTypes.push(["peasant", "knight", "merchant"][i % 3] as "peasant" | "knight" | "merchant");
     // Wall guards (6)
     for (let gi = 0; gi < 6; gi++) npcTypes.push("knight");
     // Sheep flocks (6 flocks * ~6 avg = ~36 sheep, build 50 to be safe)
     for (let si = 0; si < 50; si++) npcTypes.push("sheep");
     const npcCount = npcTypes.length;
+
+    // Simple seeded rng for visual variation
+    let _vs = 7777;
+    const vr = () => { _vs = (_vs * 16807) % 2147483647; return (_vs - 1) / 2147483646; };
 
     for (let i = 0; i < npcCount; i++) {
       const npcType = npcTypes[i];
@@ -6451,12 +6500,12 @@ export class EagleFlightRenderer {
         }
         // Eyes
         for (const ex of [-1, 1]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 12), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 12), eyeMat);
           eye.position.set(ex * 0.1, 0.58, -0.68);
           group.add(eye);
         }
         // Snout
-        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), new THREE.MeshStandardMaterial({ color: 0x444444 }));
+        const snout = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), sheepLegMat);
         snout.position.set(0, 0.48, -0.7);
         group.add(snout);
         // Legs
@@ -6472,30 +6521,184 @@ export class EagleFlightRenderer {
         tail.position.set(0, 0.55, 0.5);
         group.add(tail);
       } else {
-        // Human NPC
-        const mat = npcType === "peasant" ? peasantMat : npcType === "knight" ? knightMat : merchantMat;
-        // Body
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.7, 0.25), mat);
-        body.position.y = 0.7;
-        group.add(body);
-        // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), skinMat);
-        head.position.y = 1.2;
-        group.add(head);
-        // Legs
-        for (const side of [-1, 1]) {
-          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), mat);
-          leg.position.set(side * 0.1, 0.2, 0);
-          group.add(leg);
-        }
-        // Knights get helmet
+        // ── Detailed human NPC ──
+        const skin = skinMats[Math.floor(vr() * skinMats.length)];
+        const hair = hairMats[Math.floor(vr() * hairMats.length)];
+
+        // --- Torso (chest + shoulders) ---
         if (npcType === "knight") {
-          const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), knightMat);
-          helmet.position.y = 1.25;
+          // Armoured torso with chainmail underlay
+          const chainmail = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.22), knightChainmail);
+          chainmail.position.y = 0.75;
+          group.add(chainmail);
+          const chestplate = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.45, 0.26), knightArmor);
+          chestplate.position.y = 0.78;
+          group.add(chestplate);
+          // Shoulder pauldrons
+          for (const side of [-1, 1]) {
+            const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), knightArmor);
+            pauldron.position.set(side * 0.22, 1.0, 0);
+            group.add(pauldron);
+          }
+        } else if (npcType === "merchant") {
+          const robeMat = merchantColors[Math.floor(vr() * merchantColors.length)];
+          // Long robe
+          const robe = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.75, 0.24), robeMat);
+          robe.position.y = 0.65;
+          group.add(robe);
+          // Apron over front
+          const apron = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.45, 0.02), merchantApron);
+          apron.position.set(0, 0.6, -0.13);
+          group.add(apron);
+        } else {
+          // Peasant tunic
+          const tunicMat = peasantColors[Math.floor(vr() * peasantColors.length)];
+          const tunic = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.55, 0.22), tunicMat);
+          tunic.position.y = 0.72;
+          group.add(tunic);
+        }
+
+        // --- Belt ---
+        const belt = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.05, 0.27), beltMat);
+        belt.position.y = 0.52;
+        group.add(belt);
+
+        // --- Arms ---
+        const armMat = npcType === "knight" ? knightChainmail : npcType === "merchant" ? merchantColors[Math.floor(vr() * merchantColors.length)] : peasantColors[Math.floor(vr() * peasantColors.length)];
+        for (const side of [-1, 1]) {
+          // Upper arm
+          const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.3, 0.09), armMat);
+          upperArm.position.set(side * 0.22, 0.85, 0);
+          group.add(upperArm);
+          // Forearm
+          const forearm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.08), armMat);
+          forearm.position.set(side * 0.22, 0.58, 0);
+          group.add(forearm);
+          // Hand
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), skin);
+          hand.position.set(side * 0.22, 0.44, 0);
+          group.add(hand);
+        }
+
+        // --- Head ---
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), skin);
+        head.name = "head";
+        head.position.y = 1.22;
+        group.add(head);
+
+        // Eyes
+        for (const ex of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), eyeMat);
+          eye.position.set(ex * 0.055, 1.24, -0.12);
+          group.add(eye);
+        }
+        // Nose
+        const nose = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.04), skin);
+        nose.position.set(0, 1.2, -0.15);
+        group.add(nose);
+
+        // --- Hair / headwear ---
+        if (npcType === "knight") {
+          // Full helmet with visor slit
+          const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), knightArmor);
+          helmet.position.y = 1.24;
           group.add(helmet);
-          const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 16), new THREE.MeshStandardMaterial({ color: 0x664422 }));
-          spear.position.set(0.2, 1, 0);
-          group.add(spear);
+          // Visor slit
+          const visor = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.02), eyeMat);
+          visor.position.set(0, 1.24, -0.15);
+          group.add(visor);
+          // Crest / plume on top
+          const crest = new THREE.Mesh(
+            new THREE.BoxGeometry(0.03, 0.12, 0.14),
+            vr() > 0.5 ? crestRed : crestBlue,
+          );
+          crest.position.set(0, 1.4, 0);
+          group.add(crest);
+        } else if (npcType === "merchant") {
+          // Hat / hood
+          const hood = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
+          hood.position.y = 1.28;
+          group.add(hood);
+          // Brim
+          const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 16), hair);
+          brim.position.y = 1.28;
+          group.add(brim);
+        } else {
+          // Peasant hair — side-swept
+          const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(0.145, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
+          hairMesh.position.y = 1.27;
+          group.add(hairMesh);
+        }
+
+        // --- Legs with boots ---
+        const legMat = npcType === "knight" ? knightArmor : peasantTrousers;
+        for (const side of [-1, 1]) {
+          // Upper leg
+          const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.25, 0.12), legMat);
+          thigh.position.set(side * 0.1, 0.35, 0);
+          group.add(thigh);
+          // Boot
+          const boot = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.2, 0.16), bootMat);
+          boot.position.set(side * 0.1, 0.1, -0.01);
+          group.add(boot);
+        }
+
+        // --- Type-specific accessories ---
+        if (npcType === "knight") {
+          // Spear in right hand
+          const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 8), spearWood);
+          shaft.position.set(0.22, 1.05, 0);
+          group.add(shaft);
+          // Spear tip
+          const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 8), spearTip);
+          tip.position.set(0.22, 1.88, 0);
+          group.add(tip);
+          // Shield on left arm
+          if (vr() > 0.4) {
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.22), shieldMat);
+            shield.position.set(-0.26, 0.75, 0);
+            group.add(shield);
+            // Shield emblem (small cross)
+            const emblem = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.12, 0.03), crestRed);
+            emblem.position.set(-0.275, 0.78, 0);
+            group.add(emblem);
+            const emblemH = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.1), crestRed);
+            emblemH.position.set(-0.275, 0.8, 0);
+            group.add(emblemH);
+          }
+          // Cape on back
+          if (vr() > 0.5) {
+            const capeMat = vr() > 0.5 ? crestRed : crestBlue;
+            const cape = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.5, 0.02), capeMat);
+            cape.position.set(0, 0.72, 0.14);
+            cape.rotation.x = 0.1;
+            group.add(cape);
+          }
+        } else if (npcType === "merchant") {
+          // Sack / bundle carried
+          if (vr() > 0.3) {
+            const sack = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), sackMat);
+            sack.position.set(0.24, 0.6, 0);
+            group.add(sack);
+          }
+          // Pouch on belt
+          const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.06, 0.06), beltMat);
+          pouch.position.set(0.15, 0.49, -0.1);
+          group.add(pouch);
+        } else {
+          // Peasant — occasional walking stick
+          if (vr() > 0.6) {
+            const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 1.1, 6), spearWood);
+            stick.position.set(0.22, 0.55, 0);
+            stick.rotation.z = -0.15;
+            group.add(stick);
+          }
+          // Occasional basket
+          if (vr() > 0.7) {
+            const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.1, 8), sackMat);
+            basket.position.set(-0.22, 0.55, 0);
+            group.add(basket);
+          }
         }
       }
 
@@ -7447,13 +7650,13 @@ export class EagleFlightRenderer {
       const dz2 = npc.targetZ - npc.position.z;
       group.rotation.y = Math.atan2(dx2, dz2);
       // Look up at eagle if nearby
-      if (npc.lookingUp && group.children.length >= 2) {
-        group.children[1].rotation.x = -0.5; // tilt head up
-      } else if (group.children.length >= 2) {
-        group.children[1].rotation.x = 0;
+      const headMesh = group.getObjectByName("head");
+      if (headMesh) {
+        headMesh.rotation.x = npc.lookingUp ? -0.5 : 0;
       }
       // Walk animation — bob up and down
-      group.position.y = npc.position.y + Math.abs(Math.sin(t * npc.speed * 3 + i)) * 0.05;
+      const walkPhase = t * npc.speed * 3 + i;
+      group.position.y = npc.position.y + Math.abs(Math.sin(walkPhase)) * 0.05;
     }
 
     // --- Spell effects ---

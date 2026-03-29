@@ -469,13 +469,13 @@ function _createNPCs(): EFNPC[] {
   const rng = _seededRng(3333);
   const npcs: EFNPC[] = [];
   const types: EFNPC["type"][] = ["peasant", "knight", "merchant"];
-  // City streets
-  for (let i = 0; i < 30; i++) {
+  // City streets — dense population throughout Camelot
+  for (let i = 0; i < 60; i++) {
     const angle = rng() * Math.PI * 2;
-    const dist = 15 + rng() * 60;
+    const dist = 15 + rng() * 70;
     const x = Math.cos(angle) * dist;
     const z = Math.sin(angle) * dist;
-    if (Math.sqrt(x * x + (z - 30) ** 2) < 30) continue; // skip castle
+    if (Math.sqrt(x * x + (z - 30) ** 2) < 25) continue; // skip castle
     npcs.push({
       position: { x, y: 0, z },
       targetX: x + (rng() - 0.5) * 20,
@@ -488,19 +488,111 @@ function _createNPCs(): EFNPC[] {
       scareTimer: 0,
     });
   }
-  // Market crowd
-  for (let i = 0; i < 8; i++) {
+  // Market crowd — bustling market square
+  for (let i = 0; i < 20; i++) {
     npcs.push({
-      position: { x: -30 + (rng() - 0.5) * 15, y: 0, z: -35 + (rng() - 0.5) * 15 },
-      targetX: -30 + (rng() - 0.5) * 15,
-      targetZ: -35 + (rng() - 0.5) * 15,
+      position: { x: -30 + (rng() - 0.5) * 25, y: 0, z: -35 + (rng() - 0.5) * 25 },
+      targetX: -30 + (rng() - 0.5) * 25,
+      targetZ: -35 + (rng() - 0.5) * 25,
       speed: 0.5 + rng(),
-      type: "merchant",
+      type: rng() < 0.6 ? "merchant" : "peasant",
       lookingUp: false,
       lookTimer: 0,
       scared: false,
       scareTimer: 0,
     });
+  }
+  // Cathedral congregation
+  for (let i = 0; i < 10; i++) {
+    npcs.push({
+      position: { x: 35 + (rng() - 0.5) * 14, y: 0, z: -30 + (rng() - 0.5) * 14 },
+      targetX: 35 + (rng() - 0.5) * 14,
+      targetZ: -30 + (rng() - 0.5) * 14,
+      speed: 0.3 + rng() * 0.7,
+      type: "peasant",
+      lookingUp: false,
+      lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
+    });
+  }
+  // Tavern patrons milling about outside The Prancing Pony
+  for (let i = 0; i < 8; i++) {
+    npcs.push({
+      position: { x: 45 + (rng() - 0.5) * 12, y: 0, z: 10 + (rng() - 0.5) * 12 },
+      targetX: 45 + (rng() - 0.5) * 12,
+      targetZ: 10 + (rng() - 0.5) * 12,
+      speed: 0.4 + rng() * 0.8,
+      type: rng() < 0.4 ? "knight" : "peasant",
+      lookingUp: false,
+      lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
+    });
+  }
+  // Blacksmith area workers
+  for (let i = 0; i < 5; i++) {
+    npcs.push({
+      position: { x: -45 + (rng() - 0.5) * 10, y: 0, z: 5 + (rng() - 0.5) * 10 },
+      targetX: -45 + (rng() - 0.5) * 10,
+      targetZ: 5 + (rng() - 0.5) * 10,
+      speed: 0.6 + rng() * 0.8,
+      type: "peasant",
+      lookingUp: false,
+      lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
+    });
+  }
+  // Noble quarter strollers
+  for (let i = 0; i < 6; i++) {
+    npcs.push({
+      position: { x: 25 + (rng() - 0.5) * 16, y: 0, z: (rng() - 0.5) * 16 },
+      targetX: 25 + (rng() - 0.5) * 20,
+      targetZ: (rng() - 0.5) * 20,
+      speed: 0.8 + rng() * 1.2,
+      type: rng() < 0.3 ? "knight" : "merchant",
+      lookingUp: false,
+      lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
+    });
+  }
+  // Training yard soldiers
+  for (let i = 0; i < 8; i++) {
+    npcs.push({
+      position: { x: -50 + (rng() - 0.5) * 14, y: 0, z: 45 + (rng() - 0.5) * 14 },
+      targetX: -50 + (rng() - 0.5) * 14,
+      targetZ: 45 + (rng() - 0.5) * 14,
+      speed: 1.5 + rng() * 1.5,
+      type: "knight",
+      lookingUp: false,
+      lookTimer: 0,
+      scared: false,
+      scareTimer: 0,
+    });
+  }
+  // Gate crowds — people coming and going through the main gates
+  const gates = [
+    { x: 0, z: -85 },  // north gate
+    { x: 0, z: 85 },   // south gate
+    { x: 85, z: 0 },   // east gate
+    { x: -85, z: 0 },  // west gate
+  ];
+  for (const gate of gates) {
+    for (let i = 0; i < 4; i++) {
+      npcs.push({
+        position: { x: gate.x + (rng() - 0.5) * 10, y: 0, z: gate.z + (rng() - 0.5) * 10 },
+        targetX: gate.x + (rng() - 0.5) * 30,
+        targetZ: gate.z + (rng() - 0.5) * 30,
+        speed: 1.2 + rng() * 1.8,
+        type: types[Math.floor(rng() * types.length)],
+        lookingUp: false,
+        lookTimer: 0,
+        scared: false,
+        scareTimer: 0,
+      });
+    }
   }
   // Wall patrol guards
   for (let i = 0; i < 6; i++) {
