@@ -4047,7 +4047,9 @@ export class DiabloRenderer {
             this._scene.remove(soul);
           }
         }
-      } else {
+      } else if (enemy.state === EnemyState.DEAD) {
+        // Keep mesh hidden during DEAD state (corpse cleanup period)
+        mesh.visible = false;
         // Clean up dying anim tracking
         const oldSoul = this._scene.getObjectByName(`soul-${enemy.id}`);
         if (oldSoul) { this._disposeObject3D(oldSoul); this._scene.remove(oldSoul); }

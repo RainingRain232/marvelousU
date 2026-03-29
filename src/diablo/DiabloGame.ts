@@ -4203,22 +4203,20 @@ export class DiabloGame {
   }
 
   // ──────────────────────────────────────────────────────────────
-  //  HELPER: Pickup nearest loot within range (F key)
+  //  HELPER: Pickup all loot within range (F key)
   // ──────────────────────────────────────────────────────────────
   private _pickupNearbyLoot(): void {
     const p = this._state.player;
-    const pickupRange = 3;
-    let nearest: typeof this._state.loot[0] | null = null;
-    let nearestDist = pickupRange;
+    const pickupRange = 4;
+    const toPickup: string[] = [];
     for (const loot of this._state.loot) {
       const d = this._dist(p.x, p.z, loot.x, loot.z);
-      if (d < nearestDist) {
-        nearestDist = d;
-        nearest = loot;
+      if (d < pickupRange) {
+        toPickup.push(loot.id);
       }
     }
-    if (nearest) {
-      this._pickupLoot(nearest.id);
+    for (const id of toPickup) {
+      this._pickupLoot(id);
     }
   }
 

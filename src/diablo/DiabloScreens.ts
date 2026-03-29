@@ -3657,9 +3657,10 @@ export function showControls(ctx: ScreenContext): void {
           ${row("F1-F4", "Use Potion from Quick Slots")}
 
           ${sectionHeader("INTERACTION")}
-          ${row("F", "Open nearby Chest")}
+          ${row("F", "Pick up all loot nearby / Open Chest")}
           ${row("E", "Interact (Vendors / Crafting in Camelot)")}
           ${row("E", "Use Town Portal (near portal on combat maps)")}
+          ${row("H", "Socket selected rune into hovered item (in Inventory)")}
 
           ${sectionHeader("INTERFACE")}
           ${row("I", "Open Inventory")}
