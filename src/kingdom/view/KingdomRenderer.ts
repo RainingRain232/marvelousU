@@ -96,7 +96,7 @@ export class KingdomRenderer {
       this._hudTexts.push(t);
       this._hud.addChild(t);
     }
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 36; i++) {
       const t = new Text({ text: "", style: SUBTITLE_STYLE });
       t.visible = false;
       this._uiTexts.push(t);
@@ -3209,36 +3209,32 @@ export class KingdomRenderer {
     };
 
     const drawKeyLine = (key: string, desc: string) => {
+      const y = contentY + line * lineH;
+      // Key badge background
+      const badgeW = 80;
+      g.roundRect(contentX - 2, y - 2, badgeW, lineH - 4, 3)
+        .fill({ color: 0x222244, alpha: 0.6 });
+      g.roundRect(contentX - 2, y - 2, badgeW, lineH - 4, 3)
+        .stroke({ color: 0x444466, width: 1 });
+      // Key label (gold, bold) — uses current line slot
       const idx = 1 + line;
       if (idx < this._uiTexts.length) {
         const t = this._uiTexts[idx]; t.visible = true;
-        t.style = sty(13, 0xBBBBDD, false, 0);
-        t.text = `${key}`;
-        t.x = contentX; t.y = contentY + line * lineH;
+        t.style = sty(13, 0xFFD700, true, 0);
+        t.text = key;
+        t.x = contentX + 4; t.y = y;
       }
-      // Key badge
-      const badgeW = 80;
-      g.roundRect(contentX - 2, contentY + line * lineH - 2, badgeW, lineH - 4, 3)
-        .fill({ color: 0x222244, alpha: 0.6 });
-      g.roundRect(contentX - 2, contentY + line * lineH - 2, badgeW, lineH - 4, 3)
-        .stroke({ color: 0x444466, width: 1 });
-
+      line++;
+      // Description (next line slot, indented right of badge)
       const idx2 = 1 + line;
       if (idx2 < this._uiTexts.length) {
         const t = this._uiTexts[idx2]; t.visible = true;
-        t.style = sty(13, 0xFFD700, true, 0);
-        t.text = key;
-        t.x = contentX + 4; t.y = contentY + line * lineH;
-      }
-      // Description in a second pseudo-line by abusing the same text
-      // We'll combine key+desc in one text
-      if (idx < this._uiTexts.length) {
-        const t = this._uiTexts[idx]; t.visible = true;
         t.style = sty(13, 0xBBBBDD, false, 0);
-        t.text = `                    ${desc}`;
-        t.x = contentX; t.y = contentY + line * lineH;
+        t.text = desc;
+        t.x = contentX + badgeW + 12; t.y = y;
       }
-      line++;
+      // Don't increment line again — key and desc share the same visual row
+      // but use two text slots. Increment was already done above.
     };
 
     if (page === "controls") {
