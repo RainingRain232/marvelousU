@@ -104,8 +104,12 @@ export class CaesarRenderer {
     this._app = new PIXI.Application();
     await this._app.init({ width: sw, height: sh, backgroundColor: 0x4a7a2c, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
     const canvas = this._app.canvas as HTMLCanvasElement;
-    canvas.style.zIndex = "1";
-    document.body.appendChild(canvas);
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.zIndex = "10";
+    const container = document.getElementById("pixi-container") || document.body;
+    container.appendChild(canvas);
     const s = this._app.stage;
     s.addChild(this._terrainLayer); s.addChild(this._decorLayer); s.addChild(this._gridLayer);
     s.addChild(this._shadowLayer); s.addChild(this._buildingLayer); s.addChild(this._walkerLayer);
