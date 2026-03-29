@@ -49,6 +49,10 @@ export class AoWGame {
   // Camera key state
   private _keys: Record<string, boolean> = {};
 
+  // Escape menu
+  private _escMenuDiv: HTMLDivElement | null = null;
+  private _paused = false;
+
   // Cycling indices for hotkeys
   private _armyCycleIdx = 0;
   private _cityCycleIdx = 0;
@@ -206,6 +210,12 @@ export class AoWGame {
   private _gameLoop(dt: number): void {
     if (!this._state) return;
 
+    // Paused
+    if (this._paused) {
+      this._sceneManager.render();
+      return;
+    }
+
     // Battle animation mode
     if (this._battleAnimator) {
       this._battleAnimator.tick(dt / 60); // dt is in frames, convert to seconds
@@ -241,7 +251,7 @@ export class AoWGame {
       const key = e.key.toLowerCase();
       if (e.type === "keydown") {
         this._keys[key] = true;
-        if (key === "escape") this._deselect();
+        if (key === "escape") { if (this._paused) this._closeEscMenu(); else this._openEscMenu(); }
         if (key === " ") this._endTurn();
         if (key === "tab") { e.preventDefault(); this._cycleNextArmy(); }
         if (key === "c") this._cycleNextCity();
@@ -1309,10 +1319,128 @@ export class AoWGame {
   }
 
   // ---------------------------------------------------------------------------
+  // Escape Menu
+  // ---------------------------------------------------------------------------
+
+  private _openEscMenu(): void {
+    if (this._escMenuDiv || !this._state) return;
+    if (this._state.phase !== AoWPhase.PLAYING) { this._deselect(); return; }
+    this._paused = true;
+    this._deselect();
+
+    const div = document.createElement("div");
+    div.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,5,15,0.85);z-index:40;display:flex;align-items:center;justify-content:center;font-family:'Segoe UI',monospace;";
+
+    const panel = document.createElement("div");
+    panel.style.cssText = "background:rgba(15,12,30,0.97);border:2px solid rgba(218,165,32,0.5);border-radius:12px;padding:28px 36px;min-width:420px;max-width:520px;color:#e0d5c0;";
+
+    // Tab system
+    let currentTab = "controls";
+    const renderTab = () => {
+      let content = "";
+      if (currentTab === "controls") {
+        content = `
+          <div style="font-size:13px;line-height:2;text-align:left;">
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">WASD</span> Pan camera</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">Q / E</span> Rotate camera</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">Scroll</span> Zoom in/out</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">Click</span> Select army / city</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">Right-click</span> Move / attack</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">Tab</span> Next army</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">C</span> Next city</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">B</span> Spell book</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">H</span> Heal army</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">1-5</span> Quick cast spell</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">Space</span> End turn</div>
+            <div><span style="display:inline-block;min-width:100px;color:#ffd700;font-weight:bold">ESC</span> Pause / Resume</div>
+          </div>`;
+      } else if (currentTab === "intro") {
+        content = `
+          <div style="font-size:13px;line-height:1.7;color:#aaa;">
+            <p>Welcome to the <b style="color:#daa520">Age of Wonders</b> — a turn-based strategy game set in the realm of Camelot.</p>
+            <p>Lead your chosen faction to glory by conquering enemy cities, recruiting powerful armies, researching arcane spells, and seeking the legendary <b style="color:#ffd700">Holy Grail</b>.</p>
+            <p style="color:#ccc;margin-top:12px;"><b>Victory Conditions:</b></p>
+            <ul style="margin:4px 0 0 16px;padding:0;">
+              <li>Capture all enemy cities</li>
+              <li>Find the Holy Grail (explore ruins hexes)</li>
+            </ul>
+            <p style="color:#ccc;margin-top:12px;"><b>Factions:</b></p>
+            <ul style="margin:4px 0 0 16px;padding:0;">
+              <li style="color:#4488cc">Knights of Camelot — balanced, strong cavalry</li>
+              <li style="color:#66aa44">Undead Legion — cheap hordes, dark magic</li>
+              <li style="color:#88ccaa">Fey Court — fast, magical, nature powers</li>
+              <li style="color:#cc8844">Ironhold Dwarves — tough, armored, siege weapons</li>
+            </ul>
+          </div>`;
+      } else if (currentTab === "concepts") {
+        content = `
+          <div style="font-size:13px;line-height:1.7;color:#aaa;">
+            <p><b style="color:#ffd700">Cities</b> — Generate gold and mana each turn. Upgrade to Level II/III to unlock stronger units. Build walls for defense (+3 bonus).</p>
+            <p><b style="color:#ffd700">Armies</b> — Up to 6 units per army. Move by right-clicking. Armies with heroes get leadership bonuses.</p>
+            <p><b style="color:#ffd700">Unit Tiers</b> — Tier I (basic), Tier II (elite), Tier III (legendary). Higher tiers require city upgrades.</p>
+            <p><b style="color:#ffd700">Combat</b> — Automatic battles resolve based on unit stats, abilities, and terrain bonuses. Speed determines turn order.</p>
+            <p><b style="color:#ffd700">Spells</b> — Research spells over multiple turns. Cast with mana for healing, damage, buffs, and map effects.</p>
+            <p><b style="color:#ffd700">Terrain</b> — Plains (1 move), Forest (2, +1 def), Hills (2, +2 def), Mountains (4, +3 def), Swamp (3, -1 def).</p>
+          </div>`;
+      }
+
+      panel.innerHTML = `
+        <div style="font-size:28px;font-weight:bold;color:#daa520;text-align:center;margin-bottom:4px;letter-spacing:4px;text-shadow:0 2px 8px rgba(218,165,32,0.3)">PAUSED</div>
+        <div style="text-align:center;color:#665;font-size:12px;margin-bottom:16px">Turn ${this._state!.turn} — ${this._state!.players[0].faction}</div>
+        <div style="display:flex;gap:4px;margin-bottom:14px;justify-content:center">
+          ${["controls", "intro", "concepts"].map(tab =>
+            `<button class="aow-esc-tab" data-tab="${tab}" style="padding:6px 16px;font-size:12px;font-weight:bold;
+              background:${currentTab === tab ? "rgba(218,165,32,0.2)" : "rgba(30,25,50,0.6)"};
+              color:${currentTab === tab ? "#ffd700" : "#888"};
+              border:1px solid ${currentTab === tab ? "#daa520" : "#444"};border-radius:4px;cursor:pointer;letter-spacing:1px;
+              pointer-events:auto;">${tab.charAt(0).toUpperCase() + tab.slice(1)}</button>`
+          ).join("")}
+        </div>
+        <div style="min-height:200px;margin-bottom:18px">${content}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+          <button id="aow-esc-resume" style="width:100%;padding:10px;font-size:16px;font-weight:bold;
+            background:linear-gradient(180deg,rgba(218,165,32,0.15),rgba(218,165,32,0.05));
+            color:#daa520;border:2px solid rgba(218,165,32,0.5);border-radius:6px;cursor:pointer;letter-spacing:2px;pointer-events:auto;">RESUME</button>
+          <button id="aow-esc-exit" style="width:100%;padding:8px;font-size:13px;
+            background:none;color:#884444;border:1px solid #553333;border-radius:4px;cursor:pointer;pointer-events:auto;">EXIT TO MENU</button>
+        </div>
+      `;
+
+      // Wire tab buttons
+      panel.querySelectorAll(".aow-esc-tab").forEach(btn => {
+        (btn as HTMLElement).onclick = () => {
+          currentTab = (btn as HTMLElement).dataset.tab!;
+          renderTab();
+        };
+      });
+      // Wire resume
+      const resumeBtn = panel.querySelector("#aow-esc-resume");
+      if (resumeBtn) (resumeBtn as HTMLElement).onclick = () => this._closeEscMenu();
+      // Wire exit
+      const exitBtn = panel.querySelector("#aow-esc-exit");
+      if (exitBtn) (exitBtn as HTMLElement).onclick = () => { this._closeEscMenu(); this._exitGame(); };
+    };
+
+    div.appendChild(panel);
+    document.body.appendChild(div);
+    this._escMenuDiv = div;
+    renderTab();
+  }
+
+  private _closeEscMenu(): void {
+    if (this._escMenuDiv) {
+      this._escMenuDiv.remove();
+      this._escMenuDiv = null;
+    }
+    this._paused = false;
+  }
+
+  // ---------------------------------------------------------------------------
   // Exit
   // ---------------------------------------------------------------------------
 
   private _exitGame(): void {
+    this._closeEscMenu();
     this.destroy();
     window.dispatchEvent(new Event("aowExit"));
   }
@@ -1322,6 +1450,7 @@ export class AoWGame {
   // ---------------------------------------------------------------------------
 
   destroy(): void {
+    this._closeEscMenu();
     if (this._tickerCb) {
       viewManager.app.ticker.remove(this._tickerCb);
       this._tickerCb = null;
