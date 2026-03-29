@@ -2144,7 +2144,7 @@ export class ChariotGame {
       const wv: number[] = [], wi: number[] = [];
       for (let i = 0; i < pts.length; i++) {
         const p = pts[i];
-        const hw = p.width / 2 + CURB_W + 0.3;
+        const hw = p.width / 2 + CURB_W + 1.5;
         const base = p.pos.clone().add(p.right.clone().multiplyScalar(side * hw));
         const top = base.clone(); top.y += WALL_HEIGHT;
         wv.push(base.x, base.y, base.z, top.x, top.y, top.z);
@@ -2212,7 +2212,7 @@ export class ChariotGame {
     // architectural scenery: track-specific structures
     const archMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.7, metalness: 0.1 });
     if (def.specialScenery === "castle") {
-      // castle tower clusters
+      // castle tower clusters along track sides
       for (let i = 40; i < track.points.length; i += 80 + Math.floor(rng() * 40)) {
         const pt = track.points[i % track.points.length];
         const side = rng() > 0.5 ? 1 : -1;
@@ -2225,8 +2225,8 @@ export class ChariotGame {
         tower.position.copy(pos); tower.position.y = towerH / 2; tower.castShadow = true;
         this._scene.add(tower); this._sceneryObjects.push(tower);
         // crenellations (top ring)
-        const top = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.8, 8), archMat);
-        top.position.copy(pos); top.position.y = towerH; this._scene.add(top); this._sceneryObjects.push(top);
+        const cren = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.8, 8), archMat);
+        cren.position.copy(pos); cren.position.y = towerH; this._scene.add(cren); this._sceneryObjects.push(cren);
         // turret cone
         const cone = new THREE.Mesh(new THREE.ConeGeometry(1.8, 2.5, 8),
           new THREE.MeshStandardMaterial({ color: 0x664433, roughness: 0.7 }));
@@ -2244,6 +2244,299 @@ export class ChariotGame {
           wall.castShadow = true;
           this._scene.add(wall); this._sceneryObjects.push(wall);
         }
+      }
+
+      // ─── GRAND CASTLE in the center of the track loop ─────────────────
+      // Compute centroid of all track points to find the "inside" of the circuit
+      const cx = track.points.reduce((s, p) => s + p.pos.x, 0) / track.points.length;
+      const cz = track.points.reduce((s, p) => s + p.pos.z, 0) / track.points.length;
+      const castlePos = new THREE.Vector3(cx, 0, cz);
+
+      const stoneMat = new THREE.MeshStandardMaterial({ color: 0x999088, roughness: 0.75, metalness: 0.05 });
+      const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x776e65, roughness: 0.8 });
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.65 });
+      const roofBlueMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.5, metalness: 0.15 });
+      const bannerMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.6 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xddaa33, roughness: 0.3, metalness: 0.6 });
+
+      // Main keep (central tall building)
+      const keepH = 22;
+      const keep = new THREE.Mesh(new THREE.BoxGeometry(10, keepH, 12), stoneMat);
+      keep.position.copy(castlePos); keep.position.y = keepH / 2; keep.castShadow = true;
+      this._scene.add(keep); this._sceneryObjects.push(keep);
+      // Keep battlements
+      for (let bx = -4; bx <= 4; bx += 2) {
+        for (let bz = -5; bz <= 5; bz += 2) {
+          if (Math.abs(bx) < 4 && Math.abs(bz) < 5) continue; // only edges
+          const merlon = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 1.2), stoneDarkMat);
+          merlon.position.set(castlePos.x + bx, keepH + 0.75, castlePos.z + bz);
+          merlon.castShadow = true;
+          this._scene.add(merlon); this._sceneryObjects.push(merlon);
+        }
+      }
+      // Keep roof (peaked)
+      const keepRoof = new THREE.Mesh(new THREE.ConeGeometry(8, 6, 4), roofBlueMat);
+      keepRoof.position.copy(castlePos); keepRoof.position.y = keepH + 3;
+      keepRoof.rotation.y = Math.PI / 4; keepRoof.castShadow = true;
+      this._scene.add(keepRoof); this._sceneryObjects.push(keepRoof);
+
+      // Main keep windows (rows of glowing slots)
+      for (let row = 0; row < 3; row++) {
+        for (const side of [-1, 1]) {
+          for (let w = -1; w <= 1; w++) {
+            const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.4, 0.3),
+              new THREE.MeshStandardMaterial({ color: 0xffcc66, emissive: 0xffaa33, emissiveIntensity: 1.2 }));
+            win.position.set(castlePos.x + side * 5.05, 8 + row * 5, castlePos.z + w * 3);
+            this._scene.add(win); this._sceneryObjects.push(win);
+          }
+        }
+      }
+
+      // 4 corner towers
+      const towerOffsets = [
+        { x: -8, z: -10 }, { x: 8, z: -10 }, { x: -8, z: 10 }, { x: 8, z: 10 }
+      ];
+      for (const off of towerOffsets) {
+        const th = 18 + rng() * 4;
+        const tw = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, th, 10), stoneMat);
+        tw.position.set(castlePos.x + off.x, th / 2, castlePos.z + off.z);
+        tw.castShadow = true;
+        this._scene.add(tw); this._sceneryObjects.push(tw);
+        // tower battlements
+        const tCren = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 1, 10), stoneDarkMat);
+        tCren.position.set(castlePos.x + off.x, th, castlePos.z + off.z);
+        this._scene.add(tCren); this._sceneryObjects.push(tCren);
+        // tower cone roof
+        const tRoof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 4, 10), roofMat);
+        tRoof.position.set(castlePos.x + off.x, th + 2, castlePos.z + off.z);
+        tRoof.castShadow = true;
+        this._scene.add(tRoof); this._sceneryObjects.push(tRoof);
+        // flag on top
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5, 6), stoneDarkMat);
+        pole.position.set(castlePos.x + off.x, th + 4.5, castlePos.z + off.z);
+        this._scene.add(pole); this._sceneryObjects.push(pole);
+        const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.2), bannerMat);
+        flag.material.side = THREE.DoubleSide;
+        flag.position.set(castlePos.x + off.x + 1.25, th + 6.5, castlePos.z + off.z);
+        this._scene.add(flag); this._sceneryObjects.push(flag);
+        // tower window slits
+        for (let wy = 0; wy < 3; wy++) {
+          const tWin = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3),
+            new THREE.MeshStandardMaterial({ color: 0xffcc66, emissive: 0xffaa33, emissiveIntensity: 0.8 }));
+          tWin.position.set(castlePos.x + off.x + (off.x > 0 ? 2.55 : -2.55), 5 + wy * 5, castlePos.z + off.z);
+          this._scene.add(tWin); this._sceneryObjects.push(tWin);
+        }
+      }
+
+      // Curtain walls connecting the 4 towers
+      const wallPairs = [
+        [towerOffsets[0], towerOffsets[1]], // front
+        [towerOffsets[2], towerOffsets[3]], // back
+        [towerOffsets[0], towerOffsets[2]], // left
+        [towerOffsets[1], towerOffsets[3]], // right
+      ];
+      for (const [a, b] of wallPairs) {
+        const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
+        const dx = b.x - a.x, dz = b.z - a.z;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        const angle = Math.atan2(dx, dz);
+        const cWallH = 10;
+        const cWall = new THREE.Mesh(new THREE.BoxGeometry(1.5, cWallH, len - 4), stoneMat);
+        cWall.position.set(castlePos.x + mx, cWallH / 2, castlePos.z + mz);
+        cWall.rotation.y = angle; cWall.castShadow = true;
+        this._scene.add(cWall); this._sceneryObjects.push(cWall);
+        // wall-top walkway battlements
+        for (let m = -Math.floor(len / 3); m <= Math.floor(len / 3); m++) {
+          const merlon = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.0), stoneDarkMat);
+          const frac = m / (len / 3);
+          merlon.position.set(
+            castlePos.x + a.x + (b.x - a.x) * (0.5 + frac * 0.4),
+            cWallH + 0.6,
+            castlePos.z + a.z + (b.z - a.z) * (0.5 + frac * 0.4)
+          );
+          this._scene.add(merlon); this._sceneryObjects.push(merlon);
+        }
+      }
+
+      // Grand gatehouse (front wall, facing nearest track point)
+      const gateH = 14;
+      const gate = new THREE.Mesh(new THREE.BoxGeometry(6, gateH, 3), stoneDarkMat);
+      gate.position.set(castlePos.x, gateH / 2, castlePos.z - 10);
+      gate.castShadow = true;
+      this._scene.add(gate); this._sceneryObjects.push(gate);
+      // Gate archway (dark opening)
+      const archway = new THREE.Mesh(new THREE.BoxGeometry(3, 5, 3.5),
+        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 }));
+      archway.position.set(castlePos.x, 2.5, castlePos.z - 10);
+      this._scene.add(archway); this._sceneryObjects.push(archway);
+      // Portcullis grate
+      const portcullis = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 4.5),
+        new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.4, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+      portcullis.position.set(castlePos.x, 2.5, castlePos.z - 8.5);
+      this._scene.add(portcullis); this._sceneryObjects.push(portcullis);
+      // Gate towers (flanking)
+      for (const side of [-1, 1]) {
+        const gTower = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.5, gateH + 2, 8), stoneMat);
+        gTower.position.set(castlePos.x + side * 4.5, (gateH + 2) / 2, castlePos.z - 10);
+        gTower.castShadow = true;
+        this._scene.add(gTower); this._sceneryObjects.push(gTower);
+        const gRoof = new THREE.Mesh(new THREE.ConeGeometry(2.3, 3, 8), roofMat);
+        gRoof.position.set(castlePos.x + side * 4.5, gateH + 2.5, castlePos.z - 10);
+        this._scene.add(gRoof); this._sceneryObjects.push(gRoof);
+      }
+
+      // Central spire on the keep (tallest point)
+      const spireH = 12;
+      const spire = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, spireH, 8), stoneMat);
+      spire.position.copy(castlePos); spire.position.y = keepH + 5 + spireH / 2;
+      spire.castShadow = true;
+      this._scene.add(spire); this._sceneryObjects.push(spire);
+      const spireRoof = new THREE.Mesh(new THREE.ConeGeometry(1.5, 5, 8), roofBlueMat);
+      spireRoof.position.copy(castlePos); spireRoof.position.y = keepH + 5 + spireH + 2.5;
+      this._scene.add(spireRoof); this._sceneryObjects.push(spireRoof);
+      // Gold finial at very top
+      const finial = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), goldMat);
+      finial.position.copy(castlePos); finial.position.y = keepH + 5 + spireH + 5.5;
+      this._scene.add(finial); this._sceneryObjects.push(finial);
+
+      // ─── TOWN BUILDINGS around the castle ─────────────────────────────
+      // Scatter medieval buildings in the circuit interior
+      const buildingConfigs = [
+        { dx: -20, dz: -5, w: 5, h: 7, d: 6 },
+        { dx: -22, dz: 8, w: 4, h: 5, d: 5 },
+        { dx: 20, dz: -3, w: 6, h: 6, d: 5 },
+        { dx: 18, dz: 12, w: 4, h: 8, d: 4 },
+        { dx: -15, dz: -18, w: 5, h: 5, d: 7 },
+        { dx: 14, dz: -16, w: 6, h: 6, d: 5 },
+        { dx: -5, dz: 22, w: 5, h: 6, d: 5 },
+        { dx: 8, dz: 20, w: 4, h: 5, d: 6 },
+        { dx: -25, dz: -15, w: 4, h: 4, d: 4 },
+        { dx: 25, dz: 8, w: 3, h: 5, d: 5 },
+        { dx: 0, dz: -22, w: 7, h: 5, d: 5 },
+        { dx: -12, dz: 18, w: 5, h: 7, d: 4 },
+      ];
+      const houseMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.8 });
+      const houseDarkMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.85 });
+      const timberMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.9 });
+
+      for (const bc of buildingConfigs) {
+        const bx = castlePos.x + bc.dx, bz = castlePos.z + bc.dz;
+        // Main building body
+        const bldg = new THREE.Mesh(new THREE.BoxGeometry(bc.w, bc.h, bc.d), houseMat);
+        bldg.position.set(bx, bc.h / 2, bz); bldg.castShadow = true;
+        bldg.rotation.y = rng() * Math.PI * 0.5;
+        this._scene.add(bldg); this._sceneryObjects.push(bldg);
+        // Peaked roof
+        const roofH = 2 + rng() * 2;
+        const bRoof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(bc.w, bc.d) * 0.75, roofH, 4),
+          rng() > 0.5 ? roofMat : roofBlueMat);
+        bRoof.position.set(bx, bc.h + roofH / 2, bz); bRoof.rotation.y = bldg.rotation.y + Math.PI / 4;
+        bRoof.castShadow = true;
+        this._scene.add(bRoof); this._sceneryObjects.push(bRoof);
+        // Timber frame accents (horizontal beams)
+        for (let ty = 0; ty < 2; ty++) {
+          const beam = new THREE.Mesh(new THREE.BoxGeometry(bc.w + 0.3, 0.2, 0.2), timberMat);
+          beam.position.set(bx, 2 + ty * (bc.h / 2 - 1), bz + bc.d / 2 + 0.1);
+          beam.rotation.y = bldg.rotation.y;
+          this._scene.add(beam); this._sceneryObjects.push(beam);
+        }
+        // Window (warm glow)
+        const bWin = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.2),
+          new THREE.MeshStandardMaterial({ color: 0xffcc66, emissive: 0xffaa33, emissiveIntensity: 0.6 }));
+        bWin.position.set(bx + bc.w / 2 * 0.3, bc.h * 0.6, bz + bc.d / 2 + 0.15);
+        bWin.rotation.y = bldg.rotation.y;
+        this._scene.add(bWin); this._sceneryObjects.push(bWin);
+        // Door
+        const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2, 0.2), timberMat);
+        door.position.set(bx - bc.w / 2 * 0.3, 1, bz + bc.d / 2 + 0.15);
+        door.rotation.y = bldg.rotation.y;
+        this._scene.add(door); this._sceneryObjects.push(door);
+      }
+
+      // Church/chapel with bell tower
+      {
+        const chX = castlePos.x - 18, chZ = castlePos.z - 18;
+        // Nave
+        const nave = new THREE.Mesh(new THREE.BoxGeometry(6, 8, 14), stoneMat);
+        nave.position.set(chX, 4, chZ); nave.castShadow = true;
+        this._scene.add(nave); this._sceneryObjects.push(nave);
+        // Nave roof
+        const naveRoof = new THREE.Mesh(new THREE.ConeGeometry(5, 4, 4), roofMat);
+        naveRoof.position.set(chX, 10, chZ); naveRoof.rotation.y = Math.PI / 4;
+        naveRoof.castShadow = true;
+        this._scene.add(naveRoof); this._sceneryObjects.push(naveRoof);
+        // Bell tower
+        const bellTH = 16;
+        const bellTower = new THREE.Mesh(new THREE.BoxGeometry(4, bellTH, 4), stoneDarkMat);
+        bellTower.position.set(chX, bellTH / 2, chZ - 8); bellTower.castShadow = true;
+        this._scene.add(bellTower); this._sceneryObjects.push(bellTower);
+        // Bell tower spire
+        const bellSpire = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 4), roofBlueMat);
+        bellSpire.position.set(chX, bellTH + 3, chZ - 8); bellSpire.rotation.y = Math.PI / 4;
+        this._scene.add(bellSpire); this._sceneryObjects.push(bellSpire);
+        // Cross on top
+        const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 0.2), goldMat);
+        crossV.position.set(chX, bellTH + 7, chZ - 8);
+        this._scene.add(crossV); this._sceneryObjects.push(crossV);
+        const crossH = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 0.2), goldMat);
+        crossH.position.set(chX, bellTH + 7.5, chZ - 8);
+        this._scene.add(crossH); this._sceneryObjects.push(crossH);
+        // Stained glass window (front)
+        const stainedGlass = new THREE.Mesh(new THREE.CircleGeometry(1.2, 16),
+          new THREE.MeshStandardMaterial({ color: 0x4488cc, emissive: 0x2266aa, emissiveIntensity: 1.5, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+        stainedGlass.position.set(chX, 5, chZ + 7.05);
+        this._scene.add(stainedGlass); this._sceneryObjects.push(stainedGlass);
+      }
+
+      // Market square with fountain
+      {
+        const fX = castlePos.x + 15, fZ = castlePos.z - 15;
+        // Fountain basin
+        const basin = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 1.5, 16), stoneMat);
+        basin.position.set(fX, 0.75, fZ);
+        this._scene.add(basin); this._sceneryObjects.push(basin);
+        // Fountain pillar
+        const fPillar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 4, 12), stoneDarkMat);
+        fPillar.position.set(fX, 2, fZ);
+        this._scene.add(fPillar); this._sceneryObjects.push(fPillar);
+        // Fountain top (bowl)
+        const fBowl = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.8, 0.8, 12), stoneMat);
+        fBowl.position.set(fX, 4.2, fZ);
+        this._scene.add(fBowl); this._sceneryObjects.push(fBowl);
+        // Water surface
+        const water = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 2.7, 0.1, 16),
+          new THREE.MeshStandardMaterial({ color: 0x3366aa, transparent: true, opacity: 0.5, metalness: 0.3 }));
+        water.position.set(fX, 1.2, fZ);
+        this._scene.add(water); this._sceneryObjects.push(water);
+        // Market stalls around fountain
+        for (let ms = 0; ms < 4; ms++) {
+          const ma = (ms / 4) * Math.PI * 2 + 0.3;
+          const stallX = fX + Math.cos(ma) * 7, stallZ = fZ + Math.sin(ma) * 7;
+          // Stall frame
+          const stall = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 2), timberMat);
+          stall.position.set(stallX, 1.25, stallZ); stall.rotation.y = ma;
+          this._scene.add(stall); this._sceneryObjects.push(stall);
+          // Stall canopy
+          const canopy = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.15, 2.5),
+            new THREE.MeshStandardMaterial({ color: [0xcc3333, 0x3333cc, 0xcccc33, 0x33cc33][ms], roughness: 0.7 }));
+          canopy.position.set(stallX, 2.7, stallZ); canopy.rotation.y = ma;
+          this._scene.add(canopy); this._sceneryObjects.push(canopy);
+        }
+      }
+
+      // Watchtower (standalone tall tower further out)
+      {
+        const wtX = castlePos.x + 30, wtZ = castlePos.z + 20;
+        const wtH = 20;
+        const wt = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.8, wtH, 8), stoneDarkMat);
+        wt.position.set(wtX, wtH / 2, wtZ); wt.castShadow = true;
+        this._scene.add(wt); this._sceneryObjects.push(wt);
+        const wtCren = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 1.2, 8), stoneMat);
+        wtCren.position.set(wtX, wtH, wtZ);
+        this._scene.add(wtCren); this._sceneryObjects.push(wtCren);
+        const wtRoof = new THREE.Mesh(new THREE.ConeGeometry(2.5, 3.5, 8), roofMat);
+        wtRoof.position.set(wtX, wtH + 2, wtZ); wtRoof.castShadow = true;
+        this._scene.add(wtRoof); this._sceneryObjects.push(wtRoof);
       }
     }
 
