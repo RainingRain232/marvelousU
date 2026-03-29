@@ -1104,31 +1104,32 @@ export class KnightBallGame {
   }
 
   private _buildCrowd(): void {
-    const count = 200;
+    const count = 400;
+    // Larger, rounder bodies
     const crowdGeo = new THREE.InstancedMesh(
-      new THREE.BoxGeometry(0.4, 0.8, 0.3),
-      new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 }),
+      new THREE.CylinderGeometry(0.22, 0.28, 0.9, 8),
+      new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 }),
       count
     );
     const dummy = new THREE.Object3D();
     let idx = 0;
-    // team-colored crowd: left half blue tints, right half red tints
-    const blueColors = [0x3355aa, 0x4466bb, 0x2244aa, 0x5577cc, 0x336699, 0x4488dd, 0x224488, 0x5599ee];
-    const redColors = [0xaa3333, 0xbb4444, 0xaa2222, 0xcc5555, 0x993333, 0xdd4444, 0x882222, 0xee5555];
+    const blueColors = [0x3355aa, 0x4466bb, 0x2244aa, 0x5577cc, 0x336699, 0x4488dd, 0x224488, 0x5599ee, 0x2255bb, 0x3366cc];
+    const redColors = [0xaa3333, 0xbb4444, 0xaa2222, 0xcc5555, 0x993333, 0xdd4444, 0x882222, 0xee5555, 0xbb2233, 0xcc3344];
     this._crowdBaseMatrices = [];
 
+    // More rows, denser packing, both sides + ends
     for (const zSide of [-1, 1]) {
-      for (let row = 0; row < 2; row++) {
-        for (let i = 0; i < 50 && idx < count; i++) {
-          const x = -ARENA_W / 2 + i * (ARENA_W / 50) + Math.random() * 0.3;
-          const z = zSide * (ARENA_H / 2 + 2.2 + row * 0.8);
-          const y = WALL_HEIGHT + 0.4 + row * 0.8;
+      for (let row = 0; row < 4; row++) {
+        const perRow = 40;
+        for (let i = 0; i < perRow && idx < count; i++) {
+          const x = -ARENA_W / 2 - 1 + i * ((ARENA_W + 2) / perRow) + (Math.random() - 0.5) * 0.3;
+          const z = zSide * (ARENA_H / 2 + 2.0 + row * 0.7);
+          const y = WALL_HEIGHT + 0.3 + row * 0.75;
           dummy.position.set(x, y, z);
-          dummy.scale.set(0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.5, 1);
+          dummy.scale.set(0.85 + Math.random() * 0.3, 0.7 + Math.random() * 0.6, 0.85 + Math.random() * 0.3);
           dummy.updateMatrix();
           crowdGeo.setMatrixAt(idx, dummy.matrix);
           this._crowdBaseMatrices.push(dummy.matrix.clone());
-          // left half of arena = blue fans, right = red fans
           const isBlueSection = x < 0;
           const sectionColors = isBlueSection ? blueColors : redColors;
           crowdGeo.setColorAt(idx, new THREE.Color(sectionColors[idx % sectionColors.length]));
@@ -1136,29 +1137,74 @@ export class KnightBallGame {
         }
       }
     }
+    // Behind goals (shorter sections)
+    for (const xSide of [-1, 1]) {
+      for (let row = 0; row < 3; row++) {
+        const perRow = 12;
+        for (let i = 0; i < perRow && idx < count; i++) {
+          const z = -ARENA_H / 2 + 1 + i * ((ARENA_H - 2) / perRow) + (Math.random() - 0.5) * 0.3;
+          const x = xSide * (ARENA_W / 2 + 2.0 + row * 0.7);
+          const y = WALL_HEIGHT + 0.3 + row * 0.75;
+          dummy.position.set(x, y, z);
+          dummy.scale.set(0.85 + Math.random() * 0.3, 0.7 + Math.random() * 0.6, 0.85 + Math.random() * 0.3);
+          dummy.updateMatrix();
+          crowdGeo.setMatrixAt(idx, dummy.matrix);
+          this._crowdBaseMatrices.push(dummy.matrix.clone());
+          const sectionColors = xSide < 0 ? blueColors : redColors;
+          crowdGeo.setColorAt(idx, new THREE.Color(sectionColors[idx % sectionColors.length]));
+          idx++;
+        }
+      }
+    }
     (crowdGeo as any).instanceColor!.needsUpdate = true;
     crowdGeo.instanceMatrix.needsUpdate = true;
+    crowdGeo.castShadow = true;
     this._scene.add(crowdGeo);
     this._crowdMesh = crowdGeo;
 
-    // crowd heads (spheres on top of boxes)
+    // Crowd heads — larger, skin-toned
+    const skinColors = [0xffcc99, 0xeebb88, 0xddaa77, 0xccaa88, 0xddbb99, 0xeeccaa];
     const headMesh = new THREE.InstancedMesh(
-      new THREE.SphereGeometry(0.18, 12, 10),
-      new THREE.MeshStandardMaterial({ color: 0xccaa88, roughness: 0.8 }),
-      count
+      new THREE.SphereGeometry(0.2, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0xccaa88, roughness: 0.7 }),
+      idx
     );
     const headDummy = new THREE.Object3D();
     for (let i = 0; i < this._crowdBaseMatrices.length; i++) {
       headDummy.matrix.copy(this._crowdBaseMatrices[i]);
       headDummy.matrix.decompose(headDummy.position, headDummy.quaternion, headDummy.scale);
-      headDummy.position.y += 0.55; // above body
+      headDummy.position.y += 0.55;
       headDummy.scale.set(1, 1, 1);
       headDummy.updateMatrix();
       headMesh.setMatrixAt(i, headDummy.matrix);
+      headMesh.setColorAt(i, new THREE.Color(skinColors[i % skinColors.length]));
     }
     headMesh.instanceMatrix.needsUpdate = true;
+    (headMesh as any).instanceColor!.needsUpdate = true;
     this._scene.add(headMesh);
     this._crowdHeadsMesh = headMesh;
+
+    // Crowd arms (raised for excitement) — separate instanced mesh
+    const armMesh = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.06, 0.05, 0.5, 4),
+      new THREE.MeshStandardMaterial({ color: 0xccaa88, roughness: 0.8 }),
+      Math.min(idx, 200) // arms for front rows only
+    );
+    const armDummy = new THREE.Object3D();
+    for (let i = 0; i < Math.min(this._crowdBaseMatrices.length, 200); i++) {
+      armDummy.matrix.copy(this._crowdBaseMatrices[i]);
+      armDummy.matrix.decompose(armDummy.position, armDummy.quaternion, armDummy.scale);
+      armDummy.position.y += 0.7;
+      armDummy.position.x += (Math.random() - 0.5) * 0.2;
+      armDummy.scale.set(1, 1, 1);
+      armDummy.rotation.z = (Math.random() - 0.5) * 0.8;
+      armDummy.updateMatrix();
+      armMesh.setMatrixAt(i, armDummy.matrix);
+      armMesh.setColorAt(i, new THREE.Color(skinColors[i % skinColors.length]));
+    }
+    armMesh.instanceMatrix.needsUpdate = true;
+    (armMesh as any).instanceColor!.needsUpdate = true;
+    this._scene.add(armMesh);
   }
 
   private _buildDustParticles(): void {
