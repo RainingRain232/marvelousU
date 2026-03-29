@@ -215,32 +215,41 @@ export class SiegeRenderer {
       }
     }
 
-    // Draw towers — polygon structures
+    // Draw towers — detailed castle tower structures
     for (const tower of state.towers) {
       const def = TOWERS[tower.type];
       const px = ox + tower.x * T + HT, py = oy + tower.y * T + HT;
-      const br = T * 0.38;
+      const br = T * 0.4;
       // Shadow
-      mg.ellipse(px + 1, py + br + 2, br * 0.7, 3).fill({ color: 0x000000, alpha: 0.15 });
-      // Base — octagonal polygon
-      for (let i = 0; i < 8; i++) {
-        const a1 = i * Math.PI / 4, a2 = (i + 1) * Math.PI / 4;
-        if (i === 0) mg.moveTo(px + Math.cos(a1) * br, py + Math.sin(a1) * br);
-        mg.lineTo(px + Math.cos(a2) * br, py + Math.sin(a2) * br);
+      mg.ellipse(px + 2, py + br + 3, br * 0.8, 4).fill({ color: 0x000000, alpha: 0.2 });
+
+      // Foundation (wider, darker)
+      mg.circle(px, py, br + 2).fill({ color: 0x333333, alpha: 0.4 });
+
+      // Base wall — circular tower with stone detail
+      mg.circle(px, py, br).fill({ color: def.color, alpha: 0.85 });
+      // Stone coursing bands
+      for (let b = 0; b < 3; b++) {
+        const bandR = br - b * (br * 0.12);
+        mg.circle(px, py, bandR).stroke({ color: 0x000000, width: 0.5, alpha: 0.1 });
       }
-      mg.closePath().fill({ color: def.color, alpha: 0.8 });
-      // Base bevel (top highlight, bottom shadow)
-      mg.moveTo(px - br * 0.7, py - br * 0.7).lineTo(px, py - br).lineTo(px + br * 0.7, py - br * 0.7).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
-      mg.moveTo(px - br * 0.7, py + br * 0.7).lineTo(px, py + br).lineTo(px + br * 0.7, py + br * 0.7).stroke({ color: 0x000000, width: 0.5, alpha: 0.15 });
-      // Turret — smaller octagon
-      const tr = T * 0.18;
-      for (let i = 0; i < 8; i++) {
-        const a = i * Math.PI / 4;
-        if (i === 0) mg.moveTo(px + Math.cos(a) * tr, py + Math.sin(a) * tr);
-        else mg.lineTo(px + Math.cos(a) * tr, py + Math.sin(a) * tr);
+      // Top highlight arc
+      mg.arc(px, py, br - 1, Math.PI * 1.15, Math.PI * 1.85).stroke({ color: 0xffffff, width: 1, alpha: 0.15 });
+
+      // Merlons (crenellations) around top
+      for (let m = 0; m < 6; m++) {
+        const ma = (m / 6) * Math.PI * 2;
+        const mx = px + Math.cos(ma) * (br - 1);
+        const my = py + Math.sin(ma) * (br - 1);
+        mg.roundRect(mx - 2, my - 2, 4, 4, 1).fill({ color: def.color, alpha: 0.9 });
+        mg.roundRect(mx - 2, my - 2, 4, 4, 1).stroke({ color: 0x000000, width: 0.3, alpha: 0.2 });
       }
-      mg.closePath().fill({ color: def.color });
-      mg.circle(px, py, tr).stroke({ color: 0xffffff, width: 0.5, alpha: 0.12 });
+
+      // Inner turret platform
+      const tr = T * 0.2;
+      mg.circle(px, py, tr + 1).fill({ color: 0x333333, alpha: 0.3 });
+      mg.circle(px, py, tr).fill({ color: def.color });
+      mg.circle(px, py, tr).stroke({ color: 0xffffff, width: 0.5, alpha: 0.15 });
       // Turret rotation toward nearest enemy
       const nearestEnemy = state.enemies.filter(e => e.alive).reduce<{dist: number; angle: number} | null>((best, e) => {
         const dx = (e.x + ox) - px, dy = (e.y + oy) - py;

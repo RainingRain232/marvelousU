@@ -51,14 +51,14 @@ export const TOWERS: Record<TowerType, TowerDef> = {
 };
 
 export const ENEMIES: Record<EnemyType, EnemyDef> = {
-  soldier:       { id: "soldier",       name: "Soldier",       hp: 40,  speed: 1.2, armor: 0,  reward: 5,  color: 0x886644, size: 1,   flying: false, boss: false },
-  knight:        { id: "knight",        name: "Knight",        hp: 100, speed: 0.8, armor: 3,  reward: 10, color: 0x888899, size: 1.2, flying: false, boss: false },
-  cavalry:       { id: "cavalry",       name: "Cavalry",       hp: 60,  speed: 2.0, armor: 1,  reward: 8,  color: 0xaa8855, size: 1.3, flying: false, boss: false },
-  battering_ram: { id: "battering_ram", name: "Battering Ram",  hp: 200, speed: 0.5, armor: 5,  reward: 20, color: 0x664422, size: 1.8, flying: false, boss: false },
-  siege_tower:   { id: "siege_tower",   name: "Siege Tower",   hp: 300, speed: 0.3, armor: 8,  reward: 30, color: 0x554433, size: 2.0, flying: false, boss: false },
-  mage:          { id: "mage",          name: "Mage",          hp: 30,  speed: 1.0, armor: 0,  reward: 12, color: 0x6644aa, size: 1,   flying: false, boss: false },
-  assassin:      { id: "assassin",      name: "Assassin",      hp: 25,  speed: 2.5, armor: 0,  reward: 15, color: 0x333344, size: 0.8, flying: false, boss: false },
-  giant:         { id: "giant",         name: "Giant",         hp: 500, speed: 0.4, armor: 10, reward: 50, color: 0x886666, size: 2.5, flying: false, boss: true },
+  soldier:       { id: "soldier",       name: "Soldier",       hp: 40,  speed: 1.2, armor: 0,  reward: 5,  color: 0x886644, size: 1.6,  flying: false, boss: false },
+  knight:        { id: "knight",        name: "Knight",        hp: 100, speed: 0.8, armor: 3,  reward: 10, color: 0x888899, size: 1.9, flying: false, boss: false },
+  cavalry:       { id: "cavalry",       name: "Cavalry",       hp: 60,  speed: 2.0, armor: 1,  reward: 8,  color: 0xaa8855, size: 2.0, flying: false, boss: false },
+  battering_ram: { id: "battering_ram", name: "Battering Ram",  hp: 200, speed: 0.5, armor: 5,  reward: 20, color: 0x664422, size: 2.8, flying: false, boss: false },
+  siege_tower:   { id: "siege_tower",   name: "Siege Tower",   hp: 300, speed: 0.3, armor: 8,  reward: 30, color: 0x554433, size: 3.0, flying: false, boss: false },
+  mage:          { id: "mage",          name: "Mage",          hp: 30,  speed: 1.0, armor: 0,  reward: 12, color: 0x6644aa, size: 1.6, flying: false, boss: false },
+  assassin:      { id: "assassin",      name: "Assassin",      hp: 25,  speed: 2.5, armor: 0,  reward: 15, color: 0x333344, size: 1.3, flying: false, boss: false },
+  giant:         { id: "giant",         name: "Giant",         hp: 500, speed: 0.4, armor: 10, reward: 50, color: 0x886666, size: 3.5, flying: false, boss: true },
 };
 
 export const WAVES: WaveDef[] = [
@@ -101,7 +101,7 @@ export function setTileSize(sw: number, sh: number): void {
   const topBar = 70;
   const maxW = Math.floor((sw - panelW - 30) / SiegeConfig.GRID_COLS);
   const maxH = Math.floor((sh - topBar - 20) / SiegeConfig.GRID_ROWS);
-  TILE_SZ = Math.max(36, Math.min(maxW, maxH));
+  TILE_SZ = Math.max(48, Math.min(maxW, maxH));
 }
 
 export const ALL_TOWER_TYPES: TowerType[] = ["arrow", "cannon", "frost", "fire", "holy", "poison", "lightning", "ballista"];
