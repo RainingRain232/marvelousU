@@ -710,7 +710,7 @@ function shadeColor(color: string, percent: number): string {
   const r = clamp(((num >> 16) & 0xff) + percent, 0, 255);
   const g = clamp(((num >> 8) & 0xff) + percent, 0, 255);
   const b = clamp((num & 0xff) + percent, 0, 255);
-  return `rgb(${r},${g},${b})`;
+  return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 }
 
 // ── Main Game Class ──────────────────────────────────────────────────────────
@@ -1053,7 +1053,7 @@ export class SwordOfAvalonGame {
     this._audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
     this._canvas = document.createElement("canvas");
-    this._canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:50;cursor:none;";
+    this._canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:50;";
     document.body.appendChild(this._canvas);
     this._ctx = this._canvas.getContext("2d")!;
     this._resizeCanvas();
