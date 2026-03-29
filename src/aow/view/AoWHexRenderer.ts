@@ -703,104 +703,112 @@ export class AoWHexRenderer {
 
     const color = playerId >= 0 ? getFactionDef(state.players[playerId].faction).color : 0x888888;
 
-    // Castle base with stone texture look
-    const baseMat = new THREE.MeshStandardMaterial({
-      color: 0x554433,
-      flatShading: true,
-      roughness: 0.9,
-      metalness: 0.1,
-    });
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.4, 0.45, 0.2, 8),
-      baseMat,
-    );
-    base.position.y = 0.4;
-    base.castShadow = true;
+    // Materials
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x665550, roughness: 0.85, metalness: 0.1 });
+    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x554440, roughness: 0.9, metalness: 0.05 });
+    const towerMat = new THREE.MeshStandardMaterial({ color, metalness: 0.2, roughness: 0.55 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0xaa2222, roughness: 0.7 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 });
+    const windowMat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+    const bannerMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+
+    // Castle foundation (wider, stone)
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.25, 12), stoneDarkMat);
+    base.position.y = 0.38; base.castShadow = true;
     group.add(base);
+    // Foundation stone coursing
+    for (let r2 = 0; r2 < 2; r2++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.52 - r2 * 0.04, 0.012, 6, 12), stoneMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.3 + r2 * 0.12;
+      group.add(ring);
+    }
 
-    // Wall ring
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x665544,
-      flatShading: true,
-      roughness: 0.85,
-    });
-    const wallRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.38, 0.03, 12, 12),
-      wallMat,
-    );
-    wallRing.position.y = 0.52;
-    wallRing.rotation.x = Math.PI / 2;
+    // Curtain wall (ring of battlements)
+    const wallRing = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.04, 8, 16), stoneMat);
+    wallRing.position.y = 0.55; wallRing.rotation.x = Math.PI / 2;
     group.add(wallRing);
+    // Merlons on wall
+    for (let m = 0; m < 8; m++) {
+      const ma = (m / 8) * Math.PI * 2;
+      const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.04), stoneMat);
+      merlon.position.set(Math.cos(ma) * 0.45, 0.6, Math.sin(ma) * 0.45);
+      group.add(merlon);
+    }
 
-    // Main tower
-    const towerMat = new THREE.MeshStandardMaterial({
-      color,
-      flatShading: true,
-      metalness: 0.15,
-      roughness: 0.6,
-    });
-    const tower = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.15, 0.5, 12),
-      towerMat,
-    );
-    tower.position.y = 0.75;
-    tower.castShadow = true;
-    group.add(tower);
+    // Main keep (taller, more detailed)
+    const keep = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.65, 12), towerMat);
+    keep.position.y = 0.82; keep.castShadow = true;
+    group.add(keep);
+    // Keep stone bands
+    for (let b = 0; b < 3; b++) {
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.01, 6, 12), stoneDarkMat);
+      band.rotation.x = Math.PI / 2;
+      band.position.y = 0.6 + b * 0.2;
+      group.add(band);
+    }
 
-    // Roof
-    const roofMat = new THREE.MeshStandardMaterial({
-      color: 0xaa2222,
-      flatShading: true,
-      roughness: 0.7,
-    });
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.2, 12), roofMat);
-    roof.position.y = 1.1;
-    group.add(roof);
+    // Keep roof (taller spire)
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 12), roofMat);
+    roof.position.y = 1.3; group.add(roof);
+    // Roof finial
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.7, roughness: 0.2 }));
+    finial.position.y = 1.47; group.add(finial);
 
-    // Side towers with battlements
+    // Corner towers (4)
     for (let i = 0; i < 4; i++) {
-      const angle = (Math.PI / 2) * i;
-      const r2 = 0.3;
-      const sideTower = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.08, 0.35, 10),
-        towerMat,
-      );
-      sideTower.position.set(Math.cos(angle) * r2, 0.55, Math.sin(angle) * r2);
+      const angle = (Math.PI / 2) * i + Math.PI / 4;
+      const r2 = 0.36;
+      // Tower body
+      const sideTower = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.45, 10), towerMat);
+      sideTower.position.set(Math.cos(angle) * r2, 0.6, Math.sin(angle) * r2);
       sideTower.castShadow = true;
       group.add(sideTower);
-
-      const sideRoof = new THREE.Mesh(
-        new THREE.ConeGeometry(0.1, 0.12, 10),
-        roofMat,
-      );
-      sideRoof.position.set(Math.cos(angle) * r2, 0.8, Math.sin(angle) * r2);
+      // Tower roof
+      const sideRoof = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.15, 10), roofMat);
+      sideRoof.position.set(Math.cos(angle) * r2, 0.88, Math.sin(angle) * r2);
       group.add(sideRoof);
+      // Tower merlon ring
+      for (let cm = 0; cm < 4; cm++) {
+        const cma = (cm / 4) * Math.PI * 2;
+        const tm = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.02), stoneMat);
+        tm.position.set(Math.cos(angle) * r2 + Math.cos(cma) * 0.08, 0.84, Math.sin(angle) * r2 + Math.sin(cma) * 0.08);
+        group.add(tm);
+      }
     }
 
-    // Banner
-    const bannerMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
-    const bannerGeo = new THREE.PlaneGeometry(0.12, 0.2);
-    const banner = new THREE.Mesh(bannerGeo, bannerMat);
-    banner.position.set(0.15, 1.15, 0);
+    // Gate house (front)
+    const gate = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.06), stoneDarkMat);
+    gate.position.set(0, 0.5, 0.46);
+    group.add(gate);
+    // Gate arch
+    const gateArch = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.08),
+      new THREE.MeshBasicMaterial({ color: 0x221100 }));
+    gateArch.position.set(0, 0.47, 0.5);
+    group.add(gateArch);
+
+    // Banner pole on main keep
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.35, 4), woodMat);
+    pole.position.set(0.08, 1.35, 0);
+    group.add(pole);
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.1), bannerMat);
+    banner.position.set(0.16, 1.43, 0);
     group.add(banner);
 
-    // Faction glow
-    const glowLight = new THREE.PointLight(color, 0.5, 3);
-    glowLight.position.y = 0.8;
-    group.add(glowLight);
-
-    // Window lights
-    const windowMat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
-    for (let i = 0; i < 3; i++) {
-      const angle = (Math.PI * 2 / 3) * i + 0.5;
-      const wnd = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.03, 0.04),
-        windowMat,
-      );
-      wnd.position.set(Math.cos(angle) * 0.14, 0.75, Math.sin(angle) * 0.14);
-      wnd.lookAt(group.position.x + Math.cos(angle) * 2, 0.75, group.position.z + Math.sin(angle) * 2);
+    // Window lights on keep
+    for (let i = 0; i < 4; i++) {
+      const wa = (i / 4) * Math.PI * 2 + 0.3;
+      const wnd = new THREE.Mesh(new THREE.PlaneGeometry(0.025, 0.04), windowMat);
+      wnd.position.set(Math.cos(wa) * 0.16, 0.8, Math.sin(wa) * 0.16);
+      wnd.rotation.y = wa + Math.PI;
       group.add(wnd);
     }
+
+    // Faction glow
+    const glowLight = new THREE.PointLight(color, 0.6, 3);
+    glowLight.position.y = 0.9;
+    group.add(glowLight);
 
     this._sceneManager.terrainGroup.add(group);
     this._cityMeshes.set(hexKey(q, r), group);

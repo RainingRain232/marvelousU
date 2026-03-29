@@ -206,6 +206,39 @@ export class AoWUnitRenderer {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
 
+    // Add humanoid features (head, shoulders) for non-flying units
+    if (!unit.abilities.includes("flying")) {
+      const headColor = faction === AoWFaction.UNDEAD ? 0x888877 :
+        faction === AoWFaction.FEY ? 0xffddcc : 0xffcc99;
+      const headMat = new THREE.MeshStandardMaterial({ color: headColor, roughness: 0.7 });
+      const headSize = isHero ? 0.09 : 0.065;
+      const bodyH = isHero ? 1.0 : 0.55;
+
+      // Head
+      const head = new THREE.Mesh(new THREE.SphereGeometry(headSize, 10, 8), headMat);
+      head.position.y = bodyH * 0.5 + headSize;
+      mesh.add(head);
+
+      // Eyes (small dots)
+      const eyeMat = new THREE.MeshBasicMaterial({ color: faction === AoWFaction.UNDEAD ? 0x44ff44 : 0x222222 });
+      for (const side of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(headSize * 0.2, 4, 4), eyeMat);
+        eye.position.set(side * headSize * 0.35, bodyH * 0.5 + headSize * 1.05, headSize * 0.75);
+        mesh.add(eye);
+      }
+
+      // Shoulder pads (for armored/heavy units)
+      if (unit.abilities.includes("armored") || isHero) {
+        const padMat = new THREE.MeshStandardMaterial({ color: bodyColor, metalness: 0.5, roughness: 0.3 });
+        for (const side of [-1, 1]) {
+          const pad = new THREE.Mesh(new THREE.SphereGeometry(isHero ? 0.07 : 0.05, 6, 4), padMat);
+          pad.scale.set(1.2, 0.6, 1);
+          pad.position.set(side * (isHero ? 0.2 : 0.15), bodyH * 0.35, 0);
+          mesh.add(pad);
+        }
+      }
+    }
+
     // Hero crown/glow
     if (isHero) {
       // Crown
