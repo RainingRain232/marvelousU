@@ -22,6 +22,8 @@ export class KothGame {
   private _sw = 0;
   private _sh = 0;
   private _resultShown = false;
+  private _escMenuDiv: HTMLDivElement | null = null;
+  private _ctxHandler: ((e: Event) => void) | null = null;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -31,7 +33,121 @@ export class KothGame {
     this._showStartScreen();
   }
 
+  // ---------------------------------------------------------------------------
+  // Escape Menu
+  // ---------------------------------------------------------------------------
+
+  private _openEscMenu(): void {
+    if (this._escMenuDiv) return;
+    this._state.paused = true;
+
+    const div = document.createElement("div");
+    div.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,5,10,0.85);z-index:40;display:flex;align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;";
+
+    const panel = document.createElement("div");
+    panel.style.cssText = "background:rgba(15,15,25,0.97);border:2px solid rgba(100,180,100,0.4);border-radius:12px;padding:28px 36px;min-width:440px;max-width:540px;color:#d5e0c8;";
+
+    let currentTab = "controls";
+    const renderTab = () => {
+      let content = "";
+      if (currentTab === "controls") {
+        content = `
+          <div style="font-size:13px;line-height:2;text-align:left;">
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">Click</span> Spawn unit at position</div>
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">Right-click</span> Set rally point</div>
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">Space (hold)</span> Rapid spawn</div>
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">Q-I keys</span> Select unit type</div>
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">H</span> Activate War Horn</div>
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">C</span> Clear rally point</div>
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">1 / 2 / 3</span> Game speed (1x/2x/3x)</div>
+            <div><span style="display:inline-block;min-width:110px;color:#88cc44;font-weight:bold">ESC / P</span> Pause / Resume</div>
+          </div>`;
+      } else if (currentTab === "intro") {
+        content = `
+          <div style="font-size:13px;line-height:1.7;color:#aab8a0;">
+            <p><b style="color:#88cc44">King of the Hill</b> is a medieval RTS autobattler. Two armies fight to control the hill at the center of the battlefield.</p>
+            <p>Spawn units by clicking on your side of the field. Each unit costs gold, which regenerates over time. Units march toward the hill and fight enemies automatically.</p>
+            <p style="margin-top:10px"><b style="color:#ffd700">Victory:</b> First side to fill their score bar to 500 wins. Score by controlling the hill — the more units you have on it, the faster you score.</p>
+            <p style="margin-top:10px"><b style="color:#ffd700">Rally Points:</b> Right-click to set a rally point. Your units will move there first before heading to the hill.</p>
+            <p style="margin-top:10px"><b style="color:#ffd700">War Horn:</b> Press H to activate a temporary buff that boosts all your units' attack and speed.</p>
+          </div>`;
+      } else if (currentTab === "units") {
+        content = `
+          <div style="font-size:13px;line-height:1.7;color:#aab8a0;">
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;">
+              <b style="color:#886644">Swordsman</b><span>Balanced melee fighter, cheap and reliable</span>
+              <b style="color:#4466aa">Archer</b><span>Ranged attacker, fragile but deals damage from afar</span>
+              <b style="color:#887744">Pikeman</b><span>Anti-cavalry specialist, bonus vs mounted units</span>
+              <b style="color:#aa7744">Cavalry</b><span>Fast and powerful, charges into battle</span>
+              <b style="color:#6644aa">Mage</b><span>Area damage spells, devastating but expensive</span>
+              <b style="color:#cc4444">Berserker</b><span>High damage, low defense, frenzy at low HP</span>
+              <b style="color:#446688">Crossbowman</b><span>Heavy ranged, slower but hits harder than archers</span>
+              <b style="color:#cc9944">Paladin</b><span>Heals nearby allies, tanky support unit</span>
+            </div>
+            <p style="margin-top:12px;color:#888"><b style="color:#ffd700">Upgrades:</b> Spend gold on permanent buffs (attack, defense, speed, HP) that apply to all your units.</p>
+          </div>`;
+      } else if (currentTab === "strategy") {
+        content = `
+          <div style="font-size:13px;line-height:1.7;color:#aab8a0;">
+            <p><b style="color:#ffd700">Economy:</b> Don't overspend early. Let gold accumulate for expensive units like Cavalry or Mages that can turn the tide.</p>
+            <p><b style="color:#ffd700">Composition:</b> Mix unit types. Archers behind Swordsmen. Pikemen to counter enemy Cavalry. Paladins to sustain pushes.</p>
+            <p><b style="color:#ffd700">Rally Points:</b> Use rally points to flank or concentrate forces on one side of the hill.</p>
+            <p><b style="color:#ffd700">Timing:</b> Save War Horn for critical moments — a well-timed horn during a big push can win the game.</p>
+            <p><b style="color:#ffd700">Upgrades:</b> Early attack upgrades make cheap units more efficient. Defense upgrades help your frontline survive longer.</p>
+            <p><b style="color:#ffd700">Speed:</b> Use 2x/3x speed when you have a gold advantage to snowball faster.</p>
+          </div>`;
+      }
+
+      panel.innerHTML = `
+        <div style="font-size:28px;font-weight:bold;color:#88cc44;text-align:center;margin-bottom:4px;letter-spacing:4px;text-shadow:0 2px 8px rgba(100,200,50,0.3)">PAUSED</div>
+        <div style="text-align:center;color:#556;font-size:12px;margin-bottom:16px">
+          Score: ${Math.floor(this._state.score[0])} vs ${Math.floor(this._state.score[1])} | Gold: ${Math.floor(this._state.gold)} | Army: ${this._state.units.filter(u => u.owner === 0 && u.hp > 0).length}
+        </div>
+        <div style="display:flex;gap:4px;margin-bottom:14px;justify-content:center;flex-wrap:wrap">
+          ${["controls", "intro", "units", "strategy"].map(tab =>
+            `<button class="koth-esc-tab" data-tab="${tab}" style="padding:6px 14px;font-size:12px;font-weight:bold;
+              background:${currentTab === tab ? "rgba(100,180,60,0.2)" : "rgba(30,30,45,0.6)"};
+              color:${currentTab === tab ? "#88cc44" : "#777"};
+              border:1px solid ${currentTab === tab ? "#88cc44" : "#444"};border-radius:4px;cursor:pointer;letter-spacing:1px;
+              pointer-events:auto;">${tab.charAt(0).toUpperCase() + tab.slice(1)}</button>`
+          ).join("")}
+        </div>
+        <div style="min-height:220px;margin-bottom:18px">${content}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+          <button id="koth-esc-resume" style="width:100%;padding:10px;font-size:16px;font-weight:bold;
+            background:linear-gradient(180deg,rgba(100,180,60,0.15),rgba(100,180,60,0.05));
+            color:#88cc44;border:2px solid rgba(100,180,60,0.5);border-radius:6px;cursor:pointer;letter-spacing:2px;pointer-events:auto;">RESUME</button>
+          <button id="koth-esc-exit" style="width:100%;padding:8px;font-size:13px;
+            background:none;color:#884444;border:1px solid #553333;border-radius:4px;cursor:pointer;pointer-events:auto;">EXIT TO MENU</button>
+        </div>
+      `;
+
+      panel.querySelectorAll(".koth-esc-tab").forEach(btn => {
+        (btn as HTMLElement).onclick = () => { currentTab = (btn as HTMLElement).dataset.tab!; renderTab(); };
+      });
+      const resumeBtn = panel.querySelector("#koth-esc-resume");
+      if (resumeBtn) (resumeBtn as HTMLElement).onclick = () => this._closeEscMenu();
+      const exitBtn = panel.querySelector("#koth-esc-exit");
+      if (exitBtn) (exitBtn as HTMLElement).onclick = () => {
+        this._closeEscMenu();
+        this.destroy();
+        window.dispatchEvent(new Event("kothExit"));
+      };
+    };
+
+    div.appendChild(panel);
+    document.body.appendChild(div);
+    this._escMenuDiv = div;
+    renderTab();
+  }
+
+  private _closeEscMenu(): void {
+    if (this._escMenuDiv) { this._escMenuDiv.remove(); this._escMenuDiv = null; }
+    this._state.paused = false;
+  }
+
   destroy(): void {
+    this._closeEscMenu();
     if (this._tickerCb) { viewManager.app.ticker.remove(this._tickerCb); this._tickerCb = null; }
     if (this._keyHandler) { window.removeEventListener("keydown", this._keyHandler); this._keyHandler = null; }
     if (this._keyUpHandler) { window.removeEventListener("keyup", this._keyUpHandler); this._keyUpHandler = null; }
@@ -180,12 +296,14 @@ export class KothGame {
     const ctxHandler = (e: Event) => e.preventDefault();
     canvas.addEventListener("contextmenu", ctxHandler);
 
+    this._ctxHandler = ctxHandler;
     this._keyHandler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        canvas.removeEventListener("contextmenu", ctxHandler);
-        this.destroy(); window.dispatchEvent(new Event("kothExit"));
+      if (e.key === "Escape" || e.key === "p" || e.key === "P") {
+        if (this._escMenuDiv) { this._closeEscMenu(); return; }
+        if (this._state.phase === KothPhase.PLAYING) { this._openEscMenu(); return; }
         return;
       }
+      if (this._escMenuDiv) return; // block input while menu open
       if (this._state.phase !== KothPhase.PLAYING) return;
       if (e.key === "1") this._state.speedMult = 1;
       if (e.key === "2") this._state.speedMult = 2;
@@ -195,12 +313,7 @@ export class KothGame {
         this._state.spaceHeld = true;
         spawnUnit(this._state, 0, this._state.selectedUnit);
       }
-      // Pause
-      if (e.key === "p" || e.key === "P") {
-        this._state.paused = !this._state.paused;
-        return;
-      }
-      if (this._state.paused) return; // ignore other keys while paused
+      if (this._state.paused) return;
       // War Horn
       if (e.key === "h" || e.key === "H") {
         useWarHorn(this._state);
