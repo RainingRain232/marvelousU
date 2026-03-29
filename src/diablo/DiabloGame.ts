@@ -178,6 +178,7 @@ export class DiabloGame {
   private _boundContextMenu!: (e: MouseEvent) => void;
   private _boundResize!: () => void;
   private _boundPointerLockChange!: () => void;
+  private _boundUnhandledRejection!: (e: PromiseRejectionEvent) => void;
 
   // HUD (extracted to DiabloHUD.ts)
   private _hudRefs!: HUDRefs;
@@ -517,13 +518,14 @@ export class DiabloGame {
     document.addEventListener("pointerlockchange", this._boundPointerLockChange);
 
     // Suppress Chrome "message channel" errors from pointer lock and DOM cleanup
-    window.addEventListener("unhandledrejection", (e) => {
+    this._boundUnhandledRejection = (e: PromiseRejectionEvent) => {
       if (e.reason?.message?.includes?.("message channel") ||
           e.reason?.message?.includes?.("MessageChannel") ||
           e.reason?.message?.includes?.("pointer lock")) {
         e.preventDefault();
       }
-    });
+    };
+    window.addEventListener("unhandledrejection", this._boundUnhandledRejection);
 
     this._buildHUD();
 
@@ -549,6 +551,15 @@ export class DiabloGame {
     window.removeEventListener("contextmenu", this._boundContextMenu);
     window.removeEventListener("resize", this._boundResize);
     document.removeEventListener("pointerlockchange", this._boundPointerLockChange);
+    window.removeEventListener("unhandledrejection", this._boundUnhandledRejection);
+    // Disconnect network WebSocket
+    if (this._network) {
+      try { this._network.disconnect(); } catch (_) { /* ignore */ }
+    }
+    // Destroy audio context
+    if (this._audio) {
+      try { destroyAudio(this._audio); } catch (_) { /* ignore */ }
+    }
     if (this._hud && this._hud.parentElement) {
       this._hud.parentElement.removeChild(this._hud);
     }
@@ -3748,6 +3759,10 @@ export class DiabloGame {
         bounty.isComplete = true;
         this._questTrackerDirty = true;
         this._state.completedBountyIds.push(bounty.id);
+        // Cap completed bounty history to prevent unbounded growth
+        if (this._state.completedBountyIds.length > 200) {
+          this._state.completedBountyIds = this._state.completedBountyIds.slice(-100);
+        }
         p.gold += bounty.reward.gold;
         p.xp += bounty.reward.xp;
         if (bounty.reward.keystones) {

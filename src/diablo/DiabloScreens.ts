@@ -1867,6 +1867,14 @@ export function showInventory(ctx: ScreenContext): void {
     ctx.showInventory();
   };
   window.addEventListener("keydown", socketKeyHandler);
+  // Clean up socket listener when inventory closes
+  const socketObserver = new MutationObserver(() => {
+    if (!ctx.menuEl.querySelector("#inv-tooltip")) {
+      window.removeEventListener("keydown", socketKeyHandler);
+      socketObserver.disconnect();
+    }
+  });
+  socketObserver.observe(ctx.menuEl, { childList: true });
 
   // Enchant button
   const enchantBtn = ctx.menuEl.querySelector("#inv-enchant-btn") as HTMLButtonElement | null;
