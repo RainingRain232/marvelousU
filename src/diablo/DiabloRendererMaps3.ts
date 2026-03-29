@@ -3492,10 +3492,22 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
 
       for (let r = 0; r < cnt; r++) {
         const rh = 0.4 + Math.random() * 1.8;
-        // Use higher subdivision for smoother, more natural shapes
-        const subdivLevel = rh > 1.0 ? 3 : 2;
+        // Lower subdivision for angular, rough rock shapes (not smooth spheres)
+        const subdivLevel = rh > 1.2 ? 2 : 1;
+        const rockGeo = new THREE.DodecahedronGeometry(rh, subdivLevel);
+        // Displace vertices for rough, weathered surface
+        const posAttr = rockGeo.getAttribute('position');
+        for (let vi = 0; vi < posAttr.count; vi++) {
+          const nx = posAttr.getX(vi), ny = posAttr.getY(vi), nz = posAttr.getZ(vi);
+          const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+          // Vary displacement: more on top (weathering), less on bottom (ground contact)
+          const heightFactor = 0.5 + (ny / len) * 0.5; // 0..1 from bottom to top
+          const disp = (Math.random() - 0.4) * rh * 0.15 * (0.6 + heightFactor * 0.4);
+          posAttr.setXYZ(vi, nx + (nx / len) * disp, ny + (ny / len) * disp, nz + (nz / len) * disp);
+        }
+        rockGeo.computeVertexNormals();
         const rock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(rh, subdivLevel),
+          rockGeo,
           rockMats[Math.floor(Math.random() * rockMats.length)],
         );
         // Varied squashing for more natural shapes — wider than tall
@@ -3509,24 +3521,44 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
         rock.receiveShadow = true;
         rockGroup.add(rock);
 
-        // Moss patches on top (draped over, more organic shape)
-        if (rh > 0.7 && Math.random() > 0.25) {
-          const mossR = rh * 0.45 + Math.random() * rh * 0.25;
-          const moss = new THREE.Mesh(
-            new THREE.SphereGeometry(mossR, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
-            rockMossMat,
+        // Moss patches — multiple on top and sides, more visible
+        const mossCount = rh > 1.0 ? 2 + Math.floor(Math.random() * 3) : (Math.random() > 0.3 ? 1 : 0);
+        for (let mi = 0; mi < mossCount; mi++) {
+          const mossR = rh * 0.3 + Math.random() * rh * 0.3;
+          const mossGeo = new THREE.SphereGeometry(mossR, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
+          // Displace moss vertices slightly for organic lumpy look
+          const mPosAttr = mossGeo.getAttribute('position');
+          for (let mvi = 0; mvi < mPosAttr.count; mvi++) {
+            const mx = mPosAttr.getX(mvi), my = mPosAttr.getY(mvi), mz = mPosAttr.getZ(mvi);
+            const mDisp = (Math.random() - 0.3) * mossR * 0.2;
+            const mLen = Math.sqrt(mx * mx + my * my + mz * mz) || 1;
+            mPosAttr.setXYZ(mvi, mx + (mx / mLen) * mDisp, my + (my / mLen) * mDisp, mz + (mz / mLen) * mDisp);
+          }
+          mossGeo.computeVertexNormals();
+          const moss = new THREE.Mesh(mossGeo, rockMossMat);
+          // Place on top or draping down the side
+          const mAngle = Math.random() * Math.PI * 2;
+          const mSideDist = mi === 0 ? 0 : rh * xScale * 0.25 * Math.random();
+          moss.position.set(
+            rock.position.x + Math.cos(mAngle) * mSideDist,
+            rock.position.y + rh * yScale * 0.25 + Math.random() * rh * yScale * 0.15,
+            rock.position.z + Math.sin(mAngle) * mSideDist
           );
-          moss.position.set(rock.position.x + (Math.random() - 0.5) * 0.3, rock.position.y + rh * yScale * 0.28, rock.position.z + (Math.random() - 0.5) * 0.3);
           moss.rotation.y = Math.random() * Math.PI;
+          // Tilt side moss to drape down
+          if (mi > 0) {
+            moss.rotation.x = (Math.random() - 0.5) * 0.6;
+            moss.rotation.z = (Math.random() - 0.5) * 0.6;
+          }
           rockGroup.add(moss);
         }
 
         // Lichen spots (small flat discs on rock faces)
-        if (rh > 0.6 && Math.random() > 0.4) {
-          const lichenCount = 1 + Math.floor(Math.random() * 3);
+        if (rh > 0.5 && Math.random() > 0.25) {
+          const lichenCount = 2 + Math.floor(Math.random() * 4);
           for (let lc = 0; lc < lichenCount; lc++) {
             const lichen = new THREE.Mesh(
-              new THREE.CircleGeometry(0.08 + Math.random() * 0.12, 8),
+              new THREE.CircleGeometry(0.06 + Math.random() * 0.15, 8),
               lichenMat,
             );
             const lAngle = Math.random() * Math.PI * 2;
