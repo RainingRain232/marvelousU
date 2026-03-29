@@ -458,7 +458,7 @@ function _showLoading(mode: string): void {
     [GameMode.GRAND]: 66,
     [GameMode.RAMPART]: 67,
     [GameMode.IGWAINE]: 68,
-    [GameMode.KINGDOM]: 69,
+    [GameMode.KINGDOM]: 89,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
