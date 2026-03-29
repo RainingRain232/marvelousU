@@ -128,15 +128,31 @@ export class HuntRenderer {
       g.moveTo(apx - 6, apy + 4).lineTo(apx - 8, apy + 6).stroke({ color: 0xff6644, width: 1, alpha: 0.5 });
     }
 
-    // Draw trees (obstacles)
+    // Draw trees (obstacles) — detailed with roots, bark, layered canopy
     for (const tree of state.trees) {
       const tx = ox + tree.x, ty = oy + tree.y;
-      // Trunk
-      g.rect(tx - 2, ty + tree.r * 0.3, 4, tree.r * 0.5).fill({ color: 0x3a2a1a, alpha: 0.6 });
-      // Canopy
-      g.circle(tx, ty, tree.r).fill({ color: 0x1a4a1a, alpha: 0.5 });
-      g.circle(tx - 2, ty - 2, tree.r * 0.7).fill({ color: 0x1e4e1e, alpha: 0.3 });
-      g.circle(tx, ty, tree.r).stroke({ color: 0x2a5a2a, width: 0.5, alpha: 0.2 });
+      const tr = tree.r;
+      // Shadow
+      g.ellipse(tx + 3, ty + tr * 0.6, tr * 1.1, tr * 0.25).fill({ color: 0x000000, alpha: 0.08 });
+      // Roots
+      for (let ri = 0; ri < 3; ri++) {
+        const rx = tx + (ri - 1) * 3;
+        g.moveTo(rx, ty + tr * 0.5).quadraticCurveTo(rx + (ri - 1) * 4, ty + tr * 0.7, rx + (ri - 1) * 6, ty + tr * 0.55).stroke({ color: 0x3a2a1a, width: 2, alpha: 0.4 });
+      }
+      // Trunk with bark texture
+      g.rect(tx - 3, ty - tr * 0.1, 6, tr * 0.7).fill({ color: 0x3a2a1a, alpha: 0.65 });
+      g.rect(tx - 1, ty, 2, tr * 0.4).fill({ color: 0x4a3a2a, alpha: 0.25 }); // bark highlight
+      g.moveTo(tx - 2, ty + tr * 0.1).lineTo(tx - 2, ty + tr * 0.4).stroke({ color: 0x2a1a0a, width: 0.5, alpha: 0.2 }); // bark line
+      // Canopy (multi-layer with highlights)
+      g.circle(tx, ty - tr * 0.1, tr * 1.05).fill({ color: 0x163a16, alpha: 0.45 });
+      g.circle(tx - tr * 0.3, ty - tr * 0.2, tr * 0.75).fill({ color: 0x1a4a1a, alpha: 0.5 });
+      g.circle(tx + tr * 0.25, ty - tr * 0.15, tr * 0.7).fill({ color: 0x1a4a1a, alpha: 0.45 });
+      g.circle(tx, ty - tr * 0.35, tr * 0.6).fill({ color: 0x1e4e1e, alpha: 0.4 });
+      // Highlight patches
+      g.circle(tx - tr * 0.15, ty - tr * 0.4, tr * 0.3).fill({ color: 0x225522, alpha: 0.2 });
+      g.circle(tx + tr * 0.2, ty - tr * 0.3, tr * 0.25).fill({ color: 0x226622, alpha: 0.15 });
+      // Edge definition
+      g.circle(tx, ty - tr * 0.1, tr * 1.05).stroke({ color: 0x2a5a2a, width: 0.8, alpha: 0.15 });
     }
 
     // Draw prey (sorted by Y for depth)
@@ -150,88 +166,266 @@ export class HuntRenderer {
       g.ellipse(px + 1, py + r * 0.8, r * 0.9, 2.5).fill({ color: 0x000000, alpha: 0.15 });
 
       if (prey.type === "rabbit") {
-        // Rabbit: small round body + long ears
+        // Legs (4 short)
+        for (const [lcos, lsin] of [[cos - sin * 0.4, sin + cos * 0.4], [cos + sin * 0.4, sin - cos * 0.4], [-cos * 0.3 - sin * 0.3, -sin * 0.3 + cos * 0.3], [-cos * 0.3 + sin * 0.3, -sin * 0.3 - cos * 0.3]]) {
+          g.ellipse(px + lcos * r * 0.5, py + lsin * r * 0.5, r * 0.15, r * 0.25).fill({ color: def.color - 0x111100 });
+        }
+        // Body
         g.ellipse(px, py, r * 0.9, r * 0.7).fill({ color: def.color });
-        g.circle(px + cos * r * 0.6, py + sin * r * 0.6, r * 0.45).fill({ color: def.color });
-        // Ears (long, upright)
-        g.ellipse(px + cos * r * 0.5 - sin * 2, py + sin * r * 0.5 + cos * 2 - 3, 1.5, 4).fill({ color: def.color });
-        g.ellipse(px + cos * r * 0.5 + sin * 2, py + sin * r * 0.5 - cos * 2 - 3, 1.5, 4).fill({ color: def.color });
-        // Tail (white puff)
-        g.circle(px - cos * r * 0.8, py - sin * r * 0.8, 2).fill({ color: 0xddccbb, alpha: 0.6 });
-      } else if (prey.type === "deer" || prey.type === "stag") {
-        // Deer/Stag: elegant elongated body + long neck
-        g.ellipse(px, py, r * 1.3, r * 0.7).fill({ color: def.color });
-        // Neck
-        g.moveTo(px + cos * r * 0.8, py + sin * r * 0.8).lineTo(px + cos * r * 1.3, py + sin * r * 1.3 - 4).stroke({ color: def.color, width: 3 });
+        // Belly highlight
+        g.ellipse(px - cos * r * 0.1, py - sin * r * 0.1, r * 0.5, r * 0.35).fill({ color: def.color + 0x222211, alpha: 0.3 });
         // Head
-        g.ellipse(px + cos * r * 1.4, py + sin * r * 1.4 - 4, r * 0.35, r * 0.3).fill({ color: def.color });
-        // Antlers (stag only)
+        g.circle(px + cos * r * 0.65, py + sin * r * 0.65, r * 0.5).fill({ color: def.color });
+        // Cheeks
+        g.ellipse(px + cos * r * 0.65 + sin * r * 0.2, py + sin * r * 0.65 - cos * r * 0.2, r * 0.2, r * 0.15).fill({ color: def.color + 0x111100, alpha: 0.3 });
+        // Ears (long, with inner pink)
+        for (const es of [-1, 1]) {
+          const ex = px + cos * r * 0.6 + sin * es * r * 0.15;
+          const ey = py + sin * r * 0.6 - cos * es * r * 0.15;
+          g.ellipse(ex, ey - r * 0.5, r * 0.12, r * 0.4).fill({ color: def.color });
+          g.ellipse(ex, ey - r * 0.5, r * 0.07, r * 0.3).fill({ color: 0xddaaaa, alpha: 0.3 }); // inner ear
+        }
+        // Nose
+        g.circle(px + cos * r * 0.9, py + sin * r * 0.9, r * 0.08).fill({ color: 0xddaaaa });
+        // Whiskers
+        for (const ws of [-1, 1]) {
+          g.moveTo(px + cos * r * 0.85 + sin * ws * r * 0.1, py + sin * r * 0.85 - cos * ws * r * 0.1)
+            .lineTo(px + cos * r * 1.2 + sin * ws * r * 0.3, py + sin * r * 1.2 - cos * ws * r * 0.3)
+            .stroke({ color: 0xccccbb, width: 0.5, alpha: 0.3 });
+        }
+        // Tail (fluffy white puff)
+        g.circle(px - cos * r * 0.85, py - sin * r * 0.85, r * 0.2).fill({ color: 0xeeddcc, alpha: 0.7 });
+        g.circle(px - cos * r * 0.8, py - sin * r * 0.8, r * 0.12).fill({ color: 0xffffff, alpha: 0.4 });
+      } else if (prey.type === "deer" || prey.type === "stag") {
+        // Legs (4 slender)
+        const legOff = [[0.4, 0.3], [0.4, -0.3], [-0.5, 0.25], [-0.5, -0.25]];
+        for (const [lf, ls] of legOff) {
+          const lx = px + cos * r * lf + sin * r * ls;
+          const ly = py + sin * r * lf - cos * r * ls;
+          g.moveTo(lx, ly).lineTo(lx + sin * r * 0.1, ly + r * 0.6).stroke({ color: def.color - 0x111100, width: r * 0.1 });
+          g.circle(lx + sin * r * 0.1, ly + r * 0.6, r * 0.06).fill({ color: 0x332211 }); // hoof
+        }
+        // Body (elongated, graceful)
+        g.ellipse(px, py, r * 1.3, r * 0.7).fill({ color: def.color });
+        // Back shading
+        g.ellipse(px - cos * r * 0.2, py - sin * r * 0.2 - r * 0.15, r * 0.9, r * 0.3).fill({ color: def.color - 0x111100, alpha: 0.2 });
+        // White belly
+        g.ellipse(px, py + r * 0.15, r * 0.8, r * 0.3).fill({ color: 0xddccbb, alpha: 0.25 });
+        // White rump patch
+        g.ellipse(px - cos * r * 0.9, py - sin * r * 0.9, r * 0.35, r * 0.3).fill({ color: 0xddccbb, alpha: 0.2 });
+        // Neck
+        g.moveTo(px + cos * r * 0.8 - sin * r * 0.15, py + sin * r * 0.8 + cos * r * 0.15)
+          .quadraticCurveTo(px + cos * r * 1.1, py + sin * r * 1.1 - r * 0.3, px + cos * r * 1.3, py + sin * r * 1.3 - r * 0.35)
+          .lineTo(px + cos * r * 1.3, py + sin * r * 1.3 - r * 0.35)
+          .quadraticCurveTo(px + cos * r * 1.1, py + sin * r * 1.1 - r * 0.15, px + cos * r * 0.8 + sin * r * 0.15, py + sin * r * 0.8 - cos * r * 0.15)
+          .fill({ color: def.color });
+        // Head
+        g.ellipse(px + cos * r * 1.4, py + sin * r * 1.4 - r * 0.35, r * 0.35, r * 0.28).fill({ color: def.color });
+        // Ears
+        for (const es of [-1, 1]) {
+          g.ellipse(px + cos * r * 1.35 + sin * es * r * 0.2, py + sin * r * 1.35 - cos * es * r * 0.2 - r * 0.5, r * 0.08, r * 0.18).fill({ color: def.color });
+        }
+        // Nose
+        g.circle(px + cos * r * 1.6, py + sin * r * 1.6 - r * 0.3, r * 0.07).fill({ color: 0x222211 });
+        // Antlers (stag only — more detailed, branching)
         if (prey.type === "stag") {
-          const ax = px + cos * r * 1.5, ay = py + sin * r * 1.5 - 6;
-          g.moveTo(ax, ay).lineTo(ax - 3, ay - 6).stroke({ color: 0xaa8844, width: 1 });
-          g.moveTo(ax, ay).lineTo(ax + 3, ay - 5).stroke({ color: 0xaa8844, width: 1 });
-          g.moveTo(ax - 2, ay - 4).lineTo(ax - 5, ay - 3).stroke({ color: 0xaa8844, width: 0.8 });
-          g.moveTo(ax + 2, ay - 3).lineTo(ax + 4, ay - 2).stroke({ color: 0xaa8844, width: 0.8 });
-          // Golden shimmer for royal stag
+          const ax = px + cos * r * 1.5, ay = py + sin * r * 1.5 - r * 0.55;
+          for (const es of [-1, 1]) {
+            // Main beam
+            g.moveTo(ax + sin * es * r * 0.05, ay).lineTo(ax + sin * es * r * 0.3, ay - r * 0.6).stroke({ color: 0xaa8844, width: r * 0.06 });
+            // Tines
+            g.moveTo(ax + sin * es * r * 0.15, ay - r * 0.25).lineTo(ax + sin * es * r * 0.4, ay - r * 0.35).stroke({ color: 0xaa8844, width: r * 0.04 });
+            g.moveTo(ax + sin * es * r * 0.25, ay - r * 0.45).lineTo(ax + sin * es * r * 0.5, ay - r * 0.4).stroke({ color: 0xaa8844, width: r * 0.03 });
+            g.moveTo(ax + sin * es * r * 0.28, ay - r * 0.55).lineTo(ax + sin * es * r * 0.35, ay - r * 0.7).stroke({ color: 0xaa8844, width: r * 0.025 });
+          }
           g.circle(px, py, r * 1.5).fill({ color: 0xffd700, alpha: 0.04 + Math.sin(Date.now() / 300) * 0.02 });
         }
-        // White belly
-        g.ellipse(px, py + r * 0.2, r * 0.8, r * 0.3).fill({ color: 0xddccbb, alpha: 0.2 });
+        // Tail
+        g.ellipse(px - cos * r * 1.1, py - sin * r * 1.1 - r * 0.1, r * 0.12, r * 0.08).fill({ color: def.color - 0x111100 });
       } else if (prey.type === "boar") {
-        // Boar: stocky, wide body + tusks
-        g.ellipse(px, py, r * 1.2, r).fill({ color: def.color });
-        g.ellipse(px + cos * r * 0.7, py + sin * r * 0.7, r * 0.5, r * 0.45).fill({ color: def.color });
-        // Tusks
-        g.moveTo(px + cos * r * 0.9 + sin * 2, py + sin * r * 0.9 - cos * 2).lineTo(px + cos * r * 1.3 + sin * 3, py + sin * r * 1.3 - cos * 3 - 1).stroke({ color: 0xddddcc, width: 1.5 });
-        g.moveTo(px + cos * r * 0.9 - sin * 2, py + sin * r * 0.9 + cos * 2).lineTo(px + cos * r * 1.3 - sin * 3, py + sin * r * 1.3 + cos * 3 - 1).stroke({ color: 0xddddcc, width: 1.5 });
-        // Bristle ridge
-        g.moveTo(px - cos * r * 0.4, py - sin * r * 0.4 - r * 0.5).lineTo(px + cos * r * 0.2, py + sin * r * 0.2 - r * 0.6).stroke({ color: 0x443322, width: 2, alpha: 0.4 });
-      } else if (prey.type === "pheasant") {
-        // Pheasant: small round body + tail feathers
-        g.ellipse(px, py, r * 0.8, r * 0.6).fill({ color: def.color });
-        g.circle(px + cos * r * 0.5, py + sin * r * 0.5, r * 0.35).fill({ color: 0xcc4422 });
-        // Tail feathers (long, trailing)
-        for (let fi = 0; fi < 3; fi++) {
-          const fa = prey.angle + Math.PI + (fi - 1) * 0.2;
-          g.moveTo(px, py).lineTo(px + Math.cos(fa) * r * 2, py + Math.sin(fa) * r * 2).stroke({ color: 0x886644, width: 1, alpha: 0.5 });
+        // Legs
+        for (const [lf, ls] of [[0.4, 0.35], [0.4, -0.35], [-0.4, 0.3], [-0.4, -0.3]]) {
+          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
+          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.45).stroke({ color: def.color - 0x111100, width: r * 0.12 });
+          g.circle(lx, ly + r * 0.45, r * 0.07).fill({ color: 0x332211 });
         }
-        // Beak
-        g.moveTo(px + cos * r * 0.7, py + sin * r * 0.7).lineTo(px + cos * r * 1.1, py + sin * r * 1.1).stroke({ color: 0xddaa44, width: 1 });
+        // Body (bulky)
+        g.ellipse(px, py, r * 1.2, r * 0.85).fill({ color: def.color });
+        // Darker back
+        g.ellipse(px, py - r * 0.2, r * 1.0, r * 0.4).fill({ color: def.color - 0x111100, alpha: 0.3 });
+        // Head
+        g.ellipse(px + cos * r * 0.8, py + sin * r * 0.8, r * 0.5, r * 0.45).fill({ color: def.color });
+        // Snout
+        g.ellipse(px + cos * r * 1.15, py + sin * r * 1.15, r * 0.22, r * 0.18).fill({ color: def.color + 0x111100 });
+        g.circle(px + cos * r * 1.25 + sin * r * 0.05, py + sin * r * 1.25 - cos * r * 0.05, r * 0.04).fill({ color: 0x222211 });
+        g.circle(px + cos * r * 1.25 - sin * r * 0.05, py + sin * r * 1.25 + cos * r * 0.05, r * 0.04).fill({ color: 0x222211 });
+        // Tusks
+        for (const ts of [-1, 1]) {
+          g.moveTo(px + cos * r * 1.0 + sin * ts * r * 0.2, py + sin * r * 1.0 - cos * ts * r * 0.2)
+            .lineTo(px + cos * r * 1.35 + sin * ts * r * 0.25, py + sin * r * 1.35 - cos * ts * r * 0.25 - r * 0.05)
+            .stroke({ color: 0xddddcc, width: r * 0.06 });
+        }
+        // Ears
+        for (const es of [-1, 1]) {
+          g.ellipse(px + cos * r * 0.6 + sin * es * r * 0.3, py + sin * r * 0.6 - cos * es * r * 0.3 - r * 0.25, r * 0.12, r * 0.15).fill({ color: def.color });
+        }
+        // Bristle ridge (spiky hair along back)
+        for (let bi = 0; bi < 5; bi++) {
+          const bx = px + cos * r * (-0.3 + bi * 0.2), by = py + sin * r * (-0.3 + bi * 0.2) - r * 0.55;
+          g.moveTo(bx, by).lineTo(bx, by - r * 0.15).stroke({ color: 0x443322, width: r * 0.04, alpha: 0.5 });
+        }
+        // Tail (curly)
+        const tAngle = prey.angle + Math.PI;
+        g.moveTo(px - cos * r * 0.9, py - sin * r * 0.9)
+          .quadraticCurveTo(px + Math.cos(tAngle) * r * 1.3, py + Math.sin(tAngle) * r * 1.3 - r * 0.3, px + Math.cos(tAngle) * r * 1.1, py + Math.sin(tAngle) * r * 1.1)
+          .stroke({ color: def.color, width: r * 0.05 });
+      } else if (prey.type === "pheasant") {
+        // Tail feathers (long, colorful, trailing — drawn first/behind)
+        const tailColors = [0x886644, 0x996655, 0x775533, 0xaa7755, 0x887744];
+        for (let fi = 0; fi < 5; fi++) {
+          const fa = prey.angle + Math.PI + (fi - 2) * 0.15;
+          const fLen = r * (2.0 + fi * 0.2);
+          g.moveTo(px - cos * r * 0.3, py - sin * r * 0.3)
+            .quadraticCurveTo(px + Math.cos(fa) * fLen * 0.5, py + Math.sin(fa) * fLen * 0.5 + (fi - 2) * r * 0.1, px + Math.cos(fa) * fLen, py + Math.sin(fa) * fLen)
+            .stroke({ color: tailColors[fi], width: r * 0.08, alpha: 0.6 });
+        }
+        // Legs
+        for (const ls of [-0.15, 0.15]) {
+          g.moveTo(px + sin * r * ls, py - cos * r * ls).lineTo(px + sin * r * ls, py - cos * r * ls + r * 0.4).stroke({ color: 0xddaa44, width: r * 0.05 });
+        }
+        // Body
+        g.ellipse(px, py, r * 0.8, r * 0.55).fill({ color: def.color });
+        // Wing detail
+        g.ellipse(px - cos * r * 0.15 + sin * r * 0.15, py - sin * r * 0.15 - cos * r * 0.15, r * 0.5, r * 0.35).fill({ color: def.color - 0x111100, alpha: 0.4 });
+        // Head (red/green iridescent)
+        g.circle(px + cos * r * 0.55, py + sin * r * 0.55, r * 0.35).fill({ color: 0x224422 });
+        // Red face wattle
+        g.circle(px + cos * r * 0.65 + sin * r * 0.1, py + sin * r * 0.65 - cos * r * 0.1, r * 0.12).fill({ color: 0xcc2222, alpha: 0.6 });
+        // Beak (larger, golden)
+        g.moveTo(px + cos * r * 0.75, py + sin * r * 0.75)
+          .lineTo(px + cos * r * 1.1, py + sin * r * 1.1)
+          .stroke({ color: 0xddaa44, width: r * 0.07 });
+        // White neck ring
+        g.ellipse(px + cos * r * 0.4, py + sin * r * 0.4, r * 0.25, r * 0.08).fill({ color: 0xffffff, alpha: 0.25 });
       } else if (prey.type === "fox") {
-        // Fox: sleek, pointed nose + bushy tail
-        g.ellipse(px, py, r * 1.1, r * 0.6).fill({ color: def.color });
-        // Pointed head
-        g.moveTo(px + cos * r * 0.7 - sin * r * 0.3, py + sin * r * 0.7 + cos * r * 0.3).lineTo(px + cos * r * 1.4, py + sin * r * 1.4).lineTo(px + cos * r * 0.7 + sin * r * 0.3, py + sin * r * 0.7 - cos * r * 0.3).fill({ color: def.color });
-        // Ears (pointed)
-        g.circle(px + cos * r * 0.8 - sin * 3, py + sin * r * 0.8 + cos * 3 - 3, 2).fill({ color: def.color });
-        g.circle(px + cos * r * 0.8 + sin * 3, py + sin * r * 0.8 - cos * 3 - 3, 2).fill({ color: def.color });
-        // Bushy tail
+        // Bushy tail (drawn first, behind body)
         const tailAngle = prey.angle + Math.PI + Math.sin(Date.now() / 200) * 0.3;
-        g.ellipse(px + Math.cos(tailAngle) * r * 1.2, py + Math.sin(tailAngle) * r * 1.2, r * 0.5, r * 0.3).fill({ color: def.color, alpha: 0.8 });
-        g.circle(px + Math.cos(tailAngle) * r * 1.5, py + Math.sin(tailAngle) * r * 1.5, 2).fill({ color: 0xffffff, alpha: 0.4 });
+        g.ellipse(px + Math.cos(tailAngle) * r * 1.2, py + Math.sin(tailAngle) * r * 1.2, r * 0.5, r * 0.25).fill({ color: def.color, alpha: 0.85 });
+        g.ellipse(px + Math.cos(tailAngle) * r * 1.4, py + Math.sin(tailAngle) * r * 1.4, r * 0.3, r * 0.15).fill({ color: def.color, alpha: 0.7 });
+        g.circle(px + Math.cos(tailAngle) * r * 1.55, py + Math.sin(tailAngle) * r * 1.55, r * 0.1).fill({ color: 0xffffff, alpha: 0.5 }); // white tip
+        // Legs
+        for (const [lf, ls] of [[0.3, 0.25], [0.3, -0.25], [-0.35, 0.2], [-0.35, -0.2]]) {
+          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
+          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.4).stroke({ color: 0x222211, width: r * 0.07 });
+        }
+        // Body
+        g.ellipse(px, py, r * 1.1, r * 0.55).fill({ color: def.color });
+        // Dark back stripe
+        g.ellipse(px, py - r * 0.15, r * 0.8, r * 0.2).fill({ color: def.color - 0x222200, alpha: 0.25 });
+        // White chest/belly
+        g.ellipse(px + cos * r * 0.3, py + sin * r * 0.3 + r * 0.1, r * 0.4, r * 0.2).fill({ color: 0xeeddcc, alpha: 0.3 });
+        // Pointed head
+        g.moveTo(px + cos * r * 0.7 - sin * r * 0.25, py + sin * r * 0.7 + cos * r * 0.25)
+          .lineTo(px + cos * r * 1.35, py + sin * r * 1.35)
+          .lineTo(px + cos * r * 0.7 + sin * r * 0.25, py + sin * r * 0.7 - cos * r * 0.25)
+          .fill({ color: def.color });
+        // Black nose
+        g.circle(px + cos * r * 1.3, py + sin * r * 1.3, r * 0.06).fill({ color: 0x111111 });
+        // Pointed ears (triangular with dark tips)
+        for (const es of [-1, 1]) {
+          const ex = px + cos * r * 0.8 + sin * es * r * 0.2;
+          const ey = py + sin * r * 0.8 - cos * es * r * 0.2;
+          g.moveTo(ex - sin * es * r * 0.1, ey + cos * es * r * 0.1).lineTo(ex, ey - r * 0.25).lineTo(ex + sin * es * r * 0.1, ey - cos * es * r * 0.1).fill({ color: def.color });
+          g.moveTo(ex, ey - r * 0.2).lineTo(ex, ey - r * 0.25).stroke({ color: 0x222211, width: r * 0.04 }); // dark tip
+        }
+        // Whiskers
+        for (const ws of [-1, 1]) {
+          g.moveTo(px + cos * r * 1.15 + sin * ws * r * 0.1, py + sin * r * 1.15 - cos * ws * r * 0.1)
+            .lineTo(px + cos * r * 1.4 + sin * ws * r * 0.35, py + sin * r * 1.4 - cos * ws * r * 0.35)
+            .stroke({ color: 0xccccbb, width: 0.5, alpha: 0.25 });
+        }
       } else if (prey.type === "wolf") {
-        // Wolf: lean, angular
-        g.ellipse(px, py, r * 1.3, r * 0.65).fill({ color: def.color });
-        g.ellipse(px + cos * r * 0.8, py + sin * r * 0.8, r * 0.4, r * 0.35).fill({ color: def.color });
-        // Pointed ears
-        g.circle(px + cos * r * 0.6 - sin * 3, py + sin * r * 0.6 + cos * 3 - 3, 2).fill({ color: def.color });
-        g.circle(px + cos * r * 0.6 + sin * 3, py + sin * r * 0.6 - cos * 3 - 3, 2).fill({ color: def.color });
-        // Aggressive indicator (red eyes when chasing)
+        // Legs
+        for (const [lf, ls] of [[0.4, 0.25], [0.4, -0.25], [-0.4, 0.2], [-0.4, -0.2]]) {
+          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
+          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.5).stroke({ color: def.color - 0x111111, width: r * 0.1 });
+          g.circle(lx, ly + r * 0.5, r * 0.06).fill({ color: 0x333333 });
+        }
+        // Body (lean, muscular)
+        g.ellipse(px, py, r * 1.3, r * 0.6).fill({ color: def.color });
+        // Darker back
+        g.ellipse(px, py - r * 0.15, r * 1.0, r * 0.25).fill({ color: def.color - 0x111111, alpha: 0.3 });
+        // Lighter belly
+        g.ellipse(px, py + r * 0.15, r * 0.8, r * 0.2).fill({ color: def.color + 0x111111, alpha: 0.2 });
+        // Head
+        g.ellipse(px + cos * r * 0.85, py + sin * r * 0.85, r * 0.4, r * 0.32).fill({ color: def.color });
+        // Snout
+        g.ellipse(px + cos * r * 1.05, py + sin * r * 1.05, r * 0.2, r * 0.15).fill({ color: def.color + 0x111111 });
+        g.circle(px + cos * r * 1.15, py + sin * r * 1.15, r * 0.06).fill({ color: 0x111111 }); // nose
+        // Pointed ears (triangular)
+        for (const es of [-1, 1]) {
+          const ex = px + cos * r * 0.7 + sin * es * r * 0.25;
+          const ey = py + sin * r * 0.7 - cos * es * r * 0.25;
+          g.moveTo(ex - sin * es * r * 0.08, ey + cos * es * r * 0.08).lineTo(ex, ey - r * 0.25).lineTo(ex + sin * es * r * 0.08, ey - cos * es * r * 0.08).fill({ color: def.color });
+        }
+        // Tail (bushy, lowered)
+        const wTail = prey.angle + Math.PI + 0.2;
+        g.moveTo(px - cos * r * 1.0, py - sin * r * 1.0)
+          .quadraticCurveTo(px + Math.cos(wTail) * r * 1.4, py + Math.sin(wTail) * r * 1.4, px + Math.cos(wTail) * r * 1.2, py + Math.sin(wTail) * r * 1.2 + r * 0.2)
+          .stroke({ color: def.color, width: r * 0.12 });
+        // Eyes
+        const eyeColor = prey.aggressive ? 0xff2222 : 0xffcc44;
+        for (const es of [-1, 1]) {
+          g.circle(px + cos * r * 0.95 + sin * es * r * 0.1, py + sin * r * 0.95 - cos * es * r * 0.1, r * 0.06).fill({ color: eyeColor });
+          if (prey.aggressive) {
+            g.circle(px + cos * r * 0.95 + sin * es * r * 0.1, py + sin * r * 0.95 - cos * es * r * 0.1, r * 0.09).fill({ color: 0xff0000, alpha: 0.15 });
+          }
+        }
+        // Fangs when aggressive
         if (prey.aggressive) {
-          g.circle(px + cos * r * 0.9 + sin * 1.5, py + sin * r * 0.9 - cos * 1.5, 1).fill({ color: 0xff2222 });
-          g.circle(px + cos * r * 0.9 - sin * 1.5, py + sin * r * 0.9 + cos * 1.5, 1).fill({ color: 0xff2222 });
+          for (const fs of [-1, 1]) {
+            g.moveTo(px + cos * r * 1.05 + sin * fs * r * 0.08, py + sin * r * 1.05 - cos * fs * r * 0.08)
+              .lineTo(px + cos * r * 1.15 + sin * fs * r * 0.1, py + sin * r * 1.15 - cos * fs * r * 0.1 + r * 0.08)
+              .stroke({ color: 0xeeeeee, width: r * 0.03 });
+          }
         }
       } else if (prey.type === "bear") {
-        // Bear: large, round, imposing
-        g.ellipse(px, py, r * 1.1, r * 0.9).fill({ color: def.color });
-        g.circle(px + cos * r * 0.6, py + sin * r * 0.6, r * 0.55).fill({ color: def.color });
-        // Ears (round)
-        g.circle(px + cos * r * 0.5 - sin * 4, py + sin * r * 0.5 + cos * 4 - 3, 3).fill({ color: def.color });
-        g.circle(px + cos * r * 0.5 + sin * 4, py + sin * r * 0.5 - cos * 4 - 3, 3).fill({ color: def.color });
+        // Legs (4 thick)
+        for (const [lf, ls] of [[0.35, 0.35], [0.35, -0.35], [-0.35, 0.3], [-0.35, -0.3]]) {
+          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
+          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.5).stroke({ color: def.color - 0x111100, width: r * 0.16 });
+          g.circle(lx, ly + r * 0.5, r * 0.09).fill({ color: 0x332211 }); // paw
+          // Claws
+          for (let ci = -1; ci <= 1; ci++) {
+            g.moveTo(lx + ci * r * 0.04, ly + r * 0.5).lineTo(lx + ci * r * 0.06, ly + r * 0.57).stroke({ color: 0x444433, width: r * 0.02 });
+          }
+        }
+        // Body (massive, round)
+        g.ellipse(px, py, r * 1.1, r * 0.85).fill({ color: def.color });
+        // Hump (shoulder muscle)
+        g.ellipse(px - cos * r * 0.2, py - sin * r * 0.2 - r * 0.2, r * 0.6, r * 0.35).fill({ color: def.color - 0x0a0a00, alpha: 0.4 });
+        // Lighter belly
+        g.ellipse(px + cos * r * 0.1, py + sin * r * 0.1 + r * 0.15, r * 0.7, r * 0.3).fill({ color: def.color + 0x111100, alpha: 0.2 });
+        // Head
+        g.circle(px + cos * r * 0.7, py + sin * r * 0.7, r * 0.5).fill({ color: def.color });
+        // Round ears
+        for (const es of [-1, 1]) {
+          g.circle(px + cos * r * 0.6 + sin * es * r * 0.35, py + sin * r * 0.6 - cos * es * r * 0.35 - r * 0.15, r * 0.15).fill({ color: def.color });
+          g.circle(px + cos * r * 0.6 + sin * es * r * 0.35, py + sin * r * 0.6 - cos * es * r * 0.35 - r * 0.15, r * 0.08).fill({ color: def.color + 0x111100, alpha: 0.3 }); // inner ear
+        }
         // Snout
-        g.ellipse(px + cos * r * 0.9, py + sin * r * 0.9, r * 0.25, r * 0.2).fill({ color: 0x664433 });
+        g.ellipse(px + cos * r * 0.95, py + sin * r * 0.95, r * 0.22, r * 0.18).fill({ color: 0x664433 });
+        // Nose
+        g.circle(px + cos * r * 1.1, py + sin * r * 1.1, r * 0.08).fill({ color: 0x222211 });
+        // Eyes (small, dark)
+        for (const es of [-1, 1]) {
+          g.circle(px + cos * r * 0.75 + sin * es * r * 0.15, py + sin * r * 0.75 - cos * es * r * 0.15, r * 0.05).fill({ color: 0x111111 });
+        }
+        // Aggressive glow
+        if (prey.aggressive) {
+          g.circle(px, py, r * 1.3).fill({ color: 0xff2200, alpha: 0.05 });
+        }
       } else {
-        // Fallback
         g.ellipse(px, py, r * 1.2, r * 0.8).fill({ color: def.color });
         g.circle(px + cos * r, py + sin * r, r * 0.5).fill({ color: def.color });
       }
