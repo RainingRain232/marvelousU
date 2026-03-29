@@ -163,9 +163,19 @@ export class SettlersRenderer {
   private _healthBarBuildBgGeo = new THREE.PlaneGeometry(1.2, 0.08);
   private _healthBarBuildFgGeo = new THREE.PlaneGeometry(1.2, 0.08);
   private _healthBarBgMat = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.7 });
-  private _dotGeo = new THREE.SphereGeometry(0.04, 12, 10);
-  private _dotMats = new Map<number, THREE.MeshBasicMaterial>();
-  private _glowGeo = new THREE.SphereGeometry(0.15, 16, 12);
+  private _dotGeo = new THREE.SphereGeometry(0.1, 12, 10);
+  private _dotMats = new Map<number, THREE.MeshStandardMaterial>();
+  private _glowGeo = new THREE.SphereGeometry(0.2, 16, 12);
+  // Resource-specific geometries for distinct shapes
+  private _resGeoLog = new THREE.CylinderGeometry(0.04, 0.04, 0.18, 8);      // wood/planks (log)
+  private _resGeoBlock = new THREE.BoxGeometry(0.14, 0.1, 0.1);               // stone/iron/coal (block)
+  private _resGeoSack = new THREE.SphereGeometry(0.08, 10, 8);                // flour/wheat/bread (sack)
+  private _resGeoIngot = new THREE.BoxGeometry(0.16, 0.06, 0.08);             // gold/iron bar (ingot)
+  private _resGeoBottle = new THREE.CylinderGeometry(0.03, 0.05, 0.14, 8);   // beer/water (bottle)
+  private _resGeoFish = new THREE.CapsuleGeometry(0.03, 0.12, 6, 10);        // fish (oval)
+  private _resGeoSword = new THREE.BoxGeometry(0.03, 0.2, 0.015);            // sword (blade)
+  private _resGeoShield = new THREE.CircleGeometry(0.08, 8);                  // shield (disc)
+  private _resGeoBow = new THREE.TorusGeometry(0.07, 0.015, 6, 12, Math.PI); // bow (arc)
   private _combatFlashGeo = new THREE.SphereGeometry(0.15, 16, 12);
   private _smokeGeo = new THREE.SphereGeometry(0.18, 16, 12);
 
@@ -224,11 +234,48 @@ export class SettlersRenderer {
     // Camera
     this.camera = new THREE.PerspectiveCamera(55, screenW / screenH, 0.5, 500);
 
+    // Procedural brick/stone textures
+    const _makeBrickTex = (baseR: number, baseG: number, baseB: number, mortarR: number, mortarG: number, mortarB: number, brickW: number, brickH: number): THREE.CanvasTexture => {
+      const c = document.createElement("canvas"); c.width = 128; c.height = 128;
+      const ctx = c.getContext("2d")!;
+      // Fill base
+      ctx.fillStyle = `rgb(${baseR},${baseG},${baseB})`;
+      ctx.fillRect(0, 0, 128, 128);
+      // Mortar lines
+      ctx.fillStyle = `rgb(${mortarR},${mortarG},${mortarB})`;
+      const rows = Math.floor(128 / brickH);
+      for (let row = 0; row <= rows; row++) {
+        ctx.fillRect(0, row * brickH, 128, 2); // horizontal mortar
+        const offset = (row % 2) * (brickW / 2);
+        const cols = Math.ceil(128 / brickW) + 1;
+        for (let col = 0; col <= cols; col++) {
+          ctx.fillRect(col * brickW + offset, row * brickH, 2, brickH); // vertical mortar
+        }
+      }
+      // Slight brick color variation
+      for (let row = 0; row < rows; row++) {
+        const offset = (row % 2) * (brickW / 2);
+        const cols = Math.ceil(128 / brickW) + 1;
+        for (let col = 0; col < cols; col++) {
+          const vr = Math.floor((Math.random() - 0.5) * 15);
+          ctx.fillStyle = `rgba(${baseR + vr},${baseG + vr - 5},${baseB + vr - 8},0.3)`;
+          ctx.fillRect(col * brickW + offset + 3, row * brickH + 3, brickW - 5, brickH - 5);
+        }
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 2);
+      return tex;
+    };
+    const wallBrickTex = _makeBrickTex(210, 195, 155, 180, 170, 140, 24, 12);
+    const wallDarkBrickTex = _makeBrickTex(170, 155, 120, 150, 140, 115, 24, 12);
+    const stoneBrickTex = _makeBrickTex(130, 130, 125, 110, 110, 105, 32, 16);
+
     // Shared materials
-    this._wallMat = new THREE.MeshStandardMaterial({ color: 0xd8c8a0, roughness: 0.85, transparent: true });
-    this._wallDarkMat = new THREE.MeshStandardMaterial({ color: 0xb0a080, roughness: 0.9, transparent: true });
+    this._wallMat = new THREE.MeshStandardMaterial({ color: 0xd8c8a0, roughness: 0.82, transparent: true, map: wallBrickTex });
+    this._wallDarkMat = new THREE.MeshStandardMaterial({ color: 0xb0a080, roughness: 0.88, transparent: true, map: wallDarkBrickTex });
     this._woodMat = new THREE.MeshStandardMaterial({ color: 0x8b6b3a, roughness: 0.85, transparent: true });
-    this._stoneMat = new THREE.MeshStandardMaterial({ color: 0x888880, roughness: 0.9, transparent: true });
+    this._stoneMat = new THREE.MeshStandardMaterial({ color: 0x888880, roughness: 0.88, transparent: true, map: stoneBrickTex });
     this._windowMat = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0x886622, emissiveIntensity: 0.3, roughness: 0.3 });
     this._chimneyMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.95 });
     this._smokeMat = new THREE.MeshBasicMaterial({ color: 0xcccccc, transparent: true, opacity: 0.3, depthWrite: false });
@@ -1033,34 +1080,86 @@ export class SettlersRenderer {
   // -----------------------------------------------------------------------
 
   private _addClouds(): void {
-    const cloudMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.25,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-
     const mapCx = SB.MAP_WIDTH * SB.TILE_SIZE * 0.5;
     const mapCz = SB.MAP_HEIGHT * SB.TILE_SIZE * 0.5;
 
     for (let i = 0; i < 15; i++) {
       const g = new THREE.Group();
-      // 3-4 overlapping ellipses per cloud
-      const puffs = 3 + Math.floor(Math.random() * 2);
-      for (let p = 0; p < puffs; p++) {
-        const w = 8 + Math.random() * 12;
-        const h = 4 + Math.random() * 6;
-        const geo = new THREE.PlaneGeometry(w, h);
-        const puff = new THREE.Mesh(geo, cloudMat);
-        puff.position.set(
-          (Math.random() - 0.5) * 10,
-          (Math.random() - 0.5) * 2,
-          (Math.random() - 0.5) * 6,
+      const cloudScale = 0.8 + Math.random() * 0.8; // vary cloud sizes
+
+      // Each cloud: cluster of 6-10 spheres of varying sizes for puffy look
+      const puffCount = 6 + Math.floor(Math.random() * 5);
+      for (let p = 0; p < puffCount; p++) {
+        const pr = (3 + Math.random() * 5) * cloudScale;
+        const puffMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.18 + Math.random() * 0.1,
+          depthWrite: false,
+          roughness: 1.0,
+          metalness: 0,
+        });
+        const puff = new THREE.Mesh(
+          new THREE.SphereGeometry(pr, 12, 8),
+          puffMat,
         );
-        puff.rotation.x = -Math.PI / 2;
+        // Flatten vertically to make it look like a cloud (wider than tall)
+        puff.scale.set(1, 0.4 + Math.random() * 0.2, 0.7 + Math.random() * 0.2);
+        puff.position.set(
+          (Math.random() - 0.5) * 12 * cloudScale,
+          (Math.random() - 0.3) * 2 * cloudScale,
+          (Math.random() - 0.5) * 8 * cloudScale,
+        );
         g.add(puff);
       }
+
+      // Add a brighter top highlight layer (2-3 smaller puffs on top)
+      for (let h = 0; h < 3; h++) {
+        const hr = (2 + Math.random() * 3) * cloudScale;
+        const highlightMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.12 + Math.random() * 0.06,
+          depthWrite: false,
+          roughness: 1.0,
+          emissive: 0xffffff,
+          emissiveIntensity: 0.05,
+        });
+        const highlight = new THREE.Mesh(
+          new THREE.SphereGeometry(hr, 10, 6),
+          highlightMat,
+        );
+        highlight.scale.set(1.2, 0.3, 0.8);
+        highlight.position.set(
+          (Math.random() - 0.5) * 8 * cloudScale,
+          1.5 * cloudScale + Math.random() * cloudScale,
+          (Math.random() - 0.5) * 5 * cloudScale,
+        );
+        g.add(highlight);
+      }
+
+      // Darker bottom layer (shadow underside)
+      for (let s = 0; s < 2; s++) {
+        const sr = (4 + Math.random() * 4) * cloudScale;
+        const shadowMat = new THREE.MeshBasicMaterial({
+          color: 0xaabbcc,
+          transparent: true,
+          opacity: 0.06 + Math.random() * 0.04,
+          depthWrite: false,
+        });
+        const shadow = new THREE.Mesh(
+          new THREE.SphereGeometry(sr, 10, 6),
+          shadowMat,
+        );
+        shadow.scale.set(1.1, 0.25, 0.8);
+        shadow.position.set(
+          (Math.random() - 0.5) * 10 * cloudScale,
+          -1.5 * cloudScale,
+          (Math.random() - 0.5) * 6 * cloudScale,
+        );
+        g.add(shadow);
+      }
+
       g.position.set(
         mapCx + (Math.random() - 0.5) * 200,
         50 + Math.random() * 30,
@@ -1967,10 +2066,10 @@ export class SettlersRenderer {
     const def = BUILDING_DEFS[building.type];
     const g = new THREE.Group();
     const playerColor = this._getPlayerColor(building.owner, state);
-    const roofMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.75, transparent: true });
+    const roofMat = new THREE.MeshStandardMaterial({ color: playerColor, roughness: 0.75 });
     const roofDarkMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(playerColor).multiplyScalar(0.7).getHex(),
-      roughness: 0.8, transparent: true,
+      roughness: 0.8,
     });
 
     const ts = SB.TILE_SIZE;
@@ -2179,10 +2278,39 @@ export class SettlersRenderer {
         g.add(bracket);
       }
 
-      // Flag pole and pennant
+      // Conical wooden roof
+      const roofH = towerR * 1.8;
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(towerR * 1.15, roofH, 12), roofMat);
+      roof.position.y = towerH + roofH * 0.5 + 0.1;
+      roof.castShadow = true;
+      g.add(roof);
+      // Roof trim ring at base
+      const roofTrim = new THREE.Mesh(
+        new THREE.TorusGeometry(towerR * 1.15, 0.04, 8, 16),
+        new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 }),
+      );
+      roofTrim.position.y = towerH + 0.12;
+      roofTrim.rotation.x = Math.PI / 2;
+      g.add(roofTrim);
+      // Roof ridge lines (wooden beams visible on surface)
+      for (let ri = 0; ri < 6; ri++) {
+        const ra = (ri / 6) * Math.PI * 2;
+        const beam = new THREE.Mesh(this._boxGeo, new THREE.MeshStandardMaterial({ color: 0x554422, roughness: 0.85 }));
+        beam.scale.set(0.03, roofH * 0.95, 0.03);
+        beam.position.set(Math.cos(ra) * towerR * 0.55, towerH + roofH * 0.5 + 0.1, Math.sin(ra) * towerR * 0.55);
+        beam.rotation.y = -ra;
+        // Tilt beam to follow cone slope
+        const tilt = Math.atan2(towerR * 1.15, roofH);
+        beam.rotation.z = 0;
+        beam.rotation.x = 0;
+        g.add(beam);
+      }
+
+      // Flag pole and pennant (on top of roof)
       const flagPole = new THREE.Mesh(this._cylGeo, new THREE.MeshStandardMaterial({ color: 0x8b7355 }));
       flagPole.scale.set(0.4, 0.7, 0.4);
-      flagPole.position.y = towerH + 0.6;
+      flagPole.position.y = towerH + roofH + 0.5;
       g.add(flagPole);
 
       const pennantGeo = new THREE.BufferGeometry();
@@ -2192,7 +2320,7 @@ export class SettlersRenderer {
       pennantGeo.setIndex(pennIdx);
       pennantGeo.computeVertexNormals();
       const pennant = new THREE.Mesh(pennantGeo, new THREE.MeshStandardMaterial({ color: playerColor, side: THREE.DoubleSide }));
-      pennant.position.y = towerH + 0.88;
+      pennant.position.y = towerH + roofH + 0.75;
       g.add(pennant);
 
       // Arched doorway
@@ -3446,22 +3574,38 @@ export class SettlersRenderer {
         pos.needsUpdate = true;
       }
 
-      // Dynamic inventory dots (reuse cached geometry & materials)
+      // Dynamic inventory items (shaped resource icons)
       const dotsGroup = mesh.getObjectByName("inventoryDots") as THREE.Group | undefined;
       if (dotsGroup) {
         while (dotsGroup.children.length > 0) dotsGroup.remove(dotsGroup.children[0]);
         const count = Math.min(flag.inventory.length, 8);
         for (let i = 0; i < count; i++) {
-          const resColor = RESOURCE_META[flag.inventory[i].type].color;
+          const resType = flag.inventory[i].type;
+          const resColor = RESOURCE_META[resType].color;
           let dotMat = this._dotMats.get(resColor);
           if (!dotMat) {
-            dotMat = new THREE.MeshBasicMaterial({ color: resColor });
+            dotMat = new THREE.MeshStandardMaterial({ color: resColor, roughness: 0.5, metalness: 0.1 });
             this._dotMats.set(resColor, dotMat);
           }
-          const dot = new THREE.Mesh(this._dotGeo, dotMat);
+          // Pick geometry based on resource type
+          let geo: THREE.BufferGeometry;
+          switch (resType) {
+            case "wood": case "planks": geo = this._resGeoLog; break;
+            case "stone": case "iron_ore": case "coal": geo = this._resGeoBlock; break;
+            case "iron": case "gold": geo = this._resGeoIngot; break;
+            case "gold_ore": geo = this._resGeoBlock; break;
+            case "flour": case "wheat": case "bread": case "meat": geo = this._resGeoSack; break;
+            case "beer": case "water": geo = this._resGeoBottle; break;
+            case "fish": geo = this._resGeoFish; break;
+            case "sword": geo = this._resGeoSword; break;
+            case "shield": geo = this._resGeoShield; break;
+            case "bow": geo = this._resGeoBow; break;
+            default: geo = this._dotGeo;
+          }
+          const dot = new THREE.Mesh(geo, dotMat);
           const row = Math.floor(i / 4);
           const col = i % 4;
-          dot.position.set((col - 1.5) * 0.08, 0.1 + row * 0.08, 0.15);
+          dot.position.set((col - 1.5) * 0.2, 0.15 + row * 0.2, 0.2);
           dotsGroup.add(dot);
         }
         // Bottleneck glow (reuse cached geo, only update existing material)
@@ -4474,11 +4618,11 @@ export class SettlersRenderer {
     }
 
     // === CARGO (resource being carried – on top of pack, visible and prominent) ===
-    const cargoMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x222222 });
+    const cargoMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x333333, emissiveIntensity: 0.3, roughness: 0.5 });
     const cargo = new THREE.Mesh(this._boxGeo, cargoMat);
     cargo.name = "cargo";
-    cargo.scale.set(h * 0.28, h * 0.2, h * 0.2);
-    cargo.position.set(0, h * 0.80, -h * 0.18);
+    cargo.scale.set(h * 0.35, h * 0.25, h * 0.25);
+    cargo.position.set(0, h * 0.85, -h * 0.18);
     cargo.visible = false;
     body.add(cargo);
 
@@ -5482,7 +5626,7 @@ export class SettlersRenderer {
   }
 
   private _clearPlacementPreview(): void {
-    if (this._lastPreviewKey === "") return;
+    if (this._lastPreviewKey === "" && this._placementPreviewGroup.children.length === 0) return;
     this._lastPreviewKey = "";
 
     // Remove all preview overlays

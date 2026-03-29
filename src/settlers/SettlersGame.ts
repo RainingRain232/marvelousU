@@ -541,7 +541,18 @@ export class SettlersGame {
     if (buildingId) {
       state.selectedBuildingId = buildingId;
       state.selectedRoadId = null;
+      state.selectedFlagId = null;
       return;
+    }
+
+    // Check if there's a flag at this tile
+    for (const [, flag] of state.flags) {
+      if (flag.tileX === tileX && flag.tileZ === tileZ) {
+        state.selectedFlagId = flag.id;
+        state.selectedBuildingId = null;
+        state.selectedRoadId = null;
+        return;
+      }
     }
 
     // Check if there's a road segment passing through this tile
@@ -550,6 +561,7 @@ export class SettlersGame {
         if (p.x === tileX && p.z === tileZ) {
           state.selectedRoadId = road.id;
           state.selectedBuildingId = null;
+          state.selectedFlagId = null;
           return;
         }
       }
@@ -558,6 +570,7 @@ export class SettlersGame {
     // Nothing selected
     state.selectedBuildingId = null;
     state.selectedRoadId = null;
+    state.selectedFlagId = null;
   }
 
   private _handleDemolish(tileX: number, tileZ: number): void {
@@ -695,6 +708,8 @@ export class SettlersGame {
     state.selectedTool = "select";
     state.selectedBuildingType = null;
     state.selectedBuildingId = null;
+    state.selectedRoadId = null;
+    state.selectedFlagId = null;
     state.roadDrawing.active = false;
     state.roadDrawing.startFlagId = null;
     state.roadDrawing.path = [];

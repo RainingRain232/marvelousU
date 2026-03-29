@@ -331,6 +331,47 @@ export function routeGoods(state: SettlersState): void {
       }
     }
   }
+
+  // ── Idle worker sweep: collect stuck resources from congested flags ──
+  // Every 50 ticks (~0.8s), idle workers clear congested/stuck flags
+  if (state.tick % 50 !== 0) return;
+  for (const [, player] of state.players) {
+    if (player.availableWorkers <= 1) continue; // keep at least 1 idle for new buildings
+
+    // Find a storehouse/HQ for this player
+    let hasStorage = false;
+    for (const [, b] of state.buildings) {
+      if (b.owner !== player.id || !b.active) continue;
+      const def = BUILDING_DEFS[b.type];
+      if (def.type === "headquarters" || def.type === "storehouse") {
+        hasStorage = true; break;
+      }
+    }
+    if (!hasStorage) continue;
+
+    // Limit: sweep at most (idleWorkers - 1) items per cycle
+    let budget = player.availableWorkers - 1;
+
+    // Scan flags owned by this player for stuck/unrouted resources
+    for (const [, flag] of state.flags) {
+      if (flag.owner !== player.id) continue;
+      if (budget <= 0) break;
+
+      for (let i = flag.inventory.length - 1; i >= 0; i--) {
+        if (budget <= 0) break;
+        const item = flag.inventory[i];
+        // Pick up items that are unrouted OR at congested flags (6+ items)
+        const isUnrouted = !item.targetBuildingId || !item.nextFlagId;
+        const isCongested = flag.inventory.length >= 6;
+        if (isUnrouted || isCongested) {
+          // Idle worker carries this resource to storage
+          player.storage.set(item.type, (player.storage.get(item.type) || 0) + 1);
+          flag.inventory.splice(i, 1);
+          budget--;
+        }
+      }
+    }
+  }
 }
 
 /** Deliver a resource directly to a building (construction or input storage) */

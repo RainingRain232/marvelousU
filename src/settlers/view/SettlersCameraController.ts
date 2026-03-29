@@ -81,6 +81,11 @@ export class SettlersCameraController {
     this._distance = Math.max(this._minDist, Math.min(this._maxDist, this._distance));
   }
 
+  zoomBy(factor: number): void {
+    this._distance *= factor;
+    this._distance = Math.max(this._minDist, Math.min(this._maxDist, this._distance));
+  }
+
   /** Set camera target to world position */
   lookAt(x: number, z: number): void {
     this._targetX = x;

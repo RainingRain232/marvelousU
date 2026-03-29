@@ -17,62 +17,167 @@ export class HuntRenderer {
   init(sw: number, sh: number): void {
     this.container.removeChildren();
     const bg = new Graphics();
-    // Forest floor gradient (richer multi-band)
+    // Forest floor base — richer green with subtle gradient
     bg.rect(0, 0, sw, sh).fill({ color: 0x1a2a1a });
-    for (let gy = 0; gy < sh; gy += 3) {
+    for (let gy = 0; gy < sh; gy += 2) {
       const t = gy / sh;
-      const col = t < 0.3 ? 0x1e2e1e : t < 0.6 ? 0x1c2c1c : 0x182818;
-      bg.moveTo(0, gy).lineTo(sw, gy).stroke({ color: col, width: 1, alpha: 0.06 });
+      const col = t < 0.25 ? 0x1e2e1e : t < 0.5 ? 0x1c2c1a : t < 0.75 ? 0x1a2818 : 0x172616;
+      bg.moveTo(0, gy).lineTo(sw, gy).stroke({ color: col, width: 1, alpha: 0.08 });
     }
-    // Ground texture patches (dirt, moss, etc.)
-    for (let pi = 0; pi < 30; pi++) {
+
+    // Large terrain variation patches (clearings, darker thickets)
+    for (let pi = 0; pi < 50; pi++) {
       const px2 = (pi * 8291 % sw), py2 = (pi * 5347 % sh);
-      const pr = 15 + (pi * 2713 % 25);
-      bg.ellipse(px2, py2, pr, pr * 0.6).fill({ color: pi % 3 === 0 ? 0x1e2a16 : 0x1a2818, alpha: 0.15 });
+      const pr = 20 + (pi * 2713 % 40);
+      const patchType = pi % 5;
+      if (patchType === 0) {
+        // Darker thicket area
+        bg.ellipse(px2, py2, pr, pr * 0.7).fill({ color: 0x142014, alpha: 0.2 });
+      } else if (patchType === 1) {
+        // Mossy patch (greener)
+        bg.ellipse(px2, py2, pr * 0.8, pr * 0.5).fill({ color: 0x1e3a16, alpha: 0.18 });
+      } else {
+        // Earthy patch
+        bg.ellipse(px2, py2, pr * 0.7, pr * 0.6).fill({ color: 0x1a2818, alpha: 0.12 });
+      }
     }
-    // Scattered trees (background, more & bigger)
-    for (let ti = 0; ti < 60; ti++) {
+
+    // Dirt paths winding through the forest
+    for (let path = 0; path < 3; path++) {
+      let pathX = (path * 4721 % sw), pathY = (path * 3191 % sh);
+      bg.moveTo(pathX, pathY);
+      for (let seg = 0; seg < 8; seg++) {
+        pathX += (((path * 7 + seg * 13) * 3571 % 200) - 100);
+        pathY += (((path * 11 + seg * 17) * 2917 % 160) - 80);
+        pathX = Math.max(50, Math.min(sw - 50, pathX));
+        pathY = Math.max(50, Math.min(sh - 50, pathY));
+        bg.lineTo(pathX, pathY);
+      }
+      bg.stroke({ color: 0x2a2218, width: 8, alpha: 0.12 });
+      // Path edge (lighter dirt)
+      bg.stroke({ color: 0x332a1a, width: 12, alpha: 0.06 });
+    }
+
+    // Background trees (varied sizes and types)
+    for (let ti = 0; ti < 80; ti++) {
       const tx = (ti * 7919 % sw), ty = (ti * 4813 % sh);
-      const tr = 12 + (ti * 3571 % 18);
+      const tr = 14 + (ti * 3571 % 22);
+      const treeType = ti % 4;
+
       // Tree shadow
-      bg.ellipse(tx + 3, ty + tr + 2, tr * 0.8, tr * 0.2).fill({ color: 0x000000, alpha: 0.06 });
-      // Trunk
-      bg.rect(tx - 2, ty + tr * 0.3, 4, tr * 0.6).fill({ color: 0x2a1a0a, alpha: 0.25 });
-      // Canopy (multi-layer)
-      bg.circle(tx, ty, tr).fill({ color: 0x1a3a1a, alpha: 0.25 });
-      bg.circle(tx - tr * 0.3, ty + tr * 0.15, tr * 0.7).fill({ color: 0x1e3e1e, alpha: 0.18 });
-      bg.circle(tx + tr * 0.2, ty - tr * 0.1, tr * 0.6).fill({ color: 0x1a3a18, alpha: 0.15 });
-      // Leaf highlight
-      bg.circle(tx - tr * 0.15, ty - tr * 0.2, tr * 0.3).fill({ color: 0x224422, alpha: 0.1 });
+      bg.ellipse(tx + 4, ty + tr + 3, tr * 0.9, tr * 0.2).fill({ color: 0x000000, alpha: 0.08 });
+
+      if (treeType < 2) {
+        // Deciduous tree — fuller canopy
+        bg.rect(tx - 3, ty + tr * 0.2, 6, tr * 0.7).fill({ color: 0x2a1a0a, alpha: 0.3 });
+        bg.rect(tx - 1, ty + tr * 0.3, 2, tr * 0.3).fill({ color: 0x3a2a1a, alpha: 0.15 }); // bark highlight
+        // Multi-sphere canopy
+        bg.circle(tx, ty - tr * 0.05, tr).fill({ color: 0x1a3a1a, alpha: 0.3 });
+        bg.circle(tx - tr * 0.35, ty + tr * 0.1, tr * 0.7).fill({ color: 0x1e3e1e, alpha: 0.25 });
+        bg.circle(tx + tr * 0.3, ty - tr * 0.05, tr * 0.65).fill({ color: 0x1c3c1a, alpha: 0.22 });
+        bg.circle(tx - tr * 0.1, ty - tr * 0.3, tr * 0.55).fill({ color: 0x224422, alpha: 0.18 });
+        // Leaf clusters (lighter spots)
+        bg.circle(tx - tr * 0.2, ty - tr * 0.35, tr * 0.25).fill({ color: 0x2a5a2a, alpha: 0.12 });
+        bg.circle(tx + tr * 0.15, ty - tr * 0.2, tr * 0.2).fill({ color: 0x285828, alpha: 0.1 });
+      } else if (treeType === 2) {
+        // Pine/conifer
+        bg.rect(tx - 2, ty + tr * 0.3, 4, tr * 0.5).fill({ color: 0x2a1a08, alpha: 0.28 });
+        for (let tier = 0; tier < 4; tier++) {
+          const tierY = ty - tr * (0.1 + tier * 0.2);
+          const tierW = tr * (0.8 - tier * 0.15);
+          bg.moveTo(tx - tierW, tierY + tr * 0.15).lineTo(tx, tierY).lineTo(tx + tierW, tierY + tr * 0.15).fill({ color: 0x0a2a0a - tier * 0x000400, alpha: 0.25 });
+        }
+      } else {
+        // Dead/bare tree
+        bg.rect(tx - 2, ty - tr * 0.3, 4, tr * 1.0).fill({ color: 0x3a2a1a, alpha: 0.2 });
+        // Branches
+        bg.moveTo(tx, ty - tr * 0.1).lineTo(tx - tr * 0.5, ty - tr * 0.4).stroke({ color: 0x3a2a1a, width: 2, alpha: 0.15 });
+        bg.moveTo(tx, ty + tr * 0.1).lineTo(tx + tr * 0.4, ty - tr * 0.2).stroke({ color: 0x3a2a1a, width: 1.5, alpha: 0.12 });
+      }
     }
-    // Grass patches (denser, varied)
-    for (let gi = 0; gi < 100; gi++) {
+
+    // Grass tufts (many, varied)
+    for (let gi = 0; gi < 200; gi++) {
       const gx = (gi * 6271 % sw), gy2 = (gi * 3413 % sh);
-      const gh = 6 + (gi % 5) * 3;
-      bg.moveTo(gx, gy2).bezierCurveTo(gx + 2, gy2 - gh * 0.5, gx - 2, gy2 - gh * 0.8, gx + 3, gy2 - gh).stroke({ color: 0x2a4a2a, width: 1, alpha: 0.12 });
-      // Second blade
-      bg.moveTo(gx + 4, gy2).bezierCurveTo(gx + 5, gy2 - gh * 0.4, gx + 3, gy2 - gh * 0.7, gx + 6, gy2 - gh * 0.9).stroke({ color: 0x2a4a2a, width: 0.8, alpha: 0.1 });
+      const gh = 5 + (gi % 6) * 3;
+      const gc = gi % 3 === 0 ? 0x2a4a2a : gi % 3 === 1 ? 0x224422 : 0x2a5a28;
+      bg.moveTo(gx, gy2).bezierCurveTo(gx + 2, gy2 - gh * 0.5, gx - 2, gy2 - gh * 0.8, gx + 3, gy2 - gh).stroke({ color: gc, width: 1.2, alpha: 0.15 });
+      bg.moveTo(gx + 4, gy2).bezierCurveTo(gx + 5, gy2 - gh * 0.4, gx + 3, gy2 - gh * 0.7, gx + 6, gy2 - gh * 0.9).stroke({ color: gc, width: 0.8, alpha: 0.12 });
+      bg.moveTo(gx - 2, gy2).bezierCurveTo(gx - 3, gy2 - gh * 0.6, gx - 1, gy2 - gh * 0.85, gx - 4, gy2 - gh * 0.7).stroke({ color: gc, width: 0.8, alpha: 0.1 });
     }
-    // Fallen leaves / forest floor detail
-    for (let li = 0; li < 40; li++) {
+
+    // Fallen leaves scattered
+    for (let li = 0; li < 80; li++) {
       const lx = (li * 4567 % sw), ly = (li * 7823 % sh);
-      const lc = [0x664422, 0x886633, 0x553311, 0x445522][li % 4];
-      bg.ellipse(lx, ly, 3 + (li % 3), 2).fill({ color: lc, alpha: 0.08 });
+      const lc = [0x664422, 0x886633, 0x553311, 0x445522, 0x775533, 0x556622][li % 6];
+      const ls = 2 + (li % 4);
+      bg.ellipse(lx, ly, ls, ls * 0.6).fill({ color: lc, alpha: 0.1 });
+      // Leaf vein
+      bg.moveTo(lx - ls * 0.5, ly).lineTo(lx + ls * 0.5, ly).stroke({ color: lc, width: 0.3, alpha: 0.06 });
     }
-    // Mushrooms (small)
-    for (let mi = 0; mi < 12; mi++) {
+
+    // Rocks / boulders
+    for (let ri = 0; ri < 20; ri++) {
+      const rx = (ri * 9371 % sw), ry = (ri * 6833 % sh);
+      const rr = 5 + (ri * 4217 % 12);
+      bg.ellipse(rx + 2, ry + 2, rr * 1.1, rr * 0.5).fill({ color: 0x000000, alpha: 0.05 }); // shadow
+      bg.ellipse(rx, ry, rr, rr * 0.6).fill({ color: 0x3a3a30, alpha: 0.15 });
+      bg.ellipse(rx - rr * 0.2, ry - rr * 0.15, rr * 0.6, rr * 0.3).fill({ color: 0x4a4a40, alpha: 0.08 }); // highlight
+    }
+
+    // Mushroom clusters
+    for (let mi = 0; mi < 20; mi++) {
       const mx = (mi * 9137 % sw), my = (mi * 6143 % sh);
-      bg.rect(mx, my, 2, 4).fill({ color: 0xddccaa, alpha: 0.12 });
-      bg.ellipse(mx + 1, my - 1, 4, 2.5).fill({ color: 0xcc4422, alpha: 0.1 });
-      bg.circle(mx, my - 1, 0.8).fill({ color: 0xffffff, alpha: 0.06 });
+      const ms = 3 + (mi % 3) * 2;
+      // Stem
+      bg.rect(mx - 1, my, 2, ms).fill({ color: 0xddccaa, alpha: 0.15 });
+      // Cap
+      bg.ellipse(mx, my - 1, ms * 1.2, ms * 0.6).fill({ color: mi % 3 === 0 ? 0xcc4422 : mi % 3 === 1 ? 0x886644 : 0xaa8833, alpha: 0.13 });
+      // Spots on red mushrooms
+      if (mi % 3 === 0) {
+        bg.circle(mx - ms * 0.3, my - 2, 1).fill({ color: 0xffffff, alpha: 0.08 });
+        bg.circle(mx + ms * 0.2, my - 1.5, 0.8).fill({ color: 0xffffff, alpha: 0.06 });
+      }
     }
-    // Vignette (wider for larger field)
-    for (let v = 0; v < 6; v++) {
-      const i2 = v * 80;
-      bg.rect(0, 0, i2, sh).fill({ color: 0x000000, alpha: 0.025 });
-      bg.rect(sw - i2, 0, i2, sh).fill({ color: 0x000000, alpha: 0.025 });
-      bg.rect(0, 0, sw, i2).fill({ color: 0x000000, alpha: 0.015 });
-      bg.rect(0, sh - i2, sw, i2).fill({ color: 0x000000, alpha: 0.02 });
+
+    // Wildflowers
+    for (let fi = 0; fi < 40; fi++) {
+      const fx = (fi * 7331 % sw), fy = (fi * 5419 % sh);
+      const fc = [0xdddd44, 0xff6688, 0x88aaff, 0xffaacc, 0xaaddff, 0xff8844][fi % 6];
+      // Stem
+      bg.moveTo(fx, fy).lineTo(fx + 1, fy - 6).stroke({ color: 0x2a4a2a, width: 0.5, alpha: 0.12 });
+      // Petals
+      bg.circle(fx + 1, fy - 7, 2.5).fill({ color: fc, alpha: 0.12 });
+      bg.circle(fx + 1, fy - 7, 1).fill({ color: 0xffffaa, alpha: 0.08 }); // center
+    }
+
+    // Fallen logs
+    for (let lo = 0; lo < 6; lo++) {
+      const lox = (lo * 8123 % sw), loy = (lo * 5781 % sh);
+      const loLen = 30 + (lo * 3917 % 40);
+      const loAngle = (lo * 2741 % 628) / 100;
+      bg.moveTo(lox, loy).lineTo(lox + Math.cos(loAngle) * loLen, loy + Math.sin(loAngle) * loLen).stroke({ color: 0x3a2a1a, width: 5, alpha: 0.12 });
+      bg.moveTo(lox, loy).lineTo(lox + Math.cos(loAngle) * loLen, loy + Math.sin(loAngle) * loLen).stroke({ color: 0x4a3a2a, width: 3, alpha: 0.08 }); // bark highlight
+      // Moss on log
+      const midX = lox + Math.cos(loAngle) * loLen * 0.5, midY = loy + Math.sin(loAngle) * loLen * 0.5;
+      bg.ellipse(midX, midY - 2, 6, 3).fill({ color: 0x2a4a2a, alpha: 0.08 });
+    }
+
+    // Sunlight dappling (bright spots filtering through canopy)
+    for (let si = 0; si < 30; si++) {
+      const sx2 = (si * 6547 % sw), sy = (si * 4391 % sh);
+      const sr = 8 + (si * 3127 % 15);
+      bg.circle(sx2, sy, sr).fill({ color: 0x4a6a3a, alpha: 0.04 });
+      bg.circle(sx2, sy, sr * 0.5).fill({ color: 0x5a7a4a, alpha: 0.03 });
+    }
+
+    // Vignette
+    for (let v = 0; v < 8; v++) {
+      const i2 = v * 60;
+      bg.rect(0, 0, i2, sh).fill({ color: 0x000000, alpha: 0.02 });
+      bg.rect(sw - i2, 0, i2, sh).fill({ color: 0x000000, alpha: 0.02 });
+      bg.rect(0, 0, sw, i2).fill({ color: 0x000000, alpha: 0.012 });
+      bg.rect(0, sh - i2, sw, i2).fill({ color: 0x000000, alpha: 0.015 });
     }
     this.container.addChild(bg);
     this._gfx = new Graphics();
@@ -90,25 +195,60 @@ export class HuntRenderer {
     // Field border
     g.roundRect(ox - 2, oy - 2, HuntConfig.FIELD_WIDTH + 4, HuntConfig.FIELD_HEIGHT + 4, 4).stroke({ color: COL, width: 1, alpha: 0.2 });
 
-    // Draw water zones
+    // Draw water zones (detailed ponds)
     for (const water of state.waterZones) {
-      g.roundRect(ox + water.x, oy + water.y, water.w, water.h, 6).fill({ color: 0x2244aa, alpha: 0.25 });
-      g.roundRect(ox + water.x, oy + water.y, water.w, water.h, 6).stroke({ color: 0x4466cc, width: 0.8, alpha: 0.2 });
-      // Ripple lines
-      for (let ri = 0; ri < 3; ri++) {
-        const ry = water.y + 5 + ri * (water.h / 3);
-        g.moveTo(ox + water.x + 4, oy + ry).bezierCurveTo(ox + water.x + water.w * 0.3, oy + ry - 2, ox + water.x + water.w * 0.7, oy + ry + 2, ox + water.x + water.w - 4, oy + ry).stroke({ color: 0x5577cc, width: 0.4, alpha: 0.15 });
+      // Shore edge
+      g.roundRect(ox + water.x - 3, oy + water.y - 3, water.w + 6, water.h + 6, 10).fill({ color: 0x3a3a28, alpha: 0.15 });
+      // Water surface
+      g.roundRect(ox + water.x, oy + water.y, water.w, water.h, 8).fill({ color: 0x1a3366, alpha: 0.35 });
+      g.roundRect(ox + water.x, oy + water.y, water.w, water.h, 8).stroke({ color: 0x4466cc, width: 1.5, alpha: 0.2 });
+      // Reflection shimmer
+      g.roundRect(ox + water.x + water.w * 0.15, oy + water.y + water.h * 0.2, water.w * 0.3, water.h * 0.15, 4).fill({ color: 0x6688cc, alpha: 0.1 });
+      // Ripple lines (more)
+      for (let ri = 0; ri < 5; ri++) {
+        const ry = water.y + 4 + ri * (water.h / 5);
+        const rippleOff = Math.sin(Date.now() / 600 + ri) * 3;
+        g.moveTo(ox + water.x + 6, oy + ry + rippleOff).bezierCurveTo(ox + water.x + water.w * 0.3, oy + ry - 2 + rippleOff, ox + water.x + water.w * 0.7, oy + ry + 2 + rippleOff, ox + water.x + water.w - 6, oy + ry + rippleOff).stroke({ color: 0x5577cc, width: 0.6, alpha: 0.12 });
+      }
+      // Lily pads
+      for (let lp = 0; lp < 3; lp++) {
+        const lpx = ox + water.x + 10 + (lp * 4217 % Math.max(1, water.w - 20));
+        const lpy = oy + water.y + 8 + (lp * 3119 % Math.max(1, water.h - 16));
+        g.circle(lpx, lpy, 4).fill({ color: 0x226622, alpha: 0.2 });
+        g.circle(lpx, lpy, 2.5).fill({ color: 0x2a7a2a, alpha: 0.15 });
+      }
+      // Reeds at edges
+      for (let re = 0; re < 4; re++) {
+        const rex = ox + water.x + re * (water.w / 3);
+        const rey = oy + water.y;
+        g.moveTo(rex, rey).lineTo(rex + 1, rey - 10).stroke({ color: 0x3a5a2a, width: 1, alpha: 0.2 });
+        g.moveTo(rex + 3, rey).lineTo(rex + 2, rey - 8).stroke({ color: 0x3a5a2a, width: 0.8, alpha: 0.15 });
       }
     }
 
-    // Draw brush zones
+    // Draw brush zones (dense undergrowth)
     for (const brush of state.brushZones) {
-      g.roundRect(ox + brush.x, oy + brush.y, brush.w, brush.h, 4).fill({ color: 0x2a4a1a, alpha: 0.3 });
-      // Grass blade detail
-      for (let bi = 0; bi < 8; bi++) {
-        const bx = ox + brush.x + 5 + Math.random() * (brush.w - 10);
-        const by = oy + brush.y + brush.h - 3;
-        g.moveTo(bx, by).bezierCurveTo(bx + 1, by - 6, bx - 1, by - 8, bx + 2, by - 10).stroke({ color: 0x3a5a2a, width: 0.5, alpha: 0.3 });
+      // Outer soft edge
+      g.roundRect(ox + brush.x - 2, oy + brush.y - 2, brush.w + 4, brush.h + 4, 8).fill({ color: 0x2a4a1a, alpha: 0.12 });
+      // Main brush fill
+      g.roundRect(ox + brush.x, oy + brush.y, brush.w, brush.h, 6).fill({ color: 0x2a4a1a, alpha: 0.35 });
+      // Darker patches within
+      g.ellipse(ox + brush.x + brush.w * 0.3, oy + brush.y + brush.h * 0.4, brush.w * 0.25, brush.h * 0.2).fill({ color: 0x1a3a12, alpha: 0.15 });
+      // Grass blades (many more, varied)
+      for (let bi = 0; bi < 16; bi++) {
+        const bx = ox + brush.x + 4 + (bi * 3917 % Math.max(1, brush.w - 8));
+        const by = oy + brush.y + brush.h - 2;
+        const bh = 8 + (bi % 4) * 4;
+        const sway = Math.sin(Date.now() / 500 + bi * 0.7) * 2;
+        g.moveTo(bx, by).bezierCurveTo(bx + sway, by - bh * 0.5, bx - 1 + sway, by - bh * 0.8, bx + 2 + sway, by - bh).stroke({ color: 0x3a5a2a, width: 1.2, alpha: 0.3 });
+        g.moveTo(bx + 3, by).bezierCurveTo(bx + 4 + sway * 0.7, by - bh * 0.4, bx + 2 + sway * 0.7, by - bh * 0.6, bx + 5 + sway * 0.7, by - bh * 0.8).stroke({ color: 0x3a5a2a, width: 0.8, alpha: 0.2 });
+      }
+      // Small flowers in brush
+      for (let fi = 0; fi < 3; fi++) {
+        const fx2 = ox + brush.x + 6 + (fi * 5413 % Math.max(1, brush.w - 12));
+        const fy2 = oy + brush.y + 4 + (fi * 3217 % Math.max(1, brush.h - 8));
+        const fc2 = [0xdddd66, 0xff88aa, 0xaaccff][fi % 3];
+        g.circle(fx2, fy2, 2).fill({ color: fc2, alpha: 0.2 });
       }
     }
 

@@ -1443,12 +1443,53 @@ export class SettlersHUD {
 
         this._infoPanel.innerHTML = html;
 
-        // Wire up road upgrade button
-        const upgradeBtn = document.getElementById("settlers-road-upgrade");
-        if (upgradeBtn) {
-          upgradeBtn.onclick = () => this.onRoadUpgrade?.(state.selectedRoadId!);
-        }
+        // Wire up road upgrade button via delegation (survives innerHTML rewrites)
+        this._infoPanel.onclick = (e) => {
+          const target = (e.target as HTMLElement).closest("#settlers-road-upgrade") as HTMLElement | null;
+          if (target && !target.hasAttribute("disabled") && state.selectedRoadId) {
+            e.stopPropagation();
+            this.onRoadUpgrade?.(state.selectedRoadId);
+          }
+          // Flag info close is handled by panel click passthrough
+        };
       } else {
+        this._infoPanel.style.display = "none";
+      }
+    } else if (state.selectedFlagId) {
+      const flag = state.flags.get(state.selectedFlagId);
+      if (flag) {
+        this._infoPanel.style.display = "block";
+        let html = `<div style="font-size:14px;font-weight:bold;color:#ffd700;margin-bottom:8px;">Flag</div>`;
+        html += `<div style="color:#aaa;font-size:11px;margin-bottom:4px;">Position: (${flag.tileX}, ${flag.tileZ})</div>`;
+        html += `<div style="color:#aaa;font-size:11px;margin-bottom:4px;">Connected roads: ${flag.connectedRoads.length}</div>`;
+        if (flag.buildingId) {
+          const bld = state.buildings.get(flag.buildingId);
+          html += `<div style="color:#88aacc;font-size:11px;margin-bottom:6px;">Building: ${bld?.type ?? flag.buildingId}</div>`;
+        }
+        html += `<div style="border-top:1px solid #444;margin-top:6px;padding-top:6px;">`;
+        html += `<div style="color:#ccc;font-size:12px;font-weight:bold;margin-bottom:4px;">Resources (${flag.inventory.length}/8)</div>`;
+        if (flag.inventory.length === 0) {
+          html += `<div style="color:#666;font-size:11px;font-style:italic;">Empty</div>`;
+        } else {
+          // Group resources by type
+          const counts = new Map<string, number>();
+          for (const item of flag.inventory) {
+            counts.set(item.type, (counts.get(item.type) || 0) + 1);
+          }
+          for (const [type, count] of counts) {
+            const name = type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            const barW = Math.min(100, count * 25);
+            html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">`;
+            html += `<div style="flex:1;color:#cda;font-size:11px;">${name}</div>`;
+            html += `<div style="width:${barW}px;height:6px;background:#4a6a3a;border-radius:3px;"></div>`;
+            html += `<div style="color:#aaa;font-size:10px;width:16px;text-align:right;">${count}</div>`;
+            html += `</div>`;
+          }
+        }
+        html += `</div>`;
+        this._infoPanel.innerHTML = html;
+      } else {
+        state.selectedFlagId = null;
         this._infoPanel.style.display = "none";
       }
     } else {

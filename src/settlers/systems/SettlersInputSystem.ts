@@ -55,6 +55,8 @@ export class SettlersInputSystem {
       if (e.code === "F9") { e.preventDefault(); this.onLoad?.(); }
       if (e.key === "+" || e.key === "=") this._changeSpeed(1.5);
       if (e.key === "-" || e.key === "_") this._changeSpeed(1 / 1.5);
+      if (e.key === "9") this._camera.zoomBy(0.8);  // zoom in 20%
+      if (e.key === "0") this._camera.zoomBy(1.2); // zoom out 20%
     };
 
     this._onKeyUp = (e: KeyboardEvent) => {

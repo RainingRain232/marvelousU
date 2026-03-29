@@ -60,6 +60,7 @@ export interface SettlersState {
   hoveredTile: { x: number; z: number } | null;
   selectedBuildingId: string | null;
   selectedRoadId: string | null;
+  selectedFlagId: string | null;
 
   // Road drawing mode
   roadDrawing: {
@@ -148,6 +149,7 @@ export function createSettlersState(screenW: number, screenH: number): SettlersS
     hoveredTile: null,
     selectedBuildingId: null,
     selectedRoadId: null,
+    selectedFlagId: null,
     roadDrawing: { active: false, startFlagId: null, path: [] },
     screenW,
     screenH,
