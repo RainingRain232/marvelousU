@@ -138,8 +138,8 @@ export class DerbyGame {
       this._state.player.sprinting = this._keys.has("Shift") || this._keys.has("ShiftLeft") || this._keys.has("ShiftRight");
 
       // Shoot at archery target (Space key)
-      if (this._keys.has("Space") && this._state.archeryTarget?.active && !this._state.archeryTarget.hitBy) {
-        this._keys.delete("Space");
+      if (this._keys.has(" ") && this._state.archeryTarget?.active && !this._state.archeryTarget.hitBy) {
+        this._keys.delete(" ");
         this._state.archeryTarget.hitBy = "player";
         this._state.player.score += 50;
         this._state.player.coins += 5;

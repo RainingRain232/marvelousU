@@ -573,9 +573,9 @@ export class MatrixGame {
 
   private _buildArena(): void {
     this._scene.background = new THREE.Color(0x000a00);
-    this._scene.fog = new THREE.Fog(0x001a00, 15, 60);
+    this._scene.fog = new THREE.Fog(0x001a00, 18, 65);
 
-    // dark green ambient
+    // Lighting
     this._scene.add(new THREE.AmbientLight(0x003300, 0.4));
     const sun = new THREE.DirectionalLight(0x00ff44, 0.6);
     sun.position.set(10, 20, 5); sun.castShadow = true;
@@ -583,85 +583,190 @@ export class MatrixGame {
     sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
     sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
     this._scene.add(sun);
+    // Additional rim lights for depth
+    const rimLight = new THREE.PointLight(0x00aa44, 0.3, 40);
+    rimLight.position.set(-15, 8, -15);
+    this._scene.add(rimLight);
+    const rimLight2 = new THREE.PointLight(0x004422, 0.2, 40);
+    rimLight2.position.set(15, 6, 15);
+    this._scene.add(rimLight2);
 
-    // arena floor: dark stone with green grid lines
+    const accentGlow = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 1.5, toneMapped: false });
+    const dimGlow = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 0.6, toneMapped: false });
+
+    // Arena floor with grid texture
     const floorTex = this._createGridTexture();
     const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(ARENA_RADIUS + 2, 48),
-      new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.7, metalness: 0.1 })
+      new THREE.CircleGeometry(ARENA_RADIUS + 2, 64),
+      new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.65, metalness: 0.15 })
     );
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
     this._scene.add(floor);
 
-    // arena walls: wireframe pillars
+    // Floor hex pattern overlay
+    for (let hi = 0; hi < 40; hi++) {
+      const ha = (hi / 40) * Math.PI * 2;
+      const hr = 4 + (hi % 5) * 3.5;
+      const hex = new THREE.Mesh(
+        new THREE.RingGeometry(0.8, 0.85, 6),
+        new THREE.MeshBasicMaterial({ color: 0x003a00, transparent: true, opacity: 0.15, side: THREE.DoubleSide }),
+      );
+      hex.rotation.x = -Math.PI / 2;
+      hex.position.set(Math.cos(ha) * hr, 0.015, Math.sin(ha) * hr);
+      this._scene.add(hex);
+    }
+
+    // ── Pillars (taller, with details) ──
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x0a1a0a, emissive: 0x002200, emissiveIntensity: 0.2, metalness: 0.5, roughness: 0.4, toneMapped: false });
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * Math.PI * 2;
-      const x = Math.cos(a) * (ARENA_RADIUS + 1);
-      const z = Math.sin(a) * (ARENA_RADIUS + 1);
+      const px = Math.cos(a) * (ARENA_RADIUS + 1);
+      const pz = Math.sin(a) * (ARENA_RADIUS + 1);
 
-      const pillar = new THREE.Mesh(
-        new THREE.BoxGeometry(0.3, 5, 0.3),
-        new THREE.MeshStandardMaterial({ color: 0x003300, emissive: 0x004400, emissiveIntensity: 0.3, toneMapped: false })
-      );
-      pillar.position.set(x, 2.5, z); pillar.castShadow = true;
+      // Main pillar shaft
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 6, 10), pillarMat);
+      pillar.position.set(px, 3, pz); pillar.castShadow = true;
       this._scene.add(pillar);
-
-      // glowing top
-      const top = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15, 12, 10),
-        new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 2.0, toneMapped: false })
-      );
-      top.position.set(x, 5.2, z);
+      // Pillar base
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.3, 10), pillarMat);
+      base.position.set(px, 0.15, pz);
+      this._scene.add(base);
+      // Pillar capital
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.2, 10), pillarMat);
+      cap.position.set(px, 6.1, pz);
+      this._scene.add(cap);
+      // Glowing ring at mid-height
+      const midRing = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 8, 16), dimGlow);
+      midRing.position.set(px, 3, pz);
+      midRing.rotation.x = Math.PI / 2;
+      this._scene.add(midRing);
+      // Glowing top orb
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 10), accentGlow);
+      top.position.set(px, 6.3, pz);
       this._scene.add(top);
-    }
-
-    // central glow
-    this._scene.add(new THREE.PointLight(0x00ff44, 0.5, 30));
-
-    // arena obstacles: cover blocks and energy barriers
-    const coverMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.4, metalness: 0.6 });
-    const barrierMat = new THREE.MeshStandardMaterial({ color: 0x003300, emissive: 0x004400, emissiveIntensity: 0.4, transparent: true, opacity: 0.7, toneMapped: false });
-
-    // 6 cover blocks in inner ring
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
-      const r = 10 + (i % 2) * 4;
-      const block = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.5), coverMat);
-      block.position.set(Math.cos(a) * r, 0.6, Math.sin(a) * r);
-      block.castShadow = true; block.receiveShadow = true;
-      this._scene.add(block);
-      // green edge glow strip
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.05, 1.55),
-        new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 1.0, toneMapped: false }));
-      strip.position.set(Math.cos(a) * r, 1.22, Math.sin(a) * r);
-      this._scene.add(strip);
-    }
-
-    // 3 tall energy barrier columns (transparent, glowing)
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * Math.PI * 2;
-      const r = 16;
-      const barrier = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 8), barrierMat);
-      barrier.position.set(Math.cos(a) * r, 2, Math.sin(a) * r);
-      this._scene.add(barrier);
-      // top/bottom rings
-      for (const y of [0.05, 4]) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 16),
-          new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 1.5, toneMapped: false }));
-        ring.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
-        ring.rotation.x = Math.PI / 2;
-        this._scene.add(ring);
+      // Light beam from top (every 4th pillar)
+      if (i % 4 === 0) {
+        const beam = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.02, 0.15, 6, 8),
+          new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.06, depthWrite: false }),
+        );
+        beam.position.set(px, 3, pz);
+        this._scene.add(beam);
+        // Spotlight from pillar
+        const pLight = new THREE.PointLight(0x00ff44, 0.15, 8);
+        pLight.position.set(px, 5, pz);
+        this._scene.add(pLight);
+      }
+      // Horizontal connecting beams between pillars (every other)
+      if (i % 2 === 0 && i < 24) {
+        const nextA = ((i + 1) / 24) * Math.PI * 2;
+        const nx = Math.cos(nextA) * (ARENA_RADIUS + 1);
+        const nz = Math.sin(nextA) * (ARENA_RADIUS + 1);
+        const midX = (px + nx) / 2, midZ = (pz + nz) / 2;
+        const dist = Math.sqrt((nx - px) ** 2 + (nz - pz) ** 2);
+        const beam2 = new THREE.Mesh(new THREE.BoxGeometry(dist, 0.08, 0.08), pillarMat);
+        beam2.position.set(midX, 5.8, midZ);
+        beam2.lookAt(nx, 5.8, nz);
+        this._scene.add(beam2);
       }
     }
 
-    // floor decoration: concentric grid circles
-    for (const radius of [8, 16, ARENA_RADIUS]) {
+    // Central glow
+    this._scene.add(new THREE.PointLight(0x00ff44, 0.5, 30));
+    // Central floor emblem
+    const emblem = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.7, 6), new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.2, side: THREE.DoubleSide }));
+    emblem.rotation.x = -Math.PI / 2; emblem.position.y = 0.02;
+    this._scene.add(emblem);
+    const emblemInner = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 6), new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.3, side: THREE.DoubleSide }));
+    emblemInner.rotation.x = -Math.PI / 2; emblemInner.position.y = 0.02;
+    this._scene.add(emblemInner);
+
+    // ── Cover blocks (more detailed) ──
+    const coverMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.35, metalness: 0.65 });
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+      const r = 10 + (i % 2) * 4;
+      const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+      // Main block
+      const block = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.5), coverMat);
+      block.position.set(cx, 0.6, cz); block.castShadow = true; block.receiveShadow = true;
+      this._scene.add(block);
+      // Bevelled top edge
+      const bevel = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 1.6), coverMat);
+      bevel.position.set(cx, 1.23, cz);
+      this._scene.add(bevel);
+      // Green edge glow strips (all 4 edges)
+      for (const [dx, dz, w, d] of [[0, 0.78, 1.55, 0.04], [0, -0.78, 1.55, 0.04], [0.78, 0, 0.04, 1.55], [-0.78, 0, 0.04, 1.55]] as [number, number, number, number][]) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, d), accentGlow);
+        strip.position.set(cx + dx, 1.24, cz + dz);
+        this._scene.add(strip);
+      }
+      // Circuit lines on block face
+      const circuit = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.8, 0.02), dimGlow);
+      circuit.position.set(cx, 0.6, cz - 0.76);
+      this._scene.add(circuit);
+      const circuitH = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.02, 0.02), dimGlow);
+      circuitH.position.set(cx, 0.5, cz - 0.76);
+      this._scene.add(circuitH);
+    }
+
+    // ── Energy barrier columns ──
+    const barrierMat = new THREE.MeshStandardMaterial({ color: 0x003300, emissive: 0x004400, emissiveIntensity: 0.4, transparent: true, opacity: 0.7, toneMapped: false });
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      const r = 16;
+      const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
+      const barrier = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 12), barrierMat);
+      barrier.position.set(bx, 2, bz);
+      this._scene.add(barrier);
+      for (const y of [0.05, 4]) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 10, 20), accentGlow);
+        ring.position.set(bx, y, bz); ring.rotation.x = Math.PI / 2;
+        this._scene.add(ring);
+      }
+      // Energy field between barrier and adjacent pillar
+      const field = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.6, 4),
+        new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.03, side: THREE.DoubleSide, depthWrite: false }),
+      );
+      field.position.set(bx, 2, bz);
+      field.rotation.y = a;
+      this._scene.add(field);
+    }
+
+    // ── Concentric floor circles ──
+    for (const radius of [5, 8, 12, 16, ARENA_RADIUS]) {
       const circle = new THREE.Mesh(
-        new THREE.RingGeometry(radius - 0.05, radius + 0.05, 64),
-        new THREE.MeshBasicMaterial({ color: 0x004400, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+        new THREE.RingGeometry(radius - 0.04, radius + 0.04, 72),
+        new THREE.MeshBasicMaterial({ color: 0x004400, transparent: true, opacity: 0.2, side: THREE.DoubleSide }),
       );
       circle.rotation.x = -Math.PI / 2; circle.position.y = 0.02;
       this._scene.add(circle);
+    }
+
+    // ── Radial floor lines ──
+    for (let ri = 0; ri < 12; ri++) {
+      const ra = (ri / 12) * Math.PI * 2;
+      const line = new THREE.Mesh(
+        new THREE.BoxGeometry(ARENA_RADIUS, 0.01, 0.03),
+        new THREE.MeshBasicMaterial({ color: 0x003300, transparent: true, opacity: 0.12 }),
+      );
+      line.rotation.y = ra;
+      line.position.set(Math.cos(ra) * ARENA_RADIUS / 2, 0.015, Math.sin(ra) * ARENA_RADIUS / 2);
+      this._scene.add(line);
+    }
+
+    // ── Floating data particles (ambient atmosphere) ──
+    for (let fi = 0; fi < 30; fi++) {
+      const fa = Math.random() * Math.PI * 2;
+      const fr = 3 + Math.random() * (ARENA_RADIUS - 3);
+      const fh = 1 + Math.random() * 5;
+      const particle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.04, 0.04),
+        new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.3 + Math.random() * 0.3 }),
+      );
+      particle.position.set(Math.cos(fa) * fr, fh, Math.sin(fa) * fr);
+      this._scene.add(particle);
     }
   }
 
@@ -689,65 +794,145 @@ export class MatrixGame {
   private _buildPlayerMesh(): void {
     this._playerMesh = new THREE.Group();
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.5 });
+    const darkShiny = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.2, metalness: 0.7 });
     const accentMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 1.5, toneMapped: false });
+    const dimAccent = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x00ff44, emissiveIntensity: 0.6, toneMapped: false });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.3 });
 
-    // torso (tapered)
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 1.0, 8), darkMat);
-    torso.position.y = 0.9; torso.castShadow = true; this._playerMesh.add(torso);
-
-    // shoulders
-    for (const sx of [-0.35, 0.35]) {
-      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), darkMat);
-      shoulder.position.set(sx, 1.35, 0); this._playerMesh.add(shoulder);
-      // green accent strip on shoulder
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.1), accentMat);
-      strip.position.set(sx, 1.35, -0.1); this._playerMesh.add(strip);
+    // ── Boots ──
+    for (const sx of [-0.14, 0.14]) {
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.2), darkShiny);
+      boot.position.set(sx, 0.07, -0.02); this._playerMesh.add(boot);
+      // Boot sole
+      const sole = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.03, 0.22), new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.9 }));
+      sole.position.set(sx, -0.01, -0.02); this._playerMesh.add(sole);
+      // Boot buckle
+      const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.02), dimAccent);
+      buckle.position.set(sx, 0.1, -0.1); this._playerMesh.add(buckle);
     }
 
-    // arms
-    for (const sx of [-0.38, 0.38]) {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.6, 12), darkMat);
-      arm.position.set(sx, 1.0, 0); arm.castShadow = true; this._playerMesh.add(arm);
+    // ── Legs (thigh + shin with knee joint) ──
+    for (const sx of [-0.13, 0.13]) {
+      // Shin
+      const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.4, 14), darkMat);
+      shin.position.set(sx, 0.35, 0); shin.castShadow = true; this._playerMesh.add(shin);
+      // Knee joint
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), darkShiny);
+      knee.position.set(sx, 0.55, 0); this._playerMesh.add(knee);
+      // Thigh
+      const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.35, 14), darkMat);
+      thigh.position.set(sx, 0.75, 0); thigh.castShadow = true; this._playerMesh.add(thigh);
+      // Circuit line on shin
+      const shinLine = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.35, 0.01), dimAccent);
+      shinLine.position.set(sx, 0.35, -0.075); this._playerMesh.add(shinLine);
     }
 
-    // legs
-    for (const sx of [-0.12, 0.12]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.7, 12), darkMat);
-      leg.position.set(sx, 0.25, 0); leg.castShadow = true; this._playerMesh.add(leg);
-      // boot
-      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.15), darkMat);
-      boot.position.set(sx, -0.05, -0.02); this._playerMesh.add(boot);
+    // ── Torso (layered) ──
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.55, 16), darkMat);
+    torso.position.y = 1.1; torso.castShadow = true; this._playerMesh.add(torso);
+    // Chest armor plate
+    const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.4, 0.08), darkShiny);
+    chestPlate.position.set(0, 1.15, -0.18); this._playerMesh.add(chestPlate);
+    // Chest circuit lines
+    const chestV = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.35, 0.01), accentMat);
+    chestV.position.set(0, 1.12, -0.23); this._playerMesh.add(chestV);
+    const chestH1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.015, 0.01), dimAccent);
+    chestH1.position.set(0, 1.0, -0.23); this._playerMesh.add(chestH1);
+    const chestH2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.015, 0.01), dimAccent);
+    chestH2.position.set(0, 1.2, -0.23); this._playerMesh.add(chestH2);
+    // Abdomen
+    const abdomen = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.15, 14), skinMat);
+    abdomen.position.y = 0.95; this._playerMesh.add(abdomen);
+    // Belt
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.23, 0.08, 16), darkShiny);
+    belt.position.y = 0.92; this._playerMesh.add(belt);
+    const beltBuckle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.04), accentMat);
+    beltBuckle.position.set(0, 0.92, -0.22); this._playerMesh.add(beltBuckle);
+
+    // ── Shoulders (pauldrons) ──
+    for (const sx of [-1, 1]) {
+      const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), darkShiny);
+      pauldron.position.set(sx * 0.35, 1.4, 0); this._playerMesh.add(pauldron);
+      // Accent ring on pauldron
+      const pRing = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 8, 16), dimAccent);
+      pRing.position.set(sx * 0.35, 1.35, 0); pRing.rotation.x = Math.PI / 2;
+      this._playerMesh.add(pRing);
+      // Accent dot
+      const pDot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), accentMat);
+      pDot.position.set(sx * 0.38, 1.42, -0.08); this._playerMesh.add(pDot);
     }
 
-    // head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), darkMat);
-    head.position.y = 1.55; head.castShadow = true; this._playerMesh.add(head);
+    // ── Arms (upper + forearm + hand) ──
+    for (const sx of [-1, 1]) {
+      const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 12), darkMat);
+      upperArm.position.set(sx * 0.38, 1.2, 0); upperArm.castShadow = true; this._playerMesh.add(upperArm);
+      // Elbow joint
+      const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), darkShiny);
+      elbow.position.set(sx * 0.4, 1.05, 0); this._playerMesh.add(elbow);
+      // Forearm
+      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.25, 12), darkMat);
+      forearm.position.set(sx * 0.4, 0.9, 0); forearm.castShadow = true; this._playerMesh.add(forearm);
+      // Hand/gauntlet
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.1), darkShiny);
+      hand.position.set(sx * 0.42, 0.75, 0); this._playerMesh.add(hand);
+      // Forearm circuit
+      const armLine = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.22, 0.01), dimAccent);
+      armLine.position.set(sx * 0.4, 0.9, -0.055); this._playerMesh.add(armLine);
+    }
 
-    // visor glow (wider, more prominent)
-    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 0.12), accentMat);
-    visor.position.set(0, 1.55, -0.17); this._playerMesh.add(visor);
+    // ── Neck + Head ──
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.1, 12), skinMat);
+    neck.position.y = 1.45; this._playerMesh.add(neck);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 16), darkMat);
+    head.position.y = 1.6; head.castShadow = true; this._playerMesh.add(head);
+    // Visor (wrap-around, wider)
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.055, 0.15), accentMat);
+    visor.position.set(0, 1.6, -0.16); this._playerMesh.add(visor);
+    // Visor side pieces
+    for (const sx of [-1, 1]) {
+      const visorSide = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.055, 0.08), accentMat);
+      visorSide.position.set(sx * 0.18, 1.6, -0.1); this._playerMesh.add(visorSide);
+    }
+    // Jaw line
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.03, 0.1), darkShiny);
+    jaw.position.set(0, 1.5, -0.14); this._playerMesh.add(jaw);
+    // Hair/back of head detail
+    const backHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10, 0, Math.PI * 2, Math.PI * 0.3, Math.PI * 0.5), skinMat);
+    backHead.position.set(0, 1.65, 0.08); this._playerMesh.add(backHead);
 
-    // chest glow strip
-    const chestStrip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.6, 0.05), accentMat);
-    chestStrip.position.set(0, 0.9, -0.26); this._playerMesh.add(chestStrip);
-
-    // cape (flows behind)
+    // ── Cape (higher poly, flows behind) ──
     const cape = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.5, 0.9, 1, 4),
-      new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.5, side: THREE.DoubleSide })
+      new THREE.PlaneGeometry(0.55, 1.0, 4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.5, side: THREE.DoubleSide }),
     );
-    cape.position.set(0, 1.0, 0.3); cape.name = "cape";
+    cape.position.set(0, 1.05, 0.3); cape.name = "cape";
     this._playerMesh.add(cape);
+    // Cape collar
+    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.06, 0.08), darkShiny);
+    collar.position.set(0, 1.4, 0.16); this._playerMesh.add(collar);
 
-    // sword (longer blade with guard)
-    const blade = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 1.3, 0.12),
-      new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x00ff44, emissiveIntensity: 0.5, toneMapped: false, metalness: 0.9, roughness: 0.1 })
-    );
-    blade.position.set(0.42, 1.0, -0.25); blade.name = "sword"; this._playerMesh.add(blade);
-    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 0.04),
+    // ── Sword (detailed blade + guard + grip + pommel) ──
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x00ff44, emissiveIntensity: 0.5, toneMapped: false, metalness: 0.9, roughness: 0.1 });
+    // Blade (tapered)
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.035, 1.2, 0.1), bladeMat);
+    blade.position.set(0.44, 1.05, -0.25); blade.name = "sword"; this._playerMesh.add(blade);
+    // Blade edge glow
+    const edgeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.005, 1.15, 0.11), accentMat);
+    edgeGlow.position.set(0.44, 1.05, -0.25); this._playerMesh.add(edgeGlow);
+    // Blade tip
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.15, 4), bladeMat);
+    tip.position.set(0.44, 1.68, -0.25); this._playerMesh.add(tip);
+    // Cross-guard
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, 0.05),
       new THREE.MeshStandardMaterial({ color: 0x00aa44, metalness: 0.8, roughness: 0.2 }));
-    guard.position.set(0.42, 0.4, -0.25); this._playerMesh.add(guard);
+    guard.position.set(0.44, 0.42, -0.25); this._playerMesh.add(guard);
+    // Grip (wrapped)
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 10),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7, metalness: 0.3 }));
+    grip.position.set(0.44, 0.32, -0.25); this._playerMesh.add(grip);
+    // Pommel
+    const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), accentMat);
+    pommel.position.set(0.44, 0.22, -0.25); this._playerMesh.add(pommel);
 
     this._playerMesh.position.copy(this._playerPos);
     this._scene.add(this._playerMesh);

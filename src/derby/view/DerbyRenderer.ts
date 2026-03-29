@@ -623,11 +623,11 @@ export class DerbyRenderer {
       g.moveTo(screenX - r, ty).lineTo(screenX + r, ty).stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
       g.moveTo(screenX, ty - r).lineTo(screenX, ty + r).stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
 
-      // "SHOOT!" prompt when target is active
-      if (Math.floor(t * 3) % 2 === 0) {
-        // Small pulsing indicator
-        g.circle(screenX, ty - r - 8, 3).fill({ color: 0xffdd44, alpha: 0.6 });
-      }
+      // "SPACE" prompt label above target
+      const promptAlpha = 0.5 + Math.sin(t * 5) * 0.3;
+      // Arrow pointing down to target
+      g.moveTo(screenX, ty - r - 18).lineTo(screenX - 5, ty - r - 26).lineTo(screenX + 5, ty - r - 26).fill({ color: 0xffdd44, alpha: promptAlpha });
+      g.rect(screenX - 1.5, ty - r - 34, 3, 8).fill({ color: 0xffdd44, alpha: promptAlpha });
 
       // Timer bar below target
       const barW = r * 2;

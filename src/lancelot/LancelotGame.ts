@@ -1854,7 +1854,7 @@ export class LancelotGame {
     // Movement
     if (p.action === "idle" || p.action === "walk" || p.action === "sprint") {
       const forward = new THREE.Vector3(-Math.sin(this._cameraAngleY), 0, -Math.cos(this._cameraAngleY));
-      const right = new THREE.Vector3(forward.z, 0, -forward.x);
+      const right = new THREE.Vector3(-forward.z, 0, forward.x);
       const dir = new THREE.Vector3();
       if (this._keys.has("w")) dir.add(forward);
       if (this._keys.has("s")) dir.sub(forward);

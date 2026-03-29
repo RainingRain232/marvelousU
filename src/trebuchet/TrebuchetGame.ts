@@ -1797,11 +1797,21 @@ export class TrebuchetGame {
   // ── Aiming ───────────────────────────────────────────────────────────────
 
   private _updateAim(): void {
+    // Arrow key aiming (incremental)
+    const aimSpeed = 1.2; // radians per second
+    const dt = 1 / 60; // approximate frame dt
+    if (this._keys.has("ArrowLeft") || this._keys.has("KeyA")) this._mouseX -= aimSpeed * dt;
+    if (this._keys.has("ArrowRight") || this._keys.has("KeyD")) this._mouseX += aimSpeed * dt;
+    if (this._keys.has("ArrowUp") || this._keys.has("KeyW")) this._mouseY += aimSpeed * dt;
+    if (this._keys.has("ArrowDown") || this._keys.has("KeyS")) this._mouseY -= aimSpeed * dt;
+    this._mouseX = Math.max(-1, Math.min(1, this._mouseX));
+    this._mouseY = Math.max(-1, Math.min(1, this._mouseY));
+
     // Map mouse X to horizontal angle (sweep across the field)
     this._aimAngleH = this._mouseX * 0.8; // ±0.8 radians
 
-    // Map mouse Y to vertical angle (elevation)
-    this._aimAngleV = 0.3 + (1 - (this._mouseY + 1) / 2) * 0.8; // 0.3 to 1.1 radians
+    // Map mouse Y to vertical angle (elevation) — mouse up = aim higher
+    this._aimAngleV = 0.3 + ((this._mouseY + 1) / 2) * 0.8; // 0.3 to 1.1 radians
 
     // Calculate where the projectile would land given current power & angle
     const launchPos = new THREE.Vector3(0, LAUNCH_HEIGHT, WALL_Z);
