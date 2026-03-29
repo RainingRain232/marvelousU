@@ -26,6 +26,7 @@ import {
 
 export interface CombatContext {
   state: DiabloState;
+  petBuffs: { type: string; value: number; remaining: number }[];
 
   // Utility
   addFloatingText: (x: number, y: number, z: number, text: string, color: string) => void;
@@ -121,6 +122,35 @@ export function damageTypeToParticle(dmgType: DamageType): ParticleType {
   }
 }
 
+/** Sum all active pet buff values of a given type. */
+function getPetBuff(ctx: CombatContext, type: string): number {
+  let total = 0;
+  for (const buff of ctx.petBuffs) {
+    if (buff.type === type) total += buff.value;
+  }
+  return total;
+}
+
+// ──────────────────────────────────────────────────────────────
+//  applyElementalResist — reduce damage by 50% if matching resist modifier is active
+// ──────────────────────────────────────────────────────────────
+function applyElementalResist(modifiers: MapModifier[], damageType: DamageType | string, damage: number): number {
+  if (damageType === DamageType.FIRE && modifiers.includes(MapModifier.ENEMY_FIRE_RESIST)) return damage * 0.5;
+  if (damageType === DamageType.ICE && modifiers.includes(MapModifier.ENEMY_ICE_RESIST)) return damage * 0.5;
+  if (damageType === DamageType.LIGHTNING && modifiers.includes(MapModifier.ENEMY_LIGHTNING_RESIST)) return damage * 0.5;
+  return damage;
+}
+
+// ──────────────────────────────────────────────────────────────
+//  applyPrestigeDamageBonus — multiply outgoing player damage by prestige bonus
+// ──────────────────────────────────────────────────────────────
+function applyPrestigeDamageBonus(state: DiabloState, damage: number): number {
+  if (state.player.prestigeLevel > 0 && state.player.prestigeBonuses.damagePercent > 0) {
+    return damage * (1 + state.player.prestigeBonuses.damagePercent / 100);
+  }
+  return damage;
+}
+
 // ──────────────────────────────────────────────────────────────
 //  getSkillDamage
 // ──────────────────────────────────────────────────────────────
@@ -177,6 +207,14 @@ export function getSkillDamage(ctx: CombatContext, def: any): number {
       total *= (1 + buff.value / 100);
     }
   }
+
+  // Pet buff: damage — multiply all outgoing damage
+  const petDmg = getPetBuff(ctx, 'damage');
+  if (petDmg > 0) total *= (1 + petDmg);
+
+  // Pet buff: spellAmp — multiply skill/spell damage
+  const spellAmp = getPetBuff(ctx, 'spellAmp');
+  if (spellAmp > 0) total *= (1 + spellAmp);
 
   return total;
 }
@@ -521,9 +559,20 @@ export function tickAOEDamage(ctx: CombatContext, aoe: DiabloAOE): void {
       if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
       const dist = ctx.dist(aoe.x, aoe.z, enemy.x, enemy.z);
       if (dist <= aoe.radius) {
-        const finalDmg = Math.max(1, aoe.damage - enemy.armor * 0.15);
+        let finalDmg = Math.max(1, aoe.damage - enemy.armor * 0.15);
+        // Apply elemental resistance and prestige damage bonus
+        finalDmg = applyElementalResist(ctx.state.activeMapModifiers, aoe.damageType, finalDmg);
+        finalDmg = applyPrestigeDamageBonus(ctx.state, finalDmg);
         enemy.hp -= finalDmg;
         ctx.addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, damageTypeColor(aoe.damageType));
+
+        // Map modifier: Thorns — reflect 15% damage back to player
+        if (ctx.state.activeMapModifiers.includes(MapModifier.ENEMY_THORNS)) {
+          const thornsDmg = finalDmg * 0.15;
+          ctx.state.player.hp -= thornsDmg;
+          ctx.addFloatingText(ctx.state.player.x, ctx.state.player.y + 2, ctx.state.player.z, `${Math.round(thornsDmg)} thorns`, '#ff4488');
+          if (ctx.state.player.hp <= 0) { ctx.state.player.hp = 0; ctx.triggerDeath(); return; }
+        }
 
         ctx.spawnHitParticles(enemy, aoe.damageType);
         ctx.renderer.flashEnemy(enemy.id);
@@ -580,7 +629,16 @@ export function tickAOEDamage(ctx: CombatContext, aoe: DiabloAOE): void {
     if (pp.invulnTimer <= 0) {
       const dist = ctx.dist(aoe.x, aoe.z, pp.x, pp.z);
       if (dist <= aoe.radius) {
-        const mitigated = Math.max(1, aoe.damage - pp.armor * 0.3);
+        let mitigated = Math.max(1, aoe.damage - pp.armor * 0.3);
+        // Pet buff: damageReduction
+        const aoeDmgRed = getPetBuff(ctx, 'damageReduction');
+        if (aoeDmgRed > 0) mitigated *= (1 - aoeDmgRed);
+        // Pet buff: fireResist
+        if (aoe.damageType === DamageType.FIRE) {
+          const aoeFR = getPetBuff(ctx, 'fireResist');
+          if (aoeFR > 0) mitigated *= (1 - aoeFR / (aoeFR + 100));
+        }
+        mitigated = Math.max(1, mitigated);
         pp.hp -= mitigated;
         ctx.addFloatingText(pp.x, pp.y + 2, pp.z, `-${Math.round(mitigated)}`, "#ff4444");
         if (pp.hp <= 0) { pp.hp = 0; ctx.triggerDeath(); }
@@ -660,8 +718,19 @@ export function updateProjectiles(ctx: CombatContext, dt: number): void {
           let finalDmg = Math.max(1, proj.damage - enemy.armor * 0.15);
           if (enemy.shieldActive) finalDmg *= 0.2;
           if (enemy.bossShieldTimer && enemy.bossShieldTimer > 0) finalDmg *= 0.1;
+          // Apply elemental resistance and prestige damage bonus
+          finalDmg = applyElementalResist(ctx.state.activeMapModifiers, proj.damageType, finalDmg);
+          finalDmg = applyPrestigeDamageBonus(ctx.state, finalDmg);
           enemy.hp -= finalDmg;
           ctx.addFloatingText(enemy.x, enemy.y + 2, enemy.z, `${Math.round(finalDmg)}`, "#ffff44");
+
+          // Map modifier: Thorns — reflect 15% damage back to player
+          if (ctx.state.activeMapModifiers.includes(MapModifier.ENEMY_THORNS)) {
+            const thornsDmg = finalDmg * 0.15;
+            ctx.state.player.hp -= thornsDmg;
+            ctx.addFloatingText(ctx.state.player.x, ctx.state.player.y + 2, ctx.state.player.z, `${Math.round(thornsDmg)} thorns`, '#ff4488');
+            if (ctx.state.player.hp <= 0) { ctx.state.player.hp = 0; ctx.triggerDeath(); }
+          }
 
           // Elite affix: Reflect Damage on projectile hit
           if (enemy.isElite && enemy.eliteAffixes?.includes(EliteAffix.REFLECT_DAMAGE)) {
@@ -722,7 +791,16 @@ export function updateProjectiles(ctx: CombatContext, dt: number): void {
       if (pp.invulnTimer <= 0) {
         const dist = ctx.dist(proj.x, proj.z, pp.x, pp.z);
         if (dist < proj.radius + 0.5) {
-          const mitigated = Math.max(1, proj.damage - pp.armor * 0.3);
+          let mitigated = Math.max(1, proj.damage - pp.armor * 0.3);
+          // Pet buff: damageReduction
+          const projDmgRed = getPetBuff(ctx, 'damageReduction');
+          if (projDmgRed > 0) mitigated *= (1 - projDmgRed);
+          // Pet buff: fireResist
+          if (proj.damageType === DamageType.FIRE) {
+            const projFR = getPetBuff(ctx, 'fireResist');
+            if (projFR > 0) mitigated *= (1 - projFR / (projFR + 100));
+          }
+          mitigated = Math.max(1, mitigated);
           pp.hp -= mitigated;
           ctx.addFloatingText(pp.x, pp.y + 2, pp.z, `-${Math.round(mitigated)}`, "#ff4444");
           toRemove.add(proj.id);
@@ -816,6 +894,10 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
   const pylonBuff = ctx.state.greaterRift.activePylonBuff;
   if (pylonBuff && pylonBuff.type === RiftPylonType.POWER) baseDamage *= 10;
 
+  // Pet buff: damage — multiply outgoing melee damage
+  const petDmgBuff = getPetBuff(ctx, 'damage');
+  if (petDmgBuff > 0) baseDamage *= (1 + petDmgBuff);
+
   // Crit check
   const isCrit = Math.random() < p.critChance;
   if (isCrit) baseDamage *= p.critDamage;
@@ -823,6 +905,8 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
   let finalDamage = Math.max(1, baseDamage - target.armor * 0.2);
   if (target.shieldActive) finalDamage *= 0.2;
   if (target.bossShieldTimer && target.bossShieldTimer > 0) finalDamage *= 0.1;
+  // Apply prestige damage bonus to melee attacks
+  finalDamage = applyPrestigeDamageBonus(ctx.state, finalDamage);
 
   target.hp -= finalDamage;
 
@@ -898,8 +982,11 @@ export function updateCombat(ctx: CombatContext, dt: number): void {
     }
   }
 
-  // Reset attack timer
-  p.attackTimer = 1.0 / p.attackSpeed;
+  // Reset attack timer (pet attackSpeed buff reduces cooldown between attacks)
+  let effectiveAtkSpeed = p.attackSpeed;
+  const petAtkSpd = getPetBuff(ctx, 'attackSpeed');
+  if (petAtkSpd > 0) effectiveAtkSpeed *= (1 + petAtkSpd);
+  p.attackTimer = 1.0 / effectiveAtkSpeed;
   p.isAttacking = true;
   const swingAngle = Math.atan2(target.x - p.x, target.z - p.z);
   ctx.renderer.showSwingArc(p.x, p.y, p.z, swingAngle, 0xffeedd);

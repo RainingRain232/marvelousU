@@ -255,6 +255,10 @@ export class DiabloGame {
   // Pet system
   private _petBuffs: { type: string; value: number; remaining: number }[] = [];
 
+  // Fire trail legendary effect
+  private _fireTrailPositions: { x: number; z: number; timer: number }[] = [];
+  private _fireTrailSpawnTimer: number = 0;
+
   // Advanced crafting
   // @ts-ignore used by crafting UI state
   private _craftingUIOpen: boolean = false;
@@ -2048,6 +2052,23 @@ export class DiabloGame {
       }
     }
 
+    // Fire trail legendary effect: spawn fire at player position
+    const fireTrailEffect = this._getEquippedLegendaryEffects().find(e => e.id === 'fire_trail');
+    if (fireTrailEffect) {
+      this._fireTrailSpawnTimer += dt;
+      if (this._fireTrailSpawnTimer >= 0.5) {
+        this._fireTrailSpawnTimer = 0;
+        this._fireTrailPositions.push({ x: p.x, z: p.z, timer: 3.0 });
+      }
+    }
+    // Decay fire trail timers
+    for (let i = this._fireTrailPositions.length - 1; i >= 0; i--) {
+      this._fireTrailPositions[i].timer -= dt;
+      if (this._fireTrailPositions[i].timer <= 0) {
+        this._fireTrailPositions.splice(i, 1);
+      }
+    }
+
     // Increment global time
     this._state.time += dt;
   }
@@ -2112,6 +2133,34 @@ export class DiabloGame {
       const dist = this._dist(enemy.x, enemy.z, p.x, p.z);
       const effectiveSpeed = this._getEnemyEffectiveSpeed(enemy);
 
+      // Pet buff: Fear — enemies within 8 units of pet flee
+      const activePet = p.pets.find(pet => pet.id === p.activePetId && pet.isSummoned);
+      if (this._hasPetBuff('fear') > 0 && activePet && enemy.state !== EnemyState.DYING && enemy.state !== EnemyState.DEAD) {
+        const petDist = this._dist(enemy.x, enemy.z, activePet.x, activePet.z);
+        if (petDist < 8) {
+          // Flee away from pet
+          const fdx = enemy.x - activePet.x;
+          const fdz = enemy.z - activePet.z;
+          const fLen = Math.sqrt(fdx * fdx + fdz * fdz);
+          if (fLen > 0) {
+            enemy.x += (fdx / fLen) * effectiveSpeed * 1.2 * dt;
+            enemy.z += (fdz / fLen) * effectiveSpeed * 1.2 * dt;
+            enemy.angle = Math.atan2(fdx, fdz);
+          }
+          enemy.y = getTerrainHeight(enemy.x, enemy.z);
+          continue; // Skip normal AI
+        }
+      }
+
+      // Pet buff: Taunt — enemies target pet instead of player
+      let tauntTarget: { x: number; z: number } | null = null;
+      if (this._hasPetBuff('taunt') > 0 && activePet) {
+        const petDist = this._dist(enemy.x, enemy.z, activePet.x, activePet.z);
+        if (petDist < 12) {
+          tauntTarget = { x: activePet.x, z: activePet.z };
+        }
+      }
+
       // Check for stun
       const isStunned = enemy.statusEffects.some((e) => e.effect === StatusEffect.STUNNED);
       const isFrozen = enemy.statusEffects.some((e) => e.effect === StatusEffect.FROZEN);
@@ -2173,6 +2222,19 @@ export class DiabloGame {
         }
         case EnemyState.CHASE: {
           if (isStunned || isFrozen) break;
+          // Taunt redirect: if pet taunting, chase pet instead of player
+          if (tauntTarget) {
+            const tdx = tauntTarget.x - enemy.x; const tdz = tauntTarget.z - enemy.z;
+            const tLen = Math.sqrt(tdx * tdx + tdz * tdz);
+            if (tLen > enemy.attackRange) {
+              if (tLen > 0) { enemy.x += (tdx / tLen) * effectiveSpeed * dt; enemy.z += (tdz / tLen) * effectiveSpeed * dt; }
+              enemy.angle = Math.atan2(tdx, tdz);
+            } else {
+              // Attack pet position (just stand near it)
+              enemy.angle = Math.atan2(tdx, tdz);
+            }
+            break;
+          }
           const behavior = enemy.behavior || EnemyBehavior.MELEE_BASIC;
 
           if (behavior === EnemyBehavior.RANGED) {
@@ -2303,6 +2365,13 @@ export class DiabloGame {
                 // Trigger legendary on_take_damage effects
                 this._triggerLegendaryEffects('on_take_damage', { targetX: p.x, targetZ: p.z, damage: mitigated });
 
+                // Map modifier: Vampiric — enemies heal 5% of damage dealt
+                if (this._state.activeMapModifiers.includes(MapModifier.VAMPIRIC)) {
+                  const vampHeal = mitigated * 0.05;
+                  enemy.hp = Math.min(enemy.maxHp, enemy.hp + vampHeal);
+                  this._addFloatingText(enemy.x, enemy.y + 2.5, enemy.z, `+${Math.round(vampHeal)} VAMPIRIC`, '#cc0000');
+                }
+
                 if (p.hp <= 0) {
                   p.hp = 0;
                   this._lastDeathCause = enemy.bossName || (enemy.type as string).replace(/_/g, ' ');
@@ -2352,6 +2421,22 @@ export class DiabloGame {
       }
       // Keep enemies on terrain
       enemy.y = getTerrainHeight(enemy.x, enemy.z);
+
+      // Fire trail damage: burn enemies standing on fire trail positions
+      if (enemy.state !== EnemyState.DYING && enemy.state !== EnemyState.DEAD && this._fireTrailPositions.length > 0) {
+        for (const trail of this._fireTrailPositions) {
+          const trailDist = this._dist(enemy.x, enemy.z, trail.x, trail.z);
+          if (trailDist < 1.5) {
+            const fireDmg = Math.max(5, p.intelligence * 0.5);
+            enemy.hp -= fireDmg * dt;
+            // Apply burning status if not already burning
+            if (!enemy.statusEffects.some(e => e.effect === StatusEffect.BURNING)) {
+              enemy.statusEffects.push({ effect: StatusEffect.BURNING, duration: 2.0, source: 'fire_trail' });
+            }
+            if (enemy.hp <= 0) { this._killEnemy(enemy); break; }
+          }
+        }
+      }
     }
 
     this._state.enemies = this._state.enemies.filter((e) => !toRemove.has(e.id));
@@ -2363,6 +2448,7 @@ export class DiabloGame {
   private _getCombatContext(): CombatContext {
     return {
       state: this._state,
+      petBuffs: this._petBuffs,
       addFloatingText: (x, y, z, text, color) => this._addFloatingText(x, y, z, text, color),
       genId: () => this._genId(),
       dist: (x1, z1, x2, z2) => this._dist(x1, z1, x2, z2),
@@ -2968,6 +3054,16 @@ export class DiabloGame {
       }
     }
 
+    // Pet buff: rarityBoost — upgrade item rarity by one tier
+    if (this._hasPetBuff('rarityBoost') > 0) {
+      for (const item of items) {
+        const curIdx = RARITY_ORDER.indexOf(item.rarity);
+        if (curIdx >= 0 && curIdx < RARITY_ORDER.length - 1) {
+          item.rarity = RARITY_ORDER[curIdx + 1];
+        }
+      }
+    }
+
     // Assign legendary effect for legendary+ items
     const effectIds = Object.keys(LEGENDARY_EFFECTS);
     for (const item of items) {
@@ -2976,6 +3072,17 @@ export class DiabloGame {
           item.legendaryAbility = effectIds[Math.floor(Math.random() * effectIds.length)];
         }
       }
+    }
+
+    // Pet buff: extraLoot — 50% chance to duplicate each dropped item
+    if (this._hasPetBuff('extraLoot') > 0) {
+      const dupes: DiabloItem[] = [];
+      for (const item of items) {
+        if (Math.random() < 0.5) {
+          dupes.push({ ...item, id: this._genId() });
+        }
+      }
+      items.push(...dupes);
     }
 
     return items;
@@ -4603,6 +4710,8 @@ export class DiabloGame {
     if (enemy.statusEffects.some((e) => e.effect === StatusEffect.FROZEN)) return 0;
     if (enemy.statusEffects.some((e) => e.effect === StatusEffect.SLOWED)) speed *= 0.5;
     if (this._state.weather === Weather.STORMY) speed *= 1.1;
+    // Map modifier: Enemy Speed — enemies 40% faster
+    if (this._state.activeMapModifiers.includes(MapModifier.ENEMY_SPEED)) speed *= 1.4;
     return speed;
   }
 
@@ -6018,7 +6127,11 @@ export class DiabloGame {
 
     // Physical: armor only
     if (dmgType === DamageType.PHYSICAL) {
-      return Math.max(1, rawDmg - p.armor * 0.3);
+      let phys = Math.max(1, rawDmg - p.armor * 0.3);
+      // Pet buff: damageReduction — flat % reduction on all incoming damage
+      const physDmgRed = this._hasPetBuff('damageReduction');
+      if (physDmgRed > 0) phys *= (1 - physDmgRed);
+      return Math.max(1, phys);
     }
 
     // Apply armor first
@@ -6039,9 +6152,21 @@ export class DiabloGame {
         resist = 0;
     }
 
+    // Pet buff: fireResist — add bonus fire resistance
+    if (dmgType === DamageType.FIRE) {
+      const petFireRes = this._hasPetBuff('fireResist');
+      if (petFireRes > 0) resist += petFireRes;
+    }
+
     // Diminishing returns: reduction = resist / (resist + 100)
     const reduction = resist / (resist + 100);
-    return Math.max(1, afterArmor * (1 - reduction));
+    let result = afterArmor * (1 - reduction);
+
+    // Pet buff: damageReduction — flat % reduction on all incoming damage
+    const petDmgRed = this._hasPetBuff('damageReduction');
+    if (petDmgRed > 0) result *= (1 - petDmgRed);
+
+    return Math.max(1, result);
   }
 
   // ──────────────────────────────────────────────────────────────

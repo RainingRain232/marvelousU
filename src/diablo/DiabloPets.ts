@@ -491,6 +491,54 @@ export function applyPetBuff(
       ctx.petBuffs.push({ type: 'spellAmp', value: 0.5, remaining: ability.buffDuration || 10 });
       ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +50% Spell DMG`, "#aa44ff");
       break;
+    case 'absorb':
+      ctx.petBuffs.push({ type: 'absorb', value: 50, remaining: ability.buffDuration || 10 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! 50% Absorb`, "#88ccff");
+      break;
+    case 'fear':
+      ctx.petBuffs.push({ type: 'fear', value: 1, remaining: ability.buffDuration || 5 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Enemies Feared`, "#aa00ff");
+      break;
+    case 'taunt':
+      ctx.petBuffs.push({ type: 'taunt', value: 1, remaining: ability.buffDuration || 8 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Enemies Taunted`, "#ff8844");
+      break;
+    case 'extraLoot':
+      ctx.petBuffs.push({ type: 'extraLoot', value: 1, remaining: ability.buffDuration || 30 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Extra Loot`, "#ffdd44");
+      break;
+    case 'extraSlots':
+      ctx.petBuffs.push({ type: 'extraSlots', value: 5, remaining: ability.buffDuration || 60 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +5 Slots`, "#88ff88");
+      break;
+    case 'rarityBoost':
+      ctx.petBuffs.push({ type: 'rarityBoost', value: 1, remaining: ability.buffDuration || 30 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Rarity Boosted`, "#ff44ff");
+      break;
+    case 'reveal':
+      ctx.petBuffs.push({ type: 'reveal', value: 1, remaining: ability.buffDuration || 20 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Area Revealed`, "#ffffaa");
+      break;
+    case 'treasureSense':
+      ctx.petBuffs.push({ type: 'treasureSense', value: 1, remaining: ability.buffDuration || 30 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Treasure Sensed`, "#ffd700");
+      break;
+    case 'materials':
+      ctx.petBuffs.push({ type: 'materials', value: 1, remaining: ability.buffDuration || 30 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +Materials`, "#cc8844");
+      break;
+    case 'identify':
+      ctx.petBuffs.push({ type: 'identify', value: 1, remaining: ability.buffDuration || 30 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Items Appraised`, "#44ccff");
+      break;
+    case 'permanentArmor':
+      p.armor += 5;
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! +5 Armor (permanent)`, "#4488ff");
+      break;
+    case 'teleport':
+      ctx.petBuffs.push({ type: 'teleport', value: 1, remaining: ability.buffDuration || 10 });
+      ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}! Teleport Ready`, "#ff88ff");
+      break;
     default:
       ctx.addFloatingText(p.x, p.y + 3, p.z, `${ability.name}!`, "#44ffff");
       break;
