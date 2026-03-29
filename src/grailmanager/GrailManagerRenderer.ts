@@ -17,6 +17,7 @@ const WHITE = 0xffffff, CELTIC_GREEN = 0x2d5016, PANEL_ALPHA = 0.92;
 const BURGUNDY = 0x6b0f2e, FOREST_GREEN = 0x1b4332;
 const FONT = "'Palatino Linotype', 'Book Antiqua', Georgia, serif";
 const FONT_MONO = "'Courier New', Courier, monospace";
+const TEXT_SCALE = 2.5;
 
 function hexToRGB(hex: number): [number, number, number] {
   return [(hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff];
@@ -1866,7 +1867,7 @@ export class GrailManagerRenderer {
       text: str,
       style: new TextStyle({
         fontFamily,
-        fontSize: size,
+        fontSize: size * TEXT_SCALE,
         fill: color,
         fontWeight: bold ? "bold" : "normal",
       }),

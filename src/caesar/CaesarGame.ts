@@ -51,6 +51,9 @@ export class CaesarGame {
   private _lastPlacedBuildingId: number | null = null;
 
   async boot(): Promise<void> {
+    // Hide the main pixi canvas so it doesn't cover Caesar's own canvas
+    const pixiCanvas = document.querySelector("#pixi-container canvas") as HTMLCanvasElement | null;
+    if (pixiCanvas) pixiCanvas.style.display = "none";
     this._hud.build();
     this._hud.onStartGame = (difficulty, scenarioId) => this._startGame(difficulty as CaesarDifficulty, scenarioId);
     this._hud.onExit = () => this.destroy();
@@ -413,6 +416,9 @@ export class CaesarGame {
     }
     this._renderer.destroy();
     this._hud.destroy();
+    // Restore main pixi canvas
+    const pixiCanvas = document.querySelector("#pixi-container canvas") as HTMLCanvasElement | null;
+    if (pixiCanvas) pixiCanvas.style.display = "";
     window.dispatchEvent(new Event("caesarExit"));
   }
 }

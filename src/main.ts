@@ -607,7 +607,6 @@ function _showLoading(mode: string): void {
     }
     if (menuScreen.selectedGameMode === GameMode.SETTLERS) {
       menuScreen.hide();
-      _showLoading(menuScreen.selectedGameMode);
       _showSettlersMapModeSelect();
       return;
     }
@@ -4564,7 +4563,8 @@ function _showSettlersMapModeSelect(): void {
     btn.onmouseleave = () => { btn.style.background = "rgba(40,35,70,0.9)"; };
     btn.onclick = () => {
       overlay.remove();
-      _bootSettlersGame(m.mode);
+      _showLoading(GameMode.SETTLERS);
+      _bootSettlersGame(m.mode).then(() => loadingScreen.hide());
     };
     card.appendChild(btn);
   }
