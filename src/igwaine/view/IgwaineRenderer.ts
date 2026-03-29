@@ -428,7 +428,7 @@ export class IgwaineRenderer {
     // ── HUD ──────────────────────────────────────────────────────────────────
     this._hideAll();
     if (s.phase === IgwainePhase.START) { this._renderStartScreen(s, cx, sh, g); return; }
-    if (s.phase === IgwainePhase.PLAYING || s.phase === IgwainePhase.PAUSED) this._renderPlayingHUD(s, ui, sw, sh, cx, sunBright, sunPow, isEclipse);
+    if (s.phase === IgwainePhase.PLAYING || s.phase === IgwainePhase.PAUSED) this._renderPlayingHUD(s, ui, sw, sh, cx, cy, sunBright, sunPow, isEclipse);
     if (s.phase === IgwainePhase.PAUSED) {
       ui.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.5 });
       this._pause.visible = true; this._pause.anchor.set(0.5); this._pause.position.set(cx, sh * 0.2);
@@ -1220,7 +1220,7 @@ export class IgwaineRenderer {
     }
   }
 
-  private _renderPlayingHUD(s: IgwaineState, ui: Graphics, sw: number, sh: number, cx: number, sunBright: number, sunPow: number, isEclipse: boolean): void {
+  private _renderPlayingHUD(s: IgwaineState, ui: Graphics, sw: number, sh: number, cx: number, cy: number, sunBright: number, sunPow: number, isEclipse: boolean): void {
     this._hudL.visible = true; this._hudR.visible = true;
     this._hudL.position.set(12, 8); this._hudR.position.set(sw - 12, 8); this._hudR.anchor.set(1, 0);
 
