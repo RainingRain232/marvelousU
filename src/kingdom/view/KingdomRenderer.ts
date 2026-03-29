@@ -2716,7 +2716,7 @@ export class KingdomRenderer {
     g.circle(iconX + 10, ty + 6, 6).fill(cc.skin);
     texts[5].style = HUD_STYLE; texts[5].text = `x${s.lives}`; texts[5].x = iconX + 24; texts[5].y = ty + 3;
 
-    texts[6].style = sty(12, 0xAAAAAAA, false, 1); texts[6].text = `HI ${String(s.highScore).padStart(7, "0")}`; texts[6].x = gap * 5 + 10; texts[6].y = ty + 5;
+    texts[6].style = sty(12, 0xAAAAAA, false, 1); texts[6].text = `HI ${String(s.highScore).padStart(7, "0")}`; texts[6].x = gap * 5 + 10; texts[6].y = ty + 5;
 
     // Progress bar at bottom of HUD
     const progW = sw * 0.15;
@@ -2952,7 +2952,7 @@ export class KingdomRenderer {
     // Controls
     const t11 = this._uiTexts[11];
     if (t11) {
-      t11.visible = true; t11.style = sty(14, 0x6666888, false, 1);
+      t11.visible = true; t11.style = sty(14, 0x666688, false, 1);
       t11.text = "< >  Select     ENTER  Confirm     ESC  Back";
       t11.x = cx - t11.width / 2; t11.y = sh * 0.92;
     }
