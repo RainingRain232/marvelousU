@@ -32,6 +32,7 @@ export interface PetUIContext {
   setPhaseBeforeOverlay: (p: DiabloPhase) => void;
   summonPet: (petId: string) => void;
   dismissPet: () => void;
+  closeOverlay: () => void;
 }
 
 // ── Core pet logic ──────────────────────────────────────────────
@@ -596,8 +597,7 @@ export function showPetPanel(ctx: PetUIContext): void {
   closeBtn.style.cssText = 'display:block;margin:15px auto 0;padding:8px 24px;background:#555;color:#fff;border:1px solid #888;border-radius:4px;cursor:pointer;font-family:Georgia,serif;font-size:14px;';
   closeBtn.textContent = 'Close (Esc)';
   closeBtn.addEventListener('click', () => {
-    ctx.state.phase = ctx.phaseBeforeOverlay || DiabloPhase.PLAYING;
-    ctx.menuEl.innerHTML = '';
+    ctx.closeOverlay();
   });
   panel.appendChild(closeBtn);
 
@@ -745,8 +745,7 @@ export function showPetManagement(ctx: PetUIContext): void {
     closeBtn.addEventListener("mouseenter", () => { closeBtn.style.borderColor = "#c8a84e"; });
     closeBtn.addEventListener("mouseleave", () => { closeBtn.style.borderColor = "#5a4a2a"; });
     closeBtn.addEventListener("click", () => {
-      ctx.state.phase = DiabloPhase.PLAYING;
-      ctx.menuEl.innerHTML = "";
+      ctx.closeOverlay();
     });
   };
 

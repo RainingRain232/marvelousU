@@ -4415,6 +4415,25 @@ export class DiabloGame {
       if (stats.moveSpeed || stats.speed) p.moveSpeed += (stats.moveSpeed || stats.speed || 0);
       if (stats.bonusHealth) bonusHealthFromGear += stats.bonusHealth;
       if (stats.bonusMana) bonusManaFromGear += stats.bonusMana;
+      // Apply individual rune socket bonuses
+      if (item.sockets) {
+        for (const sock of item.sockets) {
+          if (!sock.gemType) continue;
+          const sb = sock.bonusStats as any;
+          if (sb) {
+            if (sb.strength) p.strength += sb.strength;
+            if (sb.dexterity) p.dexterity += sb.dexterity;
+            if (sb.intelligence) p.intelligence += sb.intelligence;
+            if (sb.vitality) p.vitality += sb.vitality;
+            if (sb.armor) p.armor += sb.armor;
+            if (sb.critChance) p.critChance += sb.critChance / 100;
+            if (sb.critDamage) p.critDamage += sb.critDamage / 100;
+            if (sb.attackSpeed) p.attackSpeed += sb.attackSpeed / 100;
+            if (sb.bonusHealth) bonusHealthFromGear += sb.bonusHealth;
+            if (sb.bonusMana) bonusManaFromGear += sb.bonusMana;
+          }
+        }
+      }
     }
 
     // Check set bonuses (count equipped items by setName)
@@ -6190,6 +6209,7 @@ export class DiabloGame {
       setPhaseBeforeOverlay: (p) => { this._phaseBeforeOverlay = p; },
       summonPet: (petId) => this._summonPet(petId),
       dismissPet: () => this._dismissPet(),
+      closeOverlay: () => this._closeOverlay(),
     };
   }
 

@@ -1847,6 +1847,15 @@ export function showInventory(ctx: ScreenContext): void {
     }
     emptySocket.gemType = dmgType;
     emptySocket.gemTier = rune.rarity === ItemRarity.EPIC ? 3 : rune.rarity === ItemRarity.RARE ? 2 : 1;
+    // Individual rune socket bonuses (small stat boost even without forming a runeword)
+    const runeSocketBonuses: Record<string, Record<string, number>> = {
+      [DamageType.FIRE]: { strength: 2, critDamage: 5 },
+      [DamageType.ICE]: { intelligence: 2, armor: 3 },
+      [DamageType.LIGHTNING]: { dexterity: 2, attackSpeed: 3 },
+      [DamageType.POISON]: { vitality: 3, critChance: 1 },
+      [DamageType.HOLY]: { strength: 1, intelligence: 1, vitality: 2 },
+    };
+    emptySocket.bonusStats = (runeSocketBonuses[dmgType] || {}) as any;
     // Remove rune from inventory
     p.inventory[selIdx].item = null;
     (ctx.menuEl as any)._selectedRuneSlot = -1;
