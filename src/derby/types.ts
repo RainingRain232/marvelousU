@@ -73,12 +73,23 @@ export interface DerbyPlayer {
   lastMilestone: number;   // last distance milestone reached
 }
 
+export interface ArcheryTarget {
+  x: number;         // world X position
+  y: number;         // screen Y position (lower half)
+  active: boolean;
+  hitBy: string | null; // "player" or rider name, null if not hit
+  timer: number;     // time remaining before it disappears
+  radius: number;    // target circle radius
+}
+
 export interface DerbyState {
   phase: DerbyPhase;
   player: DerbyPlayer;
   obstacles: Obstacle[];
   pickups: Pickup[];
   aiRiders: AIRider[];
+  archeryTarget: ArcheryTarget | null;
+  archerySpawnTimer: number;
   scrollX: number;
   time: number;
   difficulty: number;

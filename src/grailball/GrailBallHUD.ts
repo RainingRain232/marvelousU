@@ -130,6 +130,13 @@ export class GrailBallHUD {
   private _pauseOverlay = new Container();
   private _rulesOverlay = new Container();
 
+  // Powerup popup
+  private _powerupPopup = new Container();
+  private _powerupText!: Text;
+  private _powerupBg!: Graphics;
+  private _powerupTimer = 0;
+  private _lastSeenPowerupEvent = 0;
+
   // Cached text objects
   private _scoreText!: Text;
   private _team1Name!: Text;
@@ -218,6 +225,25 @@ export class GrailBallHUD {
     this.root.addChild(this._rulesOverlay);
     this.root.addChild(this._replayOverlay);
     this.root.addChild(this._penaltyOverlay);
+
+    // Powerup pickup popup
+    this._powerupBg = new Graphics();
+    this._powerupPopup.addChild(this._powerupBg);
+    this._powerupText = new Text({ text: "", style: new TextStyle({
+      fontFamily: "'Georgia', serif",
+      fontSize: 22,
+      fill: 0xffd700,
+      fontWeight: "bold",
+      letterSpacing: 2,
+      dropShadow: true,
+      dropShadowColor: 0x000000,
+      dropShadowDistance: 2,
+      dropShadowAlpha: 0.7,
+    }) });
+    this._powerupText.anchor.set(0.5, 0.5);
+    this._powerupPopup.addChild(this._powerupText);
+    this._powerupPopup.visible = false;
+    this.root.addChild(this._powerupPopup);
   }
 
   // ---------------------------------------------------------------------------
@@ -802,6 +828,59 @@ export class GrailBallHUD {
     this._updateFatigueIndicator(state);
     this._updateInjuryTimeIndicator(state);
     this._updateFormationDisplay(state);
+    this._updatePowerupPopup(state);
+  }
+
+  private _updatePowerupPopup(state: GBMatchState): void {
+    // Check for new powerup events
+    const powerupEvents = state.events.filter(e => e.type === "powerup");
+    if (powerupEvents.length > this._lastSeenPowerupEvent) {
+      const newest = powerupEvents[powerupEvents.length - 1];
+      this._lastSeenPowerupEvent = powerupEvents.length;
+
+      // Format the powerup name nicely
+      const rawText = newest.text; // e.g. "Sir Galahad picks up speed boost!"
+      const nameMap: Record<string, string> = {
+        "speed boost": "\u26A1 SPEED BOOST",
+        "strength": "\u2694 STRENGTH",
+        "magic surge": "\u2728 MAGIC SURGE",
+      };
+      let label = rawText;
+      for (const [key, display] of Object.entries(nameMap)) {
+        if (rawText.toLowerCase().includes(key)) { label = display; break; }
+      }
+
+      this._powerupText.text = label;
+      this._powerupTimer = 2.0; // show for 2 seconds
+      this._powerupPopup.visible = true;
+    }
+
+    // Animate popup
+    if (this._powerupTimer > 0) {
+      this._powerupTimer -= 1 / 60; // approximate dt
+      const cx = this._screenW / 2;
+      const cy = this._screenH * 0.35;
+      const fadeIn = Math.min(1, (2.0 - this._powerupTimer) * 4); // quick fade in
+      const fadeOut = Math.min(1, this._powerupTimer * 2); // fade out last 0.5s
+      const alpha = Math.min(fadeIn, fadeOut);
+      const rise = (2.0 - this._powerupTimer) * 15; // float upward
+
+      this._powerupText.position.set(cx, cy - rise);
+      this._powerupText.alpha = alpha;
+
+      // Background pill
+      const tw = this._powerupText.width + 40;
+      const th = this._powerupText.height + 16;
+      this._powerupBg.clear();
+      this._powerupBg.roundRect(cx - tw / 2, cy - rise - th / 2, tw, th, 10);
+      this._powerupBg.fill({ color: 0x0a0a14, alpha: 0.7 * alpha });
+      this._powerupBg.roundRect(cx - tw / 2, cy - rise - th / 2, tw, th, 10);
+      this._powerupBg.stroke({ color: 0xffd700, width: 1.5, alpha: 0.6 * alpha });
+
+      if (this._powerupTimer <= 0) {
+        this._powerupPopup.visible = false;
+      }
+    }
   }
 
   private _updateScoreboard(state: GBMatchState): void {

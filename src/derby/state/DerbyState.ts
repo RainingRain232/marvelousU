@@ -11,6 +11,8 @@ export function createDerbyState(): DerbyState {
     obstacles: [],
     pickups: [],
     aiRiders: createAIRiders(),
+    archeryTarget: null,
+    archerySpawnTimer: 8 + Math.random() * 5,
     scrollX: 0,
     time: 0,
     difficulty: 1,

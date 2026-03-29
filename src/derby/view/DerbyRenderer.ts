@@ -280,6 +280,7 @@ export class DerbyRenderer {
 
     this._renderBackground(state);
     this._renderTrack(state);
+    this._renderArcheryTarget(state);
     this._renderObstacles(state);
     this._renderPickups(state);
     this._renderAIRiders(state);
@@ -578,6 +579,66 @@ export class DerbyRenderer {
   }
 
   // ---------------------------------------------------------------------------
+  // Archery target (lower screen area)
+  // ---------------------------------------------------------------------------
+
+  private _renderArcheryTarget(state: DerbyState): void {
+    const target = state.archeryTarget;
+    if (!target) return;
+
+    const g = this._trackGfx; // reuse track layer since it draws below entities
+    const screenX = target.x - state.scrollX;
+    const ty = target.y;
+    const r = target.radius;
+
+    // Don't draw if off-screen
+    if (screenX < -50 || screenX > this._sw + 50) return;
+
+    const t = this._time;
+    const pulse = 1 + Math.sin(t * 4) * 0.05;
+    const alpha = target.hitBy ? Math.min(1, target.timer) * 0.5 : 0.85;
+
+    // Target post (wooden stake in the ground)
+    g.rect(screenX - 2, ty - r - 15, 4, r + 20).fill({ color: 0x664422, alpha: alpha * 0.8 });
+
+    if (target.hitBy) {
+      // Hit marker — show who hit it
+      g.circle(screenX, ty, r * 0.5 * pulse).fill({ color: 0xffdd44, alpha: alpha * 0.6 });
+      // Arrow stuck in target
+      g.moveTo(screenX - 8, ty - 3).lineTo(screenX + 2, ty).stroke({ color: 0xccaa66, width: 2, alpha });
+      g.moveTo(screenX + 2, ty).lineTo(screenX + 6, ty).stroke({ color: 0xaaaaaa, width: 2.5, alpha });
+    } else {
+      // Outer ring (white)
+      g.circle(screenX, ty, r * pulse).fill({ color: 0xeeeeee, alpha: alpha * 0.9 });
+      // Blue ring
+      g.circle(screenX, ty, r * 0.78 * pulse).fill({ color: 0x3366cc, alpha });
+      // Red ring
+      g.circle(screenX, ty, r * 0.56 * pulse).fill({ color: 0xcc3333, alpha });
+      // Inner gold ring
+      g.circle(screenX, ty, r * 0.34 * pulse).fill({ color: 0xffcc00, alpha });
+      // Bullseye
+      g.circle(screenX, ty, r * 0.15 * pulse).fill({ color: 0xff2222, alpha });
+
+      // Cross-hairs
+      g.moveTo(screenX - r, ty).lineTo(screenX + r, ty).stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
+      g.moveTo(screenX, ty - r).lineTo(screenX, ty + r).stroke({ color: 0x000000, width: 0.5, alpha: 0.2 });
+
+      // "SHOOT!" prompt when target is active
+      if (Math.floor(t * 3) % 2 === 0) {
+        // Small pulsing indicator
+        g.circle(screenX, ty - r - 8, 3).fill({ color: 0xffdd44, alpha: 0.6 });
+      }
+
+      // Timer bar below target
+      const barW = r * 2;
+      const barH = 3;
+      const fillRatio = target.timer / 5; // approximate max timer
+      g.rect(screenX - barW / 2, ty + r + 6, barW, barH).fill({ color: 0x333333, alpha: 0.4 });
+      g.rect(screenX - barW / 2, ty + r + 6, barW * Math.max(0, fillRatio), barH).fill({ color: fillRatio > 0.3 ? 0x44cc44 : 0xcc4444, alpha: 0.6 });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Player horse + knight
   // ---------------------------------------------------------------------------
 
@@ -659,6 +720,19 @@ export class DerbyRenderer {
     // Heraldry cross on tabard
     g.rect(px - 0.5, knightY + 5, 1, 6).fill({ color: 0xffdd44, alpha: 0.5 });
     g.rect(px - 3, knightY + 7, 6, 1).fill({ color: 0xffdd44, alpha: 0.5 });
+
+    // Bow (on the left arm, always visible)
+    const bowX = px - 14;
+    const bowY = knightY - 4;
+    // Bow stave (curved)
+    g.moveTo(bowX, bowY - 10).bezierCurveTo(bowX - 7, bowY - 5, bowX - 7, bowY + 5, bowX, bowY + 10).stroke({ color: 0x6a4a2a, width: 2.5 });
+    // Bowstring
+    g.moveTo(bowX, bowY - 10).lineTo(bowX, bowY + 10).stroke({ color: 0xccccaa, width: 0.8 });
+    // Quiver on back
+    g.rect(px + 3, knightY - 14, 4, 14).fill({ color: 0x664422, alpha: 0.5 });
+    // Arrow shafts in quiver
+    g.moveTo(px + 4, knightY - 14).lineTo(px + 4, knightY - 20).stroke({ color: 0xccaa66, width: 0.8 });
+    g.moveTo(px + 5.5, knightY - 14).lineTo(px + 5.5, knightY - 19).stroke({ color: 0xccaa66, width: 0.8 });
 
     // Lance (when active)
     if (p.lanceTimer > 0) {

@@ -137,10 +137,28 @@ export class DerbyGame {
       // Sprint
       this._state.player.sprinting = this._keys.has("Shift") || this._keys.has("ShiftLeft") || this._keys.has("ShiftRight");
 
+      // Shoot at archery target (Space key)
+      if (this._keys.has("Space") && this._state.archeryTarget?.active && !this._state.archeryTarget.hitBy) {
+        this._keys.delete("Space");
+        this._state.archeryTarget.hitBy = "player";
+        this._state.player.score += 50;
+        this._state.player.coins += 5;
+        this._renderer.spawnCoinCollect(
+          PLAYER_SCREEN_X + this._state.archeryTarget.x - this._state.scrollX,
+          this._state.archeryTarget.y,
+        );
+        this._renderer.spawnComboText(
+          PLAYER_SCREEN_X + this._state.archeryTarget.x - this._state.scrollX,
+          this._state.archeryTarget.y - 20,
+          "+50 BULLSEYE!",
+        );
+      }
+
       // Run systems
       updateRacing(this._state, dt);
       generateContent(this._state);
       updateAI(this._state, dt);
+      this._updateArcheryTarget(dt);
 
       // --- FX triggers ---
       const p = this._state.player;
@@ -241,6 +259,70 @@ export class DerbyGame {
   // ---------------------------------------------------------------------------
   // State transitions
   // ---------------------------------------------------------------------------
+
+  private _updateArcheryTarget(dt: number): void {
+    const state = this._state;
+
+    // Spawn timer
+    if (!state.archeryTarget) {
+      state.archerySpawnTimer -= dt;
+      if (state.archerySpawnTimer <= 0) {
+        // Spawn target in the lower part of screen, ahead of player
+        state.archeryTarget = {
+          x: state.scrollX + 400 + Math.random() * 300,
+          y: B.GROUND_Y + 30 + Math.random() * 80,
+          active: true,
+          hitBy: null,
+          timer: 4 + Math.random() * 2, // 4-6 seconds to hit
+          radius: 25,
+        };
+        state.archerySpawnTimer = 10 + Math.random() * 8; // next target in 10-18s
+      }
+    }
+
+    // Update active target
+    if (state.archeryTarget) {
+      const t = state.archeryTarget;
+      t.timer -= dt;
+
+      // AI riders try to shoot (each has a chance per second)
+      if (t.active && !t.hitBy) {
+        for (const rider of state.aiRiders) {
+          if (!rider.alive) continue;
+          const screenX = PLAYER_SCREEN_X + rider.x;
+          // Only shoot if target is on-screen and rider is reasonably close
+          const targetScreenX = t.x - state.scrollX;
+          if (targetScreenX > 0 && targetScreenX < B.SCREEN_W && Math.abs(screenX - targetScreenX) < 400) {
+            // Varying accuracy: 5-15% chance per second
+            const accuracy = 0.05 + Math.random() * 0.1;
+            if (Math.random() < accuracy * dt) {
+              t.hitBy = rider.name;
+              t.active = false;
+              this._renderer.spawnComboText(targetScreenX, t.y - 20, `${rider.name} hit!`);
+            }
+          }
+        }
+      }
+
+      // Player hit
+      if (t.hitBy === "player") {
+        t.active = false;
+      }
+
+      // Expired
+      if (t.timer <= 0) {
+        state.archeryTarget = null;
+      } else if (!t.active && t.timer < t.timer) {
+        // Show hit result briefly, then remove
+        t.timer = Math.min(t.timer, 1.0); // keep for 1 more second after hit
+      }
+
+      // Remove hit targets after brief display
+      if (t && !t.active && t.timer <= 0) {
+        state.archeryTarget = null;
+      }
+    }
+  }
 
   private _startRace(): void {
     this._keys.delete(" ");
