@@ -166,6 +166,7 @@ export class SettlersRenderer {
   private _dotGeo = new THREE.SphereGeometry(0.1, 12, 10);
   private _dotMats = new Map<number, THREE.MeshStandardMaterial>();
   private _glowGeo = new THREE.SphereGeometry(0.2, 16, 12);
+  private _bottleneckGlowMat: THREE.MeshBasicMaterial | null = null;
   // Resource-specific geometries for distinct shapes
   private _resGeoLog = new THREE.CylinderGeometry(0.04, 0.04, 0.18, 8);      // wood/planks (log)
   private _resGeoBlock = new THREE.BoxGeometry(0.14, 0.1, 0.1);               // stone/iron/coal (block)
@@ -895,26 +896,14 @@ export class SettlersRenderer {
     this._dotMats.clear();
 
     // Dispose all mesh maps
-    const disposeMesh = (mesh: THREE.Object3D) => {
-      mesh.traverse((child: any) => {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) {
-          if (Array.isArray(child.material)) {
-            child.material.forEach((m: THREE.Material) => m.dispose());
-          } else {
-            child.material.dispose();
-          }
-        }
-      });
-    };
-    for (const [, mesh] of this._buildingMeshes) disposeMesh(mesh);
-    for (const [, mesh] of this._flagMeshes) disposeMesh(mesh);
-    for (const [, mesh] of this._roadMeshes) disposeMesh(mesh);
-    for (const [, mesh] of this._carrierMeshes) disposeMesh(mesh);
-    for (const [, mesh] of this._workerMeshes) disposeMesh(mesh);
-    for (const [, mesh] of this._soldierMeshes) disposeMesh(mesh);
-    for (const [, mesh] of this._scaffoldMeshes) disposeMesh(mesh);
-    for (const [, mesh] of this._spinnerMeshes) disposeMesh(mesh);
+    for (const [, mesh] of this._buildingMeshes) this._disposeMesh(mesh);
+    for (const [, mesh] of this._flagMeshes) this._disposeMesh(mesh);
+    for (const [, mesh] of this._roadMeshes) this._disposeMesh(mesh);
+    for (const [, mesh] of this._carrierMeshes) this._disposeMesh(mesh);
+    for (const [, mesh] of this._workerMeshes) this._disposeMesh(mesh);
+    for (const [, mesh] of this._soldierMeshes) this._disposeMesh(mesh);
+    for (const [, mesh] of this._scaffoldMeshes) this._disposeMesh(mesh);
+    for (const [, mesh] of this._spinnerMeshes) this._disposeMesh(mesh);
     this._buildingMeshes.clear();
     this._flagMeshes.clear();
     this._roadMeshes.clear();
@@ -3554,6 +3543,7 @@ export class SettlersRenderer {
     for (const [id, mesh] of this._flagMeshes) {
       if (!state.flags.has(id)) {
         this.scene.remove(mesh);
+        this._disposeMesh(mesh);
         this._flagMeshes.delete(id);
       }
     }
@@ -3608,13 +3598,16 @@ export class SettlersRenderer {
           dot.position.set((col - 1.5) * 0.2, 0.15 + row * 0.2, 0.2);
           dotsGroup.add(dot);
         }
-        // Bottleneck glow (reuse cached geo, only update existing material)
+        // Bottleneck glow (reuse cached material)
         if (flag.inventory.length >= 6) {
-          const glowMat = new THREE.MeshBasicMaterial({
-            color: 0xff4444, transparent: true,
-            opacity: 0.3 + Math.sin(t * 4) * 0.15, depthWrite: false,
-          });
-          const glow = new THREE.Mesh(this._glowGeo, glowMat);
+          if (!this._bottleneckGlowMat) {
+            this._bottleneckGlowMat = new THREE.MeshBasicMaterial({
+              color: 0xff4444, transparent: true,
+              opacity: 0.3, depthWrite: false,
+            });
+          }
+          this._bottleneckGlowMat.opacity = 0.3 + Math.sin(t * 4) * 0.15;
+          const glow = new THREE.Mesh(this._glowGeo, this._bottleneckGlowMat);
           glow.position.y = 0.3;
           dotsGroup.add(glow);
         }
@@ -3675,6 +3668,7 @@ export class SettlersRenderer {
     for (const [id, mesh] of this._roadMeshes) {
       if (!state.roads.has(id)) {
         this.scene.remove(mesh);
+        this._disposeMesh(mesh);
         this._roadMeshes.delete(id);
         this._roadQualities.delete(id);
       }
@@ -3684,7 +3678,7 @@ export class SettlersRenderer {
       if (!this._roadMeshes.has(id) || prevQuality !== road.quality) {
         // Remove old mesh if quality changed
         const oldMesh = this._roadMeshes.get(id);
-        if (oldMesh) this.scene.remove(oldMesh);
+        if (oldMesh) { this.scene.remove(oldMesh); this._disposeMesh(oldMesh); }
         const mesh = this._createRoadMesh(road.path, state, road.quality);
         this._roadMeshes.set(id, mesh);
         this._roadQualities.set(id, road.quality);
@@ -4225,6 +4219,7 @@ export class SettlersRenderer {
     for (const [id, mesh] of this._carrierMeshes) {
       if (!state.carriers.has(id)) {
         this.scene.remove(mesh);
+        this._disposeMesh(mesh);
         this._carrierMeshes.delete(id);
       }
     }
@@ -4648,6 +4643,7 @@ export class SettlersRenderer {
     for (const [id, mesh] of this._workerMeshes) {
       if (!state.workers.has(id)) {
         this.scene.remove(mesh);
+        this._disposeMesh(mesh);
         this._workerMeshes.delete(id);
       }
     }
@@ -4763,6 +4759,7 @@ export class SettlersRenderer {
     for (const [id, mesh] of this._soldierMeshes) {
       if (!state.soldiers.has(id)) {
         this.scene.remove(mesh);
+        this._disposeMesh(mesh);
         this._soldierMeshes.delete(id);
       }
     }
@@ -4772,6 +4769,7 @@ export class SettlersRenderer {
         const mesh = this._soldierMeshes.get(id);
         if (mesh) {
           this.scene.remove(mesh);
+          this._disposeMesh(mesh);
           this._soldierMeshes.delete(id);
         }
         continue;
@@ -4798,7 +4796,7 @@ export class SettlersRenderer {
         }
         // Lunge forward and back
         const lungePhase = Math.sin(t * 4);
-        mesh.children[0].rotation.x = lungePhase * 0.08;
+        if (mesh.children[0]) mesh.children[0].rotation.x = lungePhase * 0.08;
         // Combat stance – legs slightly apart
         if (leftLeg) leftLeg.rotation.x = -0.15 + Math.sin(t * 3) * 0.1;
         if (rightLeg) rightLeg.rotation.x = 0.15 + Math.cos(t * 3) * 0.1;
@@ -4815,8 +4813,10 @@ export class SettlersRenderer {
         }
         // Marching body bob
         mesh.position.y = soldier.position.y + Math.abs(Math.sin(phase)) * 0.015;
-        mesh.children[0].rotation.x = 0.03;
-        mesh.children[0].rotation.z = Math.sin(phase * 0.5) * 0.02;
+        if (mesh.children[0]) {
+          mesh.children[0].rotation.x = 0.03;
+          mesh.children[0].rotation.z = Math.sin(phase * 0.5) * 0.02;
+        }
       } else {
         // Idle / garrison exit – subtle weight shift
         if (leftLeg) leftLeg.rotation.x = 0;
@@ -5987,5 +5987,18 @@ export class SettlersRenderer {
   private _getPlayerColor(playerId: string, state: SettlersState): number {
     const player = state.players.get(playerId);
     return player ? player.color : 0xaaaaaa;
+  }
+
+  private _disposeMesh(mesh: THREE.Object3D): void {
+    mesh.traverse((child: any) => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m: THREE.Material) => m.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    });
   }
 }

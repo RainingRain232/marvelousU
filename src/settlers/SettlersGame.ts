@@ -685,6 +685,8 @@ export class SettlersGame {
         if (soldier) {
           soldier.state = "marching";
           soldier.garrisonedIn = null;
+          const solPlayer = state.players.get(soldier.owner);
+          if (solPlayer) solPlayer.freeSoldiers++;
           soldier.targetBuildingId = buildingId;
           soldier.position = {
             x: (c.building.tileX + 1) * SB.TILE_SIZE,

@@ -21,6 +21,7 @@ export class SettlersInputSystem {
   private _onMouseDown: (e: MouseEvent) => void;
   private _onContextMenu: (e: MouseEvent) => void;
   private _onWheel: (e: WheelEvent) => void;
+  private _canvas: HTMLCanvasElement | null = null;
 
   // Callbacks
   onLeftClick: ((tileX: number, tileZ: number) => void) | null = null;
@@ -121,6 +122,7 @@ export class SettlersInputSystem {
   }
 
   init(canvas: HTMLCanvasElement): void {
+    this._canvas = canvas;
     window.addEventListener("keydown", this._onKeyDown);
     window.addEventListener("keyup", this._onKeyUp);
     canvas.addEventListener("mousemove", this._onMouseMove);
@@ -132,6 +134,13 @@ export class SettlersInputSystem {
   destroy(): void {
     window.removeEventListener("keydown", this._onKeyDown);
     window.removeEventListener("keyup", this._onKeyUp);
+    if (this._canvas) {
+      this._canvas.removeEventListener("mousemove", this._onMouseMove);
+      this._canvas.removeEventListener("mousedown", this._onMouseDown);
+      this._canvas.removeEventListener("contextmenu", this._onContextMenu);
+      this._canvas.removeEventListener("wheel", this._onWheel);
+      this._canvas = null;
+    }
   }
 
   /** Update hovered tile each frame */

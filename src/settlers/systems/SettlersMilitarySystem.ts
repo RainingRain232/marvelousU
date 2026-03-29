@@ -132,6 +132,7 @@ function _tickUnitProducer(
     const required = def.inputs.map((i) => ({ type: i.type, amount: i.amount }));
     if (!_tryConsumeInputs(building, required)) return;
     front.timeRemaining = def.productionTime;
+    return; // Don't tick on the same frame production starts
   }
 
   // Tick the active item
@@ -328,6 +329,8 @@ export function updateGarrisoning(state: SettlersState, dt: number): void {
           if (defender) {
             defender.state = "fighting";
             defender.garrisonedIn = null;
+            const defPlayer = state.players.get(defender.owner);
+            if (defPlayer) defPlayer.freeSoldiers++;
             defender.position = { ...soldier.position };
             soldier.state = "fighting";
 
@@ -484,16 +487,14 @@ function _captureBuilding(
       }
     }
 
-    // Check if all non-current players are defeated
-    let allDefeated = true;
+    // Check if only one player remains undefeated
+    const alive: string[] = [];
     for (const [, player] of state.players) {
-      if (player.id !== "p0" && !player.defeated) {
-        allDefeated = false;
-      }
+      if (!player.defeated) alive.push(player.id);
     }
-    if (allDefeated) {
+    if (alive.length === 1) {
       state.gameOver = true;
-      state.winner = "p0";
+      state.winner = alive[0];
     }
   }
 }

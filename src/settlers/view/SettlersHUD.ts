@@ -57,6 +57,8 @@ export class SettlersHUD {
   private _chainsPanelVisible = false;
   private _minimapLegend!: HTMLDivElement;
   private _minimapLegendVisible = false;
+  private _minimapMouseDown: ((e: MouseEvent) => void) | null = null;
+  private _minimapMouseMove: ((e: MouseEvent) => void) | null = null;
 
   // Camera info for minimap viewport indicator
   private _cameraTargetX = 0;
@@ -169,16 +171,18 @@ export class SettlersHUD {
     this._minimapCtx = this._minimap.getContext("2d")!;
 
     // Minimap click handler — move camera to clicked world position
-    this._minimap.addEventListener("mousedown", (e: MouseEvent) => {
+    this._minimapMouseDown = (e: MouseEvent) => {
       e.stopPropagation();
       this._handleMinimapClick(e);
-    });
-    this._minimap.addEventListener("mousemove", (e: MouseEvent) => {
+    };
+    this._minimapMouseMove = (e: MouseEvent) => {
       if (e.buttons & 1) {
         e.stopPropagation();
         this._handleMinimapClick(e);
       }
-    });
+    };
+    this._minimap.addEventListener("mousedown", this._minimapMouseDown);
+    this._minimap.addEventListener("mousemove", this._minimapMouseMove);
 
     // --- Audio control panel (above minimap, toggleable) ---
     this._buildAudioPanel();
@@ -1735,6 +1739,13 @@ export class SettlersHUD {
   }
 
   destroy(): void {
+    // Remove minimap event listeners
+    if (this._minimap) {
+      if (this._minimapMouseDown) this._minimap.removeEventListener("mousedown", this._minimapMouseDown);
+      if (this._minimapMouseMove) this._minimap.removeEventListener("mousemove", this._minimapMouseMove);
+      this._minimapMouseDown = null;
+      this._minimapMouseMove = null;
+    }
     // Clean up all callbacks to prevent dangling references
     this.onSelectBuildingType = null;
     this.onSelectTool = null;

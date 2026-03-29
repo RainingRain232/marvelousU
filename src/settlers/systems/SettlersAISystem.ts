@@ -794,6 +794,8 @@ function _initiateCoordinatedAttack(
       if (soldier) {
         soldier.state = "marching";
         soldier.garrisonedIn = null;
+        const solPlayer = state.players.get(soldier.owner);
+        if (solPlayer) solPlayer.freeSoldiers++;
         soldier.targetBuildingId = bestTarget;
         soldier.position = {
           x: (c.building.tileX + 1) * SB.TILE_SIZE,
