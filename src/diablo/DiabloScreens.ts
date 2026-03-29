@@ -14,7 +14,7 @@ import {
   DiabloLoot, TalentEffectType, Weather, MapModifier,
   DiabloVendor, VendorType, DiabloPotion, PotionType, DiabloPortalNpc, MAX_POTION_STACK, EnemyType,
   CraftType, CraftingStationType, MaterialType, AdvancedCraftingRecipe,
-  DiabloQuest, QuestType,
+  DiabloQuest, QuestType, ItemType, DamageType,
   createDefaultPlayer,
 } from "./DiabloTypes";
 import {
@@ -1423,13 +1423,18 @@ export function showInventory(ctx: ScreenContext): void {
       ">${content}</div>`;
   }
 
+  const selectedRuneSlot = (ctx.menuEl as any)._selectedRuneSlot ?? -1;
   let invHtml = "";
   for (let i = 0; i < p.inventory.length; i++) {
     const slot = p.inventory[i];
     const item = slot.item;
-    const borderColor = item ? RARITY_CSS[item.rarity] : "#3a3a3a";
-    const borderW = item ? RARITY_BORDER[item.rarity] : 1;
-    const glow = item ? RARITY_GLOW[item.rarity] : "none";
+    const isSelectedRune = i === selectedRuneSlot && item && item.type === ItemType.RUNE;
+    const borderColor = isSelectedRune ? "#dd88ff" : (item ? RARITY_CSS[item.rarity] : "#3a3a3a");
+    const borderW = isSelectedRune ? 3 : (item ? RARITY_BORDER[item.rarity] : 1);
+    const runeAura = isSelectedRune
+      ? "0 0 12px rgba(187,136,221,0.7), 0 0 25px rgba(187,136,221,0.4), inset 0 0 10px rgba(187,136,221,0.2)"
+      : "";
+    const glow = runeAura || (item ? RARITY_GLOW[item.rarity] : "none");
     const bg = item ? RARITY_BG[item.rarity] : "rgba(15,10,5,0.85)";
     const anim = item && rarityNeedsAnim(item.rarity) ? animClass(item.rarity) : "";
     const badge = item && RARITY_BADGE[item.rarity]
@@ -1438,8 +1443,11 @@ export function showInventory(ctx: ScreenContext): void {
     const lockIcon = item && item.isLocked
       ? `<span style="position:absolute;top:2px;right:2px;font-size:10px;">\uD83D\uDD12</span>`
       : "";
+    const runeSelectedLabel = isSelectedRune
+      ? `<div style="position:absolute;bottom:-2px;left:0;right:0;text-align:center;font-size:7px;color:#dd88ff;text-shadow:0 0 4px #bb88dd;letter-spacing:1px;">SELECTED</div>`
+      : "";
     const content = item
-      ? `<div style="font-size:24px;">${item.icon}</div>${badge}${lockIcon}`
+      ? `<div style="font-size:24px;">${item.icon}</div>${badge}${lockIcon}${runeSelectedLabel}`
       : "";
     invHtml += `
       <div class="inv-slot ${anim}" data-inv-idx="${i}" style="
@@ -1610,13 +1618,7 @@ export function showInventory(ctx: ScreenContext): void {
             cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
             text-shadow:0 1px 3px rgba(0,0,0,0.5);
           ">STASH</button>
-          <button id="inv-socket-rune-btn" style="
-            padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
-            background:linear-gradient(180deg,rgba(40,20,50,0.95),rgba(25,10,35,0.95));
-            border:2px solid #7a4a8a;border-radius:8px;color:#bb88dd;
-            cursor:pointer;transition:all 0.2s;font-family:'Georgia',serif;pointer-events:auto;
-            text-shadow:0 1px 3px rgba(0,0,0,0.5);
-          ">SOCKET RUNE</button>
+          <!-- Socket Rune removed — use H key instead -->
           <button id="inv-enchant-btn" style="
             padding:10px 24px;font-size:15px;letter-spacing:2px;font-weight:bold;
             background:linear-gradient(180deg,rgba(20,30,50,0.95),rgba(10,18,35,0.95));
@@ -1627,7 +1629,7 @@ export function showInventory(ctx: ScreenContext): void {
           <div style="color:#888;font-size:13px;">Press <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:2px 10px;font-family:monospace;color:#fff;">S</span> to open Shared Stash</div>
         </div>
         <div style="margin-top:10px;color:#666;font-size:13px;text-align:center;display:flex;gap:20px;justify-content:center;flex-wrap:wrap;">
-          <span><span style="color:#bb88dd;">Socket Rune:</span> Left-click a rune, hover a socketed item, press <span style="display:inline-block;background:rgba(40,20,50,0.8);border:1px solid #7a4a8a;border-radius:4px;padding:1px 8px;font-family:monospace;color:#bb88dd;">SOCKET RUNE</span></span>
+          <span><span style="color:#bb88dd;">Socket Rune:</span> Left-click a rune to select it, hover a socketed item, press <span style="display:inline-block;background:rgba(40,20,50,0.8);border:1px solid #7a4a8a;border-radius:4px;padding:1px 8px;font-family:monospace;color:#bb88dd;">H</span></span>
           <span>Hover item + <span style="display:inline-block;background:rgba(60,50,30,0.8);border:1px solid #888;border-radius:4px;padding:1px 8px;font-family:monospace;color:#ff8844;">Y</span> to destroy</span>
           <span>Press <span style="color:#aaa;">I</span> or <span style="color:#aaa;">Escape</span> to close</span>
         </div>
@@ -1664,13 +1666,29 @@ export function showInventory(ctx: ScreenContext): void {
     el.addEventListener("mouseleave", () => ctx.hideItemTooltip());
   });
 
-  // Wire up inventory slot clicks (equip) and right-click (drop)
+  // Wire up inventory slot clicks (equip / select rune) and right-click (drop)
   const invSlots = ctx.menuEl.querySelectorAll(".inv-slot") as NodeListOf<HTMLDivElement>;
   invSlots.forEach((el) => {
     const idx = parseInt(el.getAttribute("data-inv-idx")!, 10);
     el.addEventListener("click", () => {
       const item = p.inventory[idx].item;
       if (!item) return;
+
+      // Runes: select/deselect instead of equipping
+      if (item.type === ItemType.RUNE) {
+        const prev = (ctx.menuEl as any)._selectedRuneSlot;
+        if (prev === idx) {
+          // Deselect
+          (ctx.menuEl as any)._selectedRuneSlot = -1;
+        } else {
+          // Select this rune
+          (ctx.menuEl as any)._selectedRuneSlot = idx;
+        }
+        // Re-render to show selection aura
+        ctx.showInventory();
+        return;
+      }
+
       const ek = resolveEquipKey(item.slot as string);
       if (!ek) return;
       const existing = p.equipment[ek];
@@ -1780,26 +1798,66 @@ export function showInventory(ctx: ScreenContext): void {
     });
   }
 
-  // Socket Rune button (not yet functional — placeholder)
-  const socketBtn = ctx.menuEl.querySelector("#inv-socket-rune-btn") as HTMLButtonElement | null;
-  if (socketBtn) {
-    socketBtn.addEventListener("mouseenter", () => {
-      socketBtn.style.borderColor = "#bb88dd";
-      socketBtn.style.boxShadow = "0 0 15px rgba(187,136,221,0.3)";
-      socketBtn.style.background = "rgba(50,20,60,0.95)";
-    });
-    socketBtn.addEventListener("mouseleave", () => {
-      socketBtn.style.borderColor = "#7a4a8a";
-      socketBtn.style.boxShadow = "none";
-      socketBtn.style.background = "rgba(40,20,50,0.9)";
-    });
-    socketBtn.addEventListener("click", () => {
-      // TODO: implement rune socketing
-      // Flow: player left-clicks a rune in inventory (selecting it),
-      // hovers over a socketed item, then clicks this button to insert
-      // the rune into the first empty socket.
-    });
-  }
+  // H key to socket selected rune into hovered item
+  const runeNameToDamage: Record<string, DamageType> = {
+    'Rune of Fire': DamageType.FIRE,
+    'Rune of Frost': DamageType.ICE,
+    'Rune of Thunder': DamageType.LIGHTNING,
+    'Rune of Venom': DamageType.POISON,
+    'Rune of Light': DamageType.HOLY,
+  };
+  const socketKeyHandler = (e: KeyboardEvent) => {
+    if (e.code !== "KeyH") return;
+    const selIdx = (ctx.menuEl as any)._selectedRuneSlot;
+    if (selIdx === undefined || selIdx < 0) {
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'Select a rune first (left-click)', '#ff4444');
+      return;
+    }
+    const rune = p.inventory[selIdx]?.item;
+    if (!rune || rune.type !== ItemType.RUNE) {
+      (ctx.menuEl as any)._selectedRuneSlot = -1;
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'No rune selected', '#ff4444');
+      return;
+    }
+    const hovIdx = (ctx.menuEl as any)._hoveredInvSlot;
+    if (hovIdx === undefined || hovIdx < 0) {
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'Hover over a socketed item', '#ff4444');
+      return;
+    }
+    const targetItem = p.inventory[hovIdx]?.item;
+    if (!targetItem) {
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'No item under cursor', '#ff4444');
+      return;
+    }
+    if (!targetItem.sockets || targetItem.sockets.length === 0) {
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'Item has no sockets', '#ff4444');
+      return;
+    }
+    // Find first empty socket
+    const emptySocket = targetItem.sockets.find(s => s.gemType === null);
+    if (!emptySocket) {
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'All sockets are full', '#ff4444');
+      return;
+    }
+    // Socket the rune
+    const dmgType = runeNameToDamage[rune.name];
+    if (!dmgType) {
+      ctx.addFloatingText(p.x, p.y + 2, p.z, 'Unknown rune type', '#ff4444');
+      return;
+    }
+    emptySocket.gemType = dmgType;
+    emptySocket.gemTier = rune.rarity === ItemRarity.EPIC ? 3 : rune.rarity === ItemRarity.RARE ? 2 : 1;
+    // Remove rune from inventory
+    p.inventory[selIdx].item = null;
+    (ctx.menuEl as any)._selectedRuneSlot = -1;
+    ctx.addFloatingText(p.x, p.y + 2, p.z, `Socketed ${rune.name}!`, '#bb88dd');
+    ctx.setStatsDirty(); ctx.setEquipDirty();
+    ctx.recalculatePlayerStats();
+    ctx.checkRunewords();
+    window.removeEventListener("keydown", socketKeyHandler);
+    ctx.showInventory();
+  };
+  window.addEventListener("keydown", socketKeyHandler);
 
   // Enchant button
   const enchantBtn = ctx.menuEl.querySelector("#inv-enchant-btn") as HTMLButtonElement | null;

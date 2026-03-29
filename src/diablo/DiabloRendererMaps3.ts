@@ -2658,58 +2658,148 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       mctx.scene.add(tree);
     }
 
-    // ── Creek / stream (narrow winding water with banks) ──
+    // ── Creek / stream (continuous winding water ribbon with banks and reeds) ──
     const streamBankMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.92 });
     const streamBedMat = new THREE.MeshStandardMaterial({ color: 0x3a5566, roughness: 0.4, metalness: 0.1 });
-    const streamParts = 20;
-    let sX = -hw * 0.4, sZ = -hd * 0.15;
-    let sAngle = 0.3;
-    for (let i = 0; i < streamParts; i++) {
-      sAngle += (Math.random() - 0.5) * 0.4;
-      const segLen = 3 + Math.random() * 2;
-      const nextX = sX + Math.cos(sAngle) * segLen;
-      const nextZ = sZ + Math.sin(sAngle) * segLen;
-      const midX = (sX + nextX) / 2;
-      const midZ = (sZ + nextZ) / 2;
-      const ty = getTerrainHeight(midX, midZ, 1.4);
-      const streamW = 1.2 + Math.sin(i * 0.8) * 0.3;
+    const reedMat = new THREE.MeshStandardMaterial({ color: 0x556b2f, roughness: 0.85 });
+    const reedDarkMat = new THREE.MeshStandardMaterial({ color: 0x3d5a1e, roughness: 0.9 });
+    const reedTipMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 });
 
-      // Water surface
-      const seg = new THREE.Mesh(new THREE.PlaneGeometry(streamW, segLen + 0.5), waterMat);
-      seg.rotation.x = -Math.PI / 2;
-      seg.rotation.z = -sAngle + Math.PI / 2;
-      seg.position.set(midX, ty + 0.02, midZ);
-      mctx.scene.add(seg);
-
-      // Stream bed (slightly darker, wider)
-      const bed = new THREE.Mesh(new THREE.PlaneGeometry(streamW + 0.4, segLen + 0.6), streamBedMat);
-      bed.rotation.x = -Math.PI / 2;
-      bed.rotation.z = -sAngle + Math.PI / 2;
-      bed.position.set(midX, ty + 0.01, midZ);
-      mctx.scene.add(bed);
-
-      // Dirt banks on both sides
-      for (const bankSide of [-1, 1]) {
-        const bankOff = (streamW / 2 + 0.25) * bankSide;
-        const bank = new THREE.Mesh(new THREE.PlaneGeometry(0.5, segLen), streamBankMat);
-        bank.rotation.x = -Math.PI / 2;
-        bank.rotation.z = -sAngle + Math.PI / 2;
-        const bOffX = Math.sin(sAngle) * bankOff;
-        const bOffZ = -Math.cos(sAngle) * bankOff;
-        bank.position.set(midX + bOffX, ty + 0.015, midZ + bOffZ);
-        mctx.scene.add(bank);
+    // Generate stream path points
+    const streamParts = 28;
+    const streamPath: { x: number; z: number; w: number }[] = [];
+    {
+      let sX = -hw * 0.5, sZ = -hd * 0.15;
+      let sAngle = 0.3;
+      streamPath.push({ x: sX, z: sZ, w: 1.4 });
+      for (let i = 0; i < streamParts; i++) {
+        sAngle += (Math.random() - 0.5) * 0.35;
+        const segLen = 3 + Math.random() * 2;
+        sX += Math.cos(sAngle) * segLen;
+        sZ += Math.sin(sAngle) * segLen;
+        const wVar = 1.2 + Math.sin(i * 0.6) * 0.4 + Math.random() * 0.2;
+        streamPath.push({ x: sX, z: sZ, w: wVar });
       }
+    }
 
-      // Occasional rocks in stream
-      if (Math.random() > 0.6) {
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + Math.random() * 0.1, 1), stoneMat);
-        rock.position.set(midX + (Math.random() - 0.5) * streamW * 0.5, ty + 0.08, midZ + (Math.random() - 0.5) * streamW * 0.5);
+    // Build continuous water ribbon, stream bed, and bank meshes
+    const waterVerts: number[] = [], waterIdx: number[] = [];
+    const bedVerts: number[] = [], bedIdx: number[] = [];
+    const bankLVerts: number[] = [], bankLIdx: number[] = [];
+    const bankRVerts: number[] = [], bankRIdx: number[] = [];
+
+    for (let i = 0; i < streamPath.length; i++) {
+      const p0 = streamPath[i];
+      const pNext = streamPath[Math.min(i + 1, streamPath.length - 1)];
+      const pPrev = streamPath[Math.max(i - 1, 0)];
+      // Direction and perpendicular
+      const dx = pNext.x - pPrev.x, dz = pNext.z - pPrev.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const nx = -dz / len, nz = dx / len; // perpendicular
+      const ty = getTerrainHeight(p0.x, p0.z, 1.4);
+      const hw2 = p0.w / 2;
+      const bedHw = hw2 + 0.3;
+      const bankW = 0.6;
+
+      // Water ribbon: left and right edge
+      waterVerts.push(p0.x + nx * hw2, ty + 0.03, p0.z + nz * hw2);
+      waterVerts.push(p0.x - nx * hw2, ty + 0.03, p0.z - nz * hw2);
+      // Bed ribbon (wider)
+      bedVerts.push(p0.x + nx * bedHw, ty + 0.01, p0.z + nz * bedHw);
+      bedVerts.push(p0.x - nx * bedHw, ty + 0.01, p0.z - nz * bedHw);
+      // Left bank ribbon
+      bankLVerts.push(p0.x + nx * (hw2 + 0.1), ty + 0.02, p0.z + nz * (hw2 + 0.1));
+      bankLVerts.push(p0.x + nx * (hw2 + bankW), ty + 0.02, p0.z + nz * (hw2 + bankW));
+      // Right bank ribbon
+      bankRVerts.push(p0.x - nx * (hw2 + 0.1), ty + 0.02, p0.z - nz * (hw2 + 0.1));
+      bankRVerts.push(p0.x - nx * (hw2 + bankW), ty + 0.02, p0.z - nz * (hw2 + bankW));
+
+      if (i > 0) {
+        const vi = (i - 1) * 2;
+        const quad = [vi, vi + 2, vi + 1, vi + 1, vi + 2, vi + 3];
+        waterIdx.push(...quad);
+        bedIdx.push(...quad);
+        bankLIdx.push(...quad);
+        bankRIdx.push(...quad);
+      }
+    }
+
+    // Create continuous meshes
+    const makeRibbonMesh = (verts: number[], idx: number[], mat: THREE.Material) => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, mat);
+      mctx.scene.add(mesh);
+    };
+    makeRibbonMesh(waterVerts, waterIdx, waterMat);
+    makeRibbonMesh(bedVerts, bedIdx, streamBedMat);
+    makeRibbonMesh(bankLVerts, bankLIdx, streamBankMat);
+    makeRibbonMesh(bankRVerts, bankRIdx, streamBankMat);
+
+    // Occasional rocks in stream
+    for (let i = 2; i < streamPath.length - 2; i += 2) {
+      if (Math.random() > 0.5) {
+        const sp = streamPath[i];
+        const ty = getTerrainHeight(sp.x, sp.z, 1.4);
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + Math.random() * 0.12, 1), stoneMat);
+        rock.position.set(sp.x + (Math.random() - 0.5) * sp.w * 0.4, ty + 0.08, sp.z + (Math.random() - 0.5) * sp.w * 0.4);
         rock.scale.y = 0.5;
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
         mctx.scene.add(rock);
       }
+    }
 
-      sX = nextX;
-      sZ = nextZ;
+    // Reeds along stream banks
+    for (let i = 1; i < streamPath.length - 1; i++) {
+      if (Math.random() > 0.4) continue; // ~60% of points get reeds
+      const sp = streamPath[i];
+      const pNext = streamPath[Math.min(i + 1, streamPath.length - 1)];
+      const pPrev = streamPath[Math.max(i - 1, 0)];
+      const dx = pNext.x - pPrev.x, dz = pNext.z - pPrev.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const nx = -dz / len, nz = dx / len;
+      const ty = getTerrainHeight(sp.x, sp.z, 1.4);
+
+      // Place a cluster of 2-5 reeds on a random side
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const clusterSize = 2 + Math.floor(Math.random() * 4);
+      for (let r = 0; r < clusterSize; r++) {
+        const bankDist = sp.w / 2 + 0.2 + Math.random() * 0.6;
+        const along = (Math.random() - 0.5) * 1.5;
+        const rx = sp.x + nx * side * bankDist + (dx / len) * along;
+        const rz = sp.z + nz * side * bankDist + (dz / len) * along;
+        const reedH = 0.6 + Math.random() * 0.8;
+        const reedLean = (Math.random() - 0.5) * 0.3;
+        // Reed stem
+        const stem = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.015, 0.02, reedH, 5),
+          Math.random() > 0.5 ? reedMat : reedDarkMat
+        );
+        stem.position.set(rx, ty + reedH / 2, rz);
+        stem.rotation.z = reedLean;
+        stem.rotation.x = (Math.random() - 0.5) * 0.2;
+        mctx.scene.add(stem);
+        // Reed cattail tip (on taller reeds)
+        if (reedH > 0.9) {
+          const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.15, 6), reedTipMat);
+          tip.position.set(rx + Math.sin(reedLean) * 0.08, ty + reedH + 0.05, rz);
+          tip.rotation.z = reedLean;
+          mctx.scene.add(tip);
+        }
+        // Reed leaf blade (occasional)
+        if (Math.random() > 0.5) {
+          const leaf = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.04, reedH * 0.7),
+            new THREE.MeshStandardMaterial({ color: 0x4a6b1e, roughness: 0.85, side: THREE.DoubleSide })
+          );
+          leaf.position.set(rx, ty + reedH * 0.4, rz);
+          leaf.rotation.z = reedLean + (Math.random() - 0.5) * 0.5;
+          leaf.rotation.y = Math.random() * Math.PI;
+          mctx.scene.add(leaf);
+        }
+      }
     }
 
     // ── Stone bridge over stream ──
