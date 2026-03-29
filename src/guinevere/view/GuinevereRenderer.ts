@@ -304,98 +304,238 @@ export class GuinevereRenderer {
   }
 
   private _buildDecor(): void {
-    // Floating crystal formations around main island edge
-    const crystalGeo = new THREE.OctahedronGeometry(0.4, 0);
     const crystalMat = new THREE.MeshStandardMaterial({
       color: 0x88ccff, emissive: 0x4488ff, emissiveIntensity: 0.6,
       transparent: true, opacity: 0.8, metalness: 0.5, roughness: 0.2,
     });
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * TAU;
-      const r = GUIN.ISLAND_RADIUS * 0.95;
-      const crystal = new THREE.Mesh(crystalGeo, crystalMat.clone());
-      crystal.position.set(
-        Math.cos(angle) * r,
-        3 + Math.random() * 5,
-        Math.sin(angle) * r,
-      );
-      crystal.rotation.set(Math.random() * TAU, Math.random() * TAU, 0);
-      this._scene.add(crystal);
-      this._crystalFormations.push(crystal);
+    // Floating crystal formations (larger clusters)
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * TAU;
+      const r = GUIN.ISLAND_RADIUS * (0.85 + Math.random() * 0.2);
+      const cluster = new THREE.Group();
+      // Main crystal
+      const main = new THREE.Mesh(new THREE.OctahedronGeometry(0.4 + Math.random() * 0.3, 1), crystalMat.clone());
+      cluster.add(main);
+      // Smaller satellite crystals
+      for (let j = 0; j < 3; j++) {
+        const sat = new THREE.Mesh(new THREE.OctahedronGeometry(0.15 + Math.random() * 0.15, 0), crystalMat.clone());
+        sat.position.set((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.8);
+        sat.rotation.set(Math.random() * TAU, Math.random() * TAU, 0);
+        cluster.add(sat);
+      }
+      cluster.position.set(Math.cos(angle) * r, 2.5 + Math.random() * 5, Math.sin(angle) * r);
+      cluster.rotation.set(Math.random(), Math.random(), 0);
+      this._scene.add(cluster);
+      this._crystalFormations.push(cluster.children[0] as THREE.Mesh);
     }
 
     // Ambient firefly-like point lights orbiting main island
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const pivot = new THREE.Object3D();
-      pivot.rotation.y = (i / 3) * TAU;
+      pivot.rotation.y = (i / 5) * TAU;
       this._scene.add(pivot);
       this._fireflyPivots.push(pivot);
-
-      const light = new THREE.PointLight(0xaaff88, 0.4, 10);
-      light.position.set(GUIN.ISLAND_RADIUS * 0.7, 2 + i * 1.5, 0);
+      const light = new THREE.PointLight(0xaaff88, 0.3, 10);
+      light.position.set(GUIN.ISLAND_RADIUS * 0.7, 1.5 + i * 1.2, 0);
       pivot.add(light);
       this._fireflyLights.push(light);
+      // Firefly visible mesh
+      const ffMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xaaff88, transparent: true, opacity: 0.7 }));
+      ffMesh.position.copy(light.position);
+      pivot.add(ffMesh);
     }
 
-    // Subtle ground glow ring at main island edge
-    const glowRingGeo = new THREE.TorusGeometry(GUIN.ISLAND_RADIUS, 0.15, 8, 64);
-    const glowRingMat = new THREE.MeshStandardMaterial({
-      color: 0x22aa88, emissive: 0x22aa88, emissiveIntensity: 0.5,
-      transparent: true, opacity: 0.3,
-    });
-    const glowRing = new THREE.Mesh(glowRingGeo, glowRingMat);
-    glowRing.rotation.x = -Math.PI / 2;
-    glowRing.position.y = 0.1;
+    // Ground glow ring at island edge
+    const glowRing = new THREE.Mesh(
+      new THREE.TorusGeometry(GUIN.ISLAND_RADIUS, 0.15, 10, 72),
+      new THREE.MeshStandardMaterial({ color: 0x22aa88, emissive: 0x22aa88, emissiveIntensity: 0.5, transparent: true, opacity: 0.3 }),
+    );
+    glowRing.rotation.x = -Math.PI / 2; glowRing.position.y = 0.1;
     this._scene.add(glowRing);
     this._islandGlowRings.push(glowRing);
+
+    // ── Mushroom clusters on the island ──
+    const mushCapMat = new THREE.MeshStandardMaterial({ color: 0x6644aa, emissive: 0x4422aa, emissiveIntensity: 0.3, roughness: 0.6 });
+    const mushStemMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.8 });
+    for (let mi = 0; mi < 8; mi++) {
+      const ma = (mi / 8) * TAU + Math.random() * 0.5;
+      const mr = 3 + Math.random() * (GUIN.ISLAND_RADIUS - 6);
+      const mh = 0.3 + Math.random() * 0.5;
+      // Stem
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, mh, 10), mushStemMat);
+      stem.position.set(Math.cos(ma) * mr, mh / 2 + 1, Math.sin(ma) * mr);
+      this._scene.add(stem);
+      // Cap
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 12, 8, 0, TAU, 0, Math.PI * 0.5), mushCapMat);
+      cap.position.set(Math.cos(ma) * mr, mh + 1, Math.sin(ma) * mr);
+      this._scene.add(cap);
+      // Glow dots on cap
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4),
+        new THREE.MeshBasicMaterial({ color: 0xaaffcc, transparent: true, opacity: 0.6 }));
+      dot.position.set(Math.cos(ma) * mr + 0.08, mh + 1.05, Math.sin(ma) * mr);
+      this._scene.add(dot);
+    }
+
+    // ── Grass tufts on island ──
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x446633, roughness: 0.9, side: THREE.DoubleSide });
+    for (let gi = 0; gi < 20; gi++) {
+      const ga = Math.random() * TAU;
+      const gr = 2 + Math.random() * (GUIN.ISLAND_RADIUS - 4);
+      const grass = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.5), grassMat);
+      grass.position.set(Math.cos(ga) * gr, 1.25, Math.sin(ga) * gr);
+      grass.rotation.y = Math.random() * TAU;
+      this._scene.add(grass);
+    }
+
+    // ── Stone ruins / pillars on island ──
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x556655, roughness: 0.85, metalness: 0.1 });
+    for (let si = 0; si < 4; si++) {
+      const sa = (si / 4) * TAU + 0.4;
+      const sr = GUIN.ISLAND_RADIUS * 0.6;
+      const sh2 = 1.5 + Math.random() * 2;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, sh2, 10), stoneMat);
+      pillar.position.set(Math.cos(sa) * sr, sh2 / 2 + 1, Math.sin(sa) * sr);
+      this._scene.add(pillar);
+      // Broken top
+      const broken = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 6), stoneMat);
+      broken.position.set(Math.cos(sa) * sr, sh2 + 1.15, Math.sin(sa) * sr);
+      broken.rotation.z = Math.random() * 0.3;
+      this._scene.add(broken);
+      // Vine on pillar
+      const vine = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 6, 12),
+        new THREE.MeshStandardMaterial({ color: 0x337733, roughness: 0.8 }));
+      vine.position.set(Math.cos(sa) * sr, 1.5 + Math.random(), Math.sin(sa) * sr);
+      vine.rotation.x = Math.PI / 2;
+      this._scene.add(vine);
+    }
   }
 
   private _buildPlayer(): void {
     this._playerGroup = new THREE.Group();
 
-    // Body — elegant dress shape
-    const bodyGeo = new THREE.CylinderGeometry(0.3, 0.7, 2.2, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4444cc, roughness: 0.4, metalness: 0.2 });
-    this._playerBody = new THREE.Mesh(bodyGeo, bodyMat);
-    this._playerBody.position.y = 1.1;
-    this._playerGroup.add(this._playerBody);
+    const dressMat = new THREE.MeshStandardMaterial({ color: 0x4444cc, roughness: 0.4, metalness: 0.2 });
+    const dressAccent = new THREE.MeshStandardMaterial({ color: 0x3333aa, roughness: 0.35, metalness: 0.25 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.5, metalness: 0.8, roughness: 0.2 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.6 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, roughness: 0.7 });
 
-    // Head
-    const headGeo = new THREE.SphereGeometry(0.35, 16, 12);
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.6 });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 2.5;
-    this._playerGroup.add(head);
+    // ── Dress (layered skirt) ──
+    const skirtOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.85, 2.0, 16), dressMat);
+    skirtOuter.position.y = 1.0; this._playerGroup.add(skirtOuter);
+    this._playerBody = skirtOuter;
+    // Dress overlay layer
+    const skirtInner = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.75, 1.8, 14), dressAccent);
+    skirtInner.position.y = 1.1; this._playerGroup.add(skirtInner);
+    // Dress hem trim (gold)
+    const hem = new THREE.Mesh(new THREE.TorusGeometry(0.84, 0.04, 8, 24), goldMat);
+    hem.rotation.x = Math.PI / 2; hem.position.y = 0.02;
+    this._playerGroup.add(hem);
+    // Waist sash
+    const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.12, 16), goldMat);
+    sash.position.y = 1.85; this._playerGroup.add(sash);
+    // Bodice
+    const bodice = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.5, 14), dressAccent);
+    bodice.position.y = 2.1; this._playerGroup.add(bodice);
+    // Neckline trim
+    const neckTrim = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.025, 8, 16), goldMat);
+    neckTrim.rotation.x = Math.PI / 2; neckTrim.position.y = 2.35;
+    this._playerGroup.add(neckTrim);
 
-    // Crown
-    const crownGeo = new THREE.TorusGeometry(0.3, 0.06, 10, 8);
-    const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.5, metalness: 0.8 });
-    this._playerCrown = new THREE.Mesh(crownGeo, crownMat);
-    this._playerCrown.position.y = 2.85;
-    this._playerCrown.rotation.x = Math.PI / 2;
+    // ── Arms ──
+    for (const sx of [-1, 1]) {
+      // Shoulder puff
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), dressMat);
+      puff.position.set(sx * 0.38, 2.25, 0); this._playerGroup.add(puff);
+      // Upper arm (sleeve)
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.35, 12), dressMat);
+      sleeve.position.set(sx * 0.4, 2.0, 0); this._playerGroup.add(sleeve);
+      // Forearm (skin)
+      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 12), skinMat);
+      forearm.position.set(sx * 0.42, 1.75, 0); this._playerGroup.add(forearm);
+      // Hand
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), skinMat);
+      hand.position.set(sx * 0.42, 1.58, 0); this._playerGroup.add(hand);
+      // Bracelet
+      const bracelet = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 12), goldMat);
+      bracelet.rotation.x = Math.PI / 2;
+      bracelet.position.set(sx * 0.42, 1.65, 0); this._playerGroup.add(bracelet);
+    }
+
+    // ── Head ──
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 20, 16), skinMat);
+    head.position.y = 2.6; this._playerGroup.add(head);
+    // Eyes
+    for (const sx of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), new THREE.MeshBasicMaterial({ color: 0x2244aa }));
+      eye.position.set(sx * 0.12, 2.64, -0.3); this._playerGroup.add(eye);
+    }
+    // Lips
+    const lips = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.04), new THREE.MeshStandardMaterial({ color: 0xcc6666, roughness: 0.5 }));
+    lips.position.set(0, 2.52, -0.32); this._playerGroup.add(lips);
+    // Hair (flowing golden)
+    const hairBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.8, 10, 16), hairMat);
+    hairBack.position.set(0, 2.4, 0.15); this._playerGroup.add(hairBack);
+    const hairSide1 = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.5, 8, 12), hairMat);
+    hairSide1.position.set(-0.25, 2.5, 0.05); this._playerGroup.add(hairSide1);
+    const hairSide2 = hairSide1.clone(); hairSide2.position.x = 0.25;
+    this._playerGroup.add(hairSide2);
+    // Hair flowing down back
+    const hairFlow = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.05, 1.2, 10), hairMat);
+    hairFlow.position.set(0, 1.8, 0.2); this._playerGroup.add(hairFlow);
+
+    // ── Crown (ornate) ──
+    this._playerCrown = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 12, 20), goldMat);
+    this._playerCrown.position.y = 2.95; this._playerCrown.rotation.x = Math.PI / 2;
     this._playerGroup.add(this._playerCrown);
+    // Crown points
+    for (let cp = 0; cp < 5; cp++) {
+      const a = (cp / 5) * TAU;
+      const point = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 6), goldMat);
+      point.position.set(Math.cos(a) * 0.3, 3.05, Math.sin(a) * 0.3);
+      this._playerGroup.add(point);
+      // Jewel on each point
+      const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6),
+        new THREE.MeshStandardMaterial({ color: cp % 2 === 0 ? 0x4488ff : 0xff4488, emissive: cp % 2 === 0 ? 0x4488ff : 0xff4488, emissiveIntensity: 1.0 }));
+      jewel.position.set(Math.cos(a) * 0.3, 3.15, Math.sin(a) * 0.3);
+      this._playerGroup.add(jewel);
+    }
 
-    // Staff
-    const staffGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 12);
-    const staffMat = new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.5 });
-    this._playerStaff = new THREE.Mesh(staffGeo, staffMat);
-    this._playerStaff.position.set(0.6, 1.5, 0);
-    this._playerGroup.add(this._playerStaff);
-
+    // ── Staff (detailed) ──
+    const staffShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 2.5, 14), new THREE.MeshStandardMaterial({ color: 0x886644, roughness: 0.5 }));
+    staffShaft.position.set(0.65, 1.5, 0); this._playerGroup.add(staffShaft);
+    this._playerStaff = staffShaft;
+    // Staff vine wrap
+    const vine = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 12), new THREE.MeshStandardMaterial({ color: 0x44aa44, roughness: 0.7 }));
+    vine.position.set(0.65, 1.8, 0); this._playerGroup.add(vine);
+    const vine2 = vine.clone(); vine2.position.y = 2.2; this._playerGroup.add(vine2);
+    // Staff cradle (ornate top)
+    const cradle = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 8, 12), goldMat);
+    cradle.position.set(0.65, 2.75, 0); cradle.rotation.x = Math.PI / 2;
+    this._playerGroup.add(cradle);
     // Staff orb
-    const orbGeo = new THREE.SphereGeometry(0.2, 16, 12);
-    const orbMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x88ccff, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 });
-    const orb = new THREE.Mesh(orbGeo, orbMat);
-    orb.position.set(0.6, 2.8, 0);
-    this._playerGroup.add(orb);
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 16),
+      new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x88ccff, emissiveIntensity: 0.8, transparent: true, opacity: 0.9 }));
+    orb.position.set(0.65, 2.85, 0); this._playerGroup.add(orb);
+    // Orb inner glow
+    const orbInner = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10),
+      new THREE.MeshBasicMaterial({ color: 0xccddff, transparent: true, opacity: 0.6 }));
+    orbInner.position.set(0.65, 2.85, 0); this._playerGroup.add(orbInner);
 
-    // Cape
-    const capeGeo = new THREE.PlaneGeometry(1.2, 1.8);
-    const capeMat = new THREE.MeshStandardMaterial({ color: 0x2222aa, side: THREE.DoubleSide, roughness: 0.6 });
-    this._playerCape = new THREE.Mesh(capeGeo, capeMat);
-    this._playerCape.position.set(0, 1.4, -0.4);
-    this._playerCape.rotation.x = -0.15;
+    // ── Cape (higher poly, flowing) ──
+    this._playerCape = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.2, 2.0, 6, 8),
+      new THREE.MeshStandardMaterial({ color: 0x2222aa, side: THREE.DoubleSide, roughness: 0.55 }),
+    );
+    this._playerCape.position.set(0, 1.3, 0.45); this._playerCape.rotation.x = -0.12;
     this._playerGroup.add(this._playerCape);
+    // Cape gold trim
+    const capeTrim = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.02), goldMat);
+    capeTrim.position.set(0, 2.3, 0.38); this._playerGroup.add(capeTrim);
+
+    // Player glow light
+    const playerLight = new THREE.PointLight(0x6688ff, 0.3, 6);
+    playerLight.position.y = 2; this._playerGroup.add(playerLight);
 
     this._scene.add(this._playerGroup);
   }

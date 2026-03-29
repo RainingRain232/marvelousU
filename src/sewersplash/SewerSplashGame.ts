@@ -255,6 +255,9 @@ export class SewerSplashGame {
   private _boxMax = new THREE.Vector3();
   // Shop click delegation (single handler, no leak)
   private _shopClickHandler: ((e: Event) => void) | null = null;
+  // Pause menu
+  private _pauseMenuDiv: HTMLDivElement | null = null;
+  private _phaseBeforePause: string = "playing";
   private _bossEvery = 500; // distance between bosses
   private _nextBossAt = 500;
   private _segmentsCreated = 0;
@@ -449,6 +452,7 @@ export class SewerSplashGame {
       this._hudScore.removeEventListener("click", this._shopClickHandler);
       this._shopClickHandler = null;
     }
+    if (this._pauseMenuDiv) { this._pauseMenuDiv.remove(); this._pauseMenuDiv = null; }
     this._hud?.parentNode?.removeChild(this._hud);
     this._vignetteEl?.parentNode?.removeChild(this._vignetteEl);
     this._fadeEl?.parentNode?.removeChild(this._fadeEl);
@@ -1865,6 +1869,110 @@ export class SewerSplashGame {
 
   // ── Start Game ────────────────────────────────────────────────────────
 
+  private _showPauseMenu(): void {
+    this._phaseBeforePause = this._phase;
+    this._phase = "paused";
+
+    if (this._pauseMenuDiv) this._pauseMenuDiv.remove();
+    const div = document.createElement("div");
+    div.style.cssText = `position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);font-family:'Trebuchet MS',sans-serif;`;
+
+    const panel = document.createElement("div");
+    panel.style.cssText = `background:linear-gradient(180deg,#1a2a1a 0%,#0a150a 100%);border:2px solid #2a5a2a;border-radius:12px;padding:30px 40px;max-width:520px;width:90%;color:#cde6cd;`;
+
+    // Title
+    panel.innerHTML = `
+      <h1 style="margin:0 0 20px;font-size:28px;color:#44dd66;text-align:center;letter-spacing:4px;">PAUSED</h1>
+      <div id="ss-pause-content">
+        <div id="ss-pause-buttons" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+    `;
+    div.appendChild(panel);
+    document.body.appendChild(div);
+    this._pauseMenuDiv = div;
+
+    const btns = panel.querySelector("#ss-pause-buttons")!;
+    const content = panel.querySelector("#ss-pause-content")!;
+
+    const makeBtn = (label: string, onClick: () => void) => {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.style.cssText = `display:block;width:100%;padding:12px 20px;font-size:16px;font-family:inherit;background:rgba(34,68,34,0.6);border:1px solid #3a6a3a;border-radius:8px;color:#cde6cd;cursor:pointer;text-align:left;transition:background 0.15s;`;
+      btn.onmouseenter = () => { btn.style.background = "rgba(50,100,50,0.8)"; };
+      btn.onmouseleave = () => { btn.style.background = "rgba(34,68,34,0.6)"; };
+      btn.onclick = onClick;
+      return btn;
+    };
+
+    const showSection = (title: string, body: string) => {
+      content.innerHTML = `
+        <h2 style="margin:0 0 12px;font-size:18px;color:#44dd66;">${title}</h2>
+        <div style="font-size:14px;line-height:1.7;color:#aaccaa;max-height:50vh;overflow-y:auto;padding-right:8px;">${body}</div>
+        <button id="ss-back-btn" style="margin-top:16px;padding:8px 20px;font-size:14px;font-family:inherit;background:rgba(34,68,34,0.6);border:1px solid #3a6a3a;border-radius:6px;color:#cde6cd;cursor:pointer;">Back</button>
+      `;
+      content.querySelector("#ss-back-btn")!.addEventListener("click", () => {
+        content.innerHTML = ""; content.appendChild(btnsClone);
+      });
+    };
+
+    // Clone the buttons container for reuse
+    btns.appendChild(makeBtn("\u25B6  Resume", () => this._closePauseMenu()));
+
+    btns.appendChild(makeBtn("\uD83C\uDFAE  Controls", () => showSection("Controls", `
+      <b>A / \u2190</b> — Move left lane<br>
+      <b>D / \u2192</b> — Move right lane<br>
+      <b>W / \u2191</b> — Jump<br>
+      <b>S / \u2193</b> — Duck / Slide<br>
+      <b>ESC</b> — Pause menu<br>
+      <b>Enter / Space</b> — Start / Restart<br>
+    `)));
+
+    btns.appendChild(makeBtn("\uD83D\uDCD6  How to Play", () => showSection("How to Play", `
+      You are a <b style="color:#44dd66">sewer rat</b> escaping through the underground tunnels beneath Camelot.<br><br>
+      <b>Dodge obstacles</b> by switching lanes, jumping over barriers, or ducking under low pipes.<br><br>
+      <b>Collect cheese</b> \uD83E\uDDC0 for points and <b>gold coins</b> for the upgrade shop.<br>
+      <b>Hearts</b> restore HP. <b>Magnets</b> pull nearby collectibles toward you.<br><br>
+      Watch out for <b style="color:#ff6644">barrels, webs, chains, and toxic puddles</b>!<br><br>
+      Every 500m a <b style="color:#ff4444">boss</b> appears — dodge its attacks to survive!<br><br>
+      Your run ends when HP reaches zero. Spend gold in the <b>shop</b> to upgrade for next run.
+    `)));
+
+    btns.appendChild(makeBtn("\u2B50  Game Concepts", () => showSection("Game Concepts", `
+      <b style="color:#ffdd44">Fever Mode</b> — Collect enough items quickly to enter Fever mode for bonus points and invincibility.<br><br>
+      <b style="color:#44aaff">Themes</b> — The tunnel changes appearance as you progress: Sewer \u2192 Catacombs \u2192 Crystal Caves \u2192 Lava Depths \u2192 Enchanted Tunnels.<br><br>
+      <b style="color:#ff8844">Bosses</b> — Every 500m, face a boss that throws obstacles at you. Survive its attack pattern!<br><br>
+      <b style="color:#44dd66">Upgrades</b> — After each run, spend gold on:<br>
+      &bull; <b>Extra HP</b> — More hits before you fall<br>
+      &bull; <b>Magnet Range</b> — Pull collectibles from further away<br>
+      &bull; <b>Fever Duration</b> — Fever mode lasts longer<br>
+      &bull; <b>Gold Multiplier</b> — Earn more gold per pickup<br>
+      &bull; <b>Shield Start</b> — Begin each run with a shield<br>
+    `)));
+
+    btns.appendChild(makeBtn("\uD83D\uDEAA  Quit to Main Menu", () => {
+      this._closePauseMenu();
+      window.dispatchEvent(new Event("sewerSplashExit"));
+    }));
+
+    const btnsClone = btns.cloneNode(true) as HTMLElement;
+    // Re-bind events on clone
+    const cloneBtns = btnsClone.querySelectorAll("button");
+    const origBtns = btns.querySelectorAll("button");
+    cloneBtns.forEach((btn, i) => {
+      btn.onclick = (origBtns[i] as HTMLButtonElement).onclick;
+      btn.onmouseenter = (origBtns[i] as HTMLButtonElement).onmouseenter;
+      btn.onmouseleave = (origBtns[i] as HTMLButtonElement).onmouseleave;
+    });
+  }
+
+  private _closePauseMenu(): void {
+    if (this._pauseMenuDiv) {
+      this._pauseMenuDiv.remove();
+      this._pauseMenuDiv = null;
+    }
+    this._phase = this._phaseBeforePause as any;
+  }
+
   private _startGame(): void {
     // Apply persistent upgrades
     const extraHp = this._getUpgrade("extra_hp");
@@ -1966,8 +2074,12 @@ export class SewerSplashGame {
       }
 
       if (e.code === "Escape") {
+        if (this._phase === "paused") {
+          this._closePauseMenu();
+          return;
+        }
         if (this._phase === "playing" || this._phase === "boss") {
-          window.dispatchEvent(new Event("sewerSplashExit"));
+          this._showPauseMenu();
           return;
         }
         if (this._phase === "title" || this._phase === "dead") {
