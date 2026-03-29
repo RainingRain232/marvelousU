@@ -112,7 +112,7 @@ export class CaesarRenderer {
     s.addChild(this._fxLayer); s.addChild(this._overlayLayer); s.addChild(this._uiLayer);
     this._overlayLayer.addChild(this._highlightGfx);
     this._shadowLayer.alpha = 0.12;
-    this._cameraX = -(sw / 2); this._cameraY = -(sh / 2);
+    this._cameraX = 0; this._cameraY = 0;
     this._setupInput(); this._createMinimap();
   }
 

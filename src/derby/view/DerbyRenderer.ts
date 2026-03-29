@@ -363,47 +363,177 @@ export class DerbyRenderer {
       }
     }
 
-    // Trees (closer parallax)
+    // Trees (closer parallax) — mixed types
     this._treesGfx.clear();
     const treeOffset = (sx * 0.3) % sw;
-    for (let i = 0; i < 12; i++) {
-      const tx = ((i * 90 - treeOffset) % (sw + 200)) - 100;
-      const ty = 260 + (i % 2) * 10;
-      // Trunk
-      this._treesGfx.rect(tx - 3, ty - 20, 6, 25).fill(0x5c3a1e);
-      // Canopy
-      this._treesGfx.circle(tx, ty - 28, 14 + (i % 3) * 4).fill(zc.tree);
-      this._treesGfx.circle(tx - 8, ty - 22, 10).fill(zc.tree + 0x111111);
-      this._treesGfx.circle(tx + 8, ty - 22, 10).fill(zc.tree);
+    for (let i = 0; i < 16; i++) {
+      const tx = ((i * 75 - treeOffset) % (sw + 200)) - 100;
+      const ty = 258 + (i % 3) * 8;
+      const treeType = i % 5;
+      if (treeType < 3) {
+        // Deciduous tree
+        const canopyR = 14 + (i % 3) * 4;
+        // Shadow
+        this._treesGfx.ellipse(tx + 3, ty + 3, canopyR * 0.8, canopyR * 0.2).fill({ color: 0x000000, alpha: 0.06 });
+        // Trunk
+        this._treesGfx.rect(tx - 3, ty - 18, 6, 23).fill(0x5c3a1e);
+        this._treesGfx.rect(tx - 1, ty - 10, 2, 8).fill({ color: 0x6b4428, alpha: 0.3 }); // bark highlight
+        // Canopy
+        this._treesGfx.circle(tx, ty - 26, canopyR).fill(zc.tree);
+        this._treesGfx.circle(tx - 9, ty - 20, canopyR * 0.7).fill(zc.tree + 0x111111);
+        this._treesGfx.circle(tx + 8, ty - 22, canopyR * 0.65).fill(zc.tree);
+        // Canopy highlight
+        this._treesGfx.circle(tx - 3, ty - 30, canopyR * 0.4).fill({ color: zc.tree + 0x222222, alpha: 0.3 });
+      } else if (treeType === 3) {
+        // Pine tree
+        this._treesGfx.rect(tx - 2, ty - 10, 4, 16).fill(0x4a2a10);
+        for (let tier = 0; tier < 3; tier++) {
+          const tierY = ty - 14 - tier * 10;
+          const tierW = 14 - tier * 3;
+          this._treesGfx.moveTo(tx - tierW, tierY + 8).lineTo(tx, tierY).lineTo(tx + tierW, tierY + 8).fill(0x1a3a1a);
+        }
+      } else {
+        // Bush / shrub
+        this._treesGfx.ellipse(tx, ty - 4, 10, 8).fill(zc.tree - 0x050505);
+        this._treesGfx.ellipse(tx - 5, ty - 2, 7, 6).fill(zc.tree);
+        this._treesGfx.ellipse(tx + 5, ty - 1, 6, 5).fill(zc.tree + 0x0a0a0a);
+      }
+    }
+    // Windmill (very slow parallax)
+    const wmOff = (sx * 0.18) % (sw + 600);
+    const wmX = ((600 - wmOff) % (sw + 600)) - 300;
+    if (wmX > -100 && wmX < sw + 100) {
+      const wmY = 228;
+      // Tower
+      this._treesGfx.moveTo(wmX - 5, wmY).lineTo(wmX - 8, wmY + 40).lineTo(wmX + 8, wmY + 40).lineTo(wmX + 5, wmY).fill({ color: 0x887766, alpha: 0.5 });
+      // Cap
+      this._treesGfx.moveTo(wmX - 7, wmY).lineTo(wmX, wmY - 6).lineTo(wmX + 7, wmY).fill({ color: 0x665544, alpha: 0.5 });
+      // Blades (rotating)
+      const bladeAngle = this._time * 1.5;
+      for (let b = 0; b < 4; b++) {
+        const a = bladeAngle + b * Math.PI / 2;
+        const bx = wmX + Math.cos(a) * 22;
+        const by = wmY - 2 + Math.sin(a) * 22;
+        this._treesGfx.moveTo(wmX, wmY - 2).lineTo(bx, by).stroke({ color: 0x665544, width: 2, alpha: 0.4 });
+      }
     }
 
     // Ground
-    this._groundGfx.clear();
-    this._groundGfx.rect(0, B.GROUND_Y, sw, sh - B.GROUND_Y).fill(zc.ground);
-    // Grass border above track (with grass tufts)
-    this._groundGfx.rect(0, 280, sw, 30).fill(zc.ground + 0x060606);
+    const gg = this._groundGfx;
+    gg.clear();
     const grassOffset = (sx * 0.8) % 20;
-    for (let gi = 0; gi < 40; gi++) {
-      const gx = ((gi * 22 - grassOffset) % (sw + 20)) - 10;
-      const gy = 283 + (gi % 3) * 3;
-      const gh = 4 + (gi % 4) * 2;
-      this._groundGfx.moveTo(gx, gy).lineTo(gx + 1, gy - gh).stroke({ color: zc.ground + 0x1a1a0a, width: 1, alpha: 0.3 });
-      this._groundGfx.moveTo(gx + 3, gy).lineTo(gx + 2, gy - gh + 1).stroke({ color: zc.ground + 0x0a1a0a, width: 1, alpha: 0.25 });
+
+    // ── Upper grass border above track ──
+    gg.rect(0, 260, sw, 50).fill(zc.ground + 0x060606);
+    // Grass tufts
+    for (let gi = 0; gi < 60; gi++) {
+      const gx = ((gi * 18 - grassOffset) % (sw + 20)) - 10;
+      const gy = 278 + (gi % 3) * 4;
+      const gh = 5 + (gi % 5) * 2;
+      gg.moveTo(gx, gy).lineTo(gx + 1, gy - gh).stroke({ color: zc.ground + 0x1a1a0a, width: 1, alpha: 0.35 });
+      gg.moveTo(gx + 3, gy).lineTo(gx + 2, gy - gh + 1).stroke({ color: zc.ground + 0x0a1a0a, width: 1, alpha: 0.25 });
     }
     // Wildflowers along track edges
-    for (let fi = 0; fi < 10; fi++) {
-      const fx = ((fi * 87 + 13 - grassOffset * 1.2) % (sw + 40)) - 20;
-      const fy = 282 + (fi % 2) * 2;
-      const fc = [0xffdd44, 0xff6688, 0x88aaff, 0xffaacc][fi % 4];
-      this._groundGfx.circle(fx, fy, 1.5).fill({ color: fc, alpha: 0.4 });
+    for (let fi = 0; fi < 16; fi++) {
+      const fx = ((fi * 72 + 13 - grassOffset * 1.2) % (sw + 40)) - 20;
+      const fy = 272 + (fi % 3) * 4;
+      const fc = [0xffdd44, 0xff6688, 0x88aaff, 0xffaacc, 0xaaddff, 0xffcc66][fi % 6];
+      gg.circle(fx, fy, 2).fill({ color: fc, alpha: 0.5 });
+      gg.circle(fx, fy, 1).fill({ color: 0xffffff, alpha: 0.3 }); // petal center
     }
-    // Grass border below track
-    this._groundGfx.rect(0, B.GROUND_Y - 10, sw, 15).fill(zc.ground + 0x060606);
-    for (let gi = 0; gi < 30; gi++) {
-      const gx = ((gi * 26 + 7 - grassOffset) % (sw + 20)) - 10;
-      const gy = B.GROUND_Y - 8;
-      this._groundGfx.moveTo(gx, gy).lineTo(gx + 1, gy - 5 - (gi % 3)).stroke({ color: zc.ground + 0x1a1a0a, width: 1, alpha: 0.25 });
+
+    // ── Lower ground area (below track to screen bottom) ──
+    const groundTop = B.GROUND_Y - 10;
+    gg.rect(0, groundTop, sw, sh - groundTop).fill(zc.ground);
+    // Grass border strip right below track
+    gg.rect(0, groundTop, sw, 18).fill(zc.ground + 0x080808);
+    for (let gi = 0; gi < 50; gi++) {
+      const gx = ((gi * 20 + 7 - grassOffset) % (sw + 20)) - 10;
+      const gy = groundTop + 3;
+      const gh = 4 + (gi % 4) * 2;
+      gg.moveTo(gx, gy).lineTo(gx + 1, gy - gh).stroke({ color: zc.ground + 0x1a1a0a, width: 1, alpha: 0.3 });
     }
+
+    // Dirt path winding through the lower field (parallax 0.5x)
+    const pathOff = (sx * 0.5) % sw;
+    const pathY = groundTop + 55;
+    gg.rect(0, pathY - 3, sw, 7).fill({ color: 0x8b7355, alpha: 0.3 });
+    // Path dashes
+    for (let pd = 0; pd < 20; pd++) {
+      const pdx = ((pd * 50 - pathOff) % (sw + 50)) - 25;
+      gg.rect(pdx, pathY - 1, 18, 3).fill({ color: 0x9a8465, alpha: 0.2 });
+    }
+
+    // Fence posts along the path
+    const fenceOff = (sx * 0.5) % 120;
+    for (let fi = 0; fi < 14; fi++) {
+      const fx = ((fi * 120 - fenceOff) % (sw + 120)) - 60;
+      // Post
+      gg.rect(fx - 1.5, pathY - 20, 3, 20).fill({ color: 0x664422, alpha: 0.5 });
+      gg.rect(fx - 1, pathY - 18, 2, 2).fill({ color: 0x554411, alpha: 0.4 }); // nail
+      // Rails between posts
+      if (fi < 13) {
+        gg.rect(fx + 2, pathY - 16, 55, 2).fill({ color: 0x664422, alpha: 0.35 });
+        gg.rect(fx + 2, pathY - 10, 55, 2).fill({ color: 0x664422, alpha: 0.3 });
+      }
+    }
+
+    // Scattered bushes in the lower field
+    const bushOff = (sx * 0.4) % sw;
+    for (let bi = 0; bi < 10; bi++) {
+      const bx = ((bi * 130 + 40 - bushOff) % (sw + 130)) - 65;
+      const by = groundTop + 80 + (bi % 3) * 30;
+      const bs = 8 + (bi % 4) * 4;
+      // Bush shadow
+      gg.ellipse(bx + 2, by + bs * 0.3, bs * 1.1, bs * 0.3).fill({ color: 0x000000, alpha: 0.06 });
+      // Bush body
+      gg.ellipse(bx, by, bs, bs * 0.7).fill({ color: zc.ground + 0x0a1a08, alpha: 0.7 });
+      gg.ellipse(bx - bs * 0.3, by + 2, bs * 0.6, bs * 0.5).fill({ color: zc.ground + 0x0c1c0a, alpha: 0.5 });
+      gg.ellipse(bx + bs * 0.25, by - 1, bs * 0.5, bs * 0.45).fill({ color: zc.ground + 0x081808, alpha: 0.6 });
+    }
+
+    // Small rocks scattered
+    const rockOff = (sx * 0.35) % sw;
+    for (let ri = 0; ri < 8; ri++) {
+      const rx = ((ri * 160 + 80 - rockOff) % (sw + 160)) - 80;
+      const ry = groundTop + 40 + (ri % 4) * 35;
+      const rs = 3 + (ri % 3) * 2;
+      gg.ellipse(rx, ry, rs * 1.2, rs * 0.7).fill({ color: 0x888877, alpha: 0.3 });
+      gg.ellipse(rx - 1, ry - 1, rs * 0.7, rs * 0.4).fill({ color: 0x999988, alpha: 0.2 });
+    }
+
+    // Distant farmstead / cottages in the lower field (very slow parallax)
+    const farmOff = (sx * 0.2) % sw;
+    for (let ci = 0; ci < 3; ci++) {
+      const cx = ((ci * 400 + 200 - farmOff) % (sw + 400)) - 200;
+      const cy = groundTop + 110 + ci * 20;
+      // Cottage body
+      gg.rect(cx - 12, cy - 10, 24, 14).fill({ color: 0x887766, alpha: 0.35 });
+      // Roof
+      gg.moveTo(cx - 15, cy - 10).lineTo(cx, cy - 20).lineTo(cx + 15, cy - 10).fill({ color: 0x774433, alpha: 0.35 });
+      // Door
+      gg.rect(cx - 3, cy - 2, 6, 6).fill({ color: 0x443311, alpha: 0.3 });
+      // Window
+      gg.rect(cx + 5, cy - 7, 4, 4).fill({ color: 0xffdd88, alpha: 0.25 });
+      // Chimney smoke
+      for (let si = 0; si < 2; si++) {
+        const smokeY = cy - 22 - si * 8;
+        const smokeDrift = Math.sin(this._time * 1.2 + ci + si) * 4;
+        gg.circle(cx + 8 + smokeDrift, smokeY, 3 + si * 2).fill({ color: 0xaaaaaa, alpha: 0.08 - si * 0.02 });
+      }
+    }
+
+    // Hay bales
+    const hayOff = (sx * 0.45) % sw;
+    for (let hi = 0; hi < 5; hi++) {
+      const hx = ((hi * 220 + 90 - hayOff) % (sw + 220)) - 110;
+      const hy = groundTop + 70 + (hi % 2) * 40;
+      gg.ellipse(hx, hy, 7, 5).fill({ color: 0xccaa55, alpha: 0.35 });
+      gg.ellipse(hx, hy - 1, 5, 3).fill({ color: 0xddbb66, alpha: 0.2 }); // highlight
+    }
+
+    // Ground color gradient (fade to slightly darker at bottom)
+    gg.rect(0, sh - 60, sw, 60).fill({ color: zc.ground - 0x0a0a0a, alpha: 0.3 });
   }
 
   // ---------------------------------------------------------------------------
@@ -476,17 +606,59 @@ export class DerbyRenderer {
     // Knight on top
     const knightY = py - B.HORSE_HEIGHT / 2 - 12;
 
-    // Body armor
-    g.rect(px - 6, knightY - 14, 12, 18).fill(PLAYER_KNIGHT_COLOR);
-    // Helm
-    g.rect(px - 5, knightY - 22, 10, 10).fill(0x888888);
+    // Cape (behind knight, flowing)
+    const capeWave = Math.sin(t * 5) * 3;
+    const capeWave2 = Math.sin(t * 5 + 1) * 4;
+    g.moveTo(px - 2, knightY - 10)
+      .quadraticCurveTo(px - 14 + capeWave, knightY, px - 18 + capeWave2, knightY + 14)
+      .lineTo(px - 8, knightY + 8)
+      .fill({ color: 0xcc2222, alpha: 0.7 });
+    g.moveTo(px - 1, knightY - 8)
+      .quadraticCurveTo(px - 12 + capeWave * 0.7, knightY + 2, px - 15 + capeWave2 * 0.8, knightY + 12)
+      .lineTo(px - 7, knightY + 6)
+      .fill({ color: 0xaa1818, alpha: 0.4 });
+
+    // Body armor (torso)
+    g.rect(px - 7, knightY - 14, 14, 20).fill(PLAYER_KNIGHT_COLOR);
+    // Chest plate highlight
+    g.rect(px - 5, knightY - 12, 10, 8).fill({ color: 0xdddddd, alpha: 0.2 });
+    // Belt
+    g.rect(px - 7, knightY + 2, 14, 3).fill(0x886644);
+    g.rect(px - 1, knightY + 2, 3, 3).fill(0xccaa44); // buckle
+    // Shoulder pauldrons
+    g.ellipse(px - 8, knightY - 11, 5, 4).fill(0x999999);
+    g.ellipse(px + 8, knightY - 11, 5, 4).fill(0x999999);
+    // Arm (holding reins / shield side)
+    g.moveTo(px - 8, knightY - 8).lineTo(px - 12, knightY + 2).stroke({ color: PLAYER_KNIGHT_COLOR, width: 3 });
+    // Arm (lance side)
+    g.moveTo(px + 8, knightY - 8).lineTo(px + 12, knightY - 4).stroke({ color: PLAYER_KNIGHT_COLOR, width: 3 });
+
+    // Helm (great helm shape)
+    g.rect(px - 6, knightY - 24, 12, 12).fill(0x888888);
+    // Helm top (rounded)
+    g.ellipse(px, knightY - 24, 6, 3).fill(0x888888);
     // Visor slit
-    g.rect(px - 3, knightY - 18, 8, 2).fill(0x333333);
-    // Plume
-    g.moveTo(px + 5, knightY - 22)
-      .lineTo(px + 5, knightY - 30)
-      .lineTo(px - 2, knightY - 26)
+    g.rect(px - 4, knightY - 19, 9, 2).fill(0x222222);
+    // Helm cross detail
+    g.rect(px - 0.5, knightY - 23, 1, 10).fill({ color: 0x999999, alpha: 0.4 });
+    g.rect(px - 5, knightY - 18, 10, 1).fill({ color: 0x999999, alpha: 0.3 });
+    // Helm shine
+    g.rect(px - 5, knightY - 23, 3, 8).fill({ color: 0xffffff, alpha: 0.1 });
+
+    // Plume (more flowing)
+    const plumeWave = Math.sin(t * 7) * 3;
+    g.moveTo(px + 5, knightY - 24)
+      .quadraticCurveTo(px + 8 + plumeWave, knightY - 34, px - 4 + plumeWave, knightY - 30)
       .fill(0xcc2222);
+    g.moveTo(px + 4, knightY - 25)
+      .quadraticCurveTo(px + 6 + plumeWave * 0.7, knightY - 32, px - 2 + plumeWave * 0.8, knightY - 29)
+      .fill({ color: 0xee3333, alpha: 0.5 });
+
+    // Tabard / surcoat front
+    g.rect(px - 5, knightY + 5, 10, 6).fill({ color: 0xcc2222, alpha: 0.6 });
+    // Heraldry cross on tabard
+    g.rect(px - 0.5, knightY + 5, 1, 6).fill({ color: 0xffdd44, alpha: 0.5 });
+    g.rect(px - 3, knightY + 7, 6, 1).fill({ color: 0xffdd44, alpha: 0.5 });
 
     // Lance (when active)
     if (p.lanceTimer > 0) {
@@ -526,53 +698,99 @@ export class DerbyRenderer {
   ): void {
     const hw = B.HORSE_WIDTH * scale / 2;
     const hh = B.HORSE_HEIGHT * scale / 2;
+    const dark = darkenColor(color, 0.7);
+    const light = darkenColor(color, 1.2);
 
-    // Body (rounded rectangle approximation via ellipse)
-    g.ellipse(x, y, hw, hh).fill(color);
+    // Shadow on ground
+    g.ellipse(x, y + hh + 12 * scale, hw * 0.9, 4 * scale).fill({ color: 0x000000, alpha: 0.1 });
 
-    // Head
-    const headX = x + hw + 8 * scale;
-    const headY = y - hh * 0.6;
-    g.ellipse(headX, headY, 10 * scale, 7 * scale).fill(color);
-    // Eye
-    g.circle(headX + 5 * scale, headY - 2 * scale, 2 * scale).fill(0x000000);
-    // Ear
-    g.ellipse(headX + 2 * scale, headY - 8 * scale, 3 * scale, 5 * scale).fill(color);
-
-    // Legs (animated gallop cycle)
+    // Legs (animated gallop cycle) — drawn first (behind body)
     const legPhase = time * 12;
     const legLen = 18 * scale;
-    const legW = 4 * scale;
+    const legW = 4.5 * scale;
     const legBaseY = y + hh - 2;
 
-    // Front legs
-    const fl1Angle = Math.sin(legPhase) * 0.6;
+    // Far-side legs (slightly darker)
     const fl2Angle = Math.sin(legPhase + Math.PI) * 0.6;
-    this._drawLeg(g, x + hw * 0.5, legBaseY, fl1Angle, legLen, legW, color);
-    this._drawLeg(g, x + hw * 0.3, legBaseY, fl2Angle, legLen, legW, color);
-
-    // Hind legs
-    const hl1Angle = Math.sin(legPhase + Math.PI * 0.5) * 0.6;
     const hl2Angle = Math.sin(legPhase + Math.PI * 1.5) * 0.6;
-    this._drawLeg(g, x - hw * 0.3, legBaseY, hl1Angle, legLen, legW, color);
-    this._drawLeg(g, x - hw * 0.5, legBaseY, hl2Angle, legLen, legW, color);
+    this._drawLeg(g, x + hw * 0.35, legBaseY, fl2Angle, legLen, legW, dark);
+    this._drawLeg(g, x - hw * 0.45, legBaseY, hl2Angle, legLen, legW, dark);
+
+    // Body
+    g.ellipse(x, y, hw, hh).fill(color);
+    // Body shading (belly lighter, back darker)
+    g.ellipse(x, y + hh * 0.3, hw * 0.85, hh * 0.45).fill({ color: light, alpha: 0.2 });
+    g.ellipse(x - hw * 0.1, y - hh * 0.4, hw * 0.7, hh * 0.3).fill({ color: dark, alpha: 0.15 });
+    // Chest
+    g.ellipse(x + hw * 0.7, y - hh * 0.1, hw * 0.35, hh * 0.6).fill({ color: light, alpha: 0.12 });
+    // Haunches
+    g.ellipse(x - hw * 0.5, y, hw * 0.5, hh * 0.7).fill({ color: dark, alpha: 0.1 });
+
+    // Near-side legs (over body)
+    const fl1Angle = Math.sin(legPhase) * 0.6;
+    const hl1Angle = Math.sin(legPhase + Math.PI * 0.5) * 0.6;
+    this._drawLeg(g, x + hw * 0.55, legBaseY, fl1Angle, legLen, legW, color);
+    this._drawLeg(g, x - hw * 0.25, legBaseY, hl1Angle, legLen, legW, color);
+
+    // Neck
+    const neckX1 = x + hw * 0.6;
+    const neckY1 = y - hh * 0.5;
+    const neckX2 = x + hw + 4 * scale;
+    const neckY2 = y - hh * 1.1;
+    g.moveTo(neckX1 - 4 * scale, neckY1).quadraticCurveTo(neckX2, neckY2 + 4 * scale, neckX2 + 6 * scale, neckY2).lineTo(neckX2 + 8 * scale, neckY2 + 3 * scale).quadraticCurveTo(neckX2 + 2 * scale, neckY2 + 8 * scale, neckX1 + 4 * scale, neckY1).fill(color);
+
+    // Head
+    const headX = x + hw + 10 * scale;
+    const headY = y - hh * 1.0;
+    g.ellipse(headX, headY, 11 * scale, 7 * scale).fill(color);
+    // Jaw / lower head
+    g.ellipse(headX + 3 * scale, headY + 3 * scale, 8 * scale, 4 * scale).fill({ color: light, alpha: 0.2 });
+    // Nostril
+    g.circle(headX + 9 * scale, headY + 1 * scale, 1.5 * scale).fill({ color: dark, alpha: 0.5 });
+    // Eye
+    g.circle(headX + 4 * scale, headY - 3 * scale, 2.5 * scale).fill(0x111111);
+    g.circle(headX + 4.5 * scale, headY - 3.5 * scale, 0.8 * scale).fill({ color: 0xffffff, alpha: 0.5 }); // eye shine
+    // Ear
+    g.ellipse(headX + 1 * scale, headY - 9 * scale, 2.5 * scale, 5 * scale).fill(color);
+    g.ellipse(headX + 1 * scale, headY - 9 * scale, 1.5 * scale, 3.5 * scale).fill({ color: 0xddbbaa, alpha: 0.25 }); // inner ear
+
+    // Bridle straps
+    g.moveTo(headX - 3 * scale, headY - 5 * scale).lineTo(headX + 8 * scale, headY - 1 * scale).stroke({ color: 0x443322, width: 1.2 * scale, alpha: 0.6 });
+    g.moveTo(headX + 8 * scale, headY - 1 * scale).lineTo(headX + 2 * scale, headY + 5 * scale).stroke({ color: 0x443322, width: 1.2 * scale, alpha: 0.6 });
+    // Bit ring
+    g.circle(headX + 8 * scale, headY + 1 * scale, 1 * scale).stroke({ color: 0xaaaaaa, width: 0.8 * scale, alpha: 0.5 });
+    // Reins
+    g.moveTo(headX + 2 * scale, headY + 5 * scale).quadraticCurveTo(x + hw * 0.3, y - hh * 0.4, x + 4 * scale, y - hh * 0.1).stroke({ color: 0x443322, width: 1 * scale, alpha: 0.4 });
 
     // Tail
     const tailX = x - hw - 5 * scale;
     const tailWave = Math.sin(time * 5) * 8;
+    const tailWave2 = Math.sin(time * 5 + 0.5) * 6;
     g.moveTo(tailX, y - 5)
       .quadraticCurveTo(tailX - 15 * scale + tailWave, y - 15 * scale, tailX - 10 * scale, y + 5)
-      .stroke({ color, width: 3 * scale });
+      .stroke({ color, width: 3.5 * scale });
+    g.moveTo(tailX - 1, y - 4)
+      .quadraticCurveTo(tailX - 12 * scale + tailWave2, y - 12 * scale, tailX - 8 * scale, y + 3)
+      .stroke({ color: dark, width: 2 * scale });
 
-    // Mane
-    for (let i = 0; i < 4; i++) {
-      const mx = x + hw * 0.2 - i * 6 * scale;
-      const my = y - hh - 2;
-      const maneWave = Math.sin(time * 6 + i) * 3;
+    // Mane (fuller, more strands)
+    for (let i = 0; i < 6; i++) {
+      const mx = x + hw * 0.4 - i * 5 * scale;
+      const my = y - hh - 1 + i * 0.5;
+      const maneWave = Math.sin(time * 6 + i * 0.8) * 4;
+      const maneLen = (10 + i * 1.5) * scale;
       g.moveTo(mx, my)
-        .lineTo(mx + maneWave, my - 10 * scale)
-        .stroke({ color: darkenColor(color, 0.7), width: 2 * scale });
+        .quadraticCurveTo(mx + maneWave - 3, my - maneLen * 0.6, mx + maneWave, my - maneLen)
+        .stroke({ color: dark, width: 2.2 * scale, alpha: 0.7 + i * 0.04 });
     }
+
+    // Saddle blanket
+    g.ellipse(x, y - hh * 0.3, hw * 0.45, hh * 0.55).fill({ color: 0xcc2222, alpha: 0.5 });
+    g.ellipse(x, y - hh * 0.3, hw * 0.35, hh * 0.4).fill({ color: 0xdd3333, alpha: 0.3 });
+    // Saddle
+    g.ellipse(x, y - hh * 0.5, hw * 0.25, hh * 0.35).fill({ color: 0x443322, alpha: 0.6 });
+    // Stirrup
+    g.moveTo(x + 2 * scale, y).lineTo(x + 4 * scale, y + hh * 0.5).stroke({ color: 0x888888, width: 1 * scale, alpha: 0.4 });
   }
 
   private _drawLeg(
@@ -584,11 +802,16 @@ export class DerbyRenderer {
     width: number,
     color: number,
   ): void {
-    const ex = x + Math.sin(angle) * length;
-    const ey = y + Math.cos(angle) * length;
-    g.moveTo(x, y).lineTo(ex, ey).stroke({ color, width });
+    // Upper leg
+    const kneeX = x + Math.sin(angle) * length * 0.55;
+    const kneeY = y + Math.cos(angle) * length * 0.55;
+    g.moveTo(x, y).lineTo(kneeX, kneeY).stroke({ color, width });
+    // Lower leg (slightly thinner)
+    const ex = kneeX + Math.sin(angle * 0.5) * length * 0.5;
+    const ey = kneeY + Math.cos(angle * 0.3) * length * 0.5;
+    g.moveTo(kneeX, kneeY).lineTo(ex, ey).stroke({ color, width: width * 0.8 });
     // Hoof
-    g.circle(ex, ey + 1, width * 0.6).fill(0x333333);
+    g.ellipse(ex, ey + 1, width * 0.7, width * 0.4).fill(0x222222);
   }
 
   // ---------------------------------------------------------------------------
