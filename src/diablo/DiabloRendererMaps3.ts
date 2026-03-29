@@ -2456,9 +2456,9 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     const grassMidMat = new THREE.MeshStandardMaterial({ color: 0x4e9930, roughness: 0.85 });
     const grassLightMat = new THREE.MeshStandardMaterial({ color: 0x66bb44, roughness: 0.82 });
     const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.9 });
-    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6e, roughness: 0.82, metalness: 0.03 });
-    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x5a5a50, roughness: 0.9, metalness: 0.02 });
-    const stoneLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a8a, roughness: 0.78, metalness: 0.05 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x959085, roughness: 0.82, metalness: 0.03 });
+    const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x7a7568, roughness: 0.9, metalness: 0.02 });
+    const stoneLightMat = new THREE.MeshStandardMaterial({ color: 0xb0aa9a, roughness: 0.78, metalness: 0.05 });
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 });
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x44aa22, roughness: 0.5, transparent: true, opacity: 0.7, depthWrite: false });
     const flowerColors = [0xff6688, 0xffdd44, 0xcc88ff, 0xff8844, 0x88ddff, 0xffaacc];
@@ -3476,19 +3476,23 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     mctx.scene.add(gatePostB);
 
     // ── Rock outcrops (realistic with varied geometry, moss, lichen, cracks) ──
-    const rockDarkMat = new THREE.MeshStandardMaterial({ color: 0x5a5a50, roughness: 0.92, metalness: 0.02 });
-    const rockMidMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6e, roughness: 0.88, metalness: 0.03 });
-    const rockLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a88, roughness: 0.82, metalness: 0.05 });
-    const rockMossMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.75, transparent: true, opacity: 0.85 });
-    const lichenMat = new THREE.MeshStandardMaterial({ color: 0x8aaa5a, roughness: 0.7, transparent: true, opacity: 0.6 });
-    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6a, roughness: 0.9 });
-    const pebbleLightMat = new THREE.MeshStandardMaterial({ color: 0x9a9a8a, roughness: 0.85 });
-    const crackMat = new THREE.MeshStandardMaterial({ color: 0x3a3a32, roughness: 0.95 });
+    const rockDarkMat = new THREE.MeshStandardMaterial({ color: 0x8a8878, roughness: 0.88, metalness: 0.02 });
+    const rockMidMat = new THREE.MeshStandardMaterial({ color: 0xa09a8a, roughness: 0.82, metalness: 0.03 });
+    const rockLightMat = new THREE.MeshStandardMaterial({ color: 0xbbB5a5, roughness: 0.75, metalness: 0.05 });
+    const rockWarmMat = new THREE.MeshStandardMaterial({ color: 0x9a9080, roughness: 0.85, metalness: 0.02 });
+    const rockCoolMat = new THREE.MeshStandardMaterial({ color: 0x8a9098, roughness: 0.8, metalness: 0.04 });
+    const rockMossMat = new THREE.MeshStandardMaterial({ color: 0x3d8a28, roughness: 0.7 });
+    const rockMossDarkMat = new THREE.MeshStandardMaterial({ color: 0x2d6a1c, roughness: 0.75 });
+    const lichenMat = new THREE.MeshStandardMaterial({ color: 0x99bb55, roughness: 0.65, emissive: 0x222200, emissiveIntensity: 0.1 });
+    const lichenYellowMat = new THREE.MeshStandardMaterial({ color: 0xbbaa44, roughness: 0.6, emissive: 0x332200, emissiveIntensity: 0.1 });
+    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x908878, roughness: 0.85 });
+    const pebbleLightMat = new THREE.MeshStandardMaterial({ color: 0xaaa898, roughness: 0.8 });
+    const crackMat = new THREE.MeshStandardMaterial({ color: 0x4a4840, roughness: 0.95 });
 
     for (let i = 0; i < 18; i++) {
       const rockGroup = new THREE.Group();
       const cnt = 2 + Math.floor(Math.random() * 4);
-      const rockMats = [stoneMat, stoneDarkMat, stoneLightMat, rockDarkMat, rockMidMat, rockLightMat];
+      const rockMats = [rockDarkMat, rockMidMat, rockLightMat, rockWarmMat, rockCoolMat];
 
       for (let r = 0; r < cnt; r++) {
         const rh = 0.4 + Math.random() * 1.8;
@@ -3535,7 +3539,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
             mPosAttr.setXYZ(mvi, mx + (mx / mLen) * mDisp, my + (my / mLen) * mDisp, mz + (mz / mLen) * mDisp);
           }
           mossGeo.computeVertexNormals();
-          const moss = new THREE.Mesh(mossGeo, rockMossMat);
+          const moss = new THREE.Mesh(mossGeo, Math.random() > 0.4 ? rockMossMat : rockMossDarkMat);
           // Place on top or draping down the side
           const mAngle = Math.random() * Math.PI * 2;
           const mSideDist = mi === 0 ? 0 : rh * xScale * 0.25 * Math.random();
@@ -3559,7 +3563,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
           for (let lc = 0; lc < lichenCount; lc++) {
             const lichen = new THREE.Mesh(
               new THREE.CircleGeometry(0.06 + Math.random() * 0.15, 8),
-              lichenMat,
+              Math.random() > 0.5 ? lichenMat : lichenYellowMat,
             );
             const lAngle = Math.random() * Math.PI * 2;
             lichen.position.set(
