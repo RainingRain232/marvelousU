@@ -157,24 +157,61 @@ export class KothRenderer {
   }
 
   private _drawObstacles(state: KothState, ox: number, oy: number): void {
+    const g = this._terrainGfx;
     for (const obs of state.obstacles) {
-      const px = ox + obs.x, py = oy + obs.y;
+      const px = ox + obs.x, py = oy + obs.y, r = obs.radius;
       switch (obs.type) {
-        case "rock":
-          this._terrainGfx.ellipse(px, py + 2, obs.radius, obs.radius * 0.6).fill({ color: 0x555544, alpha: 0.7 });
-          this._terrainGfx.ellipse(px, py, obs.radius * 0.9, obs.radius * 0.55).fill({ color: 0x666655 });
-          this._terrainGfx.ellipse(px - 2, py - 2, obs.radius * 0.4, obs.radius * 0.25).fill({ color: 0x777766, alpha: 0.5 });
+        case "rock": {
+          // Shadow
+          g.ellipse(px + 2, py + 3, r * 1.1, r * 0.5).fill({ color: 0x000000, alpha: 0.15 });
+          // Base rock layers
+          g.ellipse(px, py + 1, r, r * 0.65).fill({ color: 0x4a4a3a });
+          g.ellipse(px - 1, py - 1, r * 0.9, r * 0.6).fill({ color: 0x5a5a48 });
+          // Highlight
+          g.ellipse(px - r * 0.2, py - r * 0.2, r * 0.4, r * 0.25).fill({ color: 0x6a6a58, alpha: 0.6 });
+          // Cracks
+          g.moveTo(px - r * 0.3, py - r * 0.1).lineTo(px + r * 0.1, py + r * 0.2).stroke({ color: 0x3a3a2a, width: 0.8, alpha: 0.5 });
+          // Moss patch
+          g.ellipse(px + r * 0.3, py + r * 0.15, r * 0.2, r * 0.12).fill({ color: 0x3a5a2a, alpha: 0.4 });
           break;
-        case "tree":
-          this._terrainGfx.rect(px - 2, py, 4, 8).fill({ color: 0x553322 });
-          this._terrainGfx.circle(px, py - 4, obs.radius * 0.8).fill({ color: 0x2a4a22, alpha: 0.8 });
-          this._terrainGfx.circle(px + 3, py - 2, obs.radius * 0.5).fill({ color: 0x335522, alpha: 0.6 });
+        }
+        case "tree": {
+          // Shadow
+          g.ellipse(px + 3, py + r * 0.6, r * 0.7, r * 0.25).fill({ color: 0x000000, alpha: 0.15 });
+          // Trunk (tapered)
+          g.moveTo(px - 3, py + r * 0.4).lineTo(px - 2, py - r * 0.3).lineTo(px + 2, py - r * 0.3).lineTo(px + 3, py + r * 0.4).fill({ color: 0x553322 });
+          // Bark detail
+          g.moveTo(px, py + r * 0.3).lineTo(px, py - r * 0.2).stroke({ color: 0x442211, width: 0.5, alpha: 0.5 });
+          // Main canopy (layered for depth)
+          g.circle(px, py - r * 0.5, r * 0.85).fill({ color: 0x224a18 });
+          g.circle(px - r * 0.25, py - r * 0.65, r * 0.6).fill({ color: 0x2a5a20 });
+          g.circle(px + r * 0.3, py - r * 0.4, r * 0.55).fill({ color: 0x1e4415 });
+          // Leaf highlights
+          g.circle(px - r * 0.15, py - r * 0.7, r * 0.3).fill({ color: 0x3a6a2a, alpha: 0.5 });
+          // Small fruit/berries
+          g.circle(px + r * 0.2, py - r * 0.3, 1.5).fill({ color: 0xcc4444, alpha: 0.6 });
           break;
-        case "ruin":
-          this._terrainGfx.rect(px - obs.radius, py - 3, obs.radius * 0.7, 6).fill({ color: 0x555544 });
-          this._terrainGfx.rect(px + 2, py - 6, 4, 10).fill({ color: 0x666655 });
-          this._terrainGfx.rect(px - obs.radius + 2, py - 5, 3, 4).fill({ color: 0x666655, alpha: 0.6 });
+        }
+        case "ruin": {
+          // Shadow
+          g.ellipse(px, py + r * 0.4, r * 0.8, r * 0.2).fill({ color: 0x000000, alpha: 0.12 });
+          // Foundation
+          g.roundRect(px - r * 0.7, py - 2, r * 1.4, 5, 1).fill({ color: 0x4a4a3a });
+          // Left wall (broken)
+          g.roundRect(px - r * 0.65, py - r * 0.6, 4, r * 0.7, 1).fill({ color: 0x5a5a48 });
+          g.rect(px - r * 0.65, py - r * 0.6, 4, 2).fill({ color: 0x6a6a58 });
+          // Right column (taller, intact)
+          g.roundRect(px + r * 0.3, py - r * 0.8, 5, r, 1).fill({ color: 0x5a5a48 });
+          // Arch fragment between
+          g.arc(px, py - r * 0.5, r * 0.45, Math.PI + 0.3, Math.PI * 2 - 0.3).stroke({ color: 0x555544, width: 2, alpha: 0.5 });
+          // Rubble
+          for (let ri = 0; ri < 3; ri++) {
+            g.circle(px - r * 0.3 + ri * r * 0.3, py + 1, 2 + ri).fill({ color: 0x4a4a3a, alpha: 0.5 });
+          }
+          // Moss on stones
+          g.ellipse(px - r * 0.4, py - r * 0.2, 3, 2).fill({ color: 0x3a5a2a, alpha: 0.3 });
           break;
+        }
       }
     }
   }
@@ -184,23 +221,51 @@ export class KothRenderer {
     const hr = KothConfig.HILL_RADIUS;
     const t = state.hillContestPulse;
 
-    this._hillGfx.circle(hx, hy, hr).fill({ color: 0x2a2820, alpha: 0.6 });
-    this._hillGfx.circle(hx, hy, hr * 0.7).fill({ color: 0x332e25, alpha: 0.4 });
-    this._hillGfx.circle(hx, hy, hr * 0.35).fill({ color: 0x3a352a, alpha: 0.3 });
+    const g = this._hillGfx;
 
+    // Hill elevation layers (concentric rings, lighter toward center)
+    g.circle(hx, hy, hr + 6).fill({ color: 0x222218, alpha: 0.3 });
+    g.circle(hx, hy, hr).fill({ color: 0x2a2820, alpha: 0.5 });
+    g.circle(hx, hy, hr * 0.8).fill({ color: 0x302c22, alpha: 0.4 });
+    g.circle(hx, hy, hr * 0.55).fill({ color: 0x383228, alpha: 0.3 });
+    g.circle(hx, hy, hr * 0.3).fill({ color: 0x3e382e, alpha: 0.25 });
+
+    // Hill grass texture patches
+    for (let i = 0; i < 20; i++) {
+      const ga = (i / 20) * Math.PI * 2 + t * 0.1;
+      const gr = hr * (0.3 + (i % 5) * 0.12);
+      g.ellipse(hx + Math.cos(ga) * gr, hy + Math.sin(ga) * gr, 4 + i % 3, 2).fill({ color: 0x3a4a28, alpha: 0.2 });
+    }
+
+    // Control glow
     let glowColor = 0x666655;
     let glowAlpha = 0.15 + Math.sin(t * 2) * 0.05;
     if (state.hillController === 0) { glowColor = state.players[0].color; glowAlpha = 0.25 + Math.sin(t * 3) * 0.1; }
     else if (state.hillController === 1) { glowColor = state.players[1].color; glowAlpha = 0.25 + Math.sin(t * 3) * 0.1; }
 
-    this._hillGfx.circle(hx, hy, hr + 4).stroke({ color: glowColor, width: 3, alpha: glowAlpha });
-    this._hillGfx.circle(hx, hy, hr - 2).stroke({ color: glowColor, width: 1.5, alpha: glowAlpha * 0.6 });
+    // Animated glow rings
+    g.circle(hx, hy, hr + 6).stroke({ color: glowColor, width: 2, alpha: glowAlpha * 0.4 });
+    g.circle(hx, hy, hr + 2).stroke({ color: glowColor, width: 3, alpha: glowAlpha });
+    g.circle(hx, hy, hr - 4).stroke({ color: glowColor, width: 1.5, alpha: glowAlpha * 0.6 });
+    g.circle(hx, hy, hr * 0.5).stroke({ color: glowColor, width: 1, alpha: glowAlpha * 0.3 });
 
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const sx = hx + Math.cos(angle) * (hr - 6), sy = hy + Math.sin(angle) * (hr - 6);
-      this._hillGfx.circle(sx, sy, 3).fill({ color: 0x555544, alpha: 0.6 });
-      this._hillGfx.circle(sx, sy, 4).stroke({ color: glowColor, width: 0.8, alpha: 0.2 + Math.sin(t * 1.5 + i) * 0.15 });
+    // Stone markers around hill perimeter
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const sx = hx + Math.cos(angle) * (hr - 5), sy = hy + Math.sin(angle) * (hr - 5);
+      // Stone base
+      g.ellipse(sx, sy + 1, 4, 2.5).fill({ color: 0x4a4a3a, alpha: 0.5 });
+      g.ellipse(sx, sy, 3.5, 2).fill({ color: 0x5a5a48, alpha: 0.6 });
+      // Glow on stone
+      g.circle(sx, sy, 5).stroke({ color: glowColor, width: 0.8, alpha: 0.15 + Math.sin(t * 1.5 + i) * 0.1 });
+    }
+
+    // Center flag/banner post
+    g.rect(hx - 1.5, hy - 18, 3, 20).fill({ color: 0x554433, alpha: 0.6 });
+    if (state.hillController >= 0) {
+      // Banner flutters
+      const flutter = Math.sin(t * 4) * 2;
+      g.moveTo(hx + 2, hy - 18).lineTo(hx + 14 + flutter, hy - 15).lineTo(hx + 12 + flutter, hy - 10).lineTo(hx + 2, hy - 12).fill({ color: glowColor, alpha: 0.7 });
     }
 
     // Capture meter bar
