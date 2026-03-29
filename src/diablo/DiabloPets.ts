@@ -21,6 +21,7 @@ export interface PetContext {
   dist: (x1: number, z1: number, x2: number, z2: number) => number;
   updateAchievement: (id: string, progress: number) => void;
   pickupLoot: (lootId: string) => void;
+  killEnemy: (enemy: DiabloEnemy) => void;
   petBuffs: { type: string; value: number; remaining: number }[];
 }
 
@@ -345,8 +346,9 @@ export function updatePets(ctx: PetContext, dt: number): void {
             }
           }
 
-          // Check if target died
+          // Check if target died — trigger proper kill so loot/XP/death state work
           if (target.hp <= 0) {
+            ctx.killEnemy(target);
             pet.targetId = null;
             pet.aiState = PetAIState.RETURNING;
           }

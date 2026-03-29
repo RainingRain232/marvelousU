@@ -1107,6 +1107,18 @@ export function showMapSelect(ctx: ScreenContext): void {
       <div style="position:absolute;bottom:14px;left:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
       <div style="position:absolute;bottom:14px;right:14px;color:#5a4a2a;font-size:20px;">&#9670;</div>
 
+      <!-- Back to Character Select button -->
+      <button id="ms-back-btn" style="
+        position:absolute;top:20px;left:24px;z-index:10;
+        background:rgba(40,30,15,0.85);border:1px solid #5a4a2a;border-radius:4px;
+        color:#c8a84e;font-family:'Georgia',serif;font-size:14px;
+        padding:8px 16px;cursor:pointer;letter-spacing:1px;
+        transition:all 0.2s ease;
+      " onmouseover="this.style.background='rgba(80,60,20,0.9)';this.style.borderColor='#c8a84e';this.style.color='#ffe080';"
+         onmouseout="this.style.background='rgba(40,30,15,0.85)';this.style.borderColor='#5a4a2a';this.style.color='#c8a84e';">
+        &#9664; Character Select
+      </button>
+
       <!-- Title with flame braziers -->
       <div style="display:flex;align-items:center;gap:24px;margin-bottom:8px;">
         <div style="font-size:32px;animation:ms-flame-flicker 0.6s ease-in-out infinite;color:#ff6600;">&#x1F525;</div>
@@ -1326,6 +1338,14 @@ export function showMapSelect(ctx: ScreenContext): void {
       ctx.startMap(mapId);
     });
   });
+
+  // Back to character select button
+  const backBtn = document.getElementById("ms-back-btn");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      showClassSelect(ctx);
+    });
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════

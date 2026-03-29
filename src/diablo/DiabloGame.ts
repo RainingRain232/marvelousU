@@ -6177,6 +6177,7 @@ export class DiabloGame {
       dist: (x1, z1, x2, z2) => this._dist(x1, z1, x2, z2),
       updateAchievement: (id, progress) => this._updateAchievement(id, progress),
       pickupLoot: (lootId) => this._pickupLoot(lootId),
+      killEnemy: (enemy) => this._killEnemy(enemy),
       petBuffs: this._petBuffs,
     };
   }

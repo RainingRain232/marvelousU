@@ -3731,30 +3731,86 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       mctx.scene.add(crossH);
     }
 
-    // Roof
-    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2, 20), wmRoofMat);
-    wmRoof.position.set(wmX, wmY + 7, wmZ);
+    // Roof — thatched cone with overhang ring and shingle rows
+    const wmRoof = new THREE.Mesh(new THREE.ConeGeometry(2.2, 2.2, 20), wmRoofMat);
+    wmRoof.position.set(wmX, wmY + 7.1, wmZ);
     mctx.scene.add(wmRoof);
-    // Roof ridge beams
-    for (let rb = 0; rb < 8; rb++) {
-      const rbAngle = (rb / 8) * Math.PI * 2;
-      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 12), wmDoorMat);
-      ridge.position.set(wmX + Math.cos(rbAngle) * 1, wmY + 7, wmZ + Math.sin(rbAngle) * 1);
-      ridge.rotation.z = Math.cos(rbAngle) * 0.45;
-      ridge.rotation.x = Math.sin(rbAngle) * 0.45;
-      mctx.scene.add(ridge);
+    // Roof overhang ring (eave)
+    const wmEave = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.08, 8, 24), wmDoorMat);
+    wmEave.position.set(wmX, wmY + 6.05, wmZ);
+    wmEave.rotation.x = Math.PI / 2;
+    mctx.scene.add(wmEave);
+    // Roof peak cap
+    const wmPeakCap = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4, roughness: 0.5 }));
+    wmPeakCap.position.set(wmX, wmY + 8.2, wmZ);
+    mctx.scene.add(wmPeakCap);
+    // Shingle rows (horizontal rings on the cone for texture)
+    for (let sr = 0; sr < 5; sr++) {
+      const srFrac = (sr + 1) / 6;
+      const srRadius = 2.2 * (1 - srFrac) * 0.95;
+      const srY = wmY + 6.05 + srFrac * 2.1;
+      const shingleRing = new THREE.Mesh(new THREE.TorusGeometry(srRadius, 0.025, 6, 20),
+        new THREE.MeshStandardMaterial({ color: 0x775530, roughness: 0.9 }));
+      shingleRing.position.set(wmX, srY, wmZ);
+      shingleRing.rotation.x = Math.PI / 2;
+      mctx.scene.add(shingleRing);
     }
 
-    // Blades
+    // Windmill sails — proper sail frames with fabric panels
+    const wmSailMat = new THREE.MeshStandardMaterial({ color: 0xeee8d8, roughness: 0.8, side: THREE.DoubleSide });
+    const wmFrameMat = new THREE.MeshStandardMaterial({ color: 0x5a4020, roughness: 0.85 });
+    const wmHubMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.5 });
+    // Hub (axle front face)
+    const wmBladeHub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.4, 10), wmHubMat);
+    wmBladeHub.rotation.x = Math.PI / 2;
+    wmBladeHub.position.set(wmX, wmY + 6, wmZ - 1.7);
+    mctx.scene.add(wmBladeHub);
+    // Hub cap
+    const wmHubCap = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), wmHubMat);
+    wmHubCap.position.set(wmX, wmY + 6, wmZ - 1.9);
+    mctx.scene.add(wmHubCap);
+
     for (let b = 0; b < 4; b++) {
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.05), woodMat);
-      blade.position.set(
-        wmX + Math.cos(b * Math.PI / 2) * 2,
-        wmY + 6 + Math.sin(b * Math.PI / 2) * 2,
-        wmZ - 1.6,
+      const bladeAngle = b * Math.PI / 2;
+      const cos = Math.cos(bladeAngle), sin = Math.sin(bladeAngle);
+      // Main spar (the long arm)
+      const sparLen = 4.5;
+      const spar = new THREE.Mesh(new THREE.BoxGeometry(0.1, sparLen, 0.06), wmFrameMat);
+      spar.position.set(wmX + cos * (sparLen / 2), wmY + 6 + sin * (sparLen / 2), wmZ - 1.75);
+      spar.rotation.z = bladeAngle;
+      mctx.scene.add(spar);
+      // Cross-bars (rungs) along the spar
+      for (let cb = 0; cb < 6; cb++) {
+        const cbDist = 0.6 + cb * 0.65;
+        const rung = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.04), wmFrameMat);
+        rung.position.set(
+          wmX + cos * cbDist,
+          wmY + 6 + sin * cbDist,
+          wmZ - 1.75,
+        );
+        rung.rotation.z = bladeAngle + Math.PI / 2;
+        mctx.scene.add(rung);
+      }
+      // Outer tip bar (shorter)
+      const tipBar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.04), wmFrameMat);
+      tipBar.position.set(
+        wmX + cos * (sparLen - 0.15),
+        wmY + 6 + sin * (sparLen - 0.15),
+        wmZ - 1.75,
       );
-      blade.rotation.z = b * Math.PI / 2;
-      mctx.scene.add(blade);
+      tipBar.rotation.z = bladeAngle + Math.PI / 2;
+      mctx.scene.add(tipBar);
+      // Sail canvas (angled plane on one side of the spar)
+      const sailW = 0.8, sailH = 3.6;
+      const sail = new THREE.Mesh(new THREE.PlaneGeometry(sailW, sailH), wmSailMat);
+      // Offset the sail to one side of the spar, centered along the arm
+      sail.position.set(
+        wmX + cos * (sparLen / 2 + 0.2) - sin * (sailW / 2 * 0.5),
+        wmY + 6 + sin * (sparLen / 2 + 0.2) + cos * (sailW / 2 * 0.5),
+        wmZ - 1.76,
+      );
+      sail.rotation.z = bladeAngle;
+      mctx.scene.add(sail);
     }
 
     // ── Campfire in open field ──
@@ -3992,31 +4048,73 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
 
     // ── Second windmill ──
     const wm2X = hw * 0.4, wm2Z = -hd * 0.45;
+    const wm2Y = getTerrainHeight(wm2X, wm2Z, 1.4);
     const wm2Base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 5, 12), new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7 }));
-    wm2Base.position.set(wm2X, 2.5, wm2Z);
+    wm2Base.position.set(wm2X, wm2Y + 2.5, wm2Z);
     mctx.scene.add(wm2Base);
-    const wm2Roof = new THREE.Mesh(new THREE.ConeGeometry(1.6, 1.5, 10), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
-    wm2Roof.position.set(wm2X, 6, wm2Z);
+    // Roof with eave and shingle rings
+    const wm2Roof = new THREE.Mesh(new THREE.ConeGeometry(1.75, 1.8, 16), new THREE.MeshStandardMaterial({ color: 0x885533, roughness: 0.8 }));
+    wm2Roof.position.set(wm2X, wm2Y + 5.9, wm2Z);
     mctx.scene.add(wm2Roof);
-    // Blades
+    const wm2Eave = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.06, 8, 20), new THREE.MeshStandardMaterial({ color: 0x4a3218, roughness: 0.85 }));
+    wm2Eave.position.set(wm2X, wm2Y + 5.05, wm2Z);
+    wm2Eave.rotation.x = Math.PI / 2;
+    mctx.scene.add(wm2Eave);
+    const wm2PeakCap = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4 }));
+    wm2PeakCap.position.set(wm2X, wm2Y + 6.8, wm2Z);
+    mctx.scene.add(wm2PeakCap);
+    for (let sr = 0; sr < 4; sr++) {
+      const srFrac = (sr + 1) / 5;
+      const srR = 1.75 * (1 - srFrac) * 0.95;
+      const shR = new THREE.Mesh(new THREE.TorusGeometry(srR, 0.02, 6, 16), new THREE.MeshStandardMaterial({ color: 0x775530, roughness: 0.9 }));
+      shR.position.set(wm2X, wm2Y + 5.05 + srFrac * 1.7, wm2Z);
+      shR.rotation.x = Math.PI / 2;
+      mctx.scene.add(shR);
+    }
+    // Proper sail structure
+    const wm2SailMat = new THREE.MeshStandardMaterial({ color: 0xeee8d8, roughness: 0.8, side: THREE.DoubleSide });
+    const wm2FrameMat = new THREE.MeshStandardMaterial({ color: 0x5a4020, roughness: 0.85 });
+    const wm2HubY = wm2Y + 5;
+    // Hub
+    const wm2Hub = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.35, 10), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5 }));
+    wm2Hub.rotation.x = Math.PI / 2;
+    wm2Hub.position.set(wm2X, wm2HubY, wm2Z - 1.4);
+    mctx.scene.add(wm2Hub);
+    const wm2HubCap = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5 }));
+    wm2HubCap.position.set(wm2X, wm2HubY, wm2Z - 1.55);
+    mctx.scene.add(wm2HubCap);
     for (let b = 0; b < 4; b++) {
-      const wBlade = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.5, 0.04), woodMat);
-      wBlade.position.set(
-        wm2X + Math.cos(b * Math.PI / 2 + 0.4) * 1.8,
-        5 + Math.sin(b * Math.PI / 2 + 0.4) * 1.8,
-        wm2Z - 1.3,
+      const ba = b * Math.PI / 2 + 0.4;
+      const cos2 = Math.cos(ba), sin2 = Math.sin(ba);
+      const sparL = 3.8;
+      const spar2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, sparL, 0.05), wm2FrameMat);
+      spar2.position.set(wm2X + cos2 * (sparL / 2), wm2HubY + sin2 * (sparL / 2), wm2Z - 1.45);
+      spar2.rotation.z = ba;
+      mctx.scene.add(spar2);
+      for (let cb = 0; cb < 5; cb++) {
+        const cbd = 0.5 + cb * 0.6;
+        const rung2 = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.035, 0.035), wm2FrameMat);
+        rung2.position.set(wm2X + cos2 * cbd, wm2HubY + sin2 * cbd, wm2Z - 1.45);
+        rung2.rotation.z = ba + Math.PI / 2;
+        mctx.scene.add(rung2);
+      }
+      const sail2 = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 3), wm2SailMat);
+      sail2.position.set(
+        wm2X + cos2 * (sparL / 2 + 0.15) - sin2 * 0.2,
+        wm2HubY + sin2 * (sparL / 2 + 0.15) + cos2 * 0.2,
+        wm2Z - 1.46,
       );
-      wBlade.rotation.z = b * Math.PI / 2 + 0.4;
-      mctx.scene.add(wBlade);
+      sail2.rotation.z = ba;
+      mctx.scene.add(sail2);
     }
     // Windmill door
     const wm2Door = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.5), new THREE.MeshStandardMaterial({ color: 0x553311 }));
-    wm2Door.position.set(wm2X, 0.75, wm2Z + 1.81);
+    wm2Door.position.set(wm2X, wm2Y + 0.75, wm2Z + 1.81);
     mctx.scene.add(wm2Door);
     // Brick mortar lines on second windmill body
     const wm2MortarMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.95 });
     for (let row = 0; row < 8; row++) {
-      const mY = 0.4 + row * 0.55;
+      const mY = wm2Y + 0.4 + row * 0.55;
       const rowR = 1.8 - (row / 8) * 0.6;
       const mortar = new THREE.Mesh(new THREE.TorusGeometry(rowR, 0.012, 12, 20), wm2MortarMat);
       mortar.position.set(wm2X, mY, wm2Z);
@@ -4025,7 +4123,7 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     }
     // Vertical brick joints on second windmill
     for (let row = 0; row < 7; row++) {
-      const jY = 0.65 + row * 0.55;
+      const jY = wm2Y + 0.65 + row * 0.55;
       const jR = 1.8 - ((row + 0.5) / 8) * 0.6;
       const jCount = 10 + row % 2;
       for (let j = 0; j < jCount; j++) {
@@ -4040,11 +4138,11 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
     }
     // Window on second windmill
     const wm2Win = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.2, transparent: true, opacity: 0.5 }));
-    wm2Win.position.set(wm2X, 3, wm2Z + 1.25);
+    wm2Win.position.set(wm2X, wm2Y + 3, wm2Z + 1.25);
     mctx.scene.add(wm2Win);
     // Foundation
     const wm2Found = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.0, 0.25, 12), stoneMat);
-    wm2Found.position.set(wm2X, 0.12, wm2Z);
+    wm2Found.position.set(wm2X, wm2Y + 0.12, wm2Z);
     mctx.scene.add(wm2Found);
 
     // ── Bird nests in trees (small twig bundles) ──
@@ -4241,36 +4339,15 @@ export function buildEmeraldGrasslands(mctx: MapBuildContext, w: number, d: numb
       mctx.scene.add(stoneWall);
     }
 
-    // ── Windmill blade detail and structural supports ──
+    // ── Windmill structural braces on body ──
     const wmDetailX = -hw * 0.35, wmDetailZ = hd * 0.3;
-    // Hub detail
-    const wmHub = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 10), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.5 }));
-    wmHub.rotation.x = Math.PI / 2;
-    wmHub.position.set(wmDetailX, 6, wmDetailZ - 1.6);
-    mctx.scene.add(wmHub);
-    // Blade lattice detail
-    for (let b = 0; b < 4; b++) {
-      const bladeAngle = b * Math.PI / 2;
-      // Cross-bars on each blade
-      for (let cb = 0; cb < 3; cb++) {
-        const crossBar = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.03, 0.03), woodMat);
-        const cbDist = 1 + cb * 0.9;
-        crossBar.position.set(
-          wmDetailX + Math.cos(bladeAngle) * cbDist,
-          6 + Math.sin(bladeAngle) * cbDist,
-          wmDetailZ - 1.65,
-        );
-        crossBar.rotation.z = bladeAngle + Math.PI / 2;
-        mctx.scene.add(crossBar);
-      }
-    }
-    // Structural braces on windmill body
+    const wmDetailY = getTerrainHeight(wmDetailX, wmDetailZ, 1.4);
     for (let br = 0; br < 4; br++) {
       const brAngle = (br / 4) * Math.PI * 2;
       const brace = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3, 0.08), woodMat);
       brace.position.set(
         wmDetailX + Math.cos(brAngle) * 1.7,
-        5.5,
+        wmDetailY + 5.5,
         wmDetailZ + Math.sin(brAngle) * 1.7,
       );
       brace.rotation.z = Math.cos(brAngle) * 0.15;
