@@ -559,7 +559,7 @@ export function buildCrystalCaverns(mctx: MapBuildContext, w: number, d: number)
       mctx.scene.add(detailedBridge);
     }
 
-    // ── Underground river with translucent water ──
+    // ── Underground river with translucent water (continuous ribbon) ──
     const riverMat = new THREE.MeshStandardMaterial({
       color: 0x2244aa,
       roughness: 0.05,
@@ -568,35 +568,99 @@ export function buildCrystalCaverns(mctx: MapBuildContext, w: number, d: number)
       opacity: 0.4,
       depthWrite: false,
     });
+    const cavernBedMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.5, metalness: 0.15 });
+    const cavernBankMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.85 });
+
     for (let i = 0; i < 3; i++) {
-      const river = new THREE.Group();
-      const segments = 8 + Math.floor(Math.random() * 5);
-      let rx = (Math.random() - 0.5) * w * 0.3;
-      let rz = -d * 0.4;
-      for (let s = 0; s < segments; s++) {
-        const segW = 3 + Math.random() * 2;
-        const seg = new THREE.Mesh(new THREE.PlaneGeometry(segW, 8), riverMat);
-        seg.rotation.x = -Math.PI / 2;
-        seg.position.set(rx, 0.025, rz);
-        river.add(seg);
-        rx += (Math.random() - 0.5) * 4;
-        rz += 7;
-        // River bank rocks
+      // Generate river path points
+      const cRiverPath: { x: number; z: number; w: number }[] = [];
+      {
+        let crX = (Math.random() - 0.5) * w * 0.3;
+        let crZ = -d * 0.4;
+        const segments = 8 + Math.floor(Math.random() * 5);
+        cRiverPath.push({ x: crX, z: crZ, w: 3 + Math.random() * 2 });
+        for (let s = 0; s < segments; s++) {
+          crX += (Math.random() - 0.5) * 4;
+          crZ += 7;
+          const segW = 3 + Math.random() * 2;
+          cRiverPath.push({ x: crX, z: crZ, w: segW });
+        }
+      }
+
+      // Build continuous ribbon
+      const cWaterV: number[] = [], cWaterI: number[] = [];
+      const cBedV: number[] = [], cBedI: number[] = [];
+      const cBankLV: number[] = [], cBankLI: number[] = [];
+      const cBankRV: number[] = [], cBankRI: number[] = [];
+
+      for (let j = 0; j < cRiverPath.length; j++) {
+        const p0 = cRiverPath[j];
+        const pNext = cRiverPath[Math.min(j + 1, cRiverPath.length - 1)];
+        const pPrev = cRiverPath[Math.max(j - 1, 0)];
+        const dx = pNext.x - pPrev.x, dz = pNext.z - pPrev.z;
+        const len = Math.hypot(dx, dz) || 1;
+        const nx = -dz / len, nz = dx / len;
+        const hw2 = p0.w / 2;
+        const bedHw = hw2 + 0.3;
+        const bankW = 0.6;
+
+        cWaterV.push(p0.x + nx * hw2, 0.025, p0.z + nz * hw2);
+        cWaterV.push(p0.x - nx * hw2, 0.025, p0.z - nz * hw2);
+        cBedV.push(p0.x + nx * bedHw, 0.01, p0.z + nz * bedHw);
+        cBedV.push(p0.x - nx * bedHw, 0.01, p0.z - nz * bedHw);
+        cBankLV.push(p0.x + nx * (hw2 + 0.1), 0.02, p0.z + nz * (hw2 + 0.1));
+        cBankLV.push(p0.x + nx * (hw2 + bankW), 0.02, p0.z + nz * (hw2 + bankW));
+        cBankRV.push(p0.x - nx * (hw2 + 0.1), 0.02, p0.z - nz * (hw2 + 0.1));
+        cBankRV.push(p0.x - nx * (hw2 + bankW), 0.02, p0.z - nz * (hw2 + bankW));
+
+        if (j > 0) {
+          const vi = (j - 1) * 2;
+          const quad = [vi, vi + 2, vi + 1, vi + 1, vi + 2, vi + 3];
+          cWaterI.push(...quad);
+          cBedI.push(...quad);
+          cBankLI.push(...quad);
+          cBankRI.push(...quad);
+        }
+      }
+
+      const makeCRibbon = (verts: number[], idx: number[], mat: THREE.Material) => {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+        geo.setIndex(idx);
+        geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, mat);
+        mctx.scene.add(mesh);
+      };
+      makeCRibbon(cWaterV, cWaterI, riverMat);
+      makeCRibbon(cBedV, cBedI, cavernBedMat);
+      makeCRibbon(cBankLV, cBankLI, cavernBankMat);
+      makeCRibbon(cBankRV, cBankRI, cavernBankMat);
+
+      // River bank rocks
+      for (let j = 1; j < cRiverPath.length - 1; j += 2) {
+        const sp = cRiverPath[j];
+        const pNext = cRiverPath[Math.min(j + 1, cRiverPath.length - 1)];
+        const pPrev = cRiverPath[Math.max(j - 1, 0)];
+        const dx = pNext.x - pPrev.x, dz = pNext.z - pPrev.z;
+        const len = Math.hypot(dx, dz) || 1;
+        const nx = -dz / len, nz = dx / len;
         for (let rb = 0; rb < 2; rb++) {
+          const side = rb === 0 ? 1 : -1;
           const bankRock = new THREE.Mesh(
             new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.3, 2),
             darkStoneMat,
           );
-          bankRock.position.set(rx + (rb === 0 ? -segW / 2 - 0.3 : segW / 2 + 0.3), 0.15, rz - 3);
+          bankRock.position.set(sp.x + nx * side * (sp.w / 2 + 0.3), 0.15, sp.z + nz * side * (sp.w / 2 + 0.3));
           bankRock.scale.y = 0.5;
-          river.add(bankRock);
+          mctx.scene.add(bankRock);
         }
       }
+
       // River glow
+      const midPt = cRiverPath[Math.floor(cRiverPath.length / 2)];
       const riverLight = new THREE.PointLight(0x2244aa, 0.3, 12);
-      riverLight.position.set(rx, 0.5, rz - segments * 3);
-      river.add(riverLight);
-      mctx.scene.add(river);
+      riverLight.position.set(midPt.x, 0.5, midPt.z);
+      mctx.scene.add(riverLight);
     }
 
     // ── Ceiling crystal chandeliers ──

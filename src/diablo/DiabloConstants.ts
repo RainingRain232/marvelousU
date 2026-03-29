@@ -141,7 +141,7 @@ export const MAP_KILL_TARGET: Record<DiabloMapId, number> = {
   [DiabloMapId.ELDRITCH_NEXUS]: 140,
   [DiabloMapId.CITY_RUINS]: 30,
   [DiabloMapId.CITY]: 35,
-  [DiabloMapId.RIVERSIDE_VILLAGE]: 0,
+  [DiabloMapId.RIVERSIDE_VILLAGE]: 20,
   [DiabloMapId.CAMELOT]: 0,
 };
 

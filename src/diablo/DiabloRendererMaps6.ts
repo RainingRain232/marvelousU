@@ -4430,22 +4430,79 @@ export function buildInfernalThrone(mctx: MapBuildContext, w: number, d: number)
       const gibX = (Math.random() - 0.5) * w * 0.6, gibZ = (Math.random() - 0.5) * d * 0.6;
       gibbet.position.set(gibX, getTerrainHeight(gibX, gibZ, 0.6) + 3 + Math.random() * 2, gibZ); mctx.scene.add(gibbet);
     }
-    // ── Blood rivers (winding channels) ──
+    // ── Blood rivers (continuous winding ribbons) ──
+    const bloodBedMat = new THREE.MeshStandardMaterial({ color: 0x330000, roughness: 0.6 });
+    const bloodBankMat = new THREE.MeshStandardMaterial({ color: 0x1a0505, roughness: 0.85 });
+
     for (let i = 0; i < 3; i++) {
-      const bldRiver = new THREE.Group();
-      const bldSegCount = 5 + Math.floor(Math.random() * 4);
-      let bldRx = 0, bldRz = 0;
-      for (let s = 0; s < bldSegCount; s++) {
-        const bldSeg = new THREE.Mesh(new THREE.PlaneGeometry(0.8 + Math.random() * 0.4, 2 + Math.random() * 2), bloodMat);
-        bldSeg.rotation.x = -Math.PI / 2;
-        bldRx += (Math.random() - 0.5) * 1.5;
-        bldRz += 1.5 + Math.random();
-        bldSeg.position.set(bldRx, 0.02, bldRz - bldSegCount);
-        bldSeg.rotation.z = Math.atan2((Math.random() - 0.5), 1); bldRiver.add(bldSeg);
-      }
       const bldPx = (Math.random() - 0.5) * w * 0.5, bldPz = (Math.random() - 0.5) * d * 0.5;
-      bldRiver.position.set(bldPx, getTerrainHeight(bldPx, bldPz, 0.6), bldPz);
-      bldRiver.rotation.y = Math.random() * Math.PI; mctx.scene.add(bldRiver);
+      const bldBaseY = getTerrainHeight(bldPx, bldPz, 0.6);
+      const bldRotY = Math.random() * Math.PI;
+
+      // Generate blood river path points
+      const bldPath: { x: number; z: number; w: number }[] = [];
+      {
+        const bldSegCount = 5 + Math.floor(Math.random() * 4);
+        let bRx = 0, bRz = -bldSegCount;
+        bldPath.push({ x: bRx, z: bRz, w: 0.8 + Math.random() * 0.4 });
+        for (let s = 0; s < bldSegCount; s++) {
+          bRx += (Math.random() - 0.5) * 1.5;
+          bRz += 1.5 + Math.random();
+          const bw = 0.8 + Math.random() * 0.4;
+          bldPath.push({ x: bRx, z: bRz, w: bw });
+        }
+      }
+
+      // Build continuous ribbon
+      const bWaterV: number[] = [], bWaterI: number[] = [];
+      const bBedV: number[] = [], bBedI: number[] = [];
+      const bBankLV: number[] = [], bBankLI: number[] = [];
+      const bBankRV: number[] = [], bBankRI: number[] = [];
+
+      for (let j = 0; j < bldPath.length; j++) {
+        const p0 = bldPath[j];
+        const pNext = bldPath[Math.min(j + 1, bldPath.length - 1)];
+        const pPrev = bldPath[Math.max(j - 1, 0)];
+        const dx = pNext.x - pPrev.x, dz = pNext.z - pPrev.z;
+        const len = Math.hypot(dx, dz) || 1;
+        const nx = -dz / len, nz = dx / len;
+        const hw2 = p0.w / 2;
+        const bedHw = hw2 + 0.15;
+        const bankW = 0.3;
+
+        bWaterV.push(p0.x + nx * hw2, 0.02, p0.z + nz * hw2);
+        bWaterV.push(p0.x - nx * hw2, 0.02, p0.z - nz * hw2);
+        bBedV.push(p0.x + nx * bedHw, 0.01, p0.z + nz * bedHw);
+        bBedV.push(p0.x - nx * bedHw, 0.01, p0.z - nz * bedHw);
+        bBankLV.push(p0.x + nx * (hw2 + 0.05), 0.015, p0.z + nz * (hw2 + 0.05));
+        bBankLV.push(p0.x + nx * (hw2 + bankW), 0.015, p0.z + nz * (hw2 + bankW));
+        bBankRV.push(p0.x - nx * (hw2 + 0.05), 0.015, p0.z - nz * (hw2 + 0.05));
+        bBankRV.push(p0.x - nx * (hw2 + bankW), 0.015, p0.z - nz * (hw2 + bankW));
+
+        if (j > 0) {
+          const vi = (j - 1) * 2;
+          const quad = [vi, vi + 2, vi + 1, vi + 1, vi + 2, vi + 3];
+          bWaterI.push(...quad);
+          bBedI.push(...quad);
+          bBankLI.push(...quad);
+          bBankRI.push(...quad);
+        }
+      }
+
+      const makeBldRibbon = (verts: number[], idx: number[], mat: THREE.Material) => {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+        geo.setIndex(idx);
+        geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.y = bldRotY;
+        mesh.position.set(bldPx, bldBaseY, bldPz);
+        mctx.scene.add(mesh);
+      };
+      makeBldRibbon(bWaterV, bWaterI, bloodMat);
+      makeBldRibbon(bBedV, bBedI, bloodBedMat);
+      makeBldRibbon(bBankLV, bBankLI, bloodBankMat);
+      makeBldRibbon(bBankRV, bBankRI, bloodBankMat);
     }
     // ── Demon statues (imposing figures) ──
     for (let i = 0; i < 4; i++) {

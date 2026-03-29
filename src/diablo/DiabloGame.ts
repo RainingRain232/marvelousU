@@ -1058,7 +1058,7 @@ export class DiabloGame {
     this._hudState.fullmapVisible = false;
     if (this._hudRefs) this._hudRefs.fullmapCanvas.style.display = "none";
 
-    const weathers = [Weather.NORMAL, Weather.CLEAR, Weather.STORMY, Weather.FOGGY];
+    const weathers = [Weather.NORMAL, Weather.CLEAR, Weather.STORMY];
     this._state.weather = this._state.preferredWeather === 'RANDOM'
       ? weathers[Math.floor(Math.random() * weathers.length)]
       : this._state.preferredWeather as Weather;

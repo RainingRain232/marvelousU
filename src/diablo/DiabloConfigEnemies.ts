@@ -2727,7 +2727,15 @@ export const ENEMY_SPAWN_WEIGHTS: Record<DiabloMapId, { type: EnemyType; weight:
     { type: EnemyType.SEWER_CREEPER, weight: 14 },
     { type: EnemyType.BELL_TOWER_SENTINEL, weight: 10 },
   ],
-  [DiabloMapId.RIVERSIDE_VILLAGE]: [],
+  [DiabloMapId.RIVERSIDE_VILLAGE]: [
+    { type: EnemyType.BANDIT, weight: 25 },
+    { type: EnemyType.WOLF, weight: 20 },
+    { type: EnemyType.WILD_BOAR, weight: 15 },
+    { type: EnemyType.PLAINS_RAIDER, weight: 10 },
+    { type: EnemyType.FOREST_SPIDER, weight: 12 },
+    { type: EnemyType.BOG_LURKER, weight: 8 },
+    { type: EnemyType.MOSSY_LURKER, weight: 10 },
+  ],
   [DiabloMapId.CAMELOT]: [],
 };
 

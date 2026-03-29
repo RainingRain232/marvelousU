@@ -500,21 +500,78 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
       mctx.envGroup.add(mush);
     }
 
-    // Winding stream with transparent water, riverbed stones and sparkles
-    const streamSegs = 14;
+    // Winding stream (continuous ribbon with banks, riverbed stones and reeds)
+    const streamWaterMat = new THREE.MeshStandardMaterial({ color: 0x2277aa, transparent: true, opacity: 0.5, roughness: 0.1, metalness: 0.15 });
+    const streamBedMat = new THREE.MeshStandardMaterial({ color: 0x3a5566, roughness: 0.4, metalness: 0.1 });
+    const streamBankMat = new THREE.MeshStandardMaterial({ color: 0x6a5a3a, roughness: 0.92 });
+    const fReedMat = new THREE.MeshStandardMaterial({ color: 0x446633, roughness: 0.85 });
+    const fReedDarkMat = new THREE.MeshStandardMaterial({ color: 0x3d5a1e, roughness: 0.9 });
+    const fReedTipMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 });
+
+    // Generate stream path points
     const streamBaseX = hw * 0.35;
-    for (let si = 0; si < streamSegs; si++) {
-      const sz = -d * 0.4 + si * (d * 0.8 / streamSegs);
+    const fStreamPath: { x: number; z: number; w: number }[] = [];
+    for (let si = 0; si <= 14; si++) {
+      const sz = -d * 0.4 + si * (d * 0.8 / 14);
       const sx = streamBaseX + Math.sin(si * 0.5) * 2.5;
       const segW = 1.8 + Math.sin(si * 0.8) * 0.6;
-      const streamSeg = new THREE.Mesh(
-        new THREE.PlaneGeometry(segW, d * 0.8 / streamSegs + 0.5),
-        new THREE.MeshStandardMaterial({ color: 0x2277aa, transparent: true, opacity: 0.5, roughness: 0.1, metalness: 0.15 })
-      );
-      streamSeg.rotation.x = -Math.PI / 2;
-      streamSeg.position.set(sx, getTerrainHeight(sx, sz) + 0.02, sz);
-      mctx.envGroup.add(streamSeg);
-      // Riverbed stones with varied shapes and detail
+      fStreamPath.push({ x: sx, z: sz, w: segW });
+    }
+
+    // Build continuous ribbon meshes
+    const fWaterV: number[] = [], fWaterI: number[] = [];
+    const fBedV: number[] = [], fBedI: number[] = [];
+    const fBankLV: number[] = [], fBankLI: number[] = [];
+    const fBankRV: number[] = [], fBankRI: number[] = [];
+
+    for (let i = 0; i < fStreamPath.length; i++) {
+      const p0 = fStreamPath[i];
+      const pNext = fStreamPath[Math.min(i + 1, fStreamPath.length - 1)];
+      const pPrev = fStreamPath[Math.max(i - 1, 0)];
+      const dx = pNext.x - pPrev.x, dz = pNext.z - pPrev.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const nx = -dz / len, nz = dx / len;
+      const ty = getTerrainHeight(p0.x, p0.z);
+      const hw2 = p0.w / 2;
+      const bedHw = hw2 + 0.3;
+      const bankW = 0.6;
+
+      fWaterV.push(p0.x + nx * hw2, ty + 0.03, p0.z + nz * hw2);
+      fWaterV.push(p0.x - nx * hw2, ty + 0.03, p0.z - nz * hw2);
+      fBedV.push(p0.x + nx * bedHw, ty + 0.01, p0.z + nz * bedHw);
+      fBedV.push(p0.x - nx * bedHw, ty + 0.01, p0.z - nz * bedHw);
+      fBankLV.push(p0.x + nx * (hw2 + 0.1), ty + 0.02, p0.z + nz * (hw2 + 0.1));
+      fBankLV.push(p0.x + nx * (hw2 + bankW), ty + 0.02, p0.z + nz * (hw2 + bankW));
+      fBankRV.push(p0.x - nx * (hw2 + 0.1), ty + 0.02, p0.z - nz * (hw2 + 0.1));
+      fBankRV.push(p0.x - nx * (hw2 + bankW), ty + 0.02, p0.z - nz * (hw2 + bankW));
+
+      if (i > 0) {
+        const vi = (i - 1) * 2;
+        const quad = [vi, vi + 2, vi + 1, vi + 1, vi + 2, vi + 3];
+        fWaterI.push(...quad);
+        fBedI.push(...quad);
+        fBankLI.push(...quad);
+        fBankRI.push(...quad);
+      }
+    }
+
+    const makeFRibbon = (verts: number[], idx: number[], mat: THREE.Material) => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, mat);
+      mctx.envGroup.add(mesh);
+    };
+    makeFRibbon(fWaterV, fWaterI, streamWaterMat);
+    makeFRibbon(fBedV, fBedI, streamBedMat);
+    makeFRibbon(fBankLV, fBankLI, streamBankMat);
+    makeFRibbon(fBankRV, fBankRI, streamBankMat);
+
+    // Riverbed stones
+    for (let i = 1; i < fStreamPath.length - 1; i++) {
+      const sp = fStreamPath[i];
+      const ty = getTerrainHeight(sp.x, sp.z);
       for (let rs = 0; rs < 5; rs++) {
         const riverStoneSize = 0.04 + Math.random() * 0.06;
         const riverStoneGeo = rs % 2 === 0
@@ -523,32 +580,48 @@ export function buildForest(mctx: MapBuildContext, w: number, d: number, propMul
         const riverStoneColor = [0x777788, 0x6a6a7a, 0x888899, 0x5a5a6a][rs % 4];
         const rStone = new THREE.Mesh(riverStoneGeo,
           new THREE.MeshStandardMaterial({ color: riverStoneColor, roughness: 0.7 }));
-        // Varied flattening for different stone shapes
         rStone.scale.set(0.8 + Math.random() * 0.5, 0.3 + Math.random() * 0.25, 0.8 + Math.random() * 0.5);
         const rsSubmerge = Math.random() > 0.6 ? -0.01 : 0.01;
-        rStone.position.set(sx + (Math.random() - 0.5) * segW * 0.8, getTerrainHeight(sx, sz) + rsSubmerge, sz + (Math.random() - 0.5) * 1.5);
+        rStone.position.set(sp.x + (Math.random() - 0.5) * sp.w * 0.8, ty + rsSubmerge, sp.z + (Math.random() - 0.5) * 1.5);
         mctx.envGroup.add(rStone);
       }
-      // Water plants/reeds along stream banks
-      for (let reedIdx = 0; reedIdx < 2; reedIdx++) {
-        const reedSide = reedIdx === 0 ? 1 : -1;
-        const reedX = sx + reedSide * (segW * 0.45 + 0.1 + Math.random() * 0.3);
-        const reedZ = sz + (Math.random() - 0.5) * 1.0;
+    }
+
+    // Reeds along stream banks
+    for (let i = 1; i < fStreamPath.length - 1; i++) {
+      if (Math.random() > 0.4) continue;
+      const sp = fStreamPath[i];
+      const pNext = fStreamPath[Math.min(i + 1, fStreamPath.length - 1)];
+      const pPrev = fStreamPath[Math.max(i - 1, 0)];
+      const dx = pNext.x - pPrev.x, dz = pNext.z - pPrev.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const nx = -dz / len, nz = dx / len;
+      const ty = getTerrainHeight(sp.x, sp.z);
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const clusterSize = 2 + Math.floor(Math.random() * 4);
+      for (let r = 0; r < clusterSize; r++) {
+        const bankDist = sp.w / 2 + 0.2 + Math.random() * 0.6;
+        const along = (Math.random() - 0.5) * 1.5;
+        const reedX = sp.x + nx * side * bankDist + (dx / len) * along;
+        const reedZ = sp.z + nz * side * bankDist + (dz / len) * along;
         const reedH = 0.15 + Math.random() * 0.2;
+        const reedLean = (Math.random() - 0.5) * 0.15;
         const reedStem = new THREE.Mesh(
           new THREE.CylinderGeometry(0.005, 0.008, reedH, 12),
-          new THREE.MeshStandardMaterial({ color: 0x446633, roughness: 0.85 }));
-        reedStem.position.set(reedX, getTerrainHeight(sx, sz) + reedH / 2, reedZ);
-        reedStem.rotation.z = (Math.random() - 0.5) * 0.15;
+          Math.random() > 0.5 ? fReedMat : fReedDarkMat
+        );
+        reedStem.position.set(reedX, ty + reedH / 2, reedZ);
+        reedStem.rotation.z = reedLean;
         reedStem.rotation.x = (Math.random() - 0.5) * 0.1;
         mctx.envGroup.add(reedStem);
-        // Reed leaf/blade at top
-        const reedLeaf = new THREE.Mesh(
-          new THREE.BoxGeometry(0.015, 0.06, 0.003),
-          new THREE.MeshStandardMaterial({ color: 0x558844, roughness: 0.8 }));
-        reedLeaf.position.set(reedX, getTerrainHeight(sx, sz) + reedH, reedZ);
-        reedLeaf.rotation.z = (Math.random() - 0.5) * 0.4;
-        mctx.envGroup.add(reedLeaf);
+        if (reedH > 0.25) {
+          const reedLeaf = new THREE.Mesh(
+            new THREE.BoxGeometry(0.015, 0.06, 0.003),
+            fReedTipMat);
+          reedLeaf.position.set(reedX, ty + reedH, reedZ);
+          reedLeaf.rotation.z = (Math.random() - 0.5) * 0.4;
+          mctx.envGroup.add(reedLeaf);
+        }
       }
     }
     // Stream sparkle highlights
