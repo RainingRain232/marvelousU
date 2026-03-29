@@ -669,9 +669,29 @@ export class PendulumRenderer {
 
   private _buildGround(): void {
     const size = PENDULUM.GROUND_SIZE;
-    const geo = new THREE.PlaneGeometry(size, size, 64, 64);
+    const geo = new THREE.PlaneGeometry(size, size, 80, 80);
+    // Vertex displacement for terrain variation
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const baseColor = new THREE.Color(COL.GROUND);
+    const darkColor = new THREE.Color(0x1a1510);
+    const lightColor = new THREE.Color(0x3a3028);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i);
+      // Subtle height variation
+      const h = Math.sin(x * 0.15) * 0.3 + Math.cos(y * 0.12) * 0.25 + Math.sin(x * 0.4 + y * 0.3) * 0.1;
+      pos.setZ(i, h);
+      // Vertex color variation
+      const n = Math.sin(x * 0.2 + y * 0.15) * 0.5 + 0.5;
+      const c = baseColor.clone();
+      if (n > 0.6) c.lerp(lightColor, (n - 0.6) * 2);
+      else if (n < 0.3) c.lerp(darkColor, (0.3 - n) * 2);
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
     this._groundMat = new THREE.MeshStandardMaterial({
-      color: COL.GROUND,
+      vertexColors: true,
       roughness: 0.85,
       metalness: 0.25,
     });
@@ -679,6 +699,31 @@ export class PendulumRenderer {
     this._groundMesh.rotation.x = -Math.PI / 2;
     this._groundMesh.receiveShadow = true;
     this._scene.add(this._groundMesh);
+
+    // Scattered ground debris (small rocks, gears)
+    const debrisMat = new THREE.MeshStandardMaterial({ color: 0x3a3028, roughness: 0.9, metalness: 0.15 });
+    const gearDebrisMat = new THREE.MeshStandardMaterial({ color: 0x887744, roughness: 0.5, metalness: 0.6 });
+    for (let d = 0; d < 40; d++) {
+      const dx = (Math.random() - 0.5) * size * 0.8;
+      const dz = (Math.random() - 0.5) * size * 0.8;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < 8) continue; // skip near tower
+      if (d % 3 === 0) {
+        // Gear piece
+        const gear = new THREE.Mesh(new THREE.TorusGeometry(0.3 + Math.random() * 0.4, 0.05, 6, 8), gearDebrisMat);
+        gear.position.set(dx, 0.05, dz);
+        gear.rotation.x = -Math.PI / 2 + Math.random() * 0.3;
+        gear.rotation.z = Math.random() * Math.PI;
+        this._scene.add(gear);
+      } else {
+        // Rock
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random() * 0.25, 0), debrisMat);
+        rock.position.set(dx, 0.1, dz);
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
+        rock.scale.y = 0.4 + Math.random() * 0.3;
+        this._scene.add(rock);
+      }
+    }
 
     // Concentric clockwork rings emanating from tower center
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x443322, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
