@@ -347,7 +347,9 @@ export class AoWGame {
 
   private _onRightClick(e: MouseEvent): void {
     if (!this._state || this._state.currentPlayer !== 0) return;
+    if (this._state.phase !== AoWPhase.PLAYING) return;
     if (!this._state.selectedArmyId) return;
+    if (this._battleAnimator) return;
 
     const worldPos = this._sceneManager.screenToWorld(e.clientX, e.clientY);
     if (!worldPos) return;
@@ -583,20 +585,36 @@ export class AoWGame {
 
   private _moveArmy(army: AoWArmy, targetQ: number, targetR: number): void {
     if (!this._state) return;
+    if (army.movementLeft <= 0) {
+      this._state.log.push("No movement remaining this turn.");
+      this._hud.update(this._state);
+      return;
+    }
+    if (army.q === targetQ && army.r === targetR) return;
 
-    const path = this._findPath(army.q, army.r, targetQ, targetR);
-    if (path.length === 0) return;
+    let path = this._findPath(army.q, army.r, targetQ, targetR);
+    // If A* fails, try simple greedy path
+    if (path.length === 0) path = this._simplePath(army.q, army.r, targetQ, targetR);
+    if (path.length === 0) {
+      this._state.log.push("Cannot reach that location.");
+      this._hud.update(this._state);
+      return;
+    }
     aowAudio.playMove();
 
     let movesLeft = army.movementLeft;
 
+    let movedAtLeastOne = false;
     for (const step of path) {
       const hex = this._state.hexes.get(hexKey(step.q, step.r));
       if (!hex) break;
 
       const cost = AOW_TERRAIN[hex.terrain].moveCost;
-      if (cost > movesLeft) break;
+      // Allow at least 1 hex of movement even if cost exceeds remaining
+      if (cost > movesLeft && movedAtLeastOne) break;
+      if (cost > movesLeft && movesLeft <= 0) break;
       movesLeft -= cost;
+      movedAtLeastOne = true;
 
       army.q = step.q;
       army.r = step.r;
