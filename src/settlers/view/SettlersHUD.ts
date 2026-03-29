@@ -337,6 +337,15 @@ export class SettlersHUD {
         html += `<div style="color:#b8c8a0;padding-left:8px;">${step}</div>`;
       }
     }
+    // Resource deposits section
+    html += `<div style="font-size:14px;color:#ffd700;margin-top:14px;margin-bottom:8px;">Resource Deposits</div>`;
+    html += `<div style="color:#b8c8a0;padding-left:8px;">Look for these on the map:</div>`;
+    html += `<div style="display:flex;align-items:center;gap:6px;margin:4px 0 2px 8px;"><span style="display:inline-block;width:12px;height:7px;background:#ffd700;border-radius:1px;"></span> <span style="color:#ffd700;">Gold</span> <span style="color:#888;">— stacked gold bars</span></div>`;
+    html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0 2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#8a6642;border-radius:3px;"></span> <span style="color:#c49560;">Iron Ore</span> <span style="color:#888;">— reddish-brown chunks</span></div>`;
+    html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0 2px 8px;"><span style="display:inline-block;width:10px;height:10px;background:#333;border-radius:2px;border:1px solid #555;"></span> <span style="color:#aaa;">Coal</span> <span style="color:#888;">— dark jagged lumps</span></div>`;
+    html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0 2px 8px;"><span style="display:inline-block;width:12px;height:9px;background:#999;border-radius:4px;"></span> <span style="color:#ccc;">Stone</span> <span style="color:#888;">— gray boulders</span></div>`;
+    html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0 2px 8px;"><span style="display:inline-block;width:14px;height:7px;background:#5599bb;border-radius:5px;"></span> <span style="color:#5599bb;">Fish</span> <span style="color:#888;">— blue fish shape (near water)</span></div>`;
+
     html += `<div style="margin-top:12px;color:#888;">Press [H] to toggle this panel</div>`;
     this._wikiPanel.innerHTML = html;
   }
