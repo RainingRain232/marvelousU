@@ -38,6 +38,7 @@ export class VoidKnightGame {
   private _prevShield = 0;
   private _prevDashCD = 0;
   private _prevMultFloor = 1;
+  private _escMenuDiv: HTMLDivElement | null = null;
 
   async boot(): Promise<void> {
     viewManager.clearWorld();
@@ -54,7 +55,78 @@ export class VoidKnightGame {
     viewManager.app.ticker.add(this._tickerCb);
   }
 
+  private _openEscMenu(): void {
+    if (this._escMenuDiv) return;
+    const div = document.createElement("div");
+    div.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(2,2,8,0.85);z-index:40;display:flex;align-items:center;justify-content:center;font-family:'Segoe UI',sans-serif;";
+    const panel = document.createElement("div");
+    panel.style.cssText = "background:rgba(8,8,20,0.97);border:2px solid rgba(100,80,200,0.5);border-radius:12px;padding:28px 36px;min-width:460px;max-width:560px;color:#d0c8e0;";
+    let tab = "controls";
+    const s = this._state;
+    const render = () => {
+      let c = "";
+      if (tab === "controls") {
+        c = `<div style="font-size:13px;line-height:2;text-align:left">
+          <div><span style="display:inline-block;min-width:110px;color:#8866ff;font-weight:bold">WASD / Arrows</span> Move</div>
+          <div><span style="display:inline-block;min-width:110px;color:#8866ff;font-weight:bold">Space / Shift</span> Dash (invincible dodge)</div>
+          <div><span style="display:inline-block;min-width:110px;color:#8866ff;font-weight:bold">E</span> Graze Burst (when charged)</div>
+          <div><span style="display:inline-block;min-width:110px;color:#8866ff;font-weight:bold">Q</span> Time Warp (slow-mo)</div>
+          <div><span style="display:inline-block;min-width:110px;color:#8866ff;font-weight:bold">1 / 2 / 3</span> Select perk (upgrade screen)</div>
+          <div><span style="display:inline-block;min-width:110px;color:#8866ff;font-weight:bold">R</span> Restart (when dead)</div>
+          <div><span style="display:inline-block;min-width:110px;color:#8866ff;font-weight:bold">ESC</span> Pause / Resume</div>
+        </div>`;
+      } else if (tab === "intro") {
+        c = `<div style="font-size:13px;line-height:1.7;color:#aaa8bb">
+          <p><b style="color:#8866ff">Void Knight</b> is a bullet-hell survivor. You are a spectral knight trapped in the Void, surrounded by endless waves of eldritch spawners that fire spiraling projectile patterns.</p>
+          <p><b style="color:#ffd700">Survive</b> as long as you can. Collect orbs to build your score multiplier. Near-misses (grazing bullets) charge your Graze Burst ability.</p>
+          <p style="margin-top:10px"><b style="color:#ffd700">Dash</b> makes you invincible for a brief moment — time it to phase through dense bullet patterns.</p>
+          <p><b style="color:#ffd700">Orbs:</b> Yellow = points, Blue = shield, Green = magnet, Red = reflect, Purple = time slow</p>
+          <p><b style="color:#ffd700">Multiplier:</b> Collecting orbs without getting hit builds your multiplier up to 8x. Getting hit resets it.</p>
+        </div>`;
+      } else {
+        c = `<div style="font-size:13px;line-height:1.7;color:#aaa8bb">
+          <p><b style="color:#ffd700">Spawners</b> — Eldritch entities that orbit the arena and fire bullet patterns. Destroy them to clear waves.</p>
+          <p><b style="color:#ffd700">Bullet Patterns:</b></p>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:6px 0">
+            <b style="color:#ff4466">Aimed</b><span>Tracks your position</span>
+            <b style="color:#ff8844">Ring</b><span>Circular burst outward</span>
+            <b style="color:#44aaff">Spiral</b><span>Rotating spiral arms</span>
+            <b style="color:#ffaa44">Cross</b><span>Cardinal direction burst</span>
+            <b style="color:#aa44ff">Helix</b><span>Double helix pattern</span>
+            <b style="color:#ff66aa">Shotgun</b><span>Narrow cone of pellets</span>
+          </div>
+          <p><b style="color:#ffd700">Perks:</b> Every few waves you choose from 3 random upgrades — speed, dash cooldown, extra shields, larger magnet, etc.</p>
+          <p><b style="color:#ffd700">Mutators:</b> Later waves add modifiers like Phantom (invisible bullets), Homing, or Speed Up.</p>
+        </div>`;
+      }
+      panel.innerHTML = `
+        <div style="font-size:28px;font-weight:bold;color:#8866ff;text-align:center;margin-bottom:4px;letter-spacing:4px;text-shadow:0 0 15px rgba(136,102,255,0.4)">PAUSED</div>
+        <div style="text-align:center;color:#556;font-size:12px;margin-bottom:16px">Wave ${s.wave} | Score: ${Math.floor(s.score)} | Multiplier: ${s.multiplier.toFixed(1)}x</div>
+        <div style="display:flex;gap:4px;margin-bottom:14px;justify-content:center">
+          ${["controls","intro","concepts"].map(t=>`<button class="vk-tab" data-t="${t}" style="padding:6px 14px;font-size:12px;font-weight:bold;background:${tab===t?"rgba(136,102,255,0.2)":"rgba(20,20,40,0.6)"};color:${tab===t?"#8866ff":"#777"};border:1px solid ${tab===t?"#8866ff":"#444"};border-radius:4px;cursor:pointer;pointer-events:auto">${t==="concepts"?"Enemies & Perks":t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join("")}
+        </div>
+        <div style="min-height:210px;margin-bottom:18px">${c}</div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+          <button id="vk-resume" style="width:100%;padding:10px;font-size:16px;font-weight:bold;background:linear-gradient(180deg,rgba(136,102,255,0.15),rgba(136,102,255,0.05));color:#8866ff;border:2px solid rgba(136,102,255,0.5);border-radius:6px;cursor:pointer;letter-spacing:2px;pointer-events:auto">RESUME</button>
+          <button id="vk-exit" style="width:100%;padding:8px;font-size:13px;background:none;color:#884444;border:1px solid #553333;border-radius:4px;cursor:pointer;pointer-events:auto">EXIT TO MENU</button>
+        </div>`;
+      panel.querySelectorAll(".vk-tab").forEach(b=>(b as HTMLElement).onclick=()=>{tab=(b as HTMLElement).dataset.t!;render();});
+      (panel.querySelector("#vk-resume") as HTMLElement).onclick=()=>this._closeEscMenu();
+      (panel.querySelector("#vk-exit") as HTMLElement).onclick=()=>{this._closeEscMenu();this._exit();};
+    };
+    div.appendChild(panel);
+    document.body.appendChild(div);
+    this._escMenuDiv = div;
+    render();
+  }
+
+  private _closeEscMenu(): void {
+    if (this._escMenuDiv) { this._escMenuDiv.remove(); this._escMenuDiv = null; }
+    this._state.phase = VKPhase.PLAYING;
+  }
+
   destroy(): void {
+    if (this._escMenuDiv) { this._escMenuDiv.remove(); this._escMenuDiv = null; }
     if (this._tickerCb) { viewManager.app.ticker.remove(this._tickerCb); this._tickerCb = null; }
     this._destroyInput();
     this._renderer.destroy();
@@ -88,8 +160,9 @@ export class VoidKnightGame {
         return;
       }
       if (e.code === "Escape") {
-        s.phase = s.phase === VKPhase.PLAYING ? VKPhase.PAUSED : VKPhase.PLAYING;
-        e.preventDefault(); return;
+        if (this._escMenuDiv) { this._closeEscMenu(); e.preventDefault(); return; }
+        if (s.phase === VKPhase.PLAYING) { s.phase = VKPhase.PAUSED; this._openEscMenu(); e.preventDefault(); return; }
+        if (s.phase === VKPhase.PAUSED) { this._closeEscMenu(); e.preventDefault(); return; }
       }
       if (s.phase !== VKPhase.PLAYING) return;
 

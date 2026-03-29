@@ -290,6 +290,41 @@ export class VoidKnightRenderer {
     g.circle(cx * 0.3, cy * 0.9, 80).fill({ color: 0x0e1535, alpha: 0.06 + Math.sin(t * 0.32 + 7) * 0.02 });
     // Warm accent
     g.circle(cx * 1.2, cy * 0.7, 60).fill({ color: 0x2a1520, alpha: 0.04 + Math.sin(t * 0.22 + 8) * 0.015 });
+
+    // Distant galaxy spirals
+    for (let gi = 0; gi < 3; gi++) {
+      const gx = cx * (0.3 + gi * 0.55), gy = cy * (0.25 + gi * 0.4);
+      const gr = 25 + gi * 10;
+      const ga = t * 0.05 + gi * 2;
+      g.circle(gx, gy, gr).fill({ color: 0x1a1040, alpha: 0.06 });
+      for (let arm = 0; arm < 3; arm++) {
+        const armA = ga + (arm / 3) * Math.PI * 2;
+        for (let d = 0; d < 8; d++) {
+          const dr = (d / 8) * gr;
+          const da = armA + d * 0.3;
+          g.circle(gx + Math.cos(da) * dr, gy + Math.sin(da) * dr, 1.5 - d * 0.15)
+            .fill({ color: 0x6644aa, alpha: 0.04 - d * 0.004 });
+        }
+      }
+    }
+
+    // Shooting star / meteor streaks (deterministic from time)
+    for (let mi = 0; mi < 2; mi++) {
+      const mPhase = Math.floor(t * 0.3 + mi * 7) * 0.7;
+      const mFrac = (t * 0.3 + mi * 7) % 1;
+      if (mFrac < 0.15) {
+        const mx = (Math.sin(mPhase * 3.7) * 0.5 + 0.5) * this._sw;
+        const my = (Math.sin(mPhase * 2.3) * 0.3 + 0.2) * this._sh;
+        const mLen = 40 + mi * 20;
+        const mAlpha = (0.15 - mFrac) / 0.15 * 0.3;
+        g.moveTo(mx, my).lineTo(mx + mLen, my + mLen * 0.3).stroke({ color: 0xccccff, width: 1, alpha: mAlpha });
+        g.circle(mx, my, 2).fill({ color: 0xffffff, alpha: mAlpha * 2 });
+      }
+    }
+
+    // Cosmic dust clouds (larger, colored)
+    g.circle(cx * 0.2, cy * 1.6, 150).fill({ color: 0x0a0520, alpha: 0.04 + Math.sin(t * 0.08) * 0.01 });
+    g.circle(cx * 1.8, cy * 0.2, 130).fill({ color: 0x100528, alpha: 0.035 + Math.sin(t * 0.09 + 2) * 0.01 });
   }
 
   private _drawStars(g: Graphics, t: number): void {
