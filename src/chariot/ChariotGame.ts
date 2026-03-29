@@ -411,7 +411,7 @@ function generateTrack(def: (typeof TRACK_DEFS)[number]): TrackDef {
     // Smooth radius variation using low-frequency sine waves instead of per-point noise
     const radiusNoise = Math.sin(baseAngle * 2 + rng() * Math.PI * 2) * 15
                       + Math.sin(baseAngle * 3 + rng() * Math.PI * 2) * 10
-                      + (rng() - 0.5) * def.curves * 1.5;
+                      + (rng() - 0.5) * def.curves * 0.8;
     const radius = 80 + radiusNoise;
     const x = Math.cos(baseAngle) * radius;
     const z = Math.sin(baseAngle) * radius;
@@ -440,18 +440,23 @@ function generateTrack(def: (typeof TRACK_DEFS)[number]): TrackDef {
     }
   }
 
-  // Second smoothing pass: average each point with its neighbors to eliminate any remaining jitter
-  const smoothed: THREE.Vector3[] = [];
-  for (let i = 0; i < pts.length; i++) {
-    const prev = pts[(i - 1 + pts.length) % pts.length];
-    const curr = pts[i];
-    const next = pts[(i + 1) % pts.length];
-    smoothed.push(new THREE.Vector3(
-      (prev.x + curr.x * 2 + next.x) / 4,
-      Math.max(0, (prev.y + curr.y * 2 + next.y) / 4),
-      (prev.z + curr.z * 2 + next.z) / 4,
-    ));
+  // Multiple smoothing passes: average each point with its neighbors to eliminate sharp corners
+  let smoothInput = pts;
+  for (let pass = 0; pass < 4; pass++) {
+    const smoothOutput: THREE.Vector3[] = [];
+    for (let i = 0; i < smoothInput.length; i++) {
+      const prev = smoothInput[(i - 1 + smoothInput.length) % smoothInput.length];
+      const curr = smoothInput[i];
+      const next = smoothInput[(i + 1) % smoothInput.length];
+      smoothOutput.push(new THREE.Vector3(
+        (prev.x + curr.x * 2 + next.x) / 4,
+        Math.max(0, (prev.y + curr.y * 2 + next.y) / 4),
+        (prev.z + curr.z * 2 + next.z) / 4,
+      ));
+    }
+    smoothInput = smoothOutput;
   }
+  const smoothed = smoothInput;
 
   const trackPoints: TrackPoint[] = [];
   let totalLength = 0;
@@ -1313,6 +1318,15 @@ export class ChariotGame {
 
       if (k === "v" && this._phase === "racing") {
         this._rearView = !this._rearView;
+      }
+
+      if (k === "r" && this._phase === "racing") {
+        // 180-degree U-turn
+        const p = this._racers[0];
+        if (p) {
+          p.angle += Math.PI;
+          p.speed *= 0.3; // lose most speed on a U-turn
+        }
       }
 
       if (k === "m") {
@@ -2874,38 +2888,204 @@ export class ChariotGame {
       const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(lateralOff));
       pos.y = POWERUP_FLOAT_HEIGHT;
 
-      const geo = new THREE.OctahedronGeometry(0.9, 1);
-      const mat = new THREE.MeshLambertMaterial({
-        color: POWERUP_COLORS[type], emissive: POWERUP_COLORS[type],
-        emissiveIntensity: 1.8, transparent: true, opacity: 0.9, toneMapped: false,
+      const puColor = POWERUP_COLORS[type];
+      const puMat = new THREE.MeshStandardMaterial({
+        color: puColor, emissive: puColor, emissiveIntensity: 2.5,
+        toneMapped: false, metalness: 0.4, roughness: 0.15,
       });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.copy(pos); this._scene.add(mesh);
-
-      // Glow ring on ground (larger)
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(1.2, 1.6, 20),
-        new THREE.MeshStandardMaterial({ color: POWERUP_COLORS[type], emissive: POWERUP_COLORS[type], emissiveIntensity: 1.0, transparent: true, opacity: 0.5, side: THREE.DoubleSide, toneMapped: false })
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = -POWERUP_FLOAT_HEIGHT + 0.05;
-      mesh.add(ring);
-
-      // Vertical light beam (visible from far away)
-      const beamGeo = new THREE.CylinderGeometry(0.08, 0.08, 5, 8);
-      const beamMat = new THREE.MeshBasicMaterial({
-        color: POWERUP_COLORS[type], transparent: true, opacity: 0.15, toneMapped: false,
+      const whiteMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 2.0, toneMapped: false,
       });
-      const beam = new THREE.Mesh(beamGeo, beamMat);
-      beam.position.y = 1.5;
-      mesh.add(beam);
+      const crystalMat = new THREE.MeshStandardMaterial({
+        color: puColor, emissive: puColor, emissiveIntensity: 1.0,
+        transparent: true, opacity: 0.35, toneMapped: false, side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Group() as THREE.Group & { rotation: THREE.Euler; position: THREE.Vector3 };
+      mesh.position.copy(pos);
+      this._scene.add(mesh);
 
-      // Outer glow sphere
-      const glowSphere = new THREE.Mesh(
-        new THREE.SphereGeometry(1.5, 12, 10),
-        new THREE.MeshBasicMaterial({ color: POWERUP_COLORS[type], transparent: true, opacity: 0.06, toneMapped: false })
+      // Outer crystal shell (icosahedron — visible from distance)
+      const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 1), crystalMat);
+      mesh.add(shell);
+
+      // Inner solid icon per type (scaled up for visibility)
+      if (type === "boost") {
+        // Large winged arrow
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.0, 12), puMat);
+        shaft.rotation.z = Math.PI / 2;
+        mesh.add(shaft);
+        const head = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 12), puMat);
+        head.rotation.z = -Math.PI / 2; head.position.x = 0.7;
+        mesh.add(head);
+        // Fletching at back
+        const fletch = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 12), puMat);
+        fletch.rotation.z = Math.PI / 2; fletch.position.x = -0.6;
+        mesh.add(fletch);
+        // Swept wings
+        for (const side of [-1, 1]) {
+          const wing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.35), puMat);
+          wing.position.set(0, side * 0.25, 0);
+          wing.rotation.x = side * 0.3;
+          mesh.add(wing);
+          const wingTip = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 0.2), puMat);
+          wingTip.position.set(-0.3, side * 0.4, 0);
+          wingTip.rotation.x = side * 0.5;
+          mesh.add(wingTip);
+        }
+        // Speed lines (trailing)
+        for (let sl = 0; sl < 3; sl++) {
+          const line = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 6), whiteMat);
+          line.rotation.z = Math.PI / 2;
+          line.position.set(-0.9, (sl - 1) * 0.2, 0);
+          line.material = new THREE.MeshStandardMaterial({ color: puColor, emissive: puColor, emissiveIntensity: 1.5, transparent: true, opacity: 0.5, toneMapped: false });
+          mesh.add(line);
+        }
+      } else if (type === "shield") {
+        // Large shield with boss/rivets
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.55), puMat);
+        body.scale.set(0.85, 1.1, 0.35);
+        mesh.add(body);
+        // Shield border rim
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 12, 32), new THREE.MeshStandardMaterial({ color: 0x88bbff, emissive: 0x4488ff, emissiveIntensity: 1.0, metalness: 0.6, roughness: 0.2, toneMapped: false }));
+        rim.scale.set(0.85, 1.1, 1);
+        rim.position.z = 0.05;
+        mesh.add(rim);
+        // Central boss (raised circle)
+        const boss = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), whiteMat);
+        boss.position.z = 0.22; boss.scale.z = 0.5;
+        mesh.add(boss);
+        // Cross emblem
+        const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.1), whiteMat);
+        crossV.position.z = 0.15; mesh.add(crossV);
+        const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.1), whiteMat);
+        crossH.position.set(0, 0.12, 0.15); mesh.add(crossH);
+        // Corner rivets
+        for (let rv = 0; rv < 8; rv++) {
+          const rvA = (rv / 8) * Math.PI * 2;
+          const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshStandardMaterial({ color: 0xccddff, metalness: 0.7, roughness: 0.2, toneMapped: false }));
+          rivet.position.set(Math.cos(rvA) * 0.45, Math.sin(rvA) * 0.5, 0.18);
+          mesh.add(rivet);
+        }
+      } else if (type === "lightning") {
+        // Large bold lightning bolt
+        const boltMat = new THREE.MeshStandardMaterial({ color: 0xffff44, emissive: 0xffff00, emissiveIntensity: 4.0, toneMapped: false });
+        // Main zigzag bolt shape (thicker, more visible)
+        const boltParts = [
+          { x: 0.15, y: 0.55, rx: -0.5, w: 0.22, h: 0.55 },
+          { x: -0.05, y: 0.1, rx: 0.3, w: 0.28, h: 0.5 },
+          { x: 0.1, y: -0.35, rx: -0.4, w: 0.22, h: 0.5 },
+        ];
+        for (const bp of boltParts) {
+          const seg = new THREE.Mesh(new THREE.BoxGeometry(bp.w, bp.h, 0.15), boltMat);
+          seg.position.set(bp.x, bp.y, 0);
+          seg.rotation.z = bp.rx;
+          mesh.add(seg);
+        }
+        // Pointed tip at bottom
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 8), boltMat);
+        tip.position.set(0.15, -0.7, 0); tip.rotation.z = 0.2;
+        mesh.add(tip);
+        // Electric crackling arcs around the bolt
+        for (let arc = 0; arc < 6; arc++) {
+          const arcMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3 + Math.random() * 0.3, 6),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffaa, emissiveIntensity: 3.0, toneMapped: false }));
+          arcMesh.position.set((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.3);
+          arcMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+          mesh.add(arcMesh);
+        }
+        // Bright inner glow
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffffcc, transparent: true, opacity: 0.3, toneMapped: false }));
+        mesh.add(glow);
+      } else if (type === "oil") {
+        // Detailed Greek fire amphora
+        const vaseMat = new THREE.MeshStandardMaterial({ color: 0x996644, roughness: 0.6, metalness: 0.15 });
+        const vaseDarkMat = new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.7 });
+        // Body (lathe profile - use sphere scaled)
+        const vaseBody = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 14), vaseMat);
+        vaseBody.scale.set(1, 1.4, 1); vaseBody.position.y = -0.1;
+        mesh.add(vaseBody);
+        // Neck
+        const vaseNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, 0.35, 14), vaseMat);
+        vaseNeck.position.y = 0.4; mesh.add(vaseNeck);
+        // Lip/rim
+        const vaseRim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 10, 20), vaseMat);
+        vaseRim.position.y = 0.58; vaseRim.rotation.x = Math.PI / 2; mesh.add(vaseRim);
+        // Handles (two side handles)
+        for (const hs of [-1, 1]) {
+          const handle = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.025, 8, 12, Math.PI), vaseDarkMat);
+          handle.position.set(hs * 0.35, 0.25, 0);
+          handle.rotation.z = hs * Math.PI / 2;
+          mesh.add(handle);
+        }
+        // Decorative band around belly
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.02, 8, 20), vaseDarkMat);
+        band.position.y = 0; band.rotation.x = Math.PI / 2; mesh.add(band);
+        // Pattern dots on band
+        for (let pd = 0; pd < 10; pd++) {
+          const pda = (pd / 10) * Math.PI * 2;
+          const dot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), vaseDarkMat);
+          dot.position.set(Math.cos(pda) * 0.43, -0.1 + Math.sin(pd * 1.2) * 0.05, Math.sin(pda) * 0.43);
+          mesh.add(dot);
+        }
+        // Big flames erupting from top
+        const flameMat = new THREE.MeshStandardMaterial({ color: 0xff5500, emissive: 0xff3300, emissiveIntensity: 3.0, toneMapped: false });
+        const flameInnerMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 3.5, toneMapped: false });
+        // Central tall flame
+        const mainFlame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 10), flameInnerMat);
+        mainFlame.position.y = 0.85; mesh.add(mainFlame);
+        // Ring of flames
+        for (let fi = 0; fi < 6; fi++) {
+          const fa = (fi / 6) * Math.PI * 2;
+          const fh = 0.25 + Math.random() * 0.2;
+          const flame = new THREE.Mesh(new THREE.ConeGeometry(0.07, fh, 8), flameMat);
+          flame.position.set(Math.cos(fa) * 0.1, 0.6 + fh / 2, Math.sin(fa) * 0.1);
+          mesh.add(flame);
+        }
+        // Fire glow light
+        const fireLight = new THREE.PointLight(0xff4400, 0.8, 5);
+        fireLight.position.y = 0.8; mesh.add(fireLight);
+      }
+
+      // Ground ring pattern (triple rings)
+      for (let gr = 0; gr < 3; gr++) {
+        const ringR = 0.7 + gr * 0.4;
+        const ringOp = 0.35 - gr * 0.1;
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(ringR - 0.06, ringR + 0.06, 32),
+          new THREE.MeshStandardMaterial({ color: puColor, emissive: puColor, emissiveIntensity: 0.8, transparent: true, opacity: ringOp, side: THREE.DoubleSide, toneMapped: false })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = -POWERUP_FLOAT_HEIGHT + 0.04 + gr * 0.01;
+        mesh.add(ring);
+      }
+
+      // Vertical light beam (dual tapered)
+      const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.15, 7, 12),
+        new THREE.MeshBasicMaterial({ color: puColor, transparent: true, opacity: 0.1, toneMapped: false })
       );
-      mesh.add(glowSphere);
+      beam.position.y = 2; mesh.add(beam);
+      // Inner bright beam
+      const beamInner = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.06, 5, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.08, toneMapped: false })
+      );
+      beamInner.position.y = 1.5; mesh.add(beamInner);
+
+      // Orbiting sparkles (6, larger)
+      for (let sp = 0; sp < 6; sp++) {
+        const sparkle = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.07, 0),
+          new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: puColor, emissiveIntensity: 2.0, toneMapped: false })
+        );
+        const spA = (sp / 6) * Math.PI * 2;
+        sparkle.position.set(Math.cos(spA) * 1.0, Math.sin(spA * 2) * 0.4, Math.sin(spA) * 1.0);
+        mesh.add(sparkle);
+      }
+
+      // Point light for the powerup itself
+      const puLight = new THREE.PointLight(puColor, 0.6, 8);
+      puLight.position.y = 0.5; mesh.add(puLight);
 
       let dist = 0;
       for (let j = 0; j < i && j < track.points.length - 1; j++) {

@@ -230,6 +230,7 @@ export class DiabloRenderer {
 
   // Post-processing
   private _bloomComposer: EffectComposer | null = null;
+  private _bloomPass: UnrealBloomPass | null = null;
 
 
   private _mapCtx(): MapBuildContext {
@@ -357,7 +358,7 @@ export class DiabloRenderer {
 
     // Post-processing: bloom for magic effects, loot beams, emissive surfaces
     const renderPass = new RenderPass(this._scene, this._camera);
-    const bloomPass = new UnrealBloomPass(
+    this._bloomPass = new UnrealBloomPass(
       new THREE.Vector2(w, h),
       0.35,  // strength — subtle so it enhances without washing out
       0.4,   // radius
@@ -365,7 +366,7 @@ export class DiabloRenderer {
     );
     this._bloomComposer = new EffectComposer(this._renderer);
     this._bloomComposer.addPass(renderPass);
-    this._bloomComposer.addPass(bloomPass);
+    this._bloomComposer.addPass(this._bloomPass);
 
     // Sky dome
     const skyGeo = new THREE.SphereGeometry(150, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -8562,6 +8563,10 @@ export class DiabloRenderer {
     this._enemyMaterials.clear();
     this._lastEnemyHp.clear();
 
+    if (this._bloomPass) {
+      this._bloomPass.dispose();
+      this._bloomPass = null;
+    }
     if (this._bloomComposer) {
       this._bloomComposer.renderTarget1.dispose();
       this._bloomComposer.renderTarget2.dispose();
