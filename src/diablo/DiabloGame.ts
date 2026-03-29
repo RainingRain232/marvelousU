@@ -1042,6 +1042,8 @@ export class DiabloGame {
     this._state.spawnTimer = 0;
     this._mapClearRewardGiven = false;
     this._targetEnemyId = null;
+    this._fireTrailPositions = [];
+    this._petBuffs.length = 0;
     this._hudState.fullmapVisible = false;
     if (this._hudRefs) this._hudRefs.fullmapCanvas.style.display = "none";
 

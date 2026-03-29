@@ -1088,22 +1088,12 @@ export class DiabloRenderer {
     for (const mesh of this._particleMeshPool) {
       persistent.add(mesh);
     }
-    // Keep gameplay entity meshes (enemies, loot, projectiles, etc.) — they are
-    // managed by their own sync methods, not by buildMap.
-    for (const [, m] of this._enemyMeshes) persistent.add(m);
-    for (const [, m] of this._projectileMeshes) persistent.add(m);
-    for (const [, m] of this._lootMeshes) persistent.add(m);
-    for (const [, m] of this._chestMeshes) persistent.add(m);
-    for (const [, m] of this._aoeMeshes) persistent.add(m);
+    // Keep only truly persistent UI/player objects — entity meshes are cleared explicitly
     for (const [, m] of this._vendorMeshes) persistent.add(m);
     for (const [, m] of this._pylonMeshes) persistent.add(m);
     for (const [, m] of this._townfolkMeshes) persistent.add(m);
     if (this._portalNpcMesh) persistent.add(this._portalNpcMesh);
-    for (const [, m] of this._floatTextSprites) persistent.add(m);
-    for (const [, m] of this._shieldMeshes) persistent.add(m);
     for (const [, m] of this._healBeams) persistent.add(m);
-    for (const [, m] of this._petMeshes) persistent.add(m);
-    for (const [, m] of this._bossWarningRings) persistent.add(m);
     if (this._castEffectGroup) persistent.add(this._castEffectGroup);
     for (const fx of this._impactEffects) persistent.add(fx);
     if (this._playerStatusFxGroup) persistent.add(this._playerStatusFxGroup);
@@ -1126,6 +1116,50 @@ export class DiabloRenderer {
 
     // 2b. Clear tracked water meshes (they live in _envGroup or scene, already disposed above)
     this._waterMeshes = [];
+
+    // 2c. Clear telegraph meshes (boss ability indicators)
+    for (const [, m] of this._telegraphMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._telegraphMeshes.clear();
+
+    // 2d. Clear boss effect meshes
+    for (const [, m] of this._bossEffectMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._bossEffectMeshes.clear();
+
+    // 2e. Clear boss warning rings
+    for (const [, m] of this._bossWarningRings) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._bossWarningRings.clear();
+
+    // 2f. Clear rain drops and splashes
+    for (const drop of this._rainDrops) { this._disposeObject3D(drop); this._scene.remove(drop); }
+    this._rainDrops = [];
+    for (const splash of this._rainSplashes) { this._disposeObject3D(splash); this._scene.remove(splash); }
+    this._rainSplashes = [];
+
+    // 2g. Clear ambient motes
+    for (const mote of this._ambientMotes) { this._disposeObject3D(mote.mesh); this._scene.remove(mote.mesh); }
+    this._ambientMotes = [];
+
+    // 2h. Clear dying animation tracking and enemy material caches
+    this._dyingAnims.clear();
+    this._enemyMaterials.clear();
+
+    // 2i. Clear entity meshes (enemies, loot, projectiles, etc.)
+    for (const [, m] of this._enemyMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._enemyMeshes.clear();
+    for (const [, m] of this._projectileMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._projectileMeshes.clear();
+    for (const [, m] of this._lootMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._lootMeshes.clear();
+    for (const [, m] of this._chestMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._chestMeshes.clear();
+    for (const [, m] of this._aoeMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._aoeMeshes.clear();
+    for (const [, m] of this._shieldMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._shieldMeshes.clear();
+    for (const [, m] of this._petMeshes) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._petMeshes.clear();
+    for (const [, m] of this._floatTextSprites) { this._disposeObject3D(m); this._scene.remove(m); }
+    this._floatTextSprites.clear();
 
     // 3. Remove ALL non-persistent objects from the scene (catches objects
     //    added directly to _scene by map builders instead of _envGroup)

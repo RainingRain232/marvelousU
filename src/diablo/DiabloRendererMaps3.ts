@@ -5932,5 +5932,767 @@ export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: numbe
     mctx.buildingColliders = cottagePositions.map(([x, z]) => [x, z, 2, 2] as [number, number, number, number]);
     mctx.buildingColliders.push([wmX, wmZ, 3, 2.5]); // Mill
     mctx.buildingColliders.push([-3, -3, 1.2, 1.2]); // Well
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ── ENHANCED DETAIL BELOW ──
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ── Improved lighting ──
+    mctx.scene.fog = new THREE.FogExp2(0x99bbaa, 0.004); // Less dense fog
+    mctx.dirLight.intensity = 1.8;
+    mctx.ambientLight.intensity = 0.75;
+
+    // ── River detail: reeds along the banks ──
+    const reedMat = new THREE.MeshStandardMaterial({ color: 0x556b2f, roughness: 0.7 });
+    const reedTopMat = new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.6 });
+    // Reset river walk for reed/lily placement
+    let rrx = -hw * 0.4, rrz = -hd * 0.5, rrAngle = 0.8;
+    for (let seg = 0; seg < 25; seg++) {
+        rrAngle += (Math.random() - 0.5) * 0.3;
+        const segLen = 3 + Math.random() * 2;
+        const nnx = rrx + Math.cos(rrAngle) * segLen, nnz = rrz + Math.sin(rrAngle) * segLen;
+        const mmx = (rrx + nnx) / 2, mmz = (rrz + nnz) / 2;
+        const rty = getTerrainHeight(mmx, mmz, 0.5);
+        const rsw = 2.5 + Math.sin(seg * 0.5) * 0.5;
+        // Reeds on both banks
+        for (const side of [-1, 1]) {
+            if (Math.random() > 0.4) {
+                const reedCount = 2 + Math.floor(Math.random() * 4);
+                for (let r = 0; r < reedCount; r++) {
+                    const reedH = 0.6 + Math.random() * 0.8;
+                    const rOffX = mmx + Math.sin(rrAngle) * (rsw / 2 + 0.2 + Math.random() * 0.5) * side + (Math.random() - 0.5) * 0.3;
+                    const rOffZ = mmz - Math.cos(rrAngle) * (rsw / 2 + 0.2 + Math.random() * 0.5) * side + (Math.random() - 0.5) * 0.3;
+                    const reed = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, reedH, 4), reedMat);
+                    reed.position.set(rOffX, getTerrainHeight(rOffX, rOffZ, 0.5) + reedH / 2, rOffZ);
+                    reed.rotation.z = (Math.random() - 0.5) * 0.15;
+                    mctx.scene.add(reed);
+                    // Reed top tuft
+                    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 4), reedTopMat);
+                    tuft.position.set(rOffX, getTerrainHeight(rOffX, rOffZ, 0.5) + reedH + 0.02, rOffZ);
+                    tuft.scale.set(1, 2, 1);
+                    mctx.scene.add(tuft);
+                }
+            }
+        }
+        // Lily pads on the water surface
+        if (Math.random() > 0.5) {
+            const lilyCount = 1 + Math.floor(Math.random() * 3);
+            for (let l = 0; l < lilyCount; l++) {
+                const lx = mmx + (Math.random() - 0.5) * rsw * 0.6;
+                const lz = mmz + (Math.random() - 0.5) * 1.0;
+                const lilyPad = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.12 + Math.random() * 0.1, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x2d8a4e, roughness: 0.4 })
+                );
+                lilyPad.rotation.x = -Math.PI / 2;
+                lilyPad.position.set(lx, rty + 0.04, lz);
+                mctx.scene.add(lilyPad);
+                // Small flower on some lily pads
+                if (Math.random() > 0.5) {
+                    const lilyFlower = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.04, 6, 4),
+                        new THREE.MeshStandardMaterial({ color: 0xffccee, emissive: 0x331111, emissiveIntensity: 0.3 })
+                    );
+                    lilyFlower.position.set(lx, rty + 0.07, lz);
+                    mctx.scene.add(lilyFlower);
+                }
+            }
+        }
+        // Stepping stones in shallow areas
+        if (seg === 8 || seg === 18) {
+            const stoneCount = 4 + Math.floor(Math.random() * 3);
+            for (let s = 0; s < stoneCount; s++) {
+                const frac = s / (stoneCount - 1);
+                const ssx = mmx + Math.sin(rrAngle) * (rsw * 0.9) * (frac - 0.5);
+                const ssz = mmz - Math.cos(rrAngle) * (rsw * 0.9) * (frac - 0.5);
+                const stepStone = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.2 + Math.random() * 0.1, 0.25, 0.12, 6),
+                    new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.9 })
+                );
+                stepStone.position.set(ssx, rty + 0.06, ssz);
+                stepStone.rotation.y = Math.random() * Math.PI;
+                mctx.scene.add(stepStone);
+            }
+        }
+        rrx = nnx; rrz = nnz;
+    }
+
+    // ── Wooden dock / pier ──
+    const dockX = -hw * 0.4 + 12, dockZ = -hd * 0.5 + 8;
+    const dockY = getTerrainHeight(dockX, dockZ, 0.5);
+    const dockMat = new THREE.MeshStandardMaterial({ color: 0x7a5c3a, roughness: 0.85 });
+    // Pier platform extending over the water
+    const pierLen = 5, pierW = 1.8;
+    const pierDeck = new THREE.Mesh(new THREE.BoxGeometry(pierW, 0.1, pierLen), dockMat);
+    pierDeck.position.set(dockX, dockY + 0.6, dockZ + pierLen / 2);
+    mctx.scene.add(pierDeck);
+    // Pier support pilings
+    for (const px of [-0.7, 0.7]) {
+        for (let pz = 0; pz < pierLen; pz += 1.5) {
+            const piling = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.4, 6), dockMat);
+            piling.position.set(dockX + px, dockY, dockZ + pz);
+            mctx.scene.add(piling);
+        }
+    }
+    // Mooring posts at end of pier
+    for (const side of [-0.6, 0.6]) {
+        const moorPost = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), dockMat);
+        moorPost.position.set(dockX + side, dockY + 0.9, dockZ + pierLen - 0.3);
+        mctx.scene.add(moorPost);
+    }
+    // Rope between mooring posts
+    const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8B7D6B, roughness: 0.9 });
+    const rope = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.015, 4, 12, Math.PI), ropeMat);
+    rope.position.set(dockX, dockY + 0.75, dockZ + pierLen - 0.3);
+    rope.rotation.x = Math.PI / 2;
+    mctx.scene.add(rope);
+
+    // ── Fishing nets draped near dock ──
+    const netMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.7, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    for (let ni = 0; ni < 3; ni++) {
+        const netX = dockX + 2 + ni * 1.5, netZ = dockZ + 1;
+        const netY = getTerrainHeight(netX, netZ, 0.5);
+        // Net hung between two poles
+        const poleA = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 4), woodMat);
+        poleA.position.set(netX - 0.5, netY + 0.8, netZ);
+        mctx.scene.add(poleA);
+        const poleB = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 4), woodMat);
+        poleB.position.set(netX + 0.5, netY + 0.8, netZ);
+        mctx.scene.add(poleB);
+        const netMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.2), netMat);
+        netMesh.position.set(netX, netY + 0.9, netZ + 0.02);
+        mctx.scene.add(netMesh);
+    }
+
+    // ── Additional cottages: burned/ruined buildings ──
+    const ruinedWallMat = new THREE.MeshStandardMaterial({ color: 0x555544, roughness: 0.95 });
+    const charredMat = new THREE.MeshStandardMaterial({ color: 0x222211, roughness: 0.95 });
+    const extraCottages: [number, number, boolean][] = [
+        [-25, 0, true], [28, -2, true], [-5, -25, false], [18, 25, false],
+    ];
+    for (const [ecx, ecz, ruined] of extraCottages) {
+        const ecy = getTerrainHeight(ecx, ecz, 0.5);
+        const ecw = 2.2 + Math.random() * 1.5;
+        const ecd = 2 + Math.random() * 1.2;
+        const ech = ruined ? 1.2 + Math.random() * 0.8 : 2.5 + Math.random() * 0.8;
+        const wMat = ruined ? ruinedWallMat : wallMat;
+        // Walls (ruined ones are shorter and jagged)
+        const eWall = new THREE.Mesh(new THREE.BoxGeometry(ecw, ech, ecd), wMat);
+        eWall.position.set(ecx, ecy + ech / 2, ecz);
+        eWall.castShadow = true;
+        mctx.scene.add(eWall);
+        if (ruined) {
+            // Charred beams sticking out
+            for (let b = 0; b < 3; b++) {
+                const beam = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.5 + Math.random()), charredMat);
+                beam.position.set(ecx + (Math.random() - 0.5) * ecw * 0.6, ecy + ech + 0.1, ecz + (Math.random() - 0.5) * ecd * 0.3);
+                beam.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, (Math.random() - 0.5) * 0.8);
+                mctx.scene.add(beam);
+            }
+            // Rubble around the ruin
+            for (let r = 0; r < 6; r++) {
+                const rubble = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.1 + Math.random() * 0.15, 0),
+                    new THREE.MeshStandardMaterial({ color: 0x555544 + Math.floor(Math.random() * 0x111111), roughness: 0.95 })
+                );
+                rubble.position.set(
+                    ecx + (Math.random() - 0.5) * (ecw + 2),
+                    ecy + 0.08,
+                    ecz + (Math.random() - 0.5) * (ecd + 2)
+                );
+                mctx.scene.add(rubble);
+            }
+            // Scorch marks on ground
+            const scorch = new THREE.Mesh(
+                new THREE.CircleGeometry(1.5 + Math.random(), 8),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a11, roughness: 1 })
+            );
+            scorch.rotation.x = -Math.PI / 2;
+            scorch.position.set(ecx, ecy + 0.01, ecz);
+            mctx.scene.add(scorch);
+        } else {
+            // Intact roof
+            const rH = 1.2 + Math.random() * 0.4;
+            const eRoof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(ecw, ecd) * 0.8, rH, 4), thatchMat);
+            eRoof.position.set(ecx, ecy + ech + rH / 2, ecz);
+            eRoof.rotation.y = Math.PI / 4;
+            mctx.scene.add(eRoof);
+            // Door + window
+            const eDoor = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), new THREE.MeshStandardMaterial({ color: 0x4a3218 }));
+            eDoor.position.set(ecx, ecy + 0.6, ecz + ecd / 2 + 0.02);
+            mctx.scene.add(eDoor);
+            const eWin = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x88aacc, transparent: true, opacity: 0.5 }));
+            eWin.position.set(ecx + ecw * 0.3, ecy + ech * 0.6, ecz + ecd / 2 + 0.02);
+            mctx.scene.add(eWin);
+        }
+        mctx.buildingColliders.push([ecx, ecz, ecw, ecd]);
+    }
+
+    // ── Small chapel with bell ──
+    const chapX = 5, chapZ = -18;
+    const chapY = getTerrainHeight(chapX, chapZ, 0.5);
+    // Chapel body
+    const chapBody = new THREE.Mesh(new THREE.BoxGeometry(3.5, 4, 5), stoneMat);
+    chapBody.position.set(chapX, chapY + 2, chapZ);
+    chapBody.castShadow = true;
+    mctx.scene.add(chapBody);
+    // Chapel steep roof
+    const chapRoof = new THREE.Mesh(new THREE.ConeGeometry(3.5, 2.5, 4), new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 }));
+    chapRoof.position.set(chapX, chapY + 5.25, chapZ);
+    chapRoof.rotation.y = Math.PI / 4;
+    mctx.scene.add(chapRoof);
+    // Bell tower (small steeple on top)
+    const steepleBase = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 1), stoneMat);
+    steepleBase.position.set(chapX, chapY + 6.5, chapZ);
+    mctx.scene.add(steepleBase);
+    const steepleRoof = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.2, 4), new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.85 }));
+    steepleRoof.position.set(chapX, chapY + 7.85, chapZ);
+    steepleRoof.rotation.y = Math.PI / 4;
+    mctx.scene.add(steepleRoof);
+    // Bell inside steeple
+    const bellMat = new THREE.MeshStandardMaterial({ color: 0xb8860b, metalness: 0.6, roughness: 0.3 });
+    const bell = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.7), bellMat);
+    bell.position.set(chapX, chapY + 6.8, chapZ);
+    mctx.scene.add(bell);
+    // Chapel front door (arched)
+    const chapDoor = new THREE.Mesh(new THREE.PlaneGeometry(1, 2), new THREE.MeshStandardMaterial({ color: 0x3a2010 }));
+    chapDoor.position.set(chapX, chapY + 1, chapZ + 2.52);
+    mctx.scene.add(chapDoor);
+    // Circular window above door
+    const roseWindow = new THREE.Mesh(
+        new THREE.CircleGeometry(0.4, 12),
+        new THREE.MeshStandardMaterial({ color: 0x6688cc, transparent: true, opacity: 0.6, emissive: 0x223344, emissiveIntensity: 0.3 })
+    );
+    roseWindow.position.set(chapX, chapY + 3.2, chapZ + 2.52);
+    mctx.scene.add(roseWindow);
+    // Cross on top
+    const crossMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.7 });
+    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.08), crossMat);
+    crossV.position.set(chapX, chapY + 8.7, chapZ);
+    mctx.scene.add(crossV);
+    const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.08), crossMat);
+    crossH.position.set(chapX, chapY + 8.6, chapZ);
+    mctx.scene.add(crossH);
+    mctx.buildingColliders.push([chapX, chapZ, 3, 4]);
+
+    // ── Overturned carts ──
+    const cartMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+    const cartPositions: [number, number, number][] = [
+        [-15, 5, 0.4], [10, 12, -0.6], [20, -20, 1.2],
+    ];
+    for (const [ccx, ccz, rot] of cartPositions) {
+        const ccy = getTerrainHeight(ccx, ccz, 0.5);
+        const cartGroup = new THREE.Group();
+        // Cart bed
+        const cartBed = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 1), cartMat);
+        cartGroup.add(cartBed);
+        // Cart sides
+        const cartSide1 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.06), cartMat);
+        cartSide1.position.set(0, 0.2, 0.47);
+        cartGroup.add(cartSide1);
+        const cartSide2 = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.06), cartMat);
+        cartSide2.position.set(0, 0.2, -0.47);
+        cartGroup.add(cartSide2);
+        const cartBack = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 1), cartMat);
+        cartBack.position.set(-0.87, 0.2, 0);
+        cartGroup.add(cartBack);
+        // Wheels
+        for (const [wx, wz] of [[-0.6, 0.55], [-0.6, -0.55], [0.6, 0.55], [0.6, -0.55]] as [number, number][]) {
+            const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 6, 12), cartMat);
+            wheel.position.set(wx, -0.05, wz);
+            wheel.rotation.y = Math.PI / 2;
+            cartGroup.add(wheel);
+        }
+        // Tip the cart over
+        cartGroup.position.set(ccx, ccy + 0.5, ccz);
+        cartGroup.rotation.set(0.8, rot, 0.3);
+        mctx.scene.add(cartGroup);
+    }
+
+    // ── Broken barrels ──
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+    const barrelBandMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.4, roughness: 0.6 });
+    const barrelPositions: [number, number, boolean][] = [
+        [-10, 10, false], [-9, 10.5, true], [14, -8, false], [14.5, -7.5, true],
+        [20, 15, false], [-20, -10, true], [0, 15, false],
+    ];
+    for (const [bbx, bbz, broken] of barrelPositions) {
+        const bby = getTerrainHeight(bbx, bbz, 0.5);
+        if (broken) {
+            // Broken barrel on its side
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.7, 8), barrelMat);
+            barrel.position.set(bbx, bby + 0.3, bbz);
+            barrel.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
+            barrel.rotation.y = Math.random() * Math.PI;
+            mctx.scene.add(barrel);
+            // Spilled contents (dark puddle)
+            const puddle = new THREE.Mesh(
+                new THREE.CircleGeometry(0.4 + Math.random() * 0.3, 8),
+                new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.3 })
+            );
+            puddle.rotation.x = -Math.PI / 2;
+            puddle.position.set(bbx + 0.4, bby + 0.01, bbz);
+            mctx.scene.add(puddle);
+        } else {
+            // Upright barrel
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8), barrelMat);
+            barrel.position.set(bbx, bby + 0.4, bbz);
+            mctx.scene.add(barrel);
+            // Metal bands
+            for (const bandY of [0.15, 0.45]) {
+                const band = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.015, 4, 12), barrelBandMat);
+                band.position.set(bbx, bby + bandY, bbz);
+                band.rotation.x = Math.PI / 2;
+                mctx.scene.add(band);
+            }
+        }
+    }
+
+    // ── Scattered tools and abandoned items ──
+    const toolMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.5, roughness: 0.5 });
+    const handleMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+    // Pitchfork
+    {
+        const pfx = -14, pfz = 8;
+        const pfy = getTerrainHeight(pfx, pfz, 0.5);
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5, 4), handleMat);
+        handle.position.set(pfx, pfy + 0.2, pfz);
+        handle.rotation.z = 1.2;
+        mctx.scene.add(handle);
+        for (let t = -1; t <= 1; t++) {
+            const tine = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 4), toolMat);
+            tine.position.set(pfx + 0.7, pfy + 0.85 + t * 0.04, pfz + t * 0.06);
+            tine.rotation.z = 1.2;
+            mctx.scene.add(tine);
+        }
+    }
+    // Shovel
+    {
+        const shx = 16, shz = 5;
+        const shy = getTerrainHeight(shx, shz, 0.5);
+        const shHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.4, 4), handleMat);
+        shHandle.position.set(shx, shy + 0.15, shz);
+        shHandle.rotation.z = 1.4;
+        mctx.scene.add(shHandle);
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.25, 0.02), toolMat);
+        blade.position.set(shx + 0.65, shy + 0.9, shz);
+        blade.rotation.z = 1.4;
+        mctx.scene.add(blade);
+    }
+    // Bucket knocked over
+    {
+        const bkx = -4, bkz = -5;
+        const bky = getTerrainHeight(bkx, bkz, 0.5);
+        const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.35, 8, 1, true), woodMat);
+        bucket.position.set(bkx, bky + 0.15, bkz);
+        bucket.rotation.z = Math.PI / 2 + 0.3;
+        mctx.scene.add(bucket);
+        const bucketHandle = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.01, 4, 8, Math.PI), toolMat);
+        bucketHandle.position.set(bkx, bky + 0.2, bkz);
+        bucketHandle.rotation.x = Math.PI / 4;
+        mctx.scene.add(bucketHandle);
+    }
+
+    // ── Torn banners ──
+    const bannerColors = [0x883322, 0x224488, 0x448833];
+    const bannerPositions: [number, number][] = [[-8, -12], [12, 8], [-22, 18]];
+    for (let bi = 0; bi < bannerPositions.length; bi++) {
+        const [bnx, bnz] = bannerPositions[bi];
+        const bny = getTerrainHeight(bnx, bnz, 0.5);
+        // Banner pole
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 3, 6), woodMat);
+        pole.position.set(bnx, bny + 1.5, bnz);
+        mctx.scene.add(pole);
+        // Torn banner cloth (plane with uneven look)
+        const bannerCloth = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.8, 1.2, 4, 4),
+            new THREE.MeshStandardMaterial({ color: bannerColors[bi], roughness: 0.7, side: THREE.DoubleSide })
+        );
+        bannerCloth.position.set(bnx + 0.4, bny + 2.4, bnz);
+        bannerCloth.rotation.y = Math.random() * 0.3;
+        // Deform vertices to look torn
+        const bannerGeo = bannerCloth.geometry as THREE.PlaneGeometry;
+        const posArr = bannerGeo.attributes.position;
+        for (let v = 0; v < posArr.count; v++) {
+            const vy = posArr.getY(v);
+            if (vy < -0.3) {
+                posArr.setX(v, posArr.getX(v) + (Math.random() - 0.5) * 0.2);
+                posArr.setY(v, posArr.getY(v) + (Math.random() - 0.5) * 0.15);
+            }
+        }
+        posArr.needsUpdate = true;
+        bannerGeo.computeVertexNormals();
+        mctx.scene.add(bannerCloth);
+    }
+
+    // ── Willow trees along the river ──
+    const willowPositions: [number, number][] = [
+        [-hw * 0.35, -hd * 0.3], [-hw * 0.2, -hd * 0.1], [hw * 0.1, hd * 0.15],
+        [hw * 0.25, hd * 0.3], [-hw * 0.05, hd * 0.05],
+    ];
+    const willowLeafMat = new THREE.MeshStandardMaterial({ color: 0x5a9a2a, roughness: 0.5, transparent: true, opacity: 0.55 });
+    const willowBarkMat = new THREE.MeshStandardMaterial({ color: 0x4a3a20, roughness: 0.95 });
+    for (const [wtx, wtz] of willowPositions) {
+        const wty = getTerrainHeight(wtx, wtz, 0.5);
+        const trunkH = 3.5 + Math.random() * 1.5;
+        // Thick trunk
+        const wTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.35, trunkH, 8), willowBarkMat);
+        wTrunk.position.set(wtx, wty + trunkH / 2, wtz);
+        mctx.scene.add(wTrunk);
+        // Canopy dome
+        const wCanopy = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 8), willowLeafMat);
+        wCanopy.position.set(wtx, wty + trunkH + 0.8, wtz);
+        wCanopy.scale.y = 0.6;
+        mctx.scene.add(wCanopy);
+        // Drooping branches (hanging cylinders around the canopy edge)
+        const branchCount = 12 + Math.floor(Math.random() * 8);
+        for (let br = 0; br < branchCount; br++) {
+            const angle = (br / branchCount) * Math.PI * 2 + Math.random() * 0.3;
+            const dist = 1.5 + Math.random() * 0.8;
+            const hangLen = 1.5 + Math.random() * 2;
+            const bx = wtx + Math.cos(angle) * dist;
+            const bz = wtz + Math.sin(angle) * dist;
+            const droop = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.008, 0.005, hangLen, 3),
+                willowLeafMat
+            );
+            droop.position.set(bx, wty + trunkH + 0.5 - hangLen / 2, bz);
+            mctx.scene.add(droop);
+            // Small leaf clusters on drooping branches
+            const leafCluster = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 4, 3),
+                willowLeafMat
+            );
+            leafCluster.position.set(bx, wty + trunkH - hangLen * 0.3, bz);
+            mctx.scene.add(leafCluster);
+        }
+    }
+
+    // ── Bushes and overgrown gardens ──
+    const bushMat = new THREE.MeshStandardMaterial({ color: 0x3a7a22, roughness: 0.6, transparent: true, opacity: 0.75 });
+    const darkBushMat = new THREE.MeshStandardMaterial({ color: 0x2a5a18, roughness: 0.65, transparent: true, opacity: 0.7 });
+    for (let bi2 = 0; bi2 < 30; bi2++) {
+        const bsx = (Math.random() - 0.5) * w * 0.7;
+        const bsz = (Math.random() - 0.5) * d * 0.7;
+        const bsy = getTerrainHeight(bsx, bsz, 0.5);
+        const bSize = 0.3 + Math.random() * 0.5;
+        const bush = new THREE.Mesh(
+            new THREE.SphereGeometry(bSize, 6, 5),
+            Math.random() > 0.5 ? bushMat : darkBushMat
+        );
+        bush.position.set(bsx, bsy + bSize * 0.6, bsz);
+        bush.scale.y = 0.6 + Math.random() * 0.3;
+        mctx.scene.add(bush);
+        // Berry clusters on some bushes
+        if (Math.random() > 0.6) {
+            for (let bb = 0; bb < 3; bb++) {
+                const berry = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.04, 4, 4),
+                    new THREE.MeshStandardMaterial({ color: 0xcc2233, roughness: 0.4 })
+                );
+                berry.position.set(
+                    bsx + (Math.random() - 0.5) * bSize,
+                    bsy + bSize * 0.5 + Math.random() * bSize * 0.3,
+                    bsz + (Math.random() - 0.5) * bSize
+                );
+                mctx.scene.add(berry);
+            }
+        }
+    }
+
+    // ── Cobblestone paths connecting buildings ──
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.9 });
+    const pathEdgeMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.95 });
+    // Main dirt road through the village (E-W)
+    for (let px = -hw * 0.7; px < hw * 0.7; px += 0.8) {
+        const pz2 = -3 + Math.sin(px * 0.1) * 2; // Gentle curve
+        const py = getTerrainHeight(px, pz2, 0.5);
+        const pathSeg = new THREE.Mesh(new THREE.PlaneGeometry(1, 2.5), pathMat);
+        pathSeg.rotation.x = -Math.PI / 2;
+        pathSeg.rotation.z = Math.sin(px * 0.1) * 0.1;
+        pathSeg.position.set(px, py + 0.02, pz2);
+        mctx.scene.add(pathSeg);
+        // Cobblestone bumps
+        if (Math.random() > 0.3) {
+            const cobble = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(0.06, 0),
+                pathMat
+            );
+            cobble.position.set(px + (Math.random() - 0.5) * 0.8, py + 0.03, pz2 + (Math.random() - 0.5) * 1);
+            cobble.scale.y = 0.4;
+            mctx.scene.add(cobble);
+        }
+    }
+    // Paths branching to cottages
+    const pathTargets: [number, number][] = [
+        [-20, -15], [-12, -20], [15, -18], [-18, 15], [-8, 22], [12, 20],
+    ];
+    for (const [ptx, ptz] of pathTargets) {
+        const steps = Math.floor(Math.sqrt(ptx * ptx + ptz * ptz) / 2);
+        for (let s = 0; s < steps; s++) {
+            const frac = s / steps;
+            const spx = ptx * frac;
+            const spz = -3 + (ptz + 3) * frac;
+            const spy = getTerrainHeight(spx, spz, 0.5);
+            const pathSeg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), pathMat);
+            pathSeg.rotation.x = -Math.PI / 2;
+            pathSeg.position.set(spx, spy + 0.02, spz);
+            mctx.scene.add(pathSeg);
+        }
+    }
+
+    // ── Ground fog patches ──
+    const fogPatchMat = new THREE.MeshStandardMaterial({
+        color: 0xccddcc, transparent: true, opacity: 0.15, roughness: 1, depthWrite: false,
+    });
+    for (let fi2 = 0; fi2 < 18; fi2++) {
+        const fgx = (Math.random() - 0.5) * w * 0.8;
+        const fgz = (Math.random() - 0.5) * d * 0.8;
+        const fgy = getTerrainHeight(fgx, fgz, 0.5);
+        const fogSize = 3 + Math.random() * 5;
+        const fogPatch = new THREE.Mesh(new THREE.PlaneGeometry(fogSize, fogSize), fogPatchMat);
+        fogPatch.rotation.x = -Math.PI / 2;
+        fogPatch.position.set(fgx, fgy + 0.15 + Math.random() * 0.2, fgz);
+        fogPatch.rotation.z = Math.random() * Math.PI;
+        mctx.scene.add(fogPatch);
+    }
+
+    // ── Warm lantern lights scattered through village ──
+    const lanternColors = [0xffaa44, 0xffcc66, 0xff9933, 0xffbb55];
+    const lanternPositions: [number, number][] = [
+        [-20, -15], [-12, -20], [15, -18], [22, -10],
+        [-18, 15], [-8, 22], [12, 20], [25, 12],
+        [bX - 2, bZ], [bX + 2, bZ], // Bridge lanterns
+        [wmX, wmZ], // Mill
+        [chapX, chapZ], // Chapel
+        [-3, -3], // Well
+        [dockX, dockZ + pierLen * 0.5], // Pier
+    ];
+    for (let li = 0; li < lanternPositions.length; li++) {
+        const [llx, llz] = lanternPositions[li];
+        const lly = getTerrainHeight(llx, llz, 0.5);
+        const lanternLight = new THREE.PointLight(lanternColors[li % lanternColors.length], 1.2, 10, 1.5);
+        lanternLight.position.set(llx, lly + 2.5, llz);
+        mctx.scene.add(lanternLight);
+        mctx.torchLights.push(lanternLight);
+        // Lantern physical housing
+        const lanternBody = new THREE.Mesh(
+            new THREE.BoxGeometry(0.15, 0.25, 0.15),
+            new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.5 })
+        );
+        lanternBody.position.set(llx, lly + 2.5, llz);
+        mctx.scene.add(lanternBody);
+        // Lantern glow core
+        const lanternGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06, 6, 4),
+            new THREE.MeshStandardMaterial({ color: lanternColors[li % lanternColors.length], emissive: lanternColors[li % lanternColors.length], emissiveIntensity: 1.5 })
+        );
+        lanternGlow.position.set(llx, lly + 2.5, llz);
+        mctx.scene.add(lanternGlow);
+        // Lantern pole (except for bridge lanterns which sit on the railing)
+        if (li >= 10) continue; // Skip poles for non-cottage lanterns
+        const lanternPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.5, 4), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.7 }));
+        lanternPole.position.set(llx + 0.5, lly + 1.25, llz + 0.5);
+        mctx.scene.add(lanternPole);
+    }
+
+    // ── Firefly-like motes ──
+    const moteMat = new THREE.MeshStandardMaterial({
+        color: 0xccff88, emissive: 0x88cc44, emissiveIntensity: 2.0, transparent: true, opacity: 0.6,
+    });
+    for (let mi = 0; mi < 40; mi++) {
+        const mx2 = (Math.random() - 0.5) * w * 0.7;
+        const mz2 = (Math.random() - 0.5) * d * 0.7;
+        const my2 = getTerrainHeight(mx2, mz2, 0.5) + 0.5 + Math.random() * 2.5;
+        const mote = new THREE.Mesh(new THREE.SphereGeometry(0.025, 4, 3), moteMat);
+        mote.position.set(mx2, my2, mz2);
+        mctx.scene.add(mote);
+    }
+
+    // ── Crates and supply boxes near market area ──
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x7a5c3a, roughness: 0.85 });
+    const cratePositions: [number, number, number][] = [
+        [-7, 10, 0.5], [-6.5, 10.3, 0.4], [-7.2, 10.6, 0.35],
+        [6, 9, 0.5], [6.3, 9.5, 0.4], [2, 9, 0.55],
+    ];
+    for (const [crx, crz, crSize] of cratePositions) {
+        const cry = getTerrainHeight(crx, crz, 0.5);
+        const crate = new THREE.Mesh(new THREE.BoxGeometry(crSize, crSize, crSize), crateMat);
+        crate.position.set(crx, cry + crSize / 2, crz);
+        crate.rotation.y = Math.random() * 0.5;
+        mctx.scene.add(crate);
+        // Crate lid line
+        const lidLine = new THREE.Mesh(new THREE.BoxGeometry(crSize + 0.02, 0.02, 0.02), woodMat);
+        lidLine.position.set(crx, cry + crSize, crz);
+        mctx.scene.add(lidLine);
+    }
+
+    // ── Signpost at village entrance ──
+    {
+        const spx = -hw * 0.5, spz2 = -3;
+        const spy = getTerrainHeight(spx, spz2, 0.5);
+        const signPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 2.5, 6), woodMat);
+        signPole.position.set(spx, spy + 1.25, spz2);
+        mctx.scene.add(signPole);
+        const signBoard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.04), woodMat);
+        signBoard.position.set(spx + 0.3, spy + 2.2, spz2);
+        mctx.scene.add(signBoard);
+        // Sign text backing
+        const signText = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 0.25),
+            new THREE.MeshStandardMaterial({ color: 0x222211 })
+        );
+        signText.position.set(spx + 0.3, spy + 2.2, spz2 + 0.025);
+        mctx.scene.add(signText);
+    }
+
+    // ── Stone well detail: bucket and rope ──
+    {
+        const wellRopeY = getTerrainHeight(-3, -3, 0.5);
+        const wellRope = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.5, 4), ropeMat);
+        wellRope.position.set(-3, wellRopeY + 1.2, -3);
+        mctx.scene.add(wellRope);
+        const wellBucket = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.2, 6, 1, true), toolMat);
+        wellBucket.position.set(-3, wellRopeY + 0.5, -3);
+        mctx.scene.add(wellBucket);
+    }
+
+    // ── River rocks and boulders along the bank ──
+    for (let ri = 0; ri < 20; ri++) {
+        const rkx = (Math.random() - 0.5) * w * 0.4;
+        const rkz = (Math.random() - 0.5) * d * 0.4;
+        const rky = getTerrainHeight(rkx, rkz, 0.5);
+        const rockSize = 0.1 + Math.random() * 0.3;
+        const rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(rockSize, 1),
+            new THREE.MeshStandardMaterial({ color: 0x777766 + Math.floor(Math.random() * 0x111111), roughness: 0.9 })
+        );
+        rock.position.set(rkx, rky + rockSize * 0.3, rkz);
+        rock.scale.y = 0.5 + Math.random() * 0.3;
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
+        mctx.scene.add(rock);
+    }
+
+    // ── Clothesline between cottages ──
+    {
+        const cl1x = -20, cl1z = -15, cl2x = -12, cl2z = -20;
+        const cl1y = getTerrainHeight(cl1x, cl1z, 0.5);
+        const cl2y = getTerrainHeight(cl2x, cl2z, 0.5);
+        const clY = Math.max(cl1y, cl2y) + 2.5;
+        // Rope line
+        const clLen = Math.sqrt((cl2x - cl1x) ** 2 + (cl2z - cl1z) ** 2);
+        const clAngle = Math.atan2(cl2z - cl1z, cl2x - cl1x);
+        const clRope = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, clLen, 3), ropeMat);
+        clRope.position.set((cl1x + cl2x) / 2, clY, (cl1z + cl2z) / 2);
+        clRope.rotation.z = Math.PI / 2;
+        clRope.rotation.y = -clAngle;
+        mctx.scene.add(clRope);
+        // Hanging clothes
+        const clothColors = [0xeeeeee, 0x8899aa, 0xaa7755, 0xddccbb];
+        for (let ci2 = 0; ci2 < 4; ci2++) {
+            const frac2 = 0.2 + ci2 * 0.2;
+            const cx2 = cl1x + (cl2x - cl1x) * frac2;
+            const cz2 = cl1z + (cl2z - cl1z) * frac2;
+            const cloth = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.4, 0.5 + Math.random() * 0.3),
+                new THREE.MeshStandardMaterial({ color: clothColors[ci2], side: THREE.DoubleSide, roughness: 0.8 })
+            );
+            cloth.position.set(cx2, clY - 0.3, cz2);
+            cloth.rotation.y = clAngle + Math.PI / 2;
+            mctx.scene.add(cloth);
+        }
+    }
+
+    // ── Stacked firewood near cottages ──
+    const firewoodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a1e, roughness: 0.9 });
+    const woodPilePositions: [number, number][] = [[-21, -14], [16, -17], [-19, 16], [13, 21]];
+    for (const [wpx, wpz] of woodPilePositions) {
+        const wpy = getTerrainHeight(wpx, wpz, 0.5);
+        for (let row2 = 0; row2 < 3; row2++) {
+            for (let col = 0; col < 4 - row2; col++) {
+                const log = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 5), firewoodMat);
+                log.rotation.z = Math.PI / 2;
+                log.position.set(wpx, wpy + 0.08 + row2 * 0.15, wpz + col * 0.18 - 0.3);
+                mctx.scene.add(log);
+            }
+        }
+    }
+
+    // ── Grave markers behind the chapel ──
+    const graveMat = new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.95 });
+    for (let gi = 0; gi < 5; gi++) {
+        const gx = chapX - 2 + gi * 1;
+        const gz = chapZ - 4;
+        const gy = getTerrainHeight(gx, gz, 0.5);
+        // Headstone
+        const headstone = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6 + Math.random() * 0.3, 0.08), graveMat);
+        headstone.position.set(gx, gy + 0.3, gz);
+        headstone.rotation.y = (Math.random() - 0.5) * 0.15;
+        mctx.scene.add(headstone);
+        // Small mound
+        const mound = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: 0x4a5a3a, roughness: 0.95 })
+        );
+        mound.position.set(gx, gy, gz + 0.4);
+        mound.scale.set(1, 0.3, 1.5);
+        mctx.scene.add(mound);
+    }
+
+    // ── Abandoned boat near the river ──
+    {
+        const boatX = -hw * 0.3, boatZ = -hd * 0.2;
+        const boatY = getTerrainHeight(boatX, boatZ, 0.5);
+        const boatMat2 = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.85 });
+        // Hull (elongated box, tilted)
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 2.5), boatMat2);
+        hull.position.set(boatX, boatY + 0.2, boatZ);
+        hull.rotation.z = 0.15;
+        hull.rotation.y = 0.4;
+        mctx.scene.add(hull);
+        // Boat sides
+        for (const side2 of [-1, 1]) {
+            const boatSide = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 2.5), boatMat2);
+            boatSide.position.set(boatX + side2 * 0.57, boatY + 0.35, boatZ);
+            boatSide.rotation.z = 0.15 - side2 * 0.1;
+            boatSide.rotation.y = 0.4;
+            mctx.scene.add(boatSide);
+        }
+        // Oar lying nearby
+        const oar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.8, 4), woodMat);
+        oar.position.set(boatX + 1, boatY + 0.1, boatZ + 0.5);
+        oar.rotation.z = Math.PI / 2;
+        oar.rotation.y = 0.3;
+        mctx.scene.add(oar);
+        const oarBlade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 0.3), woodMat);
+        oarBlade.position.set(boatX + 1.9, boatY + 0.1, boatZ + 0.5);
+        mctx.scene.add(oarBlade);
+    }
+
+    // ── Moss patches on buildings and rocks ──
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x4a6a2a, roughness: 0.9, transparent: true, opacity: 0.6 });
+    for (let mi2 = 0; mi2 < 15; mi2++) {
+        const [mcx, mcz] = cottagePositions[mi2 % cottagePositions.length];
+        const mcy = getTerrainHeight(mcx, mcz, 0.5);
+        const moss = new THREE.Mesh(new THREE.PlaneGeometry(0.5 + Math.random() * 0.5, 0.3 + Math.random() * 0.3), mossMat);
+        const mSide = Math.random() > 0.5 ? 1 : -1;
+        moss.position.set(mcx + mSide * 1.3, mcy + Math.random() * 1.5, mcz + (Math.random() - 0.5) * 2);
+        moss.rotation.y = mSide > 0 ? Math.PI / 2 : -Math.PI / 2;
+        mctx.scene.add(moss);
+    }
+
+    // ── Water splash particles near the water mill wheel ──
+    const splashMat = new THREE.MeshStandardMaterial({
+        color: 0xaaddee, transparent: true, opacity: 0.4, emissive: 0x224455, emissiveIntensity: 0.2,
+    });
+    for (let si2 = 0; si2 < 12; si2++) {
+        const splash = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 4, 3), splashMat);
+        splash.position.set(
+            wmX + 2.2 + (Math.random() - 0.5) * 0.5,
+            wmY + 0.3 + Math.random() * 0.8,
+            wmZ + (Math.random() - 0.5) * 0.4
+        );
+        mctx.scene.add(splash);
+    }
 }
 

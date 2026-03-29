@@ -3,14 +3,14 @@ import { getTerrainHeight } from './DiabloRenderer';
 import { MapBuildContext } from './DiabloRendererMaps';
 
 export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number): void {
-    mctx.scene.fog = new THREE.FogExp2(0x223355, 0.022);
+    mctx.scene.fog = new THREE.FogExp2(0x1a2a44, 0.014);
     mctx.applyTerrainColors(0x1a2a44, 0x2a3a55, 0.5);
     mctx.dirLight.color.setHex(0x88aaff);
-    mctx.dirLight.intensity = 0.7;
-    mctx.ambientLight.color.setHex(0x112244);
-    mctx.ambientLight.intensity = 0.4;
-    mctx.hemiLight.color.setHex(0x556699);
-    mctx.hemiLight.groundColor.setHex(0x111133);
+    mctx.dirLight.intensity = 1.0;
+    mctx.ambientLight.color.setHex(0x223355);
+    mctx.ambientLight.intensity = 0.6;
+    mctx.hemiLight.color.setHex(0x6688bb);
+    mctx.hemiLight.groundColor.setHex(0x112244);
 
     const clockMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.6, roughness: 0.3 });
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x4455aa, roughness: 0.6 });
@@ -439,6 +439,157 @@ export function buildChronoLabyrinth(mctx: MapBuildContext, w: number, d: number
       stFrag.rotation.set((Math.random() - 0.5) * 0.8, Math.random() * Math.PI, (Math.random() - 0.5) * 0.5);
       mctx.scene.add(stFrag);
     }
+
+    // ── Ground-level arcane floor patterns (glowing circle/rune patterns) ──
+    const floorGlowMat = new THREE.MeshStandardMaterial({
+      color: 0x224488, emissive: 0x113366, emissiveIntensity: 0.6,
+      transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const floorRuneMat = new THREE.MeshStandardMaterial({
+      color: 0x4488cc, emissive: 0x2266aa, emissiveIntensity: 1.0,
+      transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide,
+    });
+    for (let i = 0; i < 20; i++) {
+      const fpx = (Math.random() - 0.5) * w * 0.75, fpz = (Math.random() - 0.5) * d * 0.75;
+      const fpy = getTerrainHeight(fpx, fpz, 0.5) + 0.03;
+      const fpR = 1.5 + Math.random() * 3;
+      // Outer ring glow
+      const fpRing = new THREE.Mesh(new THREE.RingGeometry(fpR - 0.1, fpR + 0.05, 48), floorGlowMat);
+      fpRing.rotation.x = -Math.PI / 2; fpRing.position.set(fpx, fpy, fpz);
+      mctx.scene.add(fpRing);
+      // Inner pattern ring
+      const fpInner = new THREE.Mesh(new THREE.RingGeometry(fpR * 0.5, fpR * 0.55, 48), floorGlowMat);
+      fpInner.rotation.x = -Math.PI / 2; fpInner.position.set(fpx, fpy, fpz);
+      mctx.scene.add(fpInner);
+      // Cross lines through center
+      for (let cl = 0; cl < 4; cl++) {
+        const clA = (cl / 4) * Math.PI;
+        const crossLine = new THREE.Mesh(new THREE.PlaneGeometry(fpR * 2, 0.03), floorRuneMat);
+        crossLine.rotation.x = -Math.PI / 2; crossLine.rotation.z = clA;
+        crossLine.position.set(fpx, fpy + 0.005, fpz);
+        mctx.scene.add(crossLine);
+      }
+      // Small rune marks on the circle
+      for (let rm = 0; rm < 8; rm++) {
+        const rmA = (rm / 8) * Math.PI * 2;
+        const rMark = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.12), floorRuneMat);
+        rMark.rotation.x = -Math.PI / 2; rMark.rotation.z = rmA;
+        rMark.position.set(fpx + Math.cos(rmA) * fpR * 0.75, fpy + 0.006, fpz + Math.sin(rmA) * fpR * 0.75);
+        mctx.scene.add(rMark);
+      }
+    }
+
+    // ── Ambient floating particles (tiny glowing motes throughout the space) ──
+    const moteMat = new THREE.MeshStandardMaterial({
+      color: 0x88bbff, emissive: 0x4488cc, emissiveIntensity: 2.0,
+      transparent: true, opacity: 0.6,
+    });
+    const moteDimMat = new THREE.MeshStandardMaterial({
+      color: 0x6699cc, emissive: 0x335588, emissiveIntensity: 1.5,
+      transparent: true, opacity: 0.4,
+    });
+    for (let i = 0; i < 60; i++) {
+      const mote = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 6, 4),
+        Math.random() > 0.5 ? moteMat : moteDimMat);
+      mote.position.set(
+        (Math.random() - 0.5) * w * 0.8,
+        0.5 + Math.random() * 5,
+        (Math.random() - 0.5) * d * 0.8
+      );
+      mctx.scene.add(mote);
+    }
+
+    // ── Crumbling stone pillars (broken columns adding ruins feel) ──
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x556688, roughness: 0.75 });
+    const pillarDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a4a5a, roughness: 0.85 });
+    for (let i = 0; i < 12; i++) {
+      const pH = 1.5 + Math.random() * 4;
+      const pR = 0.25 + Math.random() * 0.15;
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(pR * 0.85, pR, pH, 8), pillarMat);
+      const ppx = (Math.random() - 0.5) * w * 0.7, ppz = (Math.random() - 0.5) * d * 0.7;
+      pillar.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + pH / 2, ppz);
+      pillar.castShadow = true;
+      mctx.scene.add(pillar);
+      // Broken top (angled cut)
+      const capGeo = new THREE.CylinderGeometry(pR * 0.85, pR * 0.9, 0.15, 8);
+      const cap = new THREE.Mesh(capGeo, pillarDarkMat);
+      cap.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + pH + 0.07, ppz);
+      cap.rotation.z = (Math.random() - 0.5) * 0.3;
+      mctx.scene.add(cap);
+      // Base plinth
+      const plinth = new THREE.Mesh(new THREE.CylinderGeometry(pR + 0.1, pR + 0.15, 0.2, 8), pillarDarkMat);
+      plinth.position.set(ppx, getTerrainHeight(ppx, ppz, 0.5) + 0.1, ppz);
+      mctx.scene.add(plinth);
+      // Fallen rubble near base
+      for (let rb = 0; rb < 3; rb++) {
+        const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.08, 0), pillarMat);
+        const rbA = Math.random() * Math.PI * 2;
+        rubble.position.set(ppx + Math.cos(rbA) * (pR + 0.3 + Math.random() * 0.5), getTerrainHeight(ppx, ppz, 0.5) + 0.06, ppz + Math.sin(rbA) * (pR + 0.3 + Math.random() * 0.5));
+        rubble.rotation.set(Math.random(), Math.random(), Math.random());
+        mctx.scene.add(rubble);
+      }
+    }
+
+    // ── Scattered floor tiles (broken mosaic pattern) ──
+    const tileMat1 = new THREE.MeshStandardMaterial({ color: 0x2a3a55, roughness: 0.6 });
+    const tileMat2 = new THREE.MeshStandardMaterial({ color: 0x3a4a66, roughness: 0.55 });
+    const tileMat3 = new THREE.MeshStandardMaterial({ color: 0x445577, roughness: 0.5, metalness: 0.05 });
+    for (let i = 0; i < 40; i++) {
+      const tileW = 0.5 + Math.random() * 1.5, tileD = 0.5 + Math.random() * 1.5;
+      const tile = new THREE.Mesh(new THREE.BoxGeometry(tileW, 0.08, tileD), [tileMat1, tileMat2, tileMat3][i % 3]);
+      const tlx = (Math.random() - 0.5) * w * 0.7, tlz = (Math.random() - 0.5) * d * 0.7;
+      tile.position.set(tlx, getTerrainHeight(tlx, tlz, 0.5) + 0.04, tlz);
+      tile.rotation.y = Math.random() * Math.PI;
+      mctx.scene.add(tile);
+    }
+
+    // ── Ethereal chains (hanging from above, connecting structures) ──
+    const chainMat = new THREE.MeshStandardMaterial({ color: 0x667799, metalness: 0.4, roughness: 0.5, transparent: true, opacity: 0.6 });
+    for (let i = 0; i < 10; i++) {
+      const cx1 = (Math.random() - 0.5) * w * 0.5, cz1 = (Math.random() - 0.5) * d * 0.5;
+      const chainLen = 3 + Math.random() * 4;
+      const chainAngle = Math.random() * Math.PI;
+      // Several chain links along the drape
+      for (let cl = 0; cl < 6; cl++) {
+        const frac = cl / 5;
+        const sag = Math.sin(frac * Math.PI) * 1.5; // catenary sag
+        const link = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 8), chainMat);
+        link.position.set(
+          cx1 + Math.cos(chainAngle) * frac * chainLen,
+          4 + Math.random() * 2 - sag,
+          cz1 + Math.sin(chainAngle) * frac * chainLen
+        );
+        link.rotation.set(Math.random(), Math.random(), frac * Math.PI * 0.3);
+        mctx.scene.add(link);
+      }
+    }
+
+    // ── Ambient ground fog patches (flat translucent discs) ──
+    const fogPatchMat = new THREE.MeshStandardMaterial({
+      color: 0x334466, emissive: 0x112233, emissiveIntensity: 0.3,
+      transparent: true, opacity: 0.15, depthWrite: false, side: THREE.DoubleSide,
+    });
+    for (let i = 0; i < 25; i++) {
+      const fogR = 2 + Math.random() * 4;
+      const fog = new THREE.Mesh(new THREE.CircleGeometry(fogR, 16), fogPatchMat);
+      fog.rotation.x = -Math.PI / 2;
+      const fgx = (Math.random() - 0.5) * w * 0.8, fgz = (Math.random() - 0.5) * d * 0.8;
+      fog.position.set(fgx, getTerrainHeight(fgx, fgz, 0.5) + 0.15 + Math.random() * 0.3, fgz);
+      mctx.scene.add(fog);
+    }
+
+    // ── Additional point lights for ambience ──
+    const lightColors = [0x4488ff, 0x66aaff, 0x3366cc, 0x5599dd];
+    for (let i = 0; i < 10; i++) {
+      const aLight = new THREE.PointLight(lightColors[i % 4], 0.4, 15);
+      aLight.position.set(
+        (Math.random() - 0.5) * w * 0.6,
+        1.5 + Math.random() * 3,
+        (Math.random() - 0.5) * d * 0.6
+      );
+      mctx.scene.add(aLight);
+      mctx.torchLights.push(aLight);
+    }
 }
 
 export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number): void {
@@ -721,6 +872,456 @@ export function buildEldritchNexus(mctx: MapBuildContext, w: number, d: number):
       eye.position.y = 0.6; flora.add(eye);
       const flx = (Math.random()-0.5)*w*0.7, flz = (Math.random()-0.5)*d*0.7;
       flora.position.set(flx, getTerrainHeight(flx, flz, 0.5), flz); mctx.scene.add(flora);
+    }
+
+    // ── Better lighting — boost ambient/directional, reduce fog ──
+    mctx.dirLight.intensity = 0.7;
+    mctx.ambientLight.intensity = 0.35;
+    mctx.hemiLight.intensity = 0.5;
+    mctx.scene.fog = new THREE.FogExp2(0x150f15, 0.03);
+
+    // ── Floating eyeball clusters ──
+    const clusterEyeMat = new THREE.MeshStandardMaterial({ color: 0xcc3388, emissive: 0x881155, emissiveIntensity: 1.2 });
+    const clusterPupilMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x000000 });
+    const clusterIrisMat = new THREE.MeshStandardMaterial({ color: 0xff44ff, emissive: 0xcc22cc, emissiveIntensity: 2.5 });
+    for (let i = 0; i < 8; i++) {
+      const cluster = new THREE.Group();
+      const numEyes = 3 + Math.floor(Math.random() * 5);
+      for (let e = 0; e < numEyes; e++) {
+        const sz = 0.08 + Math.random() * 0.15;
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(sz, 12, 10), clusterEyeMat);
+        ball.position.set((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6);
+        cluster.add(ball);
+        const p = new THREE.Mesh(new THREE.SphereGeometry(sz * 0.35, 8, 6), clusterPupilMat);
+        p.position.copy(ball.position); p.position.z += sz * 0.7; cluster.add(p);
+        const ir = new THREE.Mesh(new THREE.TorusGeometry(sz * 0.3, 0.01, 8, 16), clusterIrisMat);
+        ir.position.copy(ball.position); ir.position.z += sz * 0.65; cluster.add(ir);
+      }
+      // Thin connecting tendrils between eyes
+      for (let t = 0; t < 2; t++) {
+        const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.01, 0.5, 6), organicMat);
+        tendril.position.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 0);
+        tendril.rotation.set(Math.random(), Math.random(), Math.random()); cluster.add(tendril);
+      }
+      const cLight = new THREE.PointLight(0xff44ff, 0.3, 6);
+      cluster.add(cLight); mctx.torchLights.push(cLight);
+      const cx = (Math.random() - 0.5) * w * 0.6, cz = (Math.random() - 0.5) * d * 0.6;
+      cluster.position.set(cx, 2 + Math.random() * 4, cz);
+      cluster.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
+      mctx.scene.add(cluster);
+    }
+
+    // ── Pulsating organic masses ──
+    const pulseMassMat = new THREE.MeshStandardMaterial({ color: 0x773355, emissive: 0x441122, emissiveIntensity: 0.6, roughness: 0.3 });
+    const veinMat = new THREE.MeshStandardMaterial({ color: 0x992255, emissive: 0x661133, emissiveIntensity: 0.8 });
+    for (let i = 0; i < 10; i++) {
+      const mass = new THREE.Group();
+      const blobSize = 0.4 + Math.random() * 0.8;
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(blobSize, 14, 12), pulseMassMat);
+      blob.scale.set(1, 0.6 + Math.random() * 0.3, 0.8 + Math.random() * 0.4);
+      mass.add(blob);
+      // Smaller secondary growths
+      for (let g = 0; g < 3 + Math.floor(Math.random() * 3); g++) {
+        const growth = new THREE.Mesh(new THREE.SphereGeometry(blobSize * (0.2 + Math.random() * 0.3), 10, 8), pulseMassMat);
+        const ga = Math.random() * Math.PI * 2;
+        growth.position.set(Math.cos(ga) * blobSize * 0.7, (Math.random() - 0.5) * blobSize * 0.4, Math.sin(ga) * blobSize * 0.7);
+        mass.add(growth);
+      }
+      // Surface veins
+      for (let v = 0; v < 4; v++) {
+        const vein = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.015, blobSize * 1.2, 6), veinMat);
+        vein.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random());
+        vein.position.set((Math.random() - 0.5) * blobSize * 0.5, (Math.random() - 0.5) * blobSize * 0.3, (Math.random() - 0.5) * blobSize * 0.5);
+        mass.add(vein);
+      }
+      const mx = (Math.random() - 0.5) * w * 0.7, mz = (Math.random() - 0.5) * d * 0.7;
+      mass.position.set(mx, getTerrainHeight(mx, mz, 0.5) + blobSize * 0.4, mz);
+      mctx.scene.add(mass);
+    }
+
+    // ── Bone structures ──
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.7, emissive: 0x221100, emissiveIntensity: 0.1 });
+    const boneJointMat = new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.6 });
+    for (let i = 0; i < 8; i++) {
+      const boneStruct = new THREE.Group();
+      // Ribcage-like arches
+      const numRibs = 4 + Math.floor(Math.random() * 4);
+      for (let r = 0; r < numRibs; r++) {
+        const rib = new THREE.Mesh(new THREE.TorusGeometry(0.8 + Math.random() * 0.6, 0.03 + Math.random() * 0.02, 8, 16, Math.PI), boneMat);
+        rib.position.z = r * 0.35;
+        rib.rotation.z = Math.PI; rib.position.y = 0.8;
+        boneStruct.add(rib);
+      }
+      // Spine connecting ribs
+      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, numRibs * 0.35, 8), boneMat);
+      spine.rotation.x = Math.PI / 2; spine.position.set(0, 0.8, numRibs * 0.17);
+      boneStruct.add(spine);
+      // Vertebrae bumps
+      for (let v = 0; v < numRibs; v++) {
+        const vert = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), boneJointMat);
+        vert.position.set(0, 0.85, v * 0.35);
+        boneStruct.add(vert);
+      }
+      const bx = (Math.random() - 0.5) * w * 0.7, bz = (Math.random() - 0.5) * d * 0.7;
+      boneStruct.position.set(bx, getTerrainHeight(bx, bz, 0.5), bz);
+      boneStruct.rotation.y = Math.random() * Math.PI;
+      boneStruct.rotation.z = (Math.random() - 0.5) * 0.3;
+      mctx.scene.add(boneStruct);
+    }
+
+    // ── Void rifts — glowing tears in reality ──
+    const riftEdgeMat = new THREE.MeshStandardMaterial({ color: 0xaa00ff, emissive: 0x8800cc, emissiveIntensity: 2.5, transparent: true, opacity: 0.8 });
+    const riftCoreMat = new THREE.MeshStandardMaterial({ color: 0x050005, emissive: 0x220044, emissiveIntensity: 1.0, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+    const riftEnergyMat = new THREE.MeshStandardMaterial({ color: 0x6600aa, emissive: 0x440088, emissiveIntensity: 1.5, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 6; i++) {
+      const rift = new THREE.Group();
+      const riftH = 2 + Math.random() * 3;
+      const riftW = 0.3 + Math.random() * 0.5;
+      // Dark core of the rift (elongated diamond shape)
+      const coreShape = new THREE.Mesh(new THREE.PlaneGeometry(riftW, riftH), riftCoreMat);
+      rift.add(coreShape);
+      // Glowing edges — two thin strips along the sides
+      const edgeL = new THREE.Mesh(new THREE.PlaneGeometry(0.05, riftH * 1.05), riftEdgeMat);
+      edgeL.position.x = -riftW / 2; rift.add(edgeL);
+      const edgeR = new THREE.Mesh(new THREE.PlaneGeometry(0.05, riftH * 1.05), riftEdgeMat);
+      edgeR.position.x = riftW / 2; rift.add(edgeR);
+      // Top and bottom edge caps
+      const edgeT = new THREE.Mesh(new THREE.PlaneGeometry(riftW * 0.6, 0.05), riftEdgeMat);
+      edgeT.position.y = riftH / 2; rift.add(edgeT);
+      const edgeB = new THREE.Mesh(new THREE.PlaneGeometry(riftW * 0.6, 0.05), riftEdgeMat);
+      edgeB.position.y = -riftH / 2; rift.add(edgeB);
+      // Dark energy streams pouring out
+      for (let s = 0; s < 5; s++) {
+        const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.02 + Math.random() * 0.03, 0.005, 1 + Math.random() * 2, 6), riftEnergyMat);
+        stream.position.set((Math.random() - 0.5) * riftW * 0.6, -riftH / 2 - 0.5 - Math.random() * 1.5, (Math.random() - 0.5) * 0.3);
+        stream.rotation.set((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.3);
+        rift.add(stream);
+      }
+      // Crackling energy arcs around rift
+      for (let a = 0; a < 3; a++) {
+        const arc = new THREE.Mesh(new THREE.TorusGeometry(riftW * (0.8 + Math.random() * 0.6), 0.01, 6, 12, Math.PI * (0.3 + Math.random() * 0.5)), riftEdgeMat);
+        arc.position.set(0, (Math.random() - 0.5) * riftH * 0.6, 0);
+        arc.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random());
+        rift.add(arc);
+      }
+      const riftLight = new THREE.PointLight(0xaa00ff, 0.8, 12);
+      rift.add(riftLight); mctx.torchLights.push(riftLight);
+      const rx = (Math.random() - 0.5) * w * 0.5, rz = (Math.random() - 0.5) * d * 0.5;
+      rift.position.set(rx, getTerrainHeight(rx, rz, 0.5) + riftH / 2 + 0.5, rz);
+      rift.rotation.y = Math.random() * Math.PI;
+      mctx.scene.add(rift);
+    }
+
+    // ── Madness sigils — glowing floor patterns in purple/magenta ──
+    const sigilGlowMat = new THREE.MeshStandardMaterial({
+      color: 0xcc44ff, emissive: 0xaa22dd, emissiveIntensity: 1.8,
+      transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const sigilDimMat = new THREE.MeshStandardMaterial({
+      color: 0x882288, emissive: 0x661166, emissiveIntensity: 1.0,
+      transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide,
+    });
+    for (let i = 0; i < 10; i++) {
+      const sigGrp = new THREE.Group();
+      const sigR = 1.5 + Math.random() * 2.5;
+      // Outer ring
+      const outerR = new THREE.Mesh(new THREE.RingGeometry(sigR - 0.04, sigR + 0.04, 48), sigilGlowMat);
+      outerR.rotation.x = -Math.PI / 2; sigGrp.add(outerR);
+      // Middle ring
+      const midR = new THREE.Mesh(new THREE.RingGeometry(sigR * 0.6 - 0.03, sigR * 0.6 + 0.03, 48), sigilDimMat);
+      midR.rotation.x = -Math.PI / 2; sigGrp.add(midR);
+      // Inner ring
+      const innerR = new THREE.Mesh(new THREE.RingGeometry(sigR * 0.3 - 0.02, sigR * 0.3 + 0.02, 48), sigilGlowMat);
+      innerR.rotation.x = -Math.PI / 2; sigGrp.add(innerR);
+      // Spiral arms
+      for (let sp = 0; sp < 3; sp++) {
+        const spiralAngle = (sp / 3) * Math.PI * 2;
+        for (let seg = 0; seg < 12; seg++) {
+          const a = spiralAngle + seg * 0.35;
+          const r = sigR * 0.25 + seg * (sigR * 0.06);
+          const dot = new THREE.Mesh(new THREE.CircleGeometry(0.03 + seg * 0.003, 6), sigilGlowMat);
+          dot.rotation.x = -Math.PI / 2;
+          dot.position.set(Math.cos(a) * r, 0.005, Math.sin(a) * r);
+          sigGrp.add(dot);
+        }
+      }
+      // Radiating lines
+      for (let rl = 0; rl < 6; rl++) {
+        const la = (rl / 6) * Math.PI * 2;
+        const line = new THREE.Mesh(new THREE.PlaneGeometry(0.03, sigR * 0.7), sigilDimMat);
+        line.rotation.x = -Math.PI / 2; line.rotation.z = la;
+        line.position.set(Math.cos(la) * sigR * 0.45, 0.003, Math.sin(la) * sigR * 0.45);
+        sigGrp.add(line);
+      }
+      const sgx = (Math.random() - 0.5) * w * 0.6, sgz = (Math.random() - 0.5) * d * 0.6;
+      sigGrp.position.set(sgx, getTerrainHeight(sgx, sgz, 0.5) + 0.04, sgz);
+      mctx.scene.add(sigGrp);
+    }
+
+    // ── Corrupted pillars — twisted columns wrapped in tentacles ──
+    const corruptStoneMat = new THREE.MeshStandardMaterial({ color: 0x2a1a2a, roughness: 0.7, metalness: 0.15 });
+    const corruptTentMat = new THREE.MeshStandardMaterial({ color: 0x663366, roughness: 0.4, emissive: 0x221122, emissiveIntensity: 0.3 });
+    for (let i = 0; i < 10; i++) {
+      const pillar = new THREE.Group();
+      const pH = 3 + Math.random() * 4;
+      const pR = 0.2 + Math.random() * 0.15;
+      // Main column — slightly tapered and tilted
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(pR * 0.8, pR, pH, 10), corruptStoneMat);
+      col.position.y = pH / 2; pillar.add(col);
+      // Cracks (dark lines on surface)
+      for (let c = 0; c < 3; c++) {
+        const crack = new THREE.Mesh(new THREE.BoxGeometry(0.01, pH * (0.3 + Math.random() * 0.5), 0.01), voidMat);
+        const ca = Math.random() * Math.PI * 2;
+        crack.position.set(Math.cos(ca) * pR * 0.95, pH * (0.3 + Math.random() * 0.4), Math.sin(ca) * pR * 0.95);
+        crack.rotation.z = (Math.random() - 0.5) * 0.2;
+        pillar.add(crack);
+      }
+      // Wrapping tentacles — spiral around the pillar
+      for (let t = 0; t < 2; t++) {
+        const tentSegs = 8 + Math.floor(Math.random() * 4);
+        const startAngle = Math.random() * Math.PI * 2;
+        const direction = t === 0 ? 1 : -1;
+        for (let s = 0; s < tentSegs; s++) {
+          const frac = s / tentSegs;
+          const angle = startAngle + direction * frac * Math.PI * 3;
+          const tr = pR + 0.06 + Math.random() * 0.03;
+          const tentSeg = new THREE.Mesh(new THREE.SphereGeometry(0.04 - frac * 0.015, 6, 4), corruptTentMat);
+          tentSeg.position.set(Math.cos(angle) * tr, frac * pH, Math.sin(angle) * tr);
+          pillar.add(tentSeg);
+        }
+      }
+      // Base rubble
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(pR + 0.15, pR + 0.2, 0.2, 10), corruptStoneMat);
+      base.position.y = 0.1; pillar.add(base);
+      // Glowing rune ring at base
+      const baseRune = new THREE.Mesh(new THREE.TorusGeometry(pR + 0.2, 0.02, 8, 24), runeMat);
+      baseRune.rotation.x = -Math.PI / 2; baseRune.position.y = 0.22; pillar.add(baseRune);
+      const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
+      pillar.position.set(px, getTerrainHeight(px, pz, 0.5), pz);
+      pillar.rotation.z = (Math.random() - 0.5) * 0.08;
+      mctx.scene.add(pillar);
+    }
+
+    // ── Floating debris — broken stone chunks hovering mid-air ──
+    const debrisMat = new THREE.MeshStandardMaterial({ color: 0x332233, roughness: 0.6 });
+    const debrisGlowMat = new THREE.MeshStandardMaterial({ color: 0x9944cc, emissive: 0x6622aa, emissiveIntensity: 1.2, transparent: true, opacity: 0.6 });
+    for (let i = 0; i < 20; i++) {
+      const debris = new THREE.Group();
+      // Main rock chunk
+      const rockSize = 0.15 + Math.random() * 0.4;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rockSize, 0), debrisMat);
+      rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      debris.add(rock);
+      // Purple glow aura underneath
+      const aura = new THREE.Mesh(new THREE.SphereGeometry(rockSize * 1.3, 8, 6), debrisGlowMat);
+      debris.add(aura);
+      // Occasional small satellite rocks
+      if (Math.random() > 0.5) {
+        for (let sr = 0; sr < 2 + Math.floor(Math.random() * 3); sr++) {
+          const sat = new THREE.Mesh(new THREE.DodecahedronGeometry(rockSize * 0.3, 0), debrisMat);
+          const sa = Math.random() * Math.PI * 2;
+          sat.position.set(Math.cos(sa) * rockSize * 2, (Math.random() - 0.5) * rockSize, Math.sin(sa) * rockSize * 2);
+          sat.rotation.set(Math.random(), Math.random(), Math.random());
+          debris.add(sat);
+        }
+      }
+      const dx = (Math.random() - 0.5) * w * 0.7, dz = (Math.random() - 0.5) * d * 0.7;
+      debris.position.set(dx, getTerrainHeight(dx, dz, 0.5) + 1.5 + Math.random() * 4, dz);
+      debris.rotation.set(Math.random() * 0.3, Math.random() * Math.PI, Math.random() * 0.3);
+      mctx.scene.add(debris);
+    }
+
+    // ── Ground detail — cracked obsidian tiles ──
+    const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x0a0510, roughness: 0.3, metalness: 0.3 });
+    const crackMat = new THREE.MeshStandardMaterial({ color: 0x660066, emissive: 0x440044, emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
+    for (let i = 0; i < 30; i++) {
+      const tileGrp = new THREE.Group();
+      const tw = 0.8 + Math.random() * 1.5, td = 0.8 + Math.random() * 1.5;
+      const tile = new THREE.Mesh(new THREE.BoxGeometry(tw, 0.06, td), obsidianMat);
+      tileGrp.add(tile);
+      // Cracks glowing purple
+      const numCracks = 2 + Math.floor(Math.random() * 3);
+      for (let c = 0; c < numCracks; c++) {
+        const crackLine = new THREE.Mesh(new THREE.BoxGeometry(tw * (0.3 + Math.random() * 0.6), 0.07, 0.015), crackMat);
+        crackLine.position.set((Math.random() - 0.5) * tw * 0.3, 0.005, (Math.random() - 0.5) * td * 0.3);
+        crackLine.rotation.y = Math.random() * Math.PI;
+        tileGrp.add(crackLine);
+      }
+      const tx = (Math.random() - 0.5) * w * 0.6, tz = (Math.random() - 0.5) * d * 0.6;
+      tileGrp.position.set(tx, getTerrainHeight(tx, tz, 0.5) + 0.03, tz);
+      tileGrp.rotation.y = Math.random() * Math.PI;
+      mctx.scene.add(tileGrp);
+    }
+
+    // ── Ground detail — organic veiny floor patches ──
+    const fleshFloorMat = new THREE.MeshStandardMaterial({ color: 0x553344, roughness: 0.35, emissive: 0x220011, emissiveIntensity: 0.3, transparent: true, opacity: 0.7, side: THREE.DoubleSide });
+    const fleshVeinMat = new THREE.MeshStandardMaterial({ color: 0x882255, emissive: 0x551133, emissiveIntensity: 0.6, transparent: true, opacity: 0.5 });
+    for (let i = 0; i < 14; i++) {
+      const patch = new THREE.Group();
+      const patchR = 1 + Math.random() * 2;
+      const base = new THREE.Mesh(new THREE.CircleGeometry(patchR, 16), fleshFloorMat);
+      base.rotation.x = -Math.PI / 2; patch.add(base);
+      // Branching veins
+      for (let v = 0; v < 6 + Math.floor(Math.random() * 4); v++) {
+        const va = Math.random() * Math.PI * 2;
+        const vLen = patchR * (0.3 + Math.random() * 0.7);
+        const vein = new THREE.Mesh(new THREE.PlaneGeometry(0.03, vLen), fleshVeinMat);
+        vein.rotation.x = -Math.PI / 2; vein.rotation.z = va;
+        vein.position.set(Math.cos(va) * vLen * 0.4, 0.01, Math.sin(va) * vLen * 0.4);
+        patch.add(vein);
+      }
+      const px = (Math.random() - 0.5) * w * 0.7, pz = (Math.random() - 0.5) * d * 0.7;
+      patch.position.set(px, getTerrainHeight(px, pz, 0.5) + 0.02, pz);
+      mctx.scene.add(patch);
+    }
+
+    // ── Atmosphere — purple/magenta motes ──
+    const purplMoteMat = new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0xaa22dd, emissiveIntensity: 2.5, transparent: true, opacity: 0.7 });
+    const magentaMoteMat = new THREE.MeshStandardMaterial({ color: 0xff44aa, emissive: 0xcc2288, emissiveIntensity: 2.0, transparent: true, opacity: 0.5 });
+    for (let i = 0; i < 80; i++) {
+      const mote = new THREE.Mesh(new THREE.SphereGeometry(0.02 + Math.random() * 0.04, 6, 4),
+        Math.random() > 0.5 ? purplMoteMat : magentaMoteMat);
+      mote.position.set(
+        (Math.random() - 0.5) * w * 0.85,
+        0.3 + Math.random() * 6,
+        (Math.random() - 0.5) * d * 0.85
+      );
+      mctx.scene.add(mote);
+    }
+
+    // ── Atmosphere — low fog patches ──
+    const eldritchFogMat = new THREE.MeshStandardMaterial({
+      color: 0x331133, emissive: 0x110011, emissiveIntensity: 0.2,
+      transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide,
+    });
+    for (let i = 0; i < 20; i++) {
+      const fogR = 2.5 + Math.random() * 4;
+      const fogPatch = new THREE.Mesh(new THREE.CircleGeometry(fogR, 16), eldritchFogMat);
+      fogPatch.rotation.x = -Math.PI / 2;
+      const fx = (Math.random() - 0.5) * w * 0.8, fz = (Math.random() - 0.5) * d * 0.8;
+      fogPatch.position.set(fx, getTerrainHeight(fx, fz, 0.5) + 0.1 + Math.random() * 0.4, fz);
+      mctx.scene.add(fogPatch);
+    }
+
+    // ── Atmosphere — additional point lights ──
+    const eldritchLightColors = [0xaa00ff, 0xff00aa, 0xcc44ff, 0x8800cc, 0xff44ff, 0x6600aa];
+    for (let i = 0; i < 14; i++) {
+      const pLight = new THREE.PointLight(eldritchLightColors[i % eldritchLightColors.length], 0.3 + Math.random() * 0.3, 10 + Math.random() * 8);
+      pLight.position.set(
+        (Math.random() - 0.5) * w * 0.7,
+        0.5 + Math.random() * 4,
+        (Math.random() - 0.5) * d * 0.7
+      );
+      mctx.scene.add(pLight);
+      mctx.torchLights.push(pLight);
+    }
+
+    // ── Alien vegetation — bioluminescent mushrooms ──
+    const mushCapMat = new THREE.MeshStandardMaterial({ color: 0xaa44dd, emissive: 0x7722aa, emissiveIntensity: 1.5, transparent: true, opacity: 0.8 });
+    const mushStemMat = new THREE.MeshStandardMaterial({ color: 0x553366, roughness: 0.5 });
+    const mushGlowMat = new THREE.MeshStandardMaterial({ color: 0xff66ff, emissive: 0xcc44cc, emissiveIntensity: 2.0, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 18; i++) {
+      const mush = new THREE.Group();
+      const stemH = 0.2 + Math.random() * 0.5;
+      const capR = 0.08 + Math.random() * 0.15;
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(capR * 0.3, capR * 0.4, stemH, 8), mushStemMat);
+      stem.position.y = stemH / 2; mush.add(stem);
+      // Cap
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), mushCapMat);
+      cap.position.y = stemH; mush.add(cap);
+      // Glow spots on cap
+      for (let g = 0; g < 3; g++) {
+        const spot = new THREE.Mesh(new THREE.SphereGeometry(capR * 0.15, 6, 4), mushGlowMat);
+        const ga = Math.random() * Math.PI * 2;
+        spot.position.set(Math.cos(ga) * capR * 0.5, stemH + capR * 0.2, Math.sin(ga) * capR * 0.5);
+        mush.add(spot);
+      }
+      // Occasional light for larger mushrooms
+      if (capR > 0.15) {
+        const mLight = new THREE.PointLight(0xaa44dd, 0.2, 4);
+        mLight.position.y = stemH + capR * 0.5; mush.add(mLight);
+        mctx.torchLights.push(mLight);
+      }
+      const mx = (Math.random() - 0.5) * w * 0.75, mz = (Math.random() - 0.5) * d * 0.75;
+      mush.position.set(mx, getTerrainHeight(mx, mz, 0.5), mz);
+      mctx.scene.add(mush);
+    }
+
+    // ── Alien vegetation — bioluminescent tendrils growing from ground ──
+    const tendrilGlowMat = new THREE.MeshStandardMaterial({ color: 0x66ddaa, emissive: 0x44aa88, emissiveIntensity: 1.2, transparent: true, opacity: 0.7 });
+    for (let i = 0; i < 15; i++) {
+      const tendrilGrp = new THREE.Group();
+      const numStrands = 2 + Math.floor(Math.random() * 4);
+      for (let s = 0; s < numStrands; s++) {
+        const strandSegs = 4 + Math.floor(Math.random() * 3);
+        const baseAngle = Math.random() * Math.PI * 2;
+        const spreadR = Math.random() * 0.15;
+        for (let seg = 0; seg < strandSegs; seg++) {
+          const frac = seg / strandSegs;
+          const segLen = 0.15 + Math.random() * 0.1;
+          const tendSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * (1 - frac * 0.5), 0.012 * (1 - frac * 0.3), segLen, 6), tendrilGlowMat);
+          tendSeg.position.set(
+            Math.cos(baseAngle) * spreadR + Math.sin(seg * 0.7) * 0.05,
+            seg * segLen * 0.85,
+            Math.sin(baseAngle) * spreadR + Math.cos(seg * 0.5) * 0.05
+          );
+          tendSeg.rotation.z = Math.sin(seg * 0.8) * 0.2;
+          tendSeg.rotation.x = Math.cos(seg * 0.6) * 0.15;
+          tendrilGrp.add(tendSeg);
+        }
+        // Tip glow
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), mushGlowMat);
+        tip.position.set(
+          Math.cos(baseAngle) * spreadR,
+          strandSegs * 0.12,
+          Math.sin(baseAngle) * spreadR
+        );
+        tendrilGrp.add(tip);
+      }
+      const tx = (Math.random() - 0.5) * w * 0.7, tz = (Math.random() - 0.5) * d * 0.7;
+      tendrilGrp.position.set(tx, getTerrainHeight(tx, tz, 0.5), tz);
+      mctx.scene.add(tendrilGrp);
+    }
+
+    // ── Sound crystals — humming crystal formations ──
+    const crystalMat = new THREE.MeshStandardMaterial({ color: 0xbb66ff, emissive: 0x9944dd, emissiveIntensity: 2.0, transparent: true, opacity: 0.75 });
+    const crystalDarkMat = new THREE.MeshStandardMaterial({ color: 0x6633aa, emissive: 0x4422aa, emissiveIntensity: 1.0, transparent: true, opacity: 0.85 });
+    const crystalBaseMat = new THREE.MeshStandardMaterial({ color: 0x221133, roughness: 0.6 });
+    for (let i = 0; i < 10; i++) {
+      const crystalGrp = new THREE.Group();
+      // Base rock
+      const baseR = 0.3 + Math.random() * 0.3;
+      const base = new THREE.Mesh(new THREE.DodecahedronGeometry(baseR, 0), crystalBaseMat);
+      base.scale.y = 0.4; base.position.y = baseR * 0.2;
+      crystalGrp.add(base);
+      // Crystal shards growing upward
+      const numShards = 3 + Math.floor(Math.random() * 4);
+      for (let s = 0; s < numShards; s++) {
+        const shardH = 0.4 + Math.random() * 0.8;
+        const shardR = 0.03 + Math.random() * 0.05;
+        const shard = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.005, shardR, shardH, 6),
+          Math.random() > 0.4 ? crystalMat : crystalDarkMat
+        );
+        const sa = Math.random() * Math.PI * 2;
+        const sr = Math.random() * baseR * 0.6;
+        shard.position.set(Math.cos(sa) * sr, baseR * 0.3 + shardH / 2, Math.sin(sa) * sr);
+        shard.rotation.set((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.3);
+        crystalGrp.add(shard);
+      }
+      // Central point light
+      const cLight = new THREE.PointLight(0xbb66ff, 0.5, 8);
+      cLight.position.y = baseR + 0.5;
+      crystalGrp.add(cLight); mctx.torchLights.push(cLight);
+      // Faint halo ring
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(baseR + 0.2, 0.015, 8, 24), new THREE.MeshStandardMaterial({
+        color: 0xbb66ff, emissive: 0x9944dd, emissiveIntensity: 1.5, transparent: true, opacity: 0.25, depthWrite: false
+      }));
+      halo.rotation.x = -Math.PI / 2; halo.position.y = baseR * 0.5;
+      crystalGrp.add(halo);
+      const cx = (Math.random() - 0.5) * w * 0.7, cz = (Math.random() - 0.5) * d * 0.7;
+      crystalGrp.position.set(cx, getTerrainHeight(cx, cz, 0.5), cz);
+      mctx.scene.add(crystalGrp);
     }
 }
 
