@@ -251,7 +251,7 @@ export function updatePlayer(state: GargoyleState, dt: number): void {
   const cosYaw = Math.cos(p.yaw);
   const sinYaw = Math.sin(p.yaw);
   const forward: Vec3 = { x: sinYaw, y: 0, z: cosYaw };
-  const right: Vec3 = { x: cosYaw, y: 0, z: -sinYaw };
+  const right: Vec3 = { x: -cosYaw, y: 0, z: sinYaw };
 
   const sprinting = keys.has("shift");
   const wingSpeedMult = 1 + p.wingLevel * 0.15;

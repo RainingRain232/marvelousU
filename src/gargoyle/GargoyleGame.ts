@@ -109,39 +109,40 @@ export class GargoyleGame {
   }
 
   private _registerInput(): void {
-    const state = this._state;
-
     this._onKeyDown = (e: KeyboardEvent) => {
+      const s = this._state;
       const key = e.key.toLowerCase();
-      state.keys.add(key);
+      s.keys.add(key);
       if (key === "escape") {
         if (document.pointerLockElement) document.exitPointerLock();
-        if (state.phase === "night" || state.phase === "dawn" || state.phase === "dusk") {
-          state.paused = !state.paused;
+        if (s.phase === "night" || s.phase === "dawn" || s.phase === "dusk") {
+          s.paused = !s.paused;
         }
       }
     };
-    this._onKeyUp = (e: KeyboardEvent) => { state.keys.delete(e.key.toLowerCase()); };
+    this._onKeyUp = (e: KeyboardEvent) => { this._state.keys.delete(e.key.toLowerCase()); };
     this._onMouseMove = (e: MouseEvent) => {
-      state.mouseX = e.clientX; state.mouseY = e.clientY;
-      if (state.pointerLocked) { state.mouseDX += e.movementX; state.mouseDY += e.movementY; }
+      const s = this._state;
+      s.mouseX = e.clientX; s.mouseY = e.clientY;
+      if (s.pointerLocked) { s.mouseDX += e.movementX; s.mouseDY += e.movementY; }
     };
     this._onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) state.mouseDown = true;
-      if (e.button === 2) state.rightMouseDown = true;
+      if (e.button === 0) this._state.mouseDown = true;
+      if (e.button === 2) this._state.rightMouseDown = true;
     };
     this._onMouseUp = (e: MouseEvent) => {
-      if (e.button === 0) state.mouseDown = false;
-      if (e.button === 2) state.rightMouseDown = false;
+      if (e.button === 0) this._state.mouseDown = false;
+      if (e.button === 2) this._state.rightMouseDown = false;
     };
     this._onContextMenu = (e: Event) => e.preventDefault();
     this._onClick = () => {
-      if (state.phase === "night" || state.phase === "dawn" || state.phase === "dusk") {
+      const s = this._state;
+      if (s.phase === "night" || s.phase === "dawn" || s.phase === "dusk") {
         this._renderer.canvas.requestPointerLock();
       }
     };
     this._onPointerLockChange = () => {
-      state.pointerLocked = document.pointerLockElement === this._renderer.canvas;
+      this._state.pointerLocked = document.pointerLockElement === this._renderer.canvas;
     };
 
     window.addEventListener("keydown", this._onKeyDown);

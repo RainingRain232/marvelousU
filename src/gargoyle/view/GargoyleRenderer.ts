@@ -398,12 +398,50 @@ export class GargoyleRenderer {
     nave.position.y = h / 2; nave.castShadow = true; nave.receiveShadow = true;
     this._cathedralGroup.add(nave);
 
+    // Stone coursing lines (horizontal mortar lines on nave walls)
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x555548, roughness: 0.95 });
+    for (let row = 0; row < 8; row++) {
+      const my = 1.5 + row * (h - 2) / 8;
+      for (const side of [-1, 1]) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, GARG.CATHEDRAL_LENGTH - 1), mortarMat);
+        line.position.set(side * (hw + 0.03), my, 0);
+        this._cathedralGroup.add(line);
+      }
+    }
+
+    // Pilasters (vertical wall buttress strips on nave)
+    const pilasterMat = new THREE.MeshStandardMaterial({ color: COL.STONE_MID, roughness: 0.82, metalness: 0.05 });
+    for (let i = 0; i < 7; i++) {
+      const pz = -hl + 4 + i * (GARG.CATHEDRAL_LENGTH - 8) / 6;
+      for (const side of [-1, 1]) {
+        const pilaster = new THREE.Mesh(new THREE.BoxGeometry(0.6, h * 0.85, 0.8), pilasterMat);
+        pilaster.position.set(side * (hw + 0.25), h * 0.425, pz);
+        this._cathedralGroup.add(pilaster);
+      }
+    }
+
+    // Foundation course (wider stone base)
+    const foundMat = new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.9, metalness: 0.05 });
+    const foundation = new THREE.Mesh(new THREE.BoxGeometry(GARG.CATHEDRAL_WIDTH + 1.2, 1.2, GARG.CATHEDRAL_LENGTH + 1.2), foundMat);
+    foundation.position.y = 0.6; foundation.receiveShadow = true;
+    this._cathedralGroup.add(foundation);
+
     // ---- Transept (cross arms) ----
     const transW = GARG.CATHEDRAL_WIDTH * 1.4;
     const transD = 10;
     const transept = new THREE.Mesh(new THREE.BoxGeometry(transW, h * 0.9, transD), sM);
     transept.position.set(0, h * 0.45, 2); transept.castShadow = true;
     this._cathedralGroup.add(transept);
+
+    // Transept stone coursing
+    for (let row = 0; row < 6; row++) {
+      const my = 1.5 + row * (h * 0.9 - 2) / 6;
+      for (const side of [-1, 1]) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, transD - 1), mortarMat);
+        line.position.set(side * (transW / 2 + 0.03), my, 2);
+        this._cathedralGroup.add(line);
+      }
+    }
 
     // Transept roof peaks
     for (const side of [-1, 1]) {
