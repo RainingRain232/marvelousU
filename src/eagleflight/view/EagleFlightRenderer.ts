@@ -1406,21 +1406,7 @@ export class EagleFlightRenderer {
     wellRoof.position.set(8, 6.5, -8);
     this._castleGroup.add(wellRoof);
 
-    // --- Castle moat ---
-    const moatGeo = new THREE.TorusGeometry(34, 3, 10, 40);
-    const moatMat = new THREE.MeshStandardMaterial({
-      color: 0x1a4466,
-      roughness: 0.2,
-      metalness: 0.2,
-      transparent: true,
-      opacity: 0.7,
-    });
-    const moat = new THREE.Mesh(moatGeo, moatMat);
-    moat.rotation.x = -Math.PI / 2;
-    moat.position.set(0, 0.1, 0);
-    this._castleGroup.add(moat);
-
-    // --- Drawbridge over moat (south side) ---
+    // --- Drawbridge (south side) ---
     const drawbridgeMat = new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.88, metalness: 0.03 });
     const drawbridge = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 8), drawbridgeMat);
     drawbridge.position.set(0, 1, -34);
