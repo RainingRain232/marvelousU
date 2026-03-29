@@ -91,6 +91,7 @@ export class DiabloRenderer {
   public fpYaw: number = 0;
   public fpPitch: number = 0;
   private _fpWeapon: THREE.Group | null = null;
+  private _fpWeaponClass: string | null = null;
 
   private _raycaster: THREE.Raycaster = new THREE.Raycaster();
   private _shieldMeshes: Map<string, THREE.Mesh> = new Map();
@@ -3010,7 +3011,7 @@ export class DiabloRenderer {
 
       // Hide player mesh in FPS, show FP weapon
       this._playerGroup.visible = false;
-      this._buildFPWeaponIfNeeded();
+      this._buildFPWeaponIfNeeded(state.player.class);
       if (this._fpWeapon) this._fpWeapon.visible = true;
 
       // -- First-person weapon attack / ability animation --

@@ -2798,6 +2798,242 @@ export class ChariotGame {
         stone.castShadow = true;
         this._scene.add(stone); this._sceneryObjects.push(stone);
       }
+
+      // --- Additional forest scenery ---
+      {
+        const rng = mulberry32(def.seed + 5555);
+
+        // Mushroom circles (8 groups of 5-8 small mushrooms)
+        for (let g = 0; g < 8; g++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 4 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const mushCount = 5 + Math.floor(rng() * 4);
+          const circleR = 0.8 + rng() * 0.6;
+          for (let m = 0; m < mushCount; m++) {
+            const angle = (m / mushCount) * Math.PI * 2;
+            const mx = pos.x + Math.cos(angle) * circleR;
+            const mz = pos.z + Math.sin(angle) * circleR;
+            // stem
+            const stem = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.05, 0.2, 6),
+              new THREE.MeshStandardMaterial({ color: 0xeeddcc, roughness: 0.7 })
+            );
+            stem.position.set(mx, 0.1, mz);
+            this._scene.add(stem); this._sceneryObjects.push(stem);
+            // cap (red with white spots implied by color)
+            const cap = new THREE.Mesh(
+              new THREE.SphereGeometry(0.08 + rng() * 0.04, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+              new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.5 })
+            );
+            cap.position.set(mx, 0.2, mz);
+            this._scene.add(cap); this._sceneryObjects.push(cap);
+            // white spot on cap
+            const spot = new THREE.Mesh(
+              new THREE.SphereGeometry(0.02, 4, 4),
+              new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })
+            );
+            spot.position.set(mx, 0.24, mz);
+            this._scene.add(spot); this._sceneryObjects.push(spot);
+          }
+        }
+
+        // Fallen logs (10 mossy logs)
+        for (let l = 0; l < 10; l++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const logLen = 2 + rng() * 3;
+          const logR = 0.15 + rng() * 0.15;
+          const log = new THREE.Mesh(
+            new THREE.CylinderGeometry(logR, logR * 1.1, logLen, 8),
+            new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.95 })
+          );
+          log.position.copy(pos); log.position.y = logR;
+          log.rotation.z = Math.PI / 2;
+          log.rotation.y = rng() * Math.PI;
+          this._scene.add(log); this._sceneryObjects.push(log);
+          // moss patches on log
+          for (let mp = 0; mp < 3; mp++) {
+            const moss = new THREE.Mesh(
+              new THREE.SphereGeometry(0.1 + rng() * 0.08, 6, 4),
+              new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 0.9 })
+            );
+            moss.position.copy(pos);
+            moss.position.y = logR * 2;
+            moss.position.x += (rng() - 0.5) * logLen * 0.6;
+            moss.position.z += (rng() - 0.5) * 0.3;
+            this._scene.add(moss); this._sceneryObjects.push(moss);
+          }
+        }
+
+        // Firefly lights (15 tiny warm PointLights)
+        for (let f = 0; f < 15; f++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 2 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const light = new THREE.PointLight(0xffee66, 0.3, 5);
+          light.position.copy(pos); light.position.y = 1 + rng() * 3;
+          this._scene.add(light);
+          // tiny visible sphere for the firefly
+          const glow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 4, 4),
+            new THREE.MeshStandardMaterial({ color: 0xffee66, emissive: 0xffee66, emissiveIntensity: 2.0 })
+          );
+          glow.position.copy(light.position);
+          this._scene.add(glow); this._sceneryObjects.push(glow);
+        }
+
+        // Glowing fungi on tree trunks (20 small emissive green spheres)
+        for (let g = 0; g < 20; g++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 8;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const fungus = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06 + rng() * 0.04, 6, 4),
+            new THREE.MeshStandardMaterial({ color: 0x33ff66, emissive: 0x33ff66, emissiveIntensity: 1.5, roughness: 0.4 })
+          );
+          fungus.position.copy(pos); fungus.position.y = 0.5 + rng() * 2.5;
+          this._scene.add(fungus); this._sceneryObjects.push(fungus);
+        }
+
+        // Stone bridge/arch (2 broken stone arches)
+        for (let a = 0; a < 2; a++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 8 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const archGroup = new THREE.Group();
+          const archMat = new THREE.MeshStandardMaterial({ color: 0x778877, roughness: 0.9 });
+          // left pillar
+          const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3, 0.6), archMat);
+          pillarL.position.set(-1.2, 1.5, 0); archGroup.add(pillarL);
+          // right pillar
+          const pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.2, 0.6), archMat);
+          pillarR.position.set(1.2, 1.1, 0); archGroup.add(pillarR);
+          // arch top (partially broken - tilted)
+          const archTop = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 0.6), archMat);
+          archTop.position.set(0, 2.8, 0);
+          archTop.rotation.z = 0.15; // slightly collapsed
+          archGroup.add(archTop);
+          // fallen stone block
+          const fallen = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), archMat);
+          fallen.position.set(0.8, 0.25, 0.5);
+          fallen.rotation.y = 0.4;
+          archGroup.add(fallen);
+          archGroup.position.copy(pos);
+          archGroup.rotation.y = rng() * Math.PI;
+          this._scene.add(archGroup); this._sceneryObjects.push(archGroup);
+        }
+
+        // Fern bushes (25 small green sphere clusters)
+        for (let f = 0; f < 25; f++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 2 + rng() * 8;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const fernGroup = new THREE.Group();
+          const fernMat = new THREE.MeshStandardMaterial({ color: 0x338833, roughness: 0.8 });
+          const frondCount = 3 + Math.floor(rng() * 3);
+          for (let fr = 0; fr < frondCount; fr++) {
+            const frond = new THREE.Mesh(
+              new THREE.SphereGeometry(0.15 + rng() * 0.1, 6, 4),
+              fernMat
+            );
+            frond.position.set((rng() - 0.5) * 0.4, 0.1 + rng() * 0.15, (rng() - 0.5) * 0.4);
+            frond.scale.y = 0.5;
+            fernGroup.add(frond);
+          }
+          fernGroup.position.copy(pos);
+          this._scene.add(fernGroup); this._sceneryObjects.push(fernGroup);
+        }
+
+        // Ancient tree stumps (3 large flat cylinders with moss)
+        for (let s = 0; s < 3; s++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 5 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const stumpR = 0.8 + rng() * 0.6;
+          const stump = new THREE.Mesh(
+            new THREE.CylinderGeometry(stumpR, stumpR * 1.15, 0.6, 10),
+            new THREE.MeshStandardMaterial({ color: 0x554433, roughness: 0.95 })
+          );
+          stump.position.copy(pos); stump.position.y = 0.3;
+          this._scene.add(stump); this._sceneryObjects.push(stump);
+          // moss top
+          const mossTop = new THREE.Mesh(
+            new THREE.CylinderGeometry(stumpR * 0.9, stumpR * 0.9, 0.08, 10),
+            new THREE.MeshStandardMaterial({ color: 0x336633, roughness: 0.9 })
+          );
+          mossTop.position.copy(pos); mossTop.position.y = 0.62;
+          this._scene.add(mossTop); this._sceneryObjects.push(mossTop);
+        }
+
+        // Cobweb decorations (8 thin white translucent planes)
+        for (let w = 0; w < 8; w++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 8;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const web = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.8 + rng() * 0.6, 0.8 + rng() * 0.6),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.3, side: THREE.DoubleSide })
+          );
+          web.position.copy(pos); web.position.y = 1.5 + rng() * 2;
+          web.rotation.y = rng() * Math.PI;
+          web.rotation.x = (rng() - 0.5) * 0.5;
+          this._scene.add(web); this._sceneryObjects.push(web);
+        }
+
+        // Owl perches (5 small sphere+cone shapes)
+        for (let o = 0; o < 5; o++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 4 + rng() * 8;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const owlGroup = new THREE.Group();
+          const owlMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.7 });
+          // body
+          const owlBody = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), owlMat);
+          owlBody.position.y = 0; owlGroup.add(owlBody);
+          // head
+          const owlHead = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), owlMat);
+          owlHead.position.y = 0.16; owlGroup.add(owlHead);
+          // ear tufts (two small cones)
+          for (const ex of [-0.04, 0.04]) {
+            const ear = new THREE.Mesh(
+              new THREE.ConeGeometry(0.02, 0.06, 4),
+              owlMat
+            );
+            ear.position.set(ex, 0.24, 0); owlGroup.add(ear);
+          }
+          // eyes
+          for (const ex of [-0.03, 0.03]) {
+            const eye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.015, 4, 4),
+              new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 1.0 })
+            );
+            eye.position.set(ex, 0.17, 0.07); owlGroup.add(eye);
+          }
+          owlGroup.position.copy(pos);
+          owlGroup.position.y = 3 + rng() * 3;
+          this._scene.add(owlGroup); this._sceneryObjects.push(owlGroup);
+        }
+      }
     }
   }
 
@@ -2894,6 +3130,263 @@ export class ChariotGame {
         const glow = new THREE.PointLight(0xff4400, 0.6, 25);
         glow.position.copy(pos); glow.position.y = 1; this._scene.add(glow);
       }
+
+      // --- Additional volcanic scenery ---
+      {
+        const rng = mulberry32(def.seed + 5555);
+
+        // Obsidian pillars (10 dark glossy tapered cylinders)
+        for (let op = 0; op < 10; op++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 5 + rng() * 15;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const pH = 3 + rng() * 5;
+          const pillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3 + rng() * 0.3, 0.6 + rng() * 0.4, pH, 6),
+            new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.2, metalness: 0.5 })
+          );
+          pillar.position.copy(pos); pillar.position.y = pH / 2;
+          pillar.castShadow = true;
+          this._scene.add(pillar); this._sceneryObjects.push(pillar);
+        }
+
+        // Lava geysers (6 bright orange/yellow cone eruptions with PointLight)
+        for (let lg = 0; lg < 6; lg++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 6 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const geyserH = 2 + rng() * 3;
+          const geyser = new THREE.Mesh(
+            new THREE.ConeGeometry(0.5 + rng() * 0.3, geyserH, 8),
+            new THREE.MeshStandardMaterial({ color: 0xff8800, emissive: 0xff6600, emissiveIntensity: 2.0, roughness: 0.3 })
+          );
+          geyser.position.copy(pos); geyser.position.y = geyserH / 2;
+          this._scene.add(geyser); this._sceneryObjects.push(geyser);
+          // geyser light
+          const gLight = new THREE.PointLight(0xff6600, 0.8, 15);
+          gLight.position.copy(pos); gLight.position.y = geyserH;
+          this._scene.add(gLight);
+        }
+
+        // Charred dead trees (12 black bare trunks with thin branch cylinders)
+        for (let dt = 0; dt < 12; dt++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 4 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const treeGroup = new THREE.Group();
+          const charMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.95 });
+          const tH = 2 + rng() * 3;
+          // trunk
+          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, tH, 6), charMat);
+          trunk.position.y = tH / 2; treeGroup.add(trunk);
+          // branches (2-4 thin cylinders)
+          const branchCount = 2 + Math.floor(rng() * 3);
+          for (let br = 0; br < branchCount; br++) {
+            const bLen = 0.5 + rng() * 1;
+            const branch = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.02, 0.04, bLen, 5),
+              charMat
+            );
+            branch.position.y = tH * (0.5 + rng() * 0.4);
+            branch.rotation.z = (rng() > 0.5 ? 1 : -1) * (0.5 + rng() * 0.8);
+            branch.position.x = (rng() - 0.5) * 0.3;
+            treeGroup.add(branch);
+          }
+          treeGroup.position.copy(pos);
+          treeGroup.castShadow = true;
+          this._scene.add(treeGroup); this._sceneryObjects.push(treeGroup);
+        }
+
+        // Volcanic rocks (15 dark dodecahedrons scattered around)
+        for (let vr = 0; vr < 15; vr++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const rockSize = 0.3 + rng() * 0.6;
+          const rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(rockSize, 0),
+            new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.85 })
+          );
+          rock.position.copy(pos); rock.position.y = rockSize * 0.5;
+          rock.rotation.set(rng() * Math.PI, rng() * Math.PI, 0);
+          this._scene.add(rock); this._sceneryObjects.push(rock);
+        }
+
+        // Smoke vents (8 translucent grey sphere puffs)
+        for (let sv = 0; sv < 8; sv++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 4 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const smokeGroup = new THREE.Group();
+          const smokeMat = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.25, roughness: 0.9 });
+          // stack of rising puffs
+          for (let puff = 0; puff < 4; puff++) {
+            const puffMesh = new THREE.Mesh(
+              new THREE.SphereGeometry(0.3 + puff * 0.15, 8, 6),
+              smokeMat
+            );
+            puffMesh.position.y = puff * 0.6;
+            smokeGroup.add(puffMesh);
+          }
+          smokeGroup.position.copy(pos);
+          smokeGroup.position.y = 0.2;
+          this._scene.add(smokeGroup); this._sceneryObjects.push(smokeGroup);
+        }
+
+        // Fire elementals (4 small orange emissive sphere clusters)
+        for (let fe = 0; fe < 4; fe++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 5 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const elemGroup = new THREE.Group();
+          const fireMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 1.5, roughness: 0.3 });
+          // core
+          const core = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), fireMat);
+          core.position.y = 0.5; elemGroup.add(core);
+          // orbiting flame spheres
+          for (let orb = 0; orb < 4; orb++) {
+            const orbAngle = (orb / 4) * Math.PI * 2;
+            const flame = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), fireMat);
+            flame.position.set(Math.cos(orbAngle) * 0.35, 0.5 + Math.sin(orbAngle) * 0.2, Math.sin(orbAngle) * 0.35);
+            elemGroup.add(flame);
+          }
+          // top flame
+          const topFlame = new THREE.Mesh(
+            new THREE.ConeGeometry(0.12, 0.3, 6),
+            new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 2.0, roughness: 0.3 })
+          );
+          topFlame.position.y = 0.85; elemGroup.add(topFlame);
+          elemGroup.position.copy(pos);
+          this._scene.add(elemGroup); this._sceneryObjects.push(elemGroup);
+        }
+
+        // Bone piles (6 off-white sphere clusters near track)
+        for (let bp = 0; bp < 6; bp++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 6;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const boneGroup = new THREE.Group();
+          const boneMat = new THREE.MeshStandardMaterial({ color: 0xddddbb, roughness: 0.7 });
+          const boneCount = 4 + Math.floor(rng() * 4);
+          for (let bn = 0; bn < boneCount; bn++) {
+            const bone = new THREE.Mesh(
+              new THREE.SphereGeometry(0.05 + rng() * 0.06, 6, 4),
+              boneMat
+            );
+            bone.position.set((rng() - 0.5) * 0.5, rng() * 0.15, (rng() - 0.5) * 0.5);
+            boneGroup.add(bone);
+          }
+          // a couple of elongated "long bones"
+          for (let lb = 0; lb < 2; lb++) {
+            const longBone = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.02, 0.02, 0.3, 5),
+              boneMat
+            );
+            longBone.position.set((rng() - 0.5) * 0.4, 0.04, (rng() - 0.5) * 0.4);
+            longBone.rotation.z = Math.PI / 2;
+            longBone.rotation.y = rng() * Math.PI;
+            boneGroup.add(longBone);
+          }
+          boneGroup.position.copy(pos);
+          this._scene.add(boneGroup); this._sceneryObjects.push(boneGroup);
+        }
+
+        // Ruined columns (5 broken dark stone cylinders, some toppled)
+        for (let rc = 0; rc < 5; rc++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 5 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const colGroup = new THREE.Group();
+          const colMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.85 });
+          const colH = 2 + rng() * 3;
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, colH, 8), colMat);
+          if (rng() > 0.5) {
+            // standing but broken
+            col.position.y = colH / 2;
+          } else {
+            // toppled
+            col.rotation.z = Math.PI / 2;
+            col.position.y = 0.35;
+            col.position.x += (rng() - 0.5) * 1;
+          }
+          colGroup.add(col);
+          // broken capital on top or beside
+          const capital = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.45, 0.35, 0.25, 8),
+            colMat
+          );
+          if (col.rotation.z === 0) {
+            capital.position.y = colH + 0.12;
+          } else {
+            capital.position.set((rng() - 0.5) * 1.5, 0.12, (rng() - 0.5) * 0.5);
+          }
+          colGroup.add(capital);
+          colGroup.position.copy(pos);
+          colGroup.rotation.y = rng() * Math.PI;
+          this._scene.add(colGroup); this._sceneryObjects.push(colGroup);
+        }
+
+        // Ember particles (10 tiny orange emissive spheres floating in air)
+        for (let em = 0; em < 10; em++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 2 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const ember = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 4, 4),
+            new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 2.5, roughness: 0.3 })
+          );
+          ember.position.copy(pos); ember.position.y = 1 + rng() * 4;
+          this._scene.add(ember); this._sceneryObjects.push(ember);
+        }
+
+        // Cracked earth (8 dark lines on ground made of thin box meshes)
+        for (let ce = 0; ce < 8; ce++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const crackGroup = new THREE.Group();
+          const crackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 });
+          const segCount = 3 + Math.floor(rng() * 3);
+          let cx = 0, cz = 0;
+          for (let seg = 0; seg < segCount; seg++) {
+            const segLen = 0.5 + rng() * 1.5;
+            const segAngle = rng() * Math.PI * 2;
+            const crack = new THREE.Mesh(
+              new THREE.BoxGeometry(segLen, 0.02, 0.04),
+              crackMat
+            );
+            cx += Math.cos(segAngle) * segLen * 0.5;
+            cz += Math.sin(segAngle) * segLen * 0.5;
+            crack.position.set(cx, 0.01, cz);
+            crack.rotation.y = segAngle;
+            crackGroup.add(crack);
+            cx += Math.cos(segAngle) * segLen * 0.5;
+            cz += Math.sin(segAngle) * segLen * 0.5;
+          }
+          crackGroup.position.copy(pos);
+          this._scene.add(crackGroup); this._sceneryObjects.push(crackGroup);
+        }
+      }
     }
 
     if (def.specialScenery === "shore") {
@@ -2903,6 +3396,295 @@ export class ChariotGame {
         new THREE.MeshStandardMaterial({ color: 0x3366aa, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.3 })
       );
       water.rotation.x = -Math.PI / 2; water.position.y = -1.5; this._scene.add(water);
+
+      // --- Additional shore scenery ---
+      {
+        const rng = mulberry32(def.seed + 5555);
+
+        // Palm trees (12 tall trunks with green sphere clusters)
+        for (let p = 0; p < 12; p++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 4 + rng() * 12;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const palmGroup = new THREE.Group();
+          const trunkH = 4 + rng() * 3;
+          const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.25, trunkH, 8),
+            new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.9 })
+          );
+          trunk.position.y = trunkH / 2; palmGroup.add(trunk);
+          // slight lean
+          palmGroup.rotation.z = (rng() - 0.5) * 0.15;
+          // leaf clusters on top
+          const leafMat = new THREE.MeshStandardMaterial({ color: 0x228833, roughness: 0.7 });
+          for (let lf = 0; lf < 5; lf++) {
+            const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.6 + rng() * 0.3, 8, 6), leafMat);
+            const la = (lf / 5) * Math.PI * 2;
+            leaf.position.set(Math.cos(la) * 0.6, trunkH + 0.1, Math.sin(la) * 0.6);
+            leaf.scale.set(1, 0.4, 1.5);
+            palmGroup.add(leaf);
+          }
+          palmGroup.position.copy(pos);
+          palmGroup.castShadow = true;
+          this._scene.add(palmGroup); this._sceneryObjects.push(palmGroup);
+        }
+
+        // Seashells (20 small white/pink hemispheres)
+        const shellColors = [0xffeedd, 0xffccbb, 0xeeddcc, 0xffddee, 0xffffff];
+        for (let s = 0; s < 20; s++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 2 + rng() * 8;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const shell = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06 + rng() * 0.05, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: shellColors[Math.floor(rng() * shellColors.length)], roughness: 0.4, metalness: 0.1 })
+          );
+          shell.position.copy(pos); shell.position.y = 0.01;
+          shell.rotation.y = rng() * Math.PI * 2;
+          this._scene.add(shell); this._sceneryObjects.push(shell);
+        }
+
+        // Driftwood (8 pale brown cylinder logs)
+        for (let d = 0; d < 8; d++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 10;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const dLen = 1.5 + rng() * 2.5;
+          const driftwood = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08 + rng() * 0.08, 0.1 + rng() * 0.06, dLen, 6),
+            new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.95 })
+          );
+          driftwood.position.copy(pos); driftwood.position.y = 0.06;
+          driftwood.rotation.z = Math.PI / 2;
+          driftwood.rotation.y = rng() * Math.PI;
+          this._scene.add(driftwood); this._sceneryObjects.push(driftwood);
+        }
+
+        // Sandcastles (2 clusters of sand-colored cylinders+cones)
+        for (let sc = 0; sc < 2; sc++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 4 + rng() * 6;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const castleGroup = new THREE.Group();
+          const sandMat = new THREE.MeshStandardMaterial({ color: 0xddcc88, roughness: 0.9 });
+          // main tower
+          const mainTower = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.8, 8), sandMat);
+          mainTower.position.y = 0.4; castleGroup.add(mainTower);
+          const mainTop = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.25, 8), sandMat);
+          mainTop.position.y = 0.92; castleGroup.add(mainTop);
+          // side towers
+          for (const tx of [-0.5, 0.5]) {
+            const sideTower = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.5, 8), sandMat);
+            sideTower.position.set(tx, 0.25, 0); castleGroup.add(sideTower);
+            const sideTop = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.18, 8), sandMat);
+            sideTop.position.set(tx, 0.58, 0); castleGroup.add(sideTop);
+          }
+          // wall between towers
+          const wall = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.08), sandMat);
+          wall.position.set(0, 0.15, 0.18); castleGroup.add(wall);
+          castleGroup.position.copy(pos);
+          this._scene.add(castleGroup); this._sceneryObjects.push(castleGroup);
+        }
+
+        // Fishing boats (3 simple boat shapes)
+        for (let b = 0; b < 3; b++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 10 + rng() * 15;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const boatGroup = new THREE.Group();
+          // hull
+          const hull = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 0.3, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0x884422, roughness: 0.8 })
+          );
+          hull.position.y = 0; boatGroup.add(hull);
+          // mast
+          const mast = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6),
+            new THREE.MeshStandardMaterial({ color: 0x665533, roughness: 0.85 })
+          );
+          mast.position.y = 0.85; boatGroup.add(mast);
+          // sail
+          const sail = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.6, 0.8),
+            new THREE.MeshStandardMaterial({ color: 0xeeeedd, roughness: 0.6, side: THREE.DoubleSide })
+          );
+          sail.position.set(0.15, 0.9, 0); boatGroup.add(sail);
+          boatGroup.position.copy(pos);
+          boatGroup.position.y = -1.2; // floating on water
+          boatGroup.rotation.y = rng() * Math.PI * 2;
+          this._scene.add(boatGroup); this._sceneryObjects.push(boatGroup);
+        }
+
+        // Seagulls (10 tiny white sphere+plane wing shapes high up)
+        for (let sg = 0; sg < 10; sg++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 5 + rng() * 20;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const gullGroup = new THREE.Group();
+          const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+          // body
+          const gullBody = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), whiteMat);
+          gullGroup.add(gullBody);
+          // wings
+          for (const wx of [-1, 1]) {
+            const wing = new THREE.Mesh(
+              new THREE.PlaneGeometry(0.2, 0.06),
+              whiteMat
+            );
+            wing.position.set(wx * 0.12, 0.01, 0);
+            wing.rotation.z = wx * 0.3;
+            gullGroup.add(wing);
+          }
+          gullGroup.position.copy(pos);
+          gullGroup.position.y = 8 + rng() * 10;
+          gullGroup.rotation.y = rng() * Math.PI * 2;
+          this._scene.add(gullGroup); this._sceneryObjects.push(gullGroup);
+        }
+
+        // Lighthouse (1 tall white/red striped cylinder with light)
+        {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 25 + rng() * 15;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const lhGroup = new THREE.Group();
+          const lhH = 10;
+          // main tower (white)
+          const tower = new THREE.Mesh(
+            new THREE.CylinderGeometry(1, 1.5, lhH, 12),
+            new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 })
+          );
+          tower.position.y = lhH / 2; lhGroup.add(tower);
+          // red stripes
+          for (let stripe = 0; stripe < 3; stripe++) {
+            const stripeM = new THREE.Mesh(
+              new THREE.CylinderGeometry(1.02 + (0.5 - stripe * 0.15), 1.18 + (0.5 - stripe * 0.15), 0.8, 12),
+              new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.5 })
+            );
+            stripeM.position.y = 2 + stripe * 3; lhGroup.add(stripeM);
+          }
+          // lantern room
+          const lanternRoom = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.2, 1, 1.5, 12),
+            new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 })
+          );
+          lanternRoom.position.y = lhH + 0.75; lhGroup.add(lanternRoom);
+          // dome
+          const dome = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.5 })
+          );
+          dome.position.y = lhH + 1.5; lhGroup.add(dome);
+          // beacon light
+          const beacon = new THREE.PointLight(0xffffcc, 1.5, 60);
+          beacon.position.y = lhH + 1; lhGroup.add(beacon);
+          lhGroup.position.copy(pos);
+          this._scene.add(lhGroup); this._sceneryObjects.push(lhGroup);
+        }
+
+        // Tide pools (6 small blue circles with rock borders)
+        for (let tp = 0; tp < 6; tp++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 6;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const poolR = 0.4 + rng() * 0.4;
+          // water circle
+          const pool = new THREE.Mesh(
+            new THREE.CircleGeometry(poolR, 12),
+            new THREE.MeshStandardMaterial({ color: 0x3388bb, transparent: true, opacity: 0.7, roughness: 0.1, metalness: 0.2 })
+          );
+          pool.rotation.x = -Math.PI / 2;
+          pool.position.copy(pos); pool.position.y = 0.02;
+          this._scene.add(pool); this._sceneryObjects.push(pool);
+          // rock border
+          const rockBorder = new THREE.Mesh(
+            new THREE.TorusGeometry(poolR, 0.08, 6, 12),
+            new THREE.MeshStandardMaterial({ color: 0x667766, roughness: 0.9 })
+          );
+          rockBorder.rotation.x = Math.PI / 2;
+          rockBorder.position.copy(pos); rockBorder.position.y = 0.05;
+          this._scene.add(rockBorder); this._sceneryObjects.push(rockBorder);
+        }
+
+        // Beach umbrellas (4 cone+pole combinations)
+        const umbrellaColors = [0xff3333, 0x3333ff, 0xffff33, 0x33cc33];
+        for (let u = 0; u < 4; u++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 3 + rng() * 6;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const umbGroup = new THREE.Group();
+          // pole
+          const pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, 2, 6),
+            new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4 })
+          );
+          pole.position.y = 1; umbGroup.add(pole);
+          // canopy
+          const canopy = new THREE.Mesh(
+            new THREE.ConeGeometry(0.8, 0.4, 12),
+            new THREE.MeshStandardMaterial({ color: umbrellaColors[u], roughness: 0.6 })
+          );
+          canopy.position.y = 2.1;
+          canopy.rotation.x = Math.PI; // point down to make umbrella shape
+          umbGroup.add(canopy);
+          umbGroup.position.copy(pos);
+          this._scene.add(umbGroup); this._sceneryObjects.push(umbGroup);
+        }
+
+        // Coral formations underwater (8 colorful branching shapes)
+        const coralColors = [0xff4466, 0xff8844, 0xaa44ff, 0x44ddaa, 0xffaa44, 0xff66aa, 0x44aaff, 0xaaff44];
+        for (let cr = 0; cr < 8; cr++) {
+          const idx = Math.floor(rng() * track.points.length);
+          const pt = track.points[idx % track.points.length];
+          const side = rng() > 0.5 ? 1 : -1;
+          const dist = pt.width / 2 + 8 + rng() * 15;
+          const pos = pt.pos.clone().add(pt.right.clone().multiplyScalar(side * dist));
+          const coralGroup = new THREE.Group();
+          const coralMat = new THREE.MeshStandardMaterial({ color: coralColors[cr], roughness: 0.6 });
+          // main stalk
+          const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 0.8, 6), coralMat);
+          stalk.position.y = 0.4; coralGroup.add(stalk);
+          // branches
+          const branchCount = 3 + Math.floor(rng() * 3);
+          for (let br = 0; br < branchCount; br++) {
+            const branch = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.08, 0.4 + rng() * 0.3, 5),
+              coralMat
+            );
+            const ba = (br / branchCount) * Math.PI * 2;
+            branch.position.set(Math.cos(ba) * 0.15, 0.5 + rng() * 0.3, Math.sin(ba) * 0.15);
+            branch.rotation.z = (rng() - 0.5) * 0.8;
+            coralGroup.add(branch);
+          }
+          // tip spheres
+          for (let t = 0; t < 2; t++) {
+            const tip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), coralMat);
+            tip.position.set((rng() - 0.5) * 0.3, 0.7 + rng() * 0.2, (rng() - 0.5) * 0.3);
+            coralGroup.add(tip);
+          }
+          coralGroup.position.copy(pos);
+          coralGroup.position.y = -1.8; // underwater
+          this._scene.add(coralGroup); this._sceneryObjects.push(coralGroup);
+        }
+      }
     }
   }
 
