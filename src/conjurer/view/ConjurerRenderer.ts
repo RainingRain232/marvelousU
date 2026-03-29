@@ -73,22 +73,46 @@ export class ConjurerRenderer {
     // Background
     g.rect(0, 0, sw, sh).fill(B.COLOR_BG);
 
-    // Animated starfield (deterministic slow-drifting stars)
-    const starSeed = 42;
-    for (let si = 0; si < 60; si++) {
-      const sx2 = ((si * 73 + starSeed) % 1000) / 1000 * sw;
-      const sy2 = ((si * 137 + starSeed) % 1000) / 1000 * sh;
-      const sBright = 0.04 + 0.04 * Math.sin(s.time * 0.5 + si * 1.7);
-      const sSize = 0.5 + (si % 3) * 0.3;
-      g.circle(sx2, sy2, sSize).fill({ color: 0x445577, alpha: sBright });
-    }
-    // Larger dim nebula patches
-    for (let ni = 0; ni < 5; ni++) {
+    // Deep background nebula clouds (large, colorful)
+    const nebulaColors = [0x0a1540, 0x150a35, 0x0a0a30, 0x1a0828, 0x081530, 0x120a2a, 0x0a1428];
+    for (let ni = 0; ni < 10; ni++) {
       const nx = ((ni * 311 + 7) % 100) / 100 * sw;
       const ny = ((ni * 197 + 13) % 100) / 100 * sh;
-      const nr = 40 + ni * 20;
-      const nColor = ni % 2 === 0 ? 0x112244 : 0x221133;
-      g.circle(nx, ny, nr).fill({ color: nColor, alpha: 0.03 + 0.01 * Math.sin(s.time * 0.3 + ni) });
+      const nr = 60 + ni * 25;
+      g.circle(nx, ny, nr).fill({ color: nebulaColors[ni % nebulaColors.length], alpha: 0.06 + 0.02 * Math.sin(s.time * 0.2 + ni * 1.3) });
+    }
+
+    // Animated starfield (more stars, varied colors and sizes)
+    const starSeed = 42;
+    const starColors = [0x445577, 0x5566aa, 0x6677bb, 0x4488cc, 0x7788aa, 0xaa8866];
+    for (let si = 0; si < 120; si++) {
+      const sx2 = ((si * 73 + starSeed) % 1000) / 1000 * sw;
+      const sy2 = ((si * 137 + starSeed) % 1000) / 1000 * sh;
+      const sBright = 0.03 + 0.05 * Math.sin(s.time * 0.5 + si * 1.7);
+      const sSize = 0.4 + (si % 4) * 0.35;
+      const sColor = starColors[si % starColors.length];
+      g.circle(sx2, sy2, sSize).fill({ color: sColor, alpha: sBright });
+      // Diffraction spikes for larger stars
+      if (sSize > 1.0 && sBright > 0.04) {
+        const spikeLen = sSize * 3;
+        g.moveTo(sx2 - spikeLen, sy2).lineTo(sx2 + spikeLen, sy2).stroke({ color: sColor, width: 0.3, alpha: sBright * 0.3 });
+        g.moveTo(sx2, sy2 - spikeLen).lineTo(sx2, sy2 + spikeLen).stroke({ color: sColor, width: 0.3, alpha: sBright * 0.3 });
+      }
+    }
+
+    // Distant galaxy spirals
+    for (let gi = 0; gi < 2; gi++) {
+      const gx = sw * (0.2 + gi * 0.6), gy = sh * (0.15 + gi * 0.5);
+      const gr = 20 + gi * 8;
+      const ga = s.time * 0.04 + gi * 3;
+      for (let arm = 0; arm < 3; arm++) {
+        const armA = ga + (arm / 3) * Math.PI * 2;
+        for (let d = 0; d < 6; d++) {
+          const da = armA + d * 0.35;
+          g.circle(gx + Math.cos(da) * (d / 6) * gr, gy + Math.sin(da) * (d / 6) * gr, 1.2 - d * 0.15)
+            .fill({ color: 0x4455aa, alpha: 0.03 });
+        }
+      }
     }
 
     // Arena grid — responsive brightness near player

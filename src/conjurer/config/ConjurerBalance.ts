@@ -10,7 +10,7 @@ export const CONJURER_BALANCE = {
 
   // Player
   PLAYER_SPEED: 200,
-  PLAYER_RADIUS: 10,
+  PLAYER_RADIUS: 15,
   PLAYER_HP: 7,
   PLAYER_MAX_MANA: 100,
   PLAYER_MANA_REGEN: 2,          // per second
@@ -62,12 +62,12 @@ export const CONJURER_BALANCE = {
 
   // Enemies
   ENEMY_DEFS: {
-    [EnemyType.THRALL]:    { hp: 2,  speed: 80,  radius: 8,  color: 0x66aa44, score: 10 },
-    [EnemyType.ARCHER]:    { hp: 2,  speed: 50,  radius: 8,  color: 0xaa8833, score: 15 },
-    [EnemyType.KNIGHT]:    { hp: 6,  speed: 60,  radius: 12, color: 0x8888cc, score: 25 },
-    [EnemyType.WRAITH]:    { hp: 3,  speed: 130, radius: 9,  color: 0xaa44cc, score: 20 },
-    [EnemyType.GOLEM]:     { hp: 20, speed: 35,  radius: 18, color: 0x887755, score: 50 },
-    [EnemyType.SORCERER]:  { hp: 4,  speed: 60,  radius: 10, color: 0xcc44aa, score: 30 },
+    [EnemyType.THRALL]:    { hp: 2,  speed: 80,  radius: 14,  color: 0x66aa44, score: 10 },
+    [EnemyType.ARCHER]:    { hp: 2,  speed: 50,  radius: 14,  color: 0xaa8833, score: 15 },
+    [EnemyType.KNIGHT]:    { hp: 6,  speed: 60,  radius: 18, color: 0x8888cc, score: 25 },
+    [EnemyType.WRAITH]:    { hp: 3,  speed: 130, radius: 15,  color: 0xaa44cc, score: 20 },
+    [EnemyType.GOLEM]:     { hp: 20, speed: 35,  radius: 26, color: 0x887755, score: 50 },
+    [EnemyType.SORCERER]:  { hp: 4,  speed: 60,  radius: 16, color: 0xcc44aa, score: 30 },
   } as Record<EnemyType, { hp: number; speed: number; radius: number; color: number; score: number }>,
 
   ARCHER_ATTACK_INTERVAL: 2.0,
