@@ -253,6 +253,8 @@ export class SewerSplashGame {
   private _playerBox = new THREE.Box3();
   private _boxMin = new THREE.Vector3();
   private _boxMax = new THREE.Vector3();
+  // Shop click delegation (single handler, no leak)
+  private _shopClickHandler: ((e: Event) => void) | null = null;
   private _bossEvery = 500; // distance between bosses
   private _nextBossAt = 500;
   private _segmentsCreated = 0;
@@ -443,6 +445,10 @@ export class SewerSplashGame {
     window.removeEventListener("touchmove", this._onTouchMove);
     window.removeEventListener("touchend", this._onTouchEnd);
     window.removeEventListener("click", this._onClick);
+    if (this._shopClickHandler && this._hudScore) {
+      this._hudScore.removeEventListener("click", this._shopClickHandler);
+      this._shopClickHandler = null;
+    }
     this._hud?.parentNode?.removeChild(this._hud);
     this._vignetteEl?.parentNode?.removeChild(this._vignetteEl);
     this._fadeEl?.parentNode?.removeChild(this._fadeEl);
@@ -1825,18 +1831,19 @@ export class SewerSplashGame {
       </div>
     `;
 
-    // Bind shop click events via delegation (no per-element listeners)
-    const shopHandler = (e: Event) => {
+    // Bind shop click events via delegation (single listener, no leak)
+    if (this._shopClickHandler) {
+      this._hudScore.removeEventListener("click", this._shopClickHandler);
+    }
+    this._shopClickHandler = (e: Event) => {
       const target = (e.target as HTMLElement).closest("[data-upgrade]") as HTMLElement | null;
       if (!target) return;
       e.stopPropagation();
       this._buyUpgrade(target.dataset.upgrade!);
-      // Re-render after purchase
-      this._hudScore.removeEventListener("click", shopHandler);
     };
     setTimeout(() => {
       if (this._destroyed) return;
-      this._hudScore.addEventListener("click", shopHandler);
+      this._hudScore.addEventListener("click", this._shopClickHandler!);
     }, 50);
   }
 
