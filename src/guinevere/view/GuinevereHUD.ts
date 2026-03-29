@@ -52,13 +52,29 @@ export class GuinevereHUD {
     }
     this._menuBuilt = false;
 
-    let html = "";
-    switch (state.phase) {
-      case "game_over": html = this._renderGameOver(state); break;
-      default: html = this._renderPlaying(state); break;
+    // Game over screen: only build once to keep buttons clickable
+    if (state.phase === "game_over") {
+      if (!(this._root as any)._gameOverBuilt) {
+        (this._root as any)._gameOverBuilt = true;
+        this._root.innerHTML = this._renderGameOver(state);
+        this._bindEvents(state);
+      }
+      return;
     }
+    (this._root as any)._gameOverBuilt = false;
 
-    this._root.innerHTML = html;
+    // When paused, only rebuild once to keep buttons clickable
+    if (state.paused) {
+      if (!(this._root as any)._pauseBuilt) {
+        (this._root as any)._pauseBuilt = true;
+        this._root.innerHTML = this._renderPlaying(state);
+        this._bindEvents(state);
+      }
+      return;
+    }
+    (this._root as any)._pauseBuilt = false;
+
+    this._root.innerHTML = this._renderPlaying(state);
     this._bindEvents(state);
   }
 
