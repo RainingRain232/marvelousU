@@ -1207,6 +1207,111 @@ export class GTA3DRenderer {
     }
   }
 
+  // ── Brick Mortar Helper ──
+  private _addBrickMortar(
+    group: THREE.Group,
+    w: number, h: number, d: number,
+    cx: number, cy: number, cz: number
+  ): void {
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x8a7a60, roughness: 0.95 });
+    const mortarThick = 0.03;
+    const rowSpacing = 0.4;
+    const brickLen = 0.8;
+    const nudge = 0.005; // offset from wall surface
+
+    // Front/back faces (normal along Z)
+    for (const sign of [-1, 1]) {
+      const fz = cz + sign * (d / 2 + nudge);
+      // Horizontal mortar lines
+      const rows = Math.floor(h / rowSpacing);
+      for (let r = 1; r < rows; r++) {
+        const hy = cy - h / 2 + r * rowSpacing;
+        if (hy > cy + h / 2 - 0.05) break;
+        const line = new THREE.Mesh(
+          new THREE.BoxGeometry(w, mortarThick, mortarThick),
+          mortarMat
+        );
+        line.position.set(cx, hy, fz);
+        group.add(line);
+      }
+      // Vertical brick joints
+      const cols = Math.max(1, Math.floor(w / brickLen));
+      const actualBrick = w / cols;
+      for (let r = 1; r < rows; r++) {
+        const hy = cy - h / 2 + r * rowSpacing;
+        if (hy > cy + h / 2 - 0.05) break;
+        const offset = (r % 2 === 0) ? 0 : actualBrick / 2;
+        for (let c = 0; c <= cols; c++) {
+          const jx = cx - w / 2 + c * actualBrick + offset;
+          if (jx < cx - w / 2 + 0.05 || jx > cx + w / 2 - 0.05) continue;
+          const joint = new THREE.Mesh(
+            new THREE.BoxGeometry(mortarThick, rowSpacing, mortarThick),
+            mortarMat
+          );
+          joint.position.set(jx, hy - rowSpacing / 2, fz);
+          group.add(joint);
+        }
+      }
+    }
+
+    // Left/right faces (normal along X)
+    for (const sign of [-1, 1]) {
+      const fx = cx + sign * (w / 2 + nudge);
+      // Horizontal mortar lines
+      const rows = Math.floor(h / rowSpacing);
+      for (let r = 1; r < rows; r++) {
+        const hy = cy - h / 2 + r * rowSpacing;
+        if (hy > cy + h / 2 - 0.05) break;
+        const line = new THREE.Mesh(
+          new THREE.BoxGeometry(mortarThick, mortarThick, d),
+          mortarMat
+        );
+        line.position.set(fx, hy, cz);
+        group.add(line);
+      }
+      // Vertical brick joints
+      const cols = Math.max(1, Math.floor(d / brickLen));
+      const actualBrick = d / cols;
+      for (let r = 1; r < rows; r++) {
+        const hy = cy - h / 2 + r * rowSpacing;
+        if (hy > cy + h / 2 - 0.05) break;
+        const offset = (r % 2 === 0) ? 0 : actualBrick / 2;
+        for (let c = 0; c <= cols; c++) {
+          const jz = cz - d / 2 + c * actualBrick + offset;
+          if (jz < cz - d / 2 + 0.05 || jz > cz + d / 2 - 0.05) continue;
+          const joint = new THREE.Mesh(
+            new THREE.BoxGeometry(mortarThick, rowSpacing, mortarThick),
+            mortarMat
+          );
+          joint.position.set(fx, hy - rowSpacing / 2, jz);
+          group.add(joint);
+        }
+      }
+    }
+  }
+
+  // Helper for adding mortar rings to cylindrical towers
+  private _addTowerMortar(
+    group: THREE.Group,
+    radius: number, height: number,
+    tx: number, ty: number, tz: number
+  ): void {
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x8a7a60, roughness: 0.95 });
+    const rowSpacing = 0.4;
+    const rows = Math.floor(height / rowSpacing);
+    for (let r = 1; r < rows; r++) {
+      const hy = ty - height / 2 + r * rowSpacing;
+      if (hy > ty + height / 2 - 0.05) break;
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(radius + 0.005, 0.015, 4, 24),
+        mortarMat
+      );
+      ring.position.set(tx, hy, tz);
+      ring.rotation.x = Math.PI / 2;
+      group.add(ring);
+    }
+  }
+
   // ── Castle ──
   private _buildCastle(b: Building3D): THREE.Group {
     const g = new THREE.Group();
@@ -1221,12 +1326,16 @@ export class GTA3DRenderer {
     keep.receiveShadow = true;
     g.add(keep);
 
+    // Mortar on keep
+    this._addBrickMortar(g, w * 0.5, h, d * 0.5, 0, h / 2, 0);
+
     // Central tower (taller) — smooth
     const centralH = h * 1.5;
     const central = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.12, w * 0.14, centralH, 20), mat(0x888877));
     central.position.y = centralH / 2;
     central.castShadow = true;
     g.add(central);
+    this._addTowerMortar(g, w * 0.13, centralH, 0, centralH / 2, 0);
     // Stone band around central tower mid-height
     const centralBand = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.145, w * 0.145, 0.2, 20), mat(0x777766));
     centralBand.position.y = centralH * 0.5;
@@ -1257,6 +1366,7 @@ export class GTA3DRenderer {
       const tBand = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.15, 20), mat(0x777766));
       tBand.position.set(cx, towerH * 0.5, cz);
       g.add(tBand);
+      this._addTowerMortar(g, 1.6, towerH, cx, towerH / 2, cz);
 
       const tRoof = new THREE.Mesh(new THREE.ConeGeometry(2, 2.5, 20), MAT_RED);
       tRoof.position.set(cx, towerH + 1.25, cz);
@@ -1335,6 +1445,7 @@ export class GTA3DRenderer {
     main.castShadow = true;
     main.receiveShadow = true;
     g.add(main);
+    this._addBrickMortar(g, w, h, d, 0, h / 2, 0);
 
     // Peaked roof — triangular prism via extrude
     const roofShape = new THREE.Shape();
@@ -1355,6 +1466,7 @@ export class GTA3DRenderer {
     tower.position.set(0, towerH / 2, -d / 2 + towerW / 2);
     tower.castShadow = true;
     g.add(tower);
+    this._addBrickMortar(g, towerW, towerH, towerW, 0, towerH / 2, -d / 2 + towerW / 2);
 
     // Pyramid top
     const pyTop = new THREE.Mesh(new THREE.ConeGeometry(towerW * 0.75, 2.5, 12), MAT_ROOF_TILE);
@@ -1407,12 +1519,14 @@ export class GTA3DRenderer {
     floor1.castShadow = true;
     floor1.receiveShadow = true;
     g.add(floor1);
+    this._addBrickMortar(g, w, h * 0.5, d, 0, h * 0.25, 0);
 
     // Second floor (slightly overhanging)
     const floor2 = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, h * 0.5, d + 0.4), mat(0xCCAA77));
     floor2.position.y = h * 0.75;
     floor2.castShadow = true;
     g.add(floor2);
+    this._addBrickMortar(g, w + 0.4, h * 0.5, d + 0.4, 0, h * 0.75, 0);
 
     // Timber frame beams (vertical)
     const beamMat = MAT_WOOD_DARK;
@@ -1498,6 +1612,7 @@ export class GTA3DRenderer {
     backWall.position.set(0, h / 2, -d / 2);
     backWall.castShadow = true;
     g.add(backWall);
+    this._addBrickMortar(g, w, h, 0.4, 0, h / 2, -d / 2);
 
     const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, h, d), MAT_WOOD);
     leftWall.position.set(-w / 2, h / 2, 0);
@@ -1528,6 +1643,7 @@ export class GTA3DRenderer {
     chimney.position.set(-w * 0.3, h * 0.6, -d / 2 + 1);
     chimney.castShadow = true;
     g.add(chimney);
+    this._addBrickMortar(g, 1.5, h * 1.2, 1.5, -w * 0.3, h * 0.6, -d / 2 + 1);
 
     // Anvil
     const anvilBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.4), MAT_IRON);
@@ -1615,6 +1731,7 @@ export class GTA3DRenderer {
     back.position.set(0, h / 2, -d / 2);
     back.castShadow = true;
     g.add(back);
+    this._addBrickMortar(g, w, h, 0.3, 0, h / 2, -d / 2);
 
     // Side walls
     for (const side of [-1, 1]) {
@@ -1622,6 +1739,7 @@ export class GTA3DRenderer {
       sw.position.set(side * w / 2, h / 2, 0);
       sw.castShadow = true;
       g.add(sw);
+      this._addBrickMortar(g, 0.3, h, d, side * w / 2, h / 2, 0);
     }
 
     // Roof (slanted)
@@ -1673,6 +1791,7 @@ export class GTA3DRenderer {
     body.castShadow = true;
     body.receiveShadow = true;
     g.add(body);
+    this._addBrickMortar(g, w, h, d, 0, h / 2, 0);
 
     // Timber beams for timber frame houses
     if (isTimber) {
@@ -1905,6 +2024,7 @@ export class GTA3DRenderer {
     body.castShadow = true;
     body.receiveShadow = true;
     g.add(body);
+    this._addBrickMortar(g, w, h, d, 0, h / 2, 0);
 
     // Thatched roof
     const roofShape = new THREE.Shape();
@@ -1954,6 +2074,7 @@ export class GTA3DRenderer {
     tower.position.y = h / 2;
     tower.castShadow = true;
     g.add(tower);
+    this._addTowerMortar(g, w * 0.35, h, 0, h / 2, 0);
 
     // Cone roof
     const roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.38, 2, 10), MAT_THATCH);
@@ -2046,6 +2167,7 @@ export class GTA3DRenderer {
     body.castShadow = true;
     body.receiveShadow = true;
     g.add(body);
+    this._addBrickMortar(g, b.size.x, b.size.y, b.size.z, 0, b.size.y / 2, 0);
     return g;
   }
 

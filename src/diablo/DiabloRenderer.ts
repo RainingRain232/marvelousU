@@ -4829,64 +4829,223 @@ export class DiabloRenderer {
     }
   }
 
-  private _buildFPWeaponIfNeeded(): void {
-    if (this._fpWeapon) return;
-
+  private _buildFPWeaponIfNeeded(playerClass: DiabloClass): void {
+    if (this._fpWeapon && this._fpWeaponClass === playerClass) return;
+    // Remove old weapon if class changed
+    if (this._fpWeapon) { this._camera.remove(this._fpWeapon); this._disposeObject3D(this._fpWeapon); this._fpWeapon = null; }
+    this._fpWeaponClass = playerClass;
     this._fpWeapon = new THREE.Group();
 
-    // Sword/weapon handle
-    const handleGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.18, 36);
-    const handleMat = new THREE.MeshStandardMaterial({ color: 0x5a3520, roughness: 0.7 });
-    const handle = new THREE.Mesh(handleGeo, handleMat);
-    handle.position.y = -0.09;
-    this._fpWeapon.add(handle);
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5a3520, roughness: 0.7 });
+    const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.75 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.2, metalness: 0.7 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, roughness: 0.15, metalness: 0.8 });
+    const steelBrightMat = new THREE.MeshStandardMaterial({ color: 0xeeeeff, roughness: 0.1, metalness: 0.9 });
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
 
-    // Grip wrapping
-    const gripGeo = new THREE.TorusGeometry(0.02, 0.004, 17, 27);
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x3a2510, roughness: 0.4 });
-    for (let i = 0; i < 4; i++) {
-      const grip = new THREE.Mesh(gripGeo, gripMat);
-      grip.position.y = -0.06 + i * 0.035;
-      this._fpWeapon.add(grip);
+    if (playerClass === DiabloClass.WARRIOR || playerClass === DiabloClass.PALADIN) {
+      // ── SWORD ──
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.18, 16), woodMat);
+      handle.position.y = -0.09; this._fpWeapon.add(handle);
+      for (let i = 0; i < 4; i++) {
+        const grip = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.004, 8, 16), darkWoodMat);
+        grip.position.y = -0.06 + i * 0.035; this._fpWeapon.add(grip);
+      }
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.012), goldMat);
+      guard.position.y = 0.01; this._fpWeapon.add(guard);
+      // Guard ends (decorative curls)
+      for (const side of [-1, 1]) {
+        const curl = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), goldMat);
+        curl.position.set(side * 0.042, 0.01, 0); this._fpWeapon.add(curl);
+      }
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.3, 0.005), steelMat);
+      blade.position.y = 0.16; this._fpWeapon.add(blade);
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.28, 0.008), steelBrightMat);
+      edge.position.y = 0.16; this._fpWeapon.add(edge);
+      // Fuller (blood groove)
+      const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.22, 0.002), new THREE.MeshStandardMaterial({ color: 0x999aaa, roughness: 0.2, metalness: 0.7 }));
+      fuller.position.y = 0.14; this._fpWeapon.add(fuller);
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.04, 8), steelMat);
+      tip.position.y = 0.33; this._fpWeapon.add(tip);
+      const gem = new THREE.Mesh(new THREE.SphereGeometry(0.01, 12, 10), new THREE.MeshBasicMaterial({ color: playerClass === DiabloClass.PALADIN ? 0x44aaff : 0xff4444 }));
+      gem.position.y = -0.19; this._fpWeapon.add(gem);
+      this._fpWeapon.position.set(0.28, -0.2, -0.4);
+      this._fpWeapon.rotation.set(0.15, 0, -0.1);
+
+    } else if (playerClass === DiabloClass.MAGE) {
+      // ── STAFF — dark wood with crystal on top ──
+      // Shaft (long, slightly curved via segments)
+      const shaftMat = new THREE.MeshStandardMaterial({ color: 0x3a2215, roughness: 0.8 });
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.55, 12), shaftMat);
+      this._fpWeapon.add(shaft);
+      // Wood grain lines
+      for (let i = 0; i < 6; i++) {
+        const grain = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0x2a1808, roughness: 0.9 }));
+        const ga = (i / 6) * Math.PI * 2;
+        grain.position.set(Math.cos(ga) * 0.013, 0, Math.sin(ga) * 0.013);
+        this._fpWeapon.add(grain);
+      }
+      // Gnarled knots
+      for (let k = 0; k < 3; k++) {
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 6), shaftMat);
+        knot.position.set(0.01, -0.15 + k * 0.15, 0.01);
+        this._fpWeapon.add(knot);
+      }
+      // Top cradle (twisted wood prongs holding crystal)
+      for (let p = 0; p < 4; p++) {
+        const pa = (p / 4) * Math.PI * 2;
+        const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.08, 8), shaftMat);
+        prong.position.set(Math.cos(pa) * 0.015, 0.3, Math.sin(pa) * 0.015);
+        prong.rotation.set(Math.sin(pa) * 0.4, 0, -Math.cos(pa) * 0.4);
+        this._fpWeapon.add(prong);
+      }
+      // Crystal (glowing arcane blue)
+      const crystalMat = new THREE.MeshStandardMaterial({ color: 0x6644ff, emissive: 0x4422cc, emissiveIntensity: 2.0, transparent: true, opacity: 0.85, roughness: 0.1, metalness: 0.3 });
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.03, 1), crystalMat);
+      crystal.position.y = 0.33; crystal.rotation.y = Math.PI / 4;
+      this._fpWeapon.add(crystal);
+      // Crystal inner glow
+      const innerGlow = new THREE.Mesh(new THREE.SphereGeometry(0.015, 10, 8), new THREE.MeshBasicMaterial({ color: 0x8866ff, transparent: true, opacity: 0.6 }));
+      innerGlow.position.y = 0.33; this._fpWeapon.add(innerGlow);
+      // Orbiting rune motes
+      for (let m = 0; m < 3; m++) {
+        const mote = new THREE.Mesh(new THREE.SphereGeometry(0.004, 6, 4), new THREE.MeshBasicMaterial({ color: 0xaa88ff }));
+        const ma = (m / 3) * Math.PI * 2;
+        mote.position.set(Math.cos(ma) * 0.04, 0.33 + Math.sin(ma) * 0.02, Math.sin(ma) * 0.04);
+        this._fpWeapon.add(mote);
+      }
+      // Metal band rings on shaft
+      for (let r = 0; r < 3; r++) {
+        const band = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.003, 8, 16), goldMat);
+        band.position.y = -0.1 + r * 0.12;
+        this._fpWeapon.add(band);
+      }
+      // Bottom cap
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.5, roughness: 0.3 }));
+      cap.position.y = -0.28; this._fpWeapon.add(cap);
+      this._fpWeapon.position.set(0.25, -0.15, -0.4);
+      this._fpWeapon.rotation.set(0.2, 0, -0.05);
+
+    } else if (playerClass === DiabloClass.RANGER) {
+      // ── BOW — curved wood with string ──
+      const bowMat = new THREE.MeshStandardMaterial({ color: 0x7a5030, roughness: 0.7 });
+      const bowDarkMat = new THREE.MeshStandardMaterial({ color: 0x5a3520, roughness: 0.75 });
+      // Main bow arc (built from segments for curve)
+      const arcSegments = 12;
+      for (let s = 0; s < arcSegments; s++) {
+        const frac = s / arcSegments;
+        const angle = -0.8 + frac * 1.6; // arc from -0.8 to 0.8 radians
+        const segLen = 0.04;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, segLen, 8), s % 2 === 0 ? bowMat : bowDarkMat);
+        seg.position.set(Math.sin(angle) * 0.15, frac * 0.4 - 0.2, 0);
+        seg.rotation.z = angle;
+        this._fpWeapon.add(seg);
+      }
+      // Bow tips (nocks)
+      for (const ty of [-0.22, 0.22]) {
+        const nock = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), bowDarkMat);
+        nock.position.set(ty > 0 ? 0.12 : 0.12, ty, 0);
+        this._fpWeapon.add(nock);
+        // Decorative tip wrap
+        const tipWrap = new THREE.Mesh(new THREE.TorusGeometry(0.01, 0.002, 6, 12), goldMat);
+        tipWrap.position.set(ty > 0 ? 0.11 : 0.11, ty, 0);
+        this._fpWeapon.add(tipWrap);
+      }
+      // Bowstring
+      const stringMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.5 });
+      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.44, 6), stringMat);
+      string.position.set(0.03, 0, 0);
+      this._fpWeapon.add(string);
+      // Grip wrap (center of bow)
+      for (let g = 0; g < 5; g++) {
+        const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.003, 6, 12), leatherMat);
+        wrap.position.set(0.08, -0.03 + g * 0.015, 0);
+        this._fpWeapon.add(wrap);
+      }
+      // Arrow nocked on string
+      const arrowShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.35, 6), new THREE.MeshStandardMaterial({ color: 0x8a7040, roughness: 0.6 }));
+      arrowShaft.position.set(0.03, 0, 0); arrowShaft.rotation.z = Math.PI / 2;
+      this._fpWeapon.add(arrowShaft);
+      // Arrowhead
+      const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 6), steelMat);
+      arrowHead.position.set(-0.15, 0, 0); arrowHead.rotation.z = Math.PI / 2;
+      this._fpWeapon.add(arrowHead);
+      // Fletching
+      for (let f = 0; f < 3; f++) {
+        const fa = (f / 3) * Math.PI * 2;
+        const fletch = new THREE.Mesh(new THREE.PlaneGeometry(0.015, 0.04), new THREE.MeshStandardMaterial({ color: 0xcc4444, side: THREE.DoubleSide }));
+        fletch.position.set(0.18, Math.sin(fa) * 0.006, Math.cos(fa) * 0.006);
+        fletch.rotation.set(fa, 0, 0);
+        this._fpWeapon.add(fletch);
+      }
+      this._fpWeapon.position.set(0.22, -0.15, -0.35);
+      this._fpWeapon.rotation.set(0.1, 0.3, -0.15);
+
+    } else if (playerClass === DiabloClass.NECROMANCER) {
+      // ── SCYTHE — dark bone handle with curved blade ──
+      const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.6 });
+      const darkBladeMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.2, metalness: 0.7 });
+      // Handle (bone-colored)
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.5, 10), boneMat);
+      this._fpWeapon.add(shaft);
+      // Bone joint knobs
+      for (let j = 0; j < 4; j++) {
+        const joint = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), boneMat);
+        joint.position.y = -0.18 + j * 0.12; this._fpWeapon.add(joint);
+      }
+      // Scythe blade (curved)
+      const bladeBase = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.06, 0.02), darkBladeMat);
+      bladeBase.position.set(0, 0.28, 0); this._fpWeapon.add(bladeBase);
+      for (let bs = 0; bs < 8; bs++) {
+        const frac = bs / 8;
+        const bx = Math.sin(frac * 1.2) * 0.12;
+        const by = 0.28 + Math.cos(frac * 1.2) * 0.04 - frac * 0.02;
+        const bladeSeg = new THREE.Mesh(new THREE.BoxGeometry(0.025 - frac * 0.015, 0.005, 0.02 - frac * 0.01), darkBladeMat);
+        bladeSeg.position.set(-bx, by, 0);
+        bladeSeg.rotation.z = frac * 0.8;
+        this._fpWeapon.add(bladeSeg);
+      }
+      // Green necro glow on blade
+      const necroGlow = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial({ color: 0x44ff44, transparent: true, opacity: 0.5 }));
+      necroGlow.position.set(-0.08, 0.27, 0); this._fpWeapon.add(necroGlow);
+      // Skull pommel
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), boneMat);
+      skull.position.y = -0.27; skull.scale.set(1, 0.85, 0.9); this._fpWeapon.add(skull);
+      for (const side of [-1, 1]) {
+        const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.005, 6, 4), new THREE.MeshBasicMaterial({ color: 0x44ff44 }));
+        eyeSocket.position.set(side * 0.007, -0.265, 0.015); this._fpWeapon.add(eyeSocket);
+      }
+      this._fpWeapon.position.set(0.26, -0.18, -0.4);
+      this._fpWeapon.rotation.set(0.15, 0, -0.08);
+
+    } else if (playerClass === DiabloClass.ASSASSIN) {
+      // ── DUAL DAGGERS — two short blades ──
+      for (const dx of [-0.04, 0.04]) {
+        const dHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.013, 0.1, 10), darkWoodMat);
+        dHandle.position.set(dx, -0.05, 0); this._fpWeapon.add(dHandle);
+        // Wrap
+        for (let w = 0; w < 3; w++) {
+          const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.003, 6, 12), leatherMat);
+          wrap.position.set(dx, -0.03 + w * 0.02, 0); this._fpWeapon.add(wrap);
+        }
+        // Small cross guard
+        const dGuard = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.008, 0.008), steelMat);
+        dGuard.position.set(dx, 0.01, 0); this._fpWeapon.add(dGuard);
+        // Blade (short, thin)
+        const dBlade = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.15, 0.004), steelMat);
+        dBlade.position.set(dx, 0.09, 0); this._fpWeapon.add(dBlade);
+        const dEdge = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.14, 0.006), steelBrightMat);
+        dEdge.position.set(dx, 0.09, 0); this._fpWeapon.add(dEdge);
+        // Tip
+        const dTip = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.025, 6), steelMat);
+        dTip.position.set(dx, 0.17, 0); this._fpWeapon.add(dTip);
+        // Poison drip (green tint on blade)
+        const poison = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.06, 0.003), new THREE.MeshStandardMaterial({ color: 0x44aa44, emissive: 0x228822, emissiveIntensity: 0.5, transparent: true, opacity: 0.4 }));
+        poison.position.set(dx, 0.12, 0); this._fpWeapon.add(poison);
+      }
+      this._fpWeapon.position.set(0.25, -0.18, -0.38);
+      this._fpWeapon.rotation.set(0.15, 0, -0.1);
     }
-
-    // Cross guard
-    const guardGeo = new THREE.BoxGeometry(0.08, 0.012, 0.012);
-    const guardMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.2, metalness: 0.7 });
-    const guard = new THREE.Mesh(guardGeo, guardMat);
-    guard.position.y = 0.01;
-    this._fpWeapon.add(guard);
-
-    // Blade
-    const bladeGeo = new THREE.BoxGeometry(0.025, 0.3, 0.005);
-    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xccccdd, roughness: 0.15, metalness: 0.8 });
-    const blade = new THREE.Mesh(bladeGeo, bladeMat);
-    blade.position.y = 0.16;
-    this._fpWeapon.add(blade);
-
-    // Blade edge highlight
-    const edgeGeo = new THREE.BoxGeometry(0.003, 0.28, 0.008);
-    const edgeMat = new THREE.MeshStandardMaterial({ color: 0xeeeeff, roughness: 0.1, metalness: 0.9 });
-    const edge = new THREE.Mesh(edgeGeo, edgeMat);
-    edge.position.y = 0.16;
-    this._fpWeapon.add(edge);
-
-    // Blade tip
-    const tipGeo = new THREE.ConeGeometry(0.014, 0.04, 17);
-    const tip = new THREE.Mesh(tipGeo, bladeMat);
-    tip.position.y = 0.33;
-    this._fpWeapon.add(tip);
-
-    // Pommel gem
-    const gemGeo = new THREE.SphereGeometry(0.01, 23, 23);
-    const gemMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
-    const gem = new THREE.Mesh(gemGeo, gemMat);
-    gem.position.y = -0.19;
-    this._fpWeapon.add(gem);
-
-    // Position relative to camera — lower right like MageWars
-    this._fpWeapon.position.set(0.28, -0.2, -0.4);
-    this._fpWeapon.rotation.set(0.15, 0, -0.1);
 
     this._camera.add(this._fpWeapon);
     if (!this._camera.parent) this._scene.add(this._camera);
