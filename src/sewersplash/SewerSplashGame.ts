@@ -363,6 +363,13 @@ export class SewerSplashGame {
   // Water flow mesh
   private _waterMesh!: THREE.Mesh;
   private _waterOffset = 0; // used in _updateWater
+  private _tmpVec = new THREE.Vector3();
+  private _cachedBracketGeo: THREE.BoxGeometry | null = null;
+  private _cachedFlameGeo: THREE.SphereGeometry | null = null;
+  private _cachedBracketMat: THREE.MeshStandardMaterial | null = null;
+  private _cachedStalGeo: THREE.ConeGeometry | null = null;
+  private _cachedBrickGeo: THREE.BoxGeometry | null = null;
+  private _cachedPipeGeo: THREE.CylinderGeometry | null = null;
 
   // HUD
   private _hud!: HTMLDivElement;
@@ -485,8 +492,7 @@ export class SewerSplashGame {
     this._renderer = new THREE.WebGLRenderer({ canvas: this._canvas, antialias: true });
     this._renderer.setSize(w, h);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this._renderer.shadowMap.enabled = true;
-    this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this._renderer.shadowMap.enabled = false;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this._renderer.toneMappingExposure = 1.0;
 
@@ -513,7 +519,7 @@ export class SewerSplashGame {
   // ── Water ──────────────────────────────────────────────────────────────
 
   private _buildWater(): void {
-    const waterGeo = new THREE.PlaneGeometry(TUNNEL_RADIUS * 2.2, TUNNEL_SEG_LENGTH * (TUNNEL_SEGMENTS_AHEAD + TUNNEL_SEGMENTS_BEHIND + 1), 32, 64);
+    const waterGeo = new THREE.PlaneGeometry(TUNNEL_RADIUS * 2.2, TUNNEL_SEG_LENGTH * (TUNNEL_SEGMENTS_AHEAD + TUNNEL_SEGMENTS_BEHIND + 1), 20, 40);
     const waterMat = new THREE.MeshStandardMaterial({
       color: 0x225533,
       roughness: 0.2,
@@ -698,7 +704,7 @@ export class SewerSplashGame {
     const theme = THEME_DEFS[this._currentTheme];
 
     // Tunnel walls (half-cylinder arch)
-    const tunnelGeo = new THREE.CylinderGeometry(TUNNEL_RADIUS, TUNNEL_RADIUS, TUNNEL_SEG_LENGTH, 24, 1, true, 0, Math.PI);
+    const tunnelGeo = new THREE.CylinderGeometry(TUNNEL_RADIUS, TUNNEL_RADIUS, TUNNEL_SEG_LENGTH, 16, 1, true, 0, Math.PI);
     const tunnelMat = new THREE.MeshStandardMaterial({
       color: theme.wallColor,
       roughness: 0.95,
@@ -720,61 +726,70 @@ export class SewerSplashGame {
     group.add(floor);
 
     // Brick lines
-    for (let row = 0; row < 6; row++) {
-      const y = -TUNNEL_RADIUS + 1 + row * 1.2;
-      const lineGeo = new THREE.BoxGeometry(TUNNEL_RADIUS * 2.1, 0.03, TUNNEL_SEG_LENGTH);
-      const lineMat = new THREE.MeshStandardMaterial({ color: theme.brickColor });
-      const line = new THREE.Mesh(lineGeo, lineMat);
+    if (!this._cachedBrickGeo) this._cachedBrickGeo = new THREE.BoxGeometry(TUNNEL_RADIUS * 2.1, 0.03, TUNNEL_SEG_LENGTH);
+    const lineMat = new THREE.MeshStandardMaterial({ color: theme.brickColor });
+    for (let row = 0; row < 3; row++) {
+      const y = -TUNNEL_RADIUS + 1.5 + row * 2.2;
+      const line = new THREE.Mesh(this._cachedBrickGeo, lineMat);
       line.position.set(0, y, zStart - TUNNEL_SEG_LENGTH / 2);
       group.add(line);
     }
 
-    // Torches
+    // Torches (emissive only — no PointLights for performance)
+    if (!this._cachedBracketGeo) this._cachedBracketGeo = new THREE.BoxGeometry(0.15, 0.4, 0.15);
+    if (!this._cachedFlameGeo) this._cachedFlameGeo = new THREE.SphereGeometry(0.2, 8, 6);
+    if (!this._cachedBracketMat) this._cachedBracketMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6 });
     for (let i = 0; i < 3; i++) {
       const tz = zStart - 5 - i * 10;
       for (const side of [-1, 1]) {
-        const bracketGeo = new THREE.BoxGeometry(0.15, 0.4, 0.15);
-        const bracketMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6 });
-        const bracket = new THREE.Mesh(bracketGeo, bracketMat);
+        const bracket = new THREE.Mesh(this._cachedBracketGeo, this._cachedBracketMat);
         bracket.position.set(side * (TUNNEL_RADIUS - 0.3), 0.5, tz);
         group.add(bracket);
 
-        const flameGeo = new THREE.SphereGeometry(0.15, 12, 10);
         const flameMat = new THREE.MeshStandardMaterial({
           color: theme.torchColor,
           emissive: theme.torchColor,
-          emissiveIntensity: 2,
+          emissiveIntensity: 3,
           transparent: true,
-          opacity: 0.8,
+          opacity: 0.9,
         });
-        const flame = new THREE.Mesh(flameGeo, flameMat);
+        const flame = new THREE.Mesh(this._cachedFlameGeo, flameMat);
         flame.position.set(side * (TUNNEL_RADIUS - 0.3), 0.8, tz);
         group.add(flame);
 
-        const light = new THREE.PointLight(theme.torchColor, theme.torchIntensity, 12, 2);
-        light.position.set(side * (TUNNEL_RADIUS - 0.5), 0.8, tz);
-        group.add(light);
+        // Glow sphere (cheaper than PointLight)
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: theme.torchColor,
+          transparent: true,
+          opacity: 0.15,
+        });
+        const glow = new THREE.Mesh(this._cachedFlameGeo, glowMat);
+        glow.scale.setScalar(5);
+        glow.position.set(side * (TUNNEL_RADIUS - 0.3), 0.8, tz);
+        group.add(glow);
       }
     }
 
     // Stalactites
-    for (let i = 0; i < 8; i++) {
+    if (!this._cachedStalGeo) this._cachedStalGeo = new THREE.ConeGeometry(0.05, 0.3, 5);
+    const stalMat = new THREE.MeshStandardMaterial({ color: theme.stalColor, roughness: 0.9 });
+    for (let i = 0; i < 5; i++) {
       const dx = (Math.random() - 0.5) * TUNNEL_RADIUS * 1.5;
       const dz = zStart - Math.random() * TUNNEL_SEG_LENGTH;
-      const stalGeo = new THREE.ConeGeometry(0.05, 0.2 + Math.random() * 0.3, 5);
-      const stalMat = new THREE.MeshStandardMaterial({ color: theme.stalColor, roughness: 0.9 });
-      const stal = new THREE.Mesh(stalGeo, stalMat);
+      const stal = new THREE.Mesh(this._cachedStalGeo, stalMat);
       stal.rotation.x = Math.PI;
+      const s = 0.5 + Math.random() * 1.0;
+      stal.scale.set(s, s, s);
       const archY = Math.sqrt(Math.max(0, TUNNEL_RADIUS * TUNNEL_RADIUS - dx * dx));
       stal.position.set(dx, archY - 0.1, dz);
       group.add(stal);
     }
 
     // Wall pipes
+    if (!this._cachedPipeGeo) this._cachedPipeGeo = new THREE.CylinderGeometry(0.12, 0.12, TUNNEL_SEG_LENGTH, 8);
+    const pipeMat = new THREE.MeshStandardMaterial({ color: theme.pipeColor, metalness: 0.4, roughness: 0.6 });
     for (const side of [-1, 1]) {
-      const pipeGeo = new THREE.CylinderGeometry(0.12, 0.12, TUNNEL_SEG_LENGTH, 8);
-      const pipeMat = new THREE.MeshStandardMaterial({ color: theme.pipeColor, metalness: 0.4, roughness: 0.6 });
-      const pipe = new THREE.Mesh(pipeGeo, pipeMat);
+      const pipe = new THREE.Mesh(this._cachedPipeGeo, pipeMat);
       pipe.rotation.x = Math.PI / 2;
       pipe.position.set(side * (TUNNEL_RADIUS - 0.6), -TUNNEL_RADIUS + 2.5, zStart - TUNNEL_SEG_LENGTH / 2);
       group.add(pipe);
@@ -2483,10 +2498,11 @@ export class SewerSplashGame {
       seg.group.position.z += moveZ;
       seg.zStart += moveZ;
       seg.zEnd += moveZ;
-      for (const o of seg.obstacles) { o.z += moveZ; o.hitbox.translate(new THREE.Vector3(0, 0, moveZ)); }
+      this._tmpVec.set(0, 0, moveZ);
+      for (const o of seg.obstacles) { o.z += moveZ; o.hitbox.translate(this._tmpVec); }
       for (const c of seg.collectibles) { c.z += moveZ; }
       for (const e of seg.enemies) { e.z += moveZ; }
-      for (const d of seg.movingDebris) { d.z += moveZ; d.hitbox.translate(new THREE.Vector3(0, 0, moveZ)); }
+      for (const d of seg.movingDebris) { d.z += moveZ; d.hitbox.translate(this._tmpVec); }
     }
 
     if (this._boss.mesh) {
