@@ -5931,17 +5931,101 @@ export function buildRiversideVillage(mctx: MapBuildContext, w: number, d: numbe
       const roofH = 1.2 + Math.random() * 0.5;
       const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(cw, cd) * 0.8, roofH, 4), roofMat);
       roof.position.set(cx, cy + ch + roofH / 2, cz); roof.rotation.y = Math.PI / 4; mctx.scene.add(roof);
-      // Door
-      const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), new THREE.MeshStandardMaterial({ color: 0x4a3218 }));
+      // Door with frame and handle
+      const doorMat = new THREE.MeshStandardMaterial({ color: 0x4a3218, roughness: 0.85 });
+      const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), doorMat);
       door.position.set(cx, cy + 0.6, cz + cd / 2 + 0.02); mctx.scene.add(door);
-      // Window
-      const win = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x88aacc, transparent: true, opacity: 0.5 }));
+      // Door frame
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.8 });
+      const doorFrameL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.04), frameMat);
+      doorFrameL.position.set(cx - 0.32, cy + 0.65, cz + cd / 2 + 0.03); mctx.scene.add(doorFrameL);
+      const doorFrameR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.04), frameMat);
+      doorFrameR.position.set(cx + 0.32, cy + 0.65, cz + cd / 2 + 0.03); mctx.scene.add(doorFrameR);
+      const doorFrameT = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.04), frameMat);
+      doorFrameT.position.set(cx, cy + 1.25, cz + cd / 2 + 0.03); mctx.scene.add(doorFrameT);
+      // Door handle
+      const handle = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshStandardMaterial({ color: 0x887744, metalness: 0.5 }));
+      handle.position.set(cx + 0.2, cy + 0.6, cz + cd / 2 + 0.04); mctx.scene.add(handle);
+      // Step in front of door
+      const step = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.3), stoneMat);
+      step.position.set(cx, cy + 0.05, cz + cd / 2 + 0.2); mctx.scene.add(step);
+
+      // Windows with shutters and cross-bars (front + one side)
+      const winMat = new THREE.MeshStandardMaterial({ color: 0x88aacc, transparent: true, opacity: 0.5 });
+      const shutterMat = new THREE.MeshStandardMaterial({ color: [0x446633, 0x664422, 0x335544, 0x553322][ci % 4], roughness: 0.8 });
+      // Front window
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), winMat);
       win.position.set(cx + cw * 0.3, cy + ch * 0.6, cz + cd / 2 + 0.02); mctx.scene.add(win);
-      // Chimney
-      if (ci % 2 === 0) {
-        const chim = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1, 0.3), stoneMat);
-        chim.position.set(cx - cw * 0.3, cy + ch + roofH * 0.5, cz); mctx.scene.add(chim);
+      // Window frame
+      const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.46, 0.03), frameMat);
+      winFrame.position.set(cx + cw * 0.3, cy + ch * 0.6, cz + cd / 2 + 0.02); mctx.scene.add(winFrame);
+      // Cross bars
+      const crossBarV = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.38, 0.02), frameMat);
+      crossBarV.position.set(cx + cw * 0.3, cy + ch * 0.6, cz + cd / 2 + 0.035); mctx.scene.add(crossBarV);
+      const crossBarH = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.02, 0.02), frameMat);
+      crossBarH.position.set(cx + cw * 0.3, cy + ch * 0.6, cz + cd / 2 + 0.035); mctx.scene.add(crossBarH);
+      // Shutters (angled open)
+      const shutterL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.42, 0.03), shutterMat);
+      shutterL.position.set(cx + cw * 0.3 - 0.28, cy + ch * 0.6, cz + cd / 2 + 0.06);
+      shutterL.rotation.y = 0.4; mctx.scene.add(shutterL);
+      const shutterR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.42, 0.03), shutterMat);
+      shutterR.position.set(cx + cw * 0.3 + 0.28, cy + ch * 0.6, cz + cd / 2 + 0.06);
+      shutterR.rotation.y = -0.4; mctx.scene.add(shutterR);
+      // Flower box under window
+      const flowerBoxMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, roughness: 0.8 });
+      const fBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.12), flowerBoxMat);
+      fBox.position.set(cx + cw * 0.3, cy + ch * 0.6 - 0.26, cz + cd / 2 + 0.06); mctx.scene.add(fBox);
+      // Flowers in box
+      const flowerColors = [0xff4466, 0xffaa33, 0xff66aa, 0xffff44, 0xaa44ff];
+      for (let fl = 0; fl < 4; fl++) {
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4),
+          new THREE.MeshStandardMaterial({ color: flowerColors[(ci + fl) % flowerColors.length] }));
+        flower.position.set(cx + cw * 0.3 - 0.15 + fl * 0.1, cy + ch * 0.6 - 0.18, cz + cd / 2 + 0.08);
+        mctx.scene.add(flower);
       }
+
+      // Side window (left or right wall)
+      const sideSign = ci % 2 === 0 ? 1 : -1;
+      const sideWin = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.35), winMat);
+      sideWin.position.set(cx + sideSign * (cw / 2 + 0.02), cy + ch * 0.6, cz - cd * 0.15);
+      sideWin.rotation.y = sideSign * Math.PI / 2; mctx.scene.add(sideWin);
+
+      // Timber framing (decorative half-timber lines on walls)
+      const timberMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.85 });
+      // Horizontal timber beam at mid-height
+      const hTimber = new THREE.Mesh(new THREE.BoxGeometry(cw + 0.1, 0.08, 0.05), timberMat);
+      hTimber.position.set(cx, cy + ch * 0.5, cz + cd / 2 + 0.03); mctx.scene.add(hTimber);
+      // Diagonal cross timbers (X pattern on front)
+      for (const diag of [-1, 1]) {
+        const dTimber = new THREE.Mesh(new THREE.BoxGeometry(0.06, ch * 0.45, 0.04), timberMat);
+        dTimber.position.set(cx + diag * cw * 0.2, cy + ch * 0.75, cz + cd / 2 + 0.03);
+        dTimber.rotation.z = diag * 0.5; mctx.scene.add(dTimber);
+      }
+      // Corner timber posts
+      for (const tx of [-cw / 2, cw / 2]) {
+        const cPost = new THREE.Mesh(new THREE.BoxGeometry(0.08, ch + 0.1, 0.08), timberMat);
+        cPost.position.set(cx + tx, cy + ch / 2, cz + cd / 2 + 0.02); mctx.scene.add(cPost);
+      }
+
+      // Chimney with smoke
+      if (ci % 2 === 0) {
+        const chim = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.2, 0.35), stoneMat);
+        chim.position.set(cx - cw * 0.3, cy + ch + roofH * 0.5, cz); mctx.scene.add(chim);
+        // Chimney cap
+        const chimCap = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.45), stoneMat);
+        chimCap.position.set(cx - cw * 0.3, cy + ch + roofH * 0.5 + 0.6, cz); mctx.scene.add(chimCap);
+        // Smoke puffs
+        for (let sm = 0; sm < 3; sm++) {
+          const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.1 + sm * 0.08, 8, 6),
+            new THREE.MeshStandardMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.15 - sm * 0.04, depthWrite: false }));
+          smoke.position.set(cx - cw * 0.3 + (Math.random() - 0.5) * 0.2, cy + ch + roofH * 0.5 + 0.8 + sm * 0.4, cz);
+          mctx.scene.add(smoke);
+        }
+      }
+
+      // Roof overhang eave
+      const eave = new THREE.Mesh(new THREE.BoxGeometry(cw + 0.4, 0.06, cd + 0.4), roofMat);
+      eave.position.set(cx, cy + ch + 0.03, cz); mctx.scene.add(eave);
     }
 
     // ── Water mill ──

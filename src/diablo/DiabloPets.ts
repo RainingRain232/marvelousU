@@ -236,6 +236,7 @@ export function updatePets(ctx: PetContext, dt: number): void {
             let nearestDist = pet.aggroRange;
             for (const enemy of ctx.state.enemies) {
               if (enemy.state === EnemyState.DYING || enemy.state === EnemyState.DEAD) continue;
+              if ((enemy as any).isPlayerMinion) continue; // Don't attack player's summoned minions
               const d = ctx.dist(enemy.x, enemy.z, pet.x, pet.z);
               if (d < nearestDist) { nearestDist = d; nearestEnemy = enemy; }
             }

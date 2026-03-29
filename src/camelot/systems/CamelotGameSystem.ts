@@ -11,19 +11,19 @@ import { createEnemy } from "../state/CamelotState";
 // ===== Input Helpers =====
 
 export function isLeft(s: CamelotState): boolean {
-  return !!(s.keys["ArrowLeft"] || s.keys["KeyA"] || (s.gpAxes[0] < -0.3));
+  return !!(s.keys["ArrowLeft"] || (s.gpAxes[0] < -0.3));
 }
 
 export function isRight(s: CamelotState): boolean {
-  return !!(s.keys["ArrowRight"] || s.keys["KeyD"] || (s.gpAxes[0] > 0.3));
+  return !!(s.keys["ArrowRight"] || (s.gpAxes[0] > 0.3));
 }
 
 export function isJump(s: CamelotState): boolean {
-  return !!(s.justPressed["ArrowUp"] || s.justPressed["KeyW"] || s.justPressed["Space"] || s.gpJustPressed[0]);
+  return !!(s.justPressed["ArrowUp"] || s.justPressed["Space"] || s.gpJustPressed[0]);
 }
 
 export function isDown(s: CamelotState): boolean {
-  return !!(s.keys["ArrowDown"] || s.keys["KeyS"] || (s.gpAxes[1] > 0.3));
+  return !!(s.keys["ArrowDown"] || (s.gpAxes[1] > 0.3));
 }
 
 export function isAttack(s: CamelotState): boolean {

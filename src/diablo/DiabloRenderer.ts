@@ -4012,13 +4012,18 @@ export class DiabloRenderer {
 
       // Death animation: quick fade + soul ascending
       if (enemy.state === EnemyState.DYING) {
+        const isMinion = (enemy as any).isPlayerMinion;
         let dyingAnim = this._dyingAnims.get(enemy.id);
         if (!dyingAnim) {
           dyingAnim = { timer: 0, sinkY: 0, initialY: enemy.y, scattered: false };
           this._dyingAnims.set(enemy.id, dyingAnim);
-          // Mark materials transparent + spawn soul orb
+          // Mark materials transparent
           const cachedMats = this._enemyMaterials.get(enemy.id);
           if (cachedMats) for (const m of cachedMats) m.transparent = true;
+          // Skip soul orb for player minions (summoned skeletons etc.)
+          if (isMinion) {
+            // Just fade and remove — no soul effect
+          } else {
           // Create ascending soul
           const soulGroup = new THREE.Group();
           const soulCore = new THREE.Mesh(
@@ -4044,6 +4049,7 @@ export class DiabloRenderer {
           soulGroup.position.set(enemy.x, enemy.y + (enemy.scale || 1) * 1.0, enemy.z);
           soulGroup.name = `soul-${enemy.id}`;
           this._scene.add(soulGroup);
+          } // end else (not minion)
         }
         const dt2 = enemy.deathTimer;
         const phase = Math.min(dt2, 1.0); // 0→1 over 1s

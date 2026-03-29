@@ -6,6 +6,7 @@ let audioCtx: AudioContext | null = null;
 let musicGain: GainNode | null = null;
 let musicOscs: OscillatorNode[] = [];
 let musicPlaying = false;
+let musicScheduleTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getCtx(): AudioContext {
   if (!audioCtx) audioCtx = new AudioContext();
@@ -134,7 +135,7 @@ export function startMusic(): void {
       arp.frequency.setValueAtTime(notes[i % notes.length], t);
       t += 0.8;
     }
-    setTimeout(scheduleNotes, 48000);
+    musicScheduleTimer = setTimeout(scheduleNotes, 48000);
   }
   scheduleNotes();
 
@@ -152,6 +153,7 @@ export function updateMusicMood(hasBoss: boolean, lowHP: boolean): void {
 }
 
 export function stopMusic(): void {
+  if (musicScheduleTimer) { clearTimeout(musicScheduleTimer); musicScheduleTimer = null; }
   for (const o of musicOscs) { try { o.stop(); } catch(_) { /* already stopped */ } }
   musicOscs = [];
   musicPlaying = false;
