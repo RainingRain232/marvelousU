@@ -1308,8 +1308,11 @@ export class Worms3DGame {
           vec4 worldPos = modelMatrix * vec4(position, 1.0);
           vWorldPos = worldPos.xyz;
           vHeight = position.y;
-          vSlope = 1.0 - abs(normal.y); // 0 = flat, 1 = vertical cliff
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          vSlope = 1.0 - abs(normal.y);
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+          vec3 transformedNormal = normalize(normalMatrix * normal);
+          vec4 worldPosition = worldPos;
           #include <fog_vertex>
           #include <shadowmap_vertex>
         }

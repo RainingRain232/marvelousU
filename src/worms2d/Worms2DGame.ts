@@ -231,7 +231,7 @@ export class Worms2DGame {
   private _aiMoveDir = 0;
   private _aiMoveTime = 0;
 
-  private _team1Human = false;
+  private _teamIsHuman: boolean[] = [false, false, false, false];
 
   private _rafId = 0;
   private _lastTime = 0;
@@ -1577,8 +1577,7 @@ export class Worms2DGame {
     this._turnTimer = TURN_TIME; this._currentWeapon = 'bazooka'; this._phase = 'playing'; this._shotsFired = 0;
 
     // Determine AI vs human
-    const isHuman = this._team1Human && this._currentTeam === 0;
-    this._aiActive = !isHuman;
+    this._aiActive = !this._teamIsHuman[this._currentTeam];
     this._aiPhase = 'thinking'; this._aiTimer = 0;
 
     const worm = this._getActiveWorm();
@@ -1998,8 +1997,21 @@ export class Worms2DGame {
     for (let i = 2; i <= 4; i++) {
       this._titleButtons.push({ x: -120 + (i - 2) * 100, y: 100, w: 80, h: 45, text: `${i} Teams`, action: () => { this._teamCount = i; this._playSound('click'); }, hover: false });
     }
-    // Human/AI toggle for Team 1
-    this._titleButtons.push({ x: -100, y: 160, w: 200, h: 45, text: this._team1Human ? 'Team 1: HUMAN' : 'Team 1: AI', action: () => { this._team1Human = !this._team1Human; this._buildTitleButtons(); this._playSound('click'); }, hover: false });
+    // Human/AI toggle per team
+    const teamLabels = ['Round Table', "Mordred's Host", "Merlin's Circle", 'Grail Knights'];
+    const teamColors = ['#3366ff', '#cc2222', '#22bb44', '#ffaa00'];
+    for (let t = 0; t < this._teamCount; t++) {
+      const teamIdx = t;
+      const label = this._teamIsHuman[t] ? 'HUMAN' : 'AI';
+      const xOff = this._teamCount <= 2 ? (t === 0 ? -110 : 10) : -110 + t * (220 / this._teamCount);
+      const bw = this._teamCount <= 2 ? 100 : Math.floor(200 / this._teamCount);
+      this._titleButtons.push({
+        x: xOff, y: 160, w: bw, h: 45,
+        text: `${teamLabels[t].split(' ')[0]}: ${label}`,
+        action: () => { this._teamIsHuman[teamIdx] = !this._teamIsHuman[teamIdx]; this._buildTitleButtons(); this._playSound('click'); },
+        hover: false,
+      });
+    }
     this._titleButtons.push({ x: -100, y: 220, w: 200, h: 55, text: 'START BATTLE', action: () => { this._playSound('click'); this._startGame(); }, hover: false });
     this._titleButtons.push({ x: -100, y: 290, w: 200, h: 45, text: 'BACK TO MENU', action: () => { this._playSound('click'); window.dispatchEvent(new CustomEvent('worms2dExit')); }, hover: false });
   }
@@ -2022,8 +2034,7 @@ export class Worms2DGame {
     this._speechBubble = null;
 
     this._phase = 'playing';
-    const isHuman = this._team1Human && this._currentTeam === 0;
-    this._aiActive = !isHuman;
+    this._aiActive = !this._teamIsHuman[this._currentTeam];
     this._aiPhase = 'thinking'; this._aiTimer = 0;
 
     const worm = this._getActiveWorm();
@@ -2193,19 +2204,38 @@ export class Worms2DGame {
 
     ctx.font = '18px serif'; ctx.fillStyle = '#ccaa66'; ctx.fillText('Choose Teams:', cx, cy + 80);
 
+    // Label for human/AI row
+    ctx.font = '14px serif'; ctx.fillStyle = '#998866';
+    ctx.fillText('Team Control:', cx, cy + 145);
+
     for (const btn of this._titleButtons) {
       const bx = cx + btn.x; const by = cy + btn.y;
       btn.hover = this._mouseX >= bx && this._mouseX <= bx + btn.w && this._mouseY >= by && this._mouseY <= by + btn.h;
-      const isTeamBtn = btn.text.includes('Teams'); const isSelected = isTeamBtn && btn.text.startsWith(`${this._teamCount}`);
+      const isTeamCountBtn = btn.text.includes('Teams');
+      const isTeamCountSelected = isTeamCountBtn && btn.text.startsWith(`${this._teamCount}`);
+      const isHumanBtn = btn.text.includes('HUMAN');
+      const isAiBtn = btn.text.includes(': AI');
+      const isHighlighted = isTeamCountSelected || isHumanBtn;
+
       const grad = ctx.createLinearGradient(bx, by, bx, by + btn.h);
-      if (isSelected) { grad.addColorStop(0, '#886622'); grad.addColorStop(1, '#664411'); }
-      else if (btn.hover) { grad.addColorStop(0, '#554422'); grad.addColorStop(1, '#443311'); }
-      else { grad.addColorStop(0, '#332211'); grad.addColorStop(1, '#221100'); }
-      ctx.fillStyle = grad; ctx.strokeStyle = isSelected ? '#ffd700' : (btn.hover ? '#ccaa44' : '#886633');
-      ctx.lineWidth = isSelected ? 2 : 1;
-      this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = btn.hover || isSelected ? '#ffd700' : '#ccaa66';
-      ctx.font = btn.text === 'START BATTLE' ? 'bold 22px serif' : '16px serif';
+      if (isHumanBtn) {
+        grad.addColorStop(0, btn.hover ? '#2a5533' : '#1a4422');
+        grad.addColorStop(1, btn.hover ? '#1a3316' : '#0d220d');
+      } else if (isHighlighted) {
+        grad.addColorStop(0, '#886622'); grad.addColorStop(1, '#664411');
+      } else if (btn.hover) {
+        grad.addColorStop(0, '#554422'); grad.addColorStop(1, '#443311');
+      } else {
+        grad.addColorStop(0, '#332211'); grad.addColorStop(1, '#221100');
+      }
+      ctx.fillStyle = grad;
+      this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.fill();
+      ctx.strokeStyle = isHumanBtn ? '#44dd66' : isHighlighted ? '#ffd700' : (btn.hover ? '#ccaa44' : '#886633');
+      ctx.lineWidth = isHighlighted || isHumanBtn ? 2 : 1;
+      this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.stroke();
+
+      ctx.fillStyle = isHumanBtn ? '#44ff66' : (btn.hover || isHighlighted) ? '#ffd700' : '#ccaa66';
+      ctx.font = btn.text === 'START BATTLE' ? 'bold 22px serif' : (isHumanBtn || isAiBtn) ? 'bold 13px sans-serif' : '16px serif';
       ctx.fillText(btn.text, bx + btn.w / 2, by + btn.h / 2);
     }
     ctx.restore();
@@ -2746,7 +2776,8 @@ export class Worms2DGame {
       ctx.fillStyle = hpGrad; this._roundRect(ctx, bx, by, bw * pct, bh, 4); ctx.fill();
       if (t === this._currentTeam) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; this._roundRect(ctx, bx, by, bw, bh, 4); ctx.stroke(); }
       ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${team.name} (${totalHp}HP)`, bx + bw / 2, by + bh / 2);
+      const controlLabel = this._teamIsHuman[t] ? 'You' : 'AI';
+      ctx.fillText(`${team.name} (${controlLabel}) ${totalHp}HP`, bx + bw / 2, by + bh / 2);
     }
 
     // Current worm info
