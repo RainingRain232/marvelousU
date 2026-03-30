@@ -6458,6 +6458,7 @@ export class Worms3DGame {
     const mossyMat = new THREE.MeshStandardMaterial({ color: 0x667755, roughness: 0.9 });
     const darkRuinMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.95 });
     const ivyMat = new THREE.MeshStandardMaterial({ color: 0x3a6630, roughness: 0.85 });
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.7, roughness: 0.4 });
 
     for (let i = 0; i < 8; i++) {
       const x = (Math.random() - 0.5) * TERRAIN_SIZE * 0.55;
