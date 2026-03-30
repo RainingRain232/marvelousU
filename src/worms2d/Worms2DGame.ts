@@ -422,7 +422,14 @@ export class Worms2DGame {
     }
     if (key === ' ' && (this._phase === 'playing' || this._phase === 'aiming') && !this._aiActive) {
       const w = this._getActiveWorm();
-      if (w && w.grounded) { w.vy = JUMP_FORCE; w.grounded = false; this._playSound('jump'); }
+      if (w && w.grounded) {
+        w.vy = JUMP_FORCE;
+        // Apply horizontal momentum based on held direction
+        if (this._keys.has('a') || this._keys.has('arrowleft')) { w.vx = -MOVE_SPEED * 1.2; w.facing = -1; }
+        else if (this._keys.has('d') || this._keys.has('arrowright')) { w.vx = MOVE_SPEED * 1.2; w.facing = 1; }
+        w.grounded = false;
+        this._playSound('jump');
+      }
       return;
     }
     if (this._placingGirder && (key === 'arrowleft' || key === 'arrowright' || key === 'a' || key === 'd')) {
@@ -1484,11 +1491,18 @@ export class Worms2DGame {
 
     if (this._aiActive) { this._updateAI(dt); return; }
 
-    // Player input
-    if (worm.grounded && !this._charging && !this._rope.active) {
-      if (this._keys.has('a') || this._keys.has('arrowleft')) { worm.vx = -MOVE_SPEED; worm.facing = -1; }
-      else if (this._keys.has('d') || this._keys.has('arrowright')) { worm.vx = MOVE_SPEED; worm.facing = 1; }
-      else worm.vx = 0;
+    // Player input — ground movement + air control
+    if (!this._charging && !this._rope.active) {
+      if (worm.grounded) {
+        if (this._keys.has('a') || this._keys.has('arrowleft')) { worm.vx = -MOVE_SPEED; worm.facing = -1; }
+        else if (this._keys.has('d') || this._keys.has('arrowright')) { worm.vx = MOVE_SPEED; worm.facing = 1; }
+        else worm.vx = 0;
+      } else {
+        // Air control at 40% strength
+        const airControl = MOVE_SPEED * 0.4;
+        if (this._keys.has('a') || this._keys.has('arrowleft')) { worm.vx = clamp(worm.vx - airControl * dt * 8, -MOVE_SPEED * 1.2, MOVE_SPEED * 1.2); worm.facing = -1; }
+        else if (this._keys.has('d') || this._keys.has('arrowright')) { worm.vx = clamp(worm.vx + airControl * dt * 8, -MOVE_SPEED * 1.2, MOVE_SPEED * 1.2); worm.facing = 1; }
+      }
     }
     if (worm) {
       const dx = this._mouseWorldX - worm.x; const dy = this._mouseWorldY - (worm.y - 10);
@@ -1526,6 +1540,10 @@ export class Worms2DGame {
         if (this._keys.has('a') || this._keys.has('arrowleft')) { worm.vx = -MOVE_SPEED; worm.facing = -1; }
         else if (this._keys.has('d') || this._keys.has('arrowright')) { worm.vx = MOVE_SPEED; worm.facing = 1; }
         else worm.vx = 0;
+      } else {
+        const airControl = MOVE_SPEED * 0.4;
+        if (this._keys.has('a') || this._keys.has('arrowleft')) { worm.vx = clamp(worm.vx - airControl * dt * 8, -MOVE_SPEED * 1.2, MOVE_SPEED * 1.2); worm.facing = -1; }
+        else if (this._keys.has('d') || this._keys.has('arrowright')) { worm.vx = clamp(worm.vx + airControl * dt * 8, -MOVE_SPEED * 1.2, MOVE_SPEED * 1.2); worm.facing = 1; }
       }
       this._camTargetX = worm.x; this._camTargetY = worm.y;
     }
