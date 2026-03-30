@@ -261,6 +261,7 @@ export class Worms3DGame {
 
   /* ── environment ── */
   private _sunLight!: THREE.DirectionalLight;
+  private _ambientLight!: THREE.AmbientLight;
   private _castles: THREE.Group[] = [];
   private _clouds: THREE.Mesh[] = [];
   private _trees: THREE.Group[] = [];
@@ -358,7 +359,7 @@ export class Worms3DGame {
   private _walkCycle = 0;
 
   /* ── map type ── */
-  private _mapType: "island" | "volcanic" | "arctic" | "desert" = "island";
+  private _mapType: "island" | "volcanic" | "arctic" | "desert" | "wasteland" | "enchanted" | "volcanic_isle" = "island";
 
   /* ── weather ── */
   private _weatherType: "clear" | "rain" | "snow" | "storm" = "clear";
@@ -660,7 +661,8 @@ export class Worms3DGame {
     this._scene.add(this._sunLight);
 
     // Ambient
-    this._scene.add(new THREE.AmbientLight(0x6688aa, 0.8));
+    this._ambientLight = new THREE.AmbientLight(0x6688aa, 0.8);
+    this._scene.add(this._ambientLight);
 
     // Hemisphere light for natural feel
     const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x556B2F, 0.6);
@@ -2419,22 +2421,53 @@ export class Worms3DGame {
     visor.position.set(0, 1.2, 0.3);
     mesh.add(visor);
 
-    // Helmet plume (feather crest — more feathers, curved)
-    const plumeColor = teamColorObj.clone().lerp(new THREE.Color(0xffffff), 0.3);
-    const plumeMat = new THREE.MeshStandardMaterial({ color: plumeColor, roughness: 0.7 });
-    for (let i = 0; i < 8; i++) {
-      const featherGeo = new THREE.BoxGeometry(0.035, 0.28 - i * 0.02, 0.06, 1, 3, 1);
-      // Curve each feather backward
-      const fp = featherGeo.attributes.position;
-      for (let v = 0; v < fp.count; v++) {
-        const fy = fp.getY(v);
-        fp.setZ(v, fp.getZ(v) - fy * fy * 0.5);
+    // Helmet decoration (team-specific)
+    if (teamIndex === 0) {
+      // Team 0 (Blue/Round Table): Feathered plume
+      const plumeColor = teamColorObj.clone().lerp(new THREE.Color(0xffffff), 0.3);
+      const plumeMat = new THREE.MeshStandardMaterial({ color: plumeColor, roughness: 0.7 });
+      for (let i = 0; i < 8; i++) {
+        const featherGeo = new THREE.BoxGeometry(0.035, 0.28 - i * 0.02, 0.06, 1, 3, 1);
+        const fp = featherGeo.attributes.position;
+        for (let v = 0; v < fp.count; v++) {
+          const fy = fp.getY(v);
+          fp.setZ(v, fp.getZ(v) - fy * fy * 0.5);
+        }
+        featherGeo.computeVertexNormals();
+        const feather = new THREE.Mesh(featherGeo, plumeMat);
+        feather.position.set(0, 1.62 + i * 0.04, -0.03 - i * 0.03);
+        feather.rotation.x = -0.3 - i * 0.06;
+        mesh.add(feather);
       }
-      featherGeo.computeVertexNormals();
-      const feather = new THREE.Mesh(featherGeo, plumeMat);
-      feather.position.set(0, 1.62 + i * 0.04, -0.03 - i * 0.03);
-      feather.rotation.x = -0.3 - i * 0.06;
-      mesh.add(feather);
+    } else if (teamIndex === 1) {
+      // Team 1 (Red/Mordred): Horns
+      const hornMat = new THREE.MeshStandardMaterial({ color: 0x881111, roughness: 0.5, metalness: 0.3 });
+      for (const side of [-1, 1]) {
+        const horn = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.2, 8), hornMat);
+        horn.position.set(side * 0.18, 1.55, 0);
+        horn.rotation.z = side * -0.5;
+        mesh.add(horn);
+      }
+    } else if (teamIndex === 2) {
+      // Team 2 (Green/Merlin): Wizard hat point with gold star
+      const wizardMat = new THREE.MeshStandardMaterial({ color: 0x6633aa, roughness: 0.5 });
+      const hatPoint = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.3, 10), wizardMat);
+      hatPoint.position.set(0, 1.65, 0);
+      mesh.add(hatPoint);
+      const starMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, roughness: 0.3, metalness: 0.8, emissive: 0x665522 });
+      const star = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), starMat);
+      star.position.set(0, 1.82, 0);
+      mesh.add(star);
+    } else if (teamIndex === 3) {
+      // Team 3 (Orange/Grail): Wings on helm sides
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5, side: THREE.DoubleSide });
+      for (const side of [-1, 1]) {
+        const wing = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.12), wingMat);
+        wing.position.set(side * 0.22, 1.50, 0);
+        wing.rotation.y = side * 0.6;
+        wing.rotation.z = side * -0.3;
+        mesh.add(wing);
+      }
     }
 
     // Helmet gold trim (high-poly)
@@ -2568,15 +2601,44 @@ export class Worms3DGame {
     innerRim.position.z = 0.005;
     shieldGroup.add(innerRim);
 
-    // Cross/emblem on shield (higher detail)
-    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.22, 0.01, 1, 3, 1),
-      new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    crossV.position.z = 0.01;
-    shieldGroup.add(crossV);
-    const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.01, 3, 1, 1),
-      new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    crossH.position.set(0, 0.03, 0.01);
-    shieldGroup.add(crossH);
+    // Team-specific shield emblem
+    if (teamIndex === 0) {
+      // Team 0: White cross
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.22, 0.01, 1, 3, 1),
+        new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      crossV.position.z = 0.01;
+      shieldGroup.add(crossV);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.01, 3, 1, 1),
+        new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      crossH.position.set(0, 0.03, 0.01);
+      shieldGroup.add(crossH);
+    } else if (teamIndex === 1) {
+      // Team 1: Red diagonal X (two crossing bars)
+      const xMat = new THREE.MeshStandardMaterial({ color: 0xcc2222 });
+      const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.25, 0.01, 1, 3, 1), xMat);
+      bar1.position.z = 0.01;
+      bar1.rotation.z = Math.PI / 4;
+      shieldGroup.add(bar1);
+      const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.25, 0.01, 1, 3, 1), xMat);
+      bar2.position.z = 0.01;
+      bar2.rotation.z = -Math.PI / 4;
+      shieldGroup.add(bar2);
+    } else if (teamIndex === 2) {
+      // Team 2: Green gem in center
+      const gemMat = new THREE.MeshStandardMaterial({ color: 0x22bb44, roughness: 0.2, metalness: 0.5, emissive: 0x115522 });
+      const gem = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), gemMat);
+      gem.position.z = 0.02;
+      shieldGroup.add(gem);
+    } else if (teamIndex === 3) {
+      // Team 3: Gold cross
+      const goldCrossMat = new THREE.MeshStandardMaterial({ color: 0xddaa44, roughness: 0.3, metalness: 0.7 });
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.22, 0.01, 1, 3, 1), goldCrossMat);
+      crossV.position.z = 0.01;
+      shieldGroup.add(crossV);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.01, 3, 1, 1), goldCrossMat);
+      crossH.position.set(0, 0.03, 0.01);
+      shieldGroup.add(crossH);
+    }
 
     // Shield studs (corner rivets)
     for (const sx of [-0.12, 0.12]) {
@@ -3149,6 +3211,9 @@ export class Worms3DGame {
           <option value="volcanic">Volcanic Wastes</option>
           <option value="arctic">Frozen North</option>
           <option value="desert">Desert Sands</option>
+          <option value="wasteland">Desolate Wasteland</option>
+          <option value="enchanted">Enchanted Forest</option>
+          <option value="volcanic_isle">Volcanic Island</option>
         </select>
         <span style="color:#aaa;font-size:12px;">Weather:</span>
         <select id="worms3d-weather" style="background:#222;color:#eee;border:1px solid #666;border-radius:4px;padding:3px 6px;font-size:12px;">
@@ -5542,12 +5607,42 @@ export class Worms3DGame {
         (this._waterMesh.material as THREE.ShaderMaterial).uniforms.uWaterColor.value.set(0x88aacc);
         (this._waterMesh.material as THREE.ShaderMaterial).uniforms.uDeepColor.value.set(0x445566);
         break;
+      case "wasteland":
+        this._scene.background = new THREE.Color(0x665544);
+        this._scene.fog = new THREE.FogExp2(0x887766, 0.008);
+        this._sunLight.color.set(0xffaa66);
+        this._sunLight.intensity = 2.0;
+        this._ambientLight.color.set(0x776655);
+        this._ambientLight.intensity = 0.5;
+        this._recolorTerrain("wasteland");
+        break;
+      case "enchanted":
+        this._scene.background = new THREE.Color(0x2a1a4a);
+        this._scene.fog = new THREE.FogExp2(0x443366, 0.005);
+        this._sunLight.color.set(0xccaaff);
+        this._sunLight.intensity = 2.0;
+        this._ambientLight.color.set(0x6644aa);
+        this._ambientLight.intensity = 0.9;
+        this._recolorTerrain("enchanted");
+        break;
+      case "volcanic_isle":
+        this._scene.background = new THREE.Color(0x331100);
+        this._scene.fog = new THREE.FogExp2(0x442200, 0.009);
+        this._sunLight.color.set(0xff6622);
+        this._sunLight.intensity = 3.0;
+        this._ambientLight.color.set(0x883300);
+        this._ambientLight.intensity = 0.6;
+        this._recolorTerrain("volcanic_isle");
+        (this._waterMesh.material as THREE.ShaderMaterial).uniforms.uWaterColor.value.set(0xff4400);
+        (this._waterMesh.material as THREE.ShaderMaterial).uniforms.uDeepColor.value.set(0x881100);
+        (this._waterMesh.material as THREE.ShaderMaterial).uniforms.uFoamColor.value.set(0xffaa44);
+        break;
       default: // island - already set
         break;
     }
   }
 
-  private _recolorTerrain(theme: "volcanic" | "arctic" | "desert"): void {
+  private _recolorTerrain(theme: "volcanic" | "arctic" | "desert" | "wasteland" | "enchanted" | "volcanic_isle"): void {
     const positions = this._terrainGeo.attributes.position;
     const colors = this._terrainGeo.attributes.color as THREE.BufferAttribute;
 
@@ -5565,6 +5660,21 @@ export class Worms3DGame {
         else if (y < 3) color = new THREE.Color(0x99aabb).lerp(new THREE.Color(0xccddee), (y - WATER_LEVEL) / 3);
         else if (y < 8) color = new THREE.Color(0xaabbcc).lerp(new THREE.Color(0xddeeff), (y - 3) / 5);
         else color = new THREE.Color(0xeeeeff);
+      } else if (theme === "wasteland") {
+        if (y < WATER_LEVEL + 0.5) color = new THREE.Color(0x443322);
+        else if (y < 3) color = new THREE.Color(0x554433).lerp(new THREE.Color(0x665544), (y - WATER_LEVEL) / 3);
+        else if (y < 8) color = new THREE.Color(0x665544).lerp(new THREE.Color(0x776655), (y - 3) / 5);
+        else color = new THREE.Color(0x554433).lerp(new THREE.Color(0x443322), Math.min(1, (y - 8) / 6));
+      } else if (theme === "enchanted") {
+        if (y < WATER_LEVEL + 0.5) color = new THREE.Color(0x221144);
+        else if (y < 3) color = new THREE.Color(0x332255).lerp(new THREE.Color(0x225522), (y - WATER_LEVEL) / 3);
+        else if (y < 8) color = new THREE.Color(0x226633).lerp(new THREE.Color(0x338844), (y - 3) / 5);
+        else color = new THREE.Color(0x44aa55).lerp(new THREE.Color(0x336644), Math.min(1, (y - 8) / 6));
+      } else if (theme === "volcanic_isle") {
+        if (y < WATER_LEVEL + 0.5) color = new THREE.Color(0x221100);
+        else if (y < 3) color = new THREE.Color(0x331100).lerp(new THREE.Color(0x442200), (y - WATER_LEVEL) / 3);
+        else if (y < 8) color = new THREE.Color(0x553311).lerp(new THREE.Color(0x442200), (y - 3) / 5);
+        else color = new THREE.Color(0x331100).lerp(new THREE.Color(0x551100), Math.min(1, (y - 8) / 6));
       } else { // desert
         if (y < WATER_LEVEL + 0.5) color = new THREE.Color(0xccaa77);
         else if (y < 3) color = new THREE.Color(0xccaa77).lerp(new THREE.Color(0xddbb88), (y - WATER_LEVEL) / 3);

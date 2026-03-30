@@ -186,6 +186,7 @@ export class Worms2DGame {
   private _gameTime = 0;
   private _turnNumber = 0;
   private _teamCount = 2;
+  private _mapType: 'hills' | 'caverns' | 'islands' | 'fortress' | 'canyon' | 'volcano' | 'arctic' | 'swamp' | 'ruins' | 'random' = 'random';
   private _winningTeam = -1;
   private _shotsFired = 0;
   private _suddenDeath = false;
@@ -815,27 +816,174 @@ export class Worms2DGame {
   // ─── TERRAIN ───────────────────────────────────────────────────────────────
 
   private _generateTerrain(): void {
+    let mapType = this._mapType;
+    if (mapType === 'random') {
+      const types: Array<typeof this._mapType> = ['hills', 'caverns', 'islands', 'fortress', 'canyon', 'volcano', 'arctic', 'swamp', 'ruins'];
+      mapType = types[randInt(0, types.length - 1)];
+    }
+
     this._terrainMask = new Uint8Array(TERRAIN_WIDTH * TERRAIN_HEIGHT);
     const heightMap: number[] = new Array(TERRAIN_WIDTH);
+    const seed = Math.random() * 1000;
+
     for (let x = 0; x < TERRAIN_WIDTH; x++) {
-      let h = TERRAIN_HEIGHT * 0.45;
-      h += Math.sin(x * 0.002) * 120; h += Math.sin(x * 0.005 + 1.3) * 60;
-      h += Math.sin(x * 0.01 + 2.7) * 30; h += Math.sin(x * 0.02 + 0.5) * 15;
-      h += Math.sin(x * 0.04 + 3.1) * 8;
-      const midDist = Math.abs(x - TERRAIN_WIDTH / 2) / (TERRAIN_WIDTH * 0.1);
-      if (midDist < 1) { const flat = TERRAIN_HEIGHT * 0.5; h = lerp(flat, h, midDist); }
-      h += Math.sin(x * 0.1 + x * 0.037) * 5;
+      let h = 0;
+
+      switch (mapType) {
+        case 'hills': {
+          // Rolling hills — the classic map with gentle terrain
+          h = TERRAIN_HEIGHT * 0.45;
+          h += Math.sin(x * 0.002 + seed) * 120;
+          h += Math.sin(x * 0.005 + seed + 1.3) * 60;
+          h += Math.sin(x * 0.01 + seed + 2.7) * 30;
+          h += Math.sin(x * 0.02 + seed + 0.5) * 15;
+          h += Math.sin(x * 0.04 + seed + 3.1) * 8;
+          // Flat area in the middle
+          const midDist = Math.abs(x - TERRAIN_WIDTH / 2) / (TERRAIN_WIDTH * 0.1);
+          if (midDist < 1) h = lerp(TERRAIN_HEIGHT * 0.5, h, midDist);
+          break;
+        }
+        case 'caverns': {
+          // Deep terrain with lots of underground space
+          h = TERRAIN_HEIGHT * 0.3;
+          h += Math.sin(x * 0.0015 + seed) * 80;
+          h += Math.sin(x * 0.004 + seed + 2) * 50;
+          h += Math.sin(x * 0.008 + seed + 4) * 25;
+          h += Math.sin(x * 0.025 + seed) * 10;
+          break;
+        }
+        case 'islands': {
+          // Multiple islands separated by water gaps
+          const segment = x / TERRAIN_WIDTH;
+          const islandCount = 5;
+          let islandH = 0;
+          for (let isl = 0; isl < islandCount; isl++) {
+            const center = (isl + 0.5) / islandCount;
+            const d = Math.abs(segment - center) * islandCount;
+            if (d < 0.8) {
+              const shape = Math.cos(d / 0.8 * Math.PI / 2);
+              islandH = Math.max(islandH, shape * (120 + Math.sin(isl * 7 + seed) * 60));
+            }
+          }
+          h = TERRAIN_HEIGHT * 0.65 - islandH;
+          h += Math.sin(x * 0.02 + seed) * 10;
+          h += Math.sin(x * 0.05 + seed + 1) * 5;
+          break;
+        }
+        case 'fortress': {
+          // Flat plateaus with steep walls — castle-like battlements
+          const phase = (x * 0.003 + seed) % (Math.PI * 2);
+          const baseH = TERRAIN_HEIGHT * 0.5;
+          const stepWave = Math.sin(phase);
+          // Create stepped terrain
+          if (stepWave > 0.5) h = baseH - 150;
+          else if (stepWave > 0.0) h = baseH - 80;
+          else if (stepWave > -0.5) h = baseH - 30;
+          else h = baseH + 20;
+          // Add battlement detail
+          if (Math.sin(x * 0.04 + seed) > 0.6) h -= 25;
+          // Small variation
+          h += Math.sin(x * 0.015 + seed + 3) * 20;
+          h += Math.sin(x * 0.06 + seed) * 5;
+          break;
+        }
+        case 'canyon': {
+          // Deep V-shaped canyon in the center, high walls on sides
+          const nx = (x / TERRAIN_WIDTH - 0.5) * 2; // -1 to 1
+          const canyonDepth = 200 * Math.exp(-nx * nx * 3);
+          h = TERRAIN_HEIGHT * 0.25 + canyonDepth;
+          // Add ridges on the walls
+          h -= Math.abs(Math.sin(x * 0.008 + seed)) * 40;
+          h += Math.sin(x * 0.02 + seed + 2) * 15;
+          h += Math.sin(x * 0.05 + seed) * 8;
+          // Edge cliffs
+          if (x < 200 || x > TERRAIN_WIDTH - 200) {
+            h = lerp(h, TERRAIN_HEIGHT * 0.3, Math.max(0, 1 - Math.min(x, TERRAIN_WIDTH - x) / 200));
+          }
+          break;
+        }
+        case 'volcano': {
+          // Volcanic landscape with a central caldera and jagged peaks
+          const nx = (x / TERRAIN_WIDTH - 0.5) * 2;
+          // Central volcano cone
+          const volcanoShape = Math.max(0, 1 - Math.abs(nx) * 1.8) * 250;
+          // Caldera dip at center
+          const caldera = nx * nx < 0.04 ? Math.abs(nx) * 800 : 0;
+          h = TERRAIN_HEIGHT * 0.55 - volcanoShape + caldera;
+          // Jagged rocky surface
+          h += Math.sin(x * 0.03 + seed) * 20;
+          h += Math.sin(x * 0.08 + seed + 1) * 10;
+          h += Math.abs(Math.sin(x * 0.015 + seed)) * 15;
+          // Lava shelf edges
+          if (x < 150 || x > TERRAIN_WIDTH - 150) h = lerp(TERRAIN_HEIGHT * 0.6, h, Math.min(x, TERRAIN_WIDTH - x) / 150);
+          break;
+        }
+        case 'arctic': {
+          // Frozen tundra with ice shelves and crevasses
+          h = TERRAIN_HEIGHT * 0.42;
+          h += Math.sin(x * 0.0018 + seed) * 100;
+          h += Math.sin(x * 0.006 + seed + 2) * 45;
+          // Ice shelf plateaus (flattened tops)
+          const rawH = h;
+          const shelfLevel = TERRAIN_HEIGHT * 0.35;
+          if (rawH < shelfLevel) h = lerp(rawH, shelfLevel, 0.6);
+          // Crevasse cracks
+          if (Math.sin(x * 0.012 + seed * 2) > 0.85) h += 60;
+          h += Math.sin(x * 0.04 + seed) * 8;
+          break;
+        }
+        case 'swamp': {
+          // Low, flat marshland with scattered mounds
+          h = TERRAIN_HEIGHT * 0.6;
+          h += Math.sin(x * 0.003 + seed) * 40;
+          h += Math.sin(x * 0.007 + seed + 1) * 25;
+          // Flat marshy sections
+          const swampFlat = TERRAIN_HEIGHT * 0.58;
+          h = Math.max(h, swampFlat - 10);
+          // Mounds / hummocks
+          for (let m = 0; m < 12; m++) {
+            const mx = (m + 0.5) / 12 * TERRAIN_WIDTH;
+            const md = Math.abs(x - mx);
+            if (md < 80) {
+              h -= Math.cos(md / 80 * Math.PI / 2) * (40 + Math.sin(m * 7 + seed) * 25);
+            }
+          }
+          h += Math.sin(x * 0.05 + seed) * 5;
+          break;
+        }
+        case 'ruins': {
+          // Ancient ruins with pillars and platforms
+          h = TERRAIN_HEIGHT * 0.5;
+          h += Math.sin(x * 0.002 + seed) * 60;
+          // Stepped platform structures
+          const blockPhase = Math.sin(x * 0.005 + seed);
+          if (blockPhase > 0.3) h -= 80;
+          else if (blockPhase > -0.1) h -= 40;
+          // Pillar-like bumps
+          if (Math.sin(x * 0.025 + seed * 3) > 0.7) h -= 50;
+          // Crumbled sections
+          h += Math.sin(x * 0.015 + seed + 2) * 25;
+          h += Math.sin(x * 0.06 + seed) * 8;
+          break;
+        }
+      }
+
       heightMap[x] = h;
     }
     for (let x = 0; x < TERRAIN_WIDTH; x++) {
       const surfaceY = Math.floor(heightMap[x]);
       for (let y = surfaceY; y < TERRAIN_HEIGHT; y++) this._terrainMask[y * TERRAIN_WIDTH + x] = 1;
     }
-    // Caves
-    const caveCount = randInt(5, 10);
-    for (let c = 0; c < caveCount; c++) {
-      const cx = randRange(200, TERRAIN_WIDTH - 200); const cy = randRange(TERRAIN_HEIGHT * 0.5, TERRAIN_HEIGHT * 0.85);
-      const cw = randRange(30, 80); const ch = randRange(20, 50);
+    // Cave intensity per map type
+    const caveMult = mapType === 'caverns' ? 2.5 : mapType === 'canyon' ? 1.5 : mapType === 'volcano' ? 1.8 : mapType === 'ruins' ? 1.3 : mapType === 'fortress' ? 0.5 : mapType === 'islands' ? 0.3 : mapType === 'arctic' ? 0.7 : mapType === 'swamp' ? 0.4 : 1.0;
+
+    // Large caves
+    const largeCaveCount = Math.round(randInt(4, 7) * caveMult);
+    for (let c = 0; c < largeCaveCount; c++) {
+      const cx = randRange(150, TERRAIN_WIDTH - 150);
+      const cy = randRange(TERRAIN_HEIGHT * 0.45, TERRAIN_HEIGHT * 0.75);
+      const cw = randRange(80, 180);
+      const ch = randRange(50, 100);
       for (let dx = -cw; dx <= cw; dx++) for (let dy = -ch; dy <= ch; dy++) {
         if ((dx / cw) * (dx / cw) + (dy / ch) * (dy / ch) <= 1) {
           const px = Math.floor(cx + dx); const py = Math.floor(cy + dy);
@@ -843,19 +991,77 @@ export class Worms2DGame {
         }
       }
     }
-    // Tunnels
-    const tunnelCount = randInt(2, 5);
+    // Medium caves
+    const medCaveCount = Math.round(randInt(6, 12) * caveMult);
+    for (let c = 0; c < medCaveCount; c++) {
+      const cx = randRange(100, TERRAIN_WIDTH - 100);
+      const cy = randRange(TERRAIN_HEIGHT * 0.5, TERRAIN_HEIGHT * 0.85);
+      const cw = randRange(40, 100);
+      const ch = randRange(25, 60);
+      for (let dx = -cw; dx <= cw; dx++) for (let dy = -ch; dy <= ch; dy++) {
+        if ((dx / cw) * (dx / cw) + (dy / ch) * (dy / ch) <= 1) {
+          const px = Math.floor(cx + dx); const py = Math.floor(cy + dy);
+          if (px >= 0 && px < TERRAIN_WIDTH && py >= 0 && py < TERRAIN_HEIGHT) this._terrainMask[py * TERRAIN_WIDTH + px] = 0;
+        }
+      }
+    }
+    // Small caves
+    const smallCaveCount = Math.round(randInt(8, 15) * caveMult);
+    for (let c = 0; c < smallCaveCount; c++) {
+      const cx = randRange(100, TERRAIN_WIDTH - 100);
+      const cy = randRange(TERRAIN_HEIGHT * 0.45, TERRAIN_HEIGHT * 0.9);
+      const cw = randRange(15, 45);
+      const ch = randRange(12, 30);
+      for (let dx = -cw; dx <= cw; dx++) for (let dy = -ch; dy <= ch; dy++) {
+        if ((dx / cw) * (dx / cw) + (dy / ch) * (dy / ch) <= 1) {
+          const px = Math.floor(cx + dx); const py = Math.floor(cy + dy);
+          if (px >= 0 && px < TERRAIN_WIDTH && py >= 0 && py < TERRAIN_HEIGHT) this._terrainMask[py * TERRAIN_WIDTH + px] = 0;
+        }
+      }
+    }
+    // Long winding tunnels
+    const tunnelCount = Math.round(randInt(4, 8) * caveMult);
     for (let t = 0; t < tunnelCount; t++) {
-      let tx = randRange(300, TERRAIN_WIDTH - 300); let ty = randRange(TERRAIN_HEIGHT * 0.55, TERRAIN_HEIGHT * 0.8);
-      const angle = randRange(-0.3, 0.3); const length = randInt(80, 200); const radius = randRange(8, 18);
+      let tx = randRange(200, TERRAIN_WIDTH - 200);
+      let ty = randRange(TERRAIN_HEIGHT * 0.5, TERRAIN_HEIGHT * 0.8);
+      let angle = randRange(-0.5, 0.5);
+      const length = randInt(120, 350);
+      const radius = randRange(12, 28);
       for (let s = 0; s < length; s++) {
-        tx += Math.cos(angle) * 2; ty += Math.sin(angle) * 2 + Math.sin(s * 0.05) * 0.5;
-        for (let dx = -radius; dx <= radius; dx++) for (let dy = -radius; dy <= radius; dy++) {
-          if (dx * dx + dy * dy <= radius * radius) {
+        // Winding path
+        angle += (Math.random() - 0.5) * 0.06;
+        angle = clamp(angle, -0.8, 0.8);
+        tx += Math.cos(angle) * 2;
+        ty += Math.sin(angle) * 2;
+        const r = radius + Math.sin(s * 0.08) * 5; // Varying width
+        for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+          if (dx * dx + dy * dy <= r * r) {
             const px = Math.floor(tx + dx); const py = Math.floor(ty + dy);
             if (px >= 0 && px < TERRAIN_WIDTH && py >= 0 && py < TERRAIN_HEIGHT) this._terrainMask[py * TERRAIN_WIDTH + px] = 0;
           }
         }
+      }
+    }
+    // Connected cavern systems (chain of overlapping caves)
+    const cavernCount = Math.round(randInt(2, 4) * caveMult);
+    for (let cs = 0; cs < cavernCount; cs++) {
+      let cx = randRange(300, TERRAIN_WIDTH - 300);
+      let cy = randRange(TERRAIN_HEIGHT * 0.55, TERRAIN_HEIGHT * 0.8);
+      const chambers = randInt(3, 6);
+      for (let ch = 0; ch < chambers; ch++) {
+        const cw = randRange(50, 120);
+        const chh = randRange(35, 70);
+        for (let dx = -cw; dx <= cw; dx++) for (let dy = -chh; dy <= chh; dy++) {
+          if ((dx / cw) * (dx / cw) + (dy / chh) * (dy / chh) <= 1) {
+            const px = Math.floor(cx + dx); const py = Math.floor(cy + dy);
+            if (px >= 0 && px < TERRAIN_WIDTH && py >= 0 && py < TERRAIN_HEIGHT) this._terrainMask[py * TERRAIN_WIDTH + px] = 0;
+          }
+        }
+        // Move to next chamber position
+        cx += randRange(60, 150) * (Math.random() > 0.5 ? 1 : -1);
+        cy += randRange(-40, 60);
+        cx = clamp(cx, 100, TERRAIN_WIDTH - 100);
+        cy = clamp(cy, TERRAIN_HEIGHT * 0.45, TERRAIN_HEIGHT * 0.88);
       }
     }
     this._renderTerrainFull();
@@ -1094,8 +1300,20 @@ export class Worms2DGame {
     for (let t = 0; t < this._teams.length; t++) {
       const team = this._teams[t]; const baseX = spacing * (t + 1);
       for (let w = 0; w < team.worms.length; w++) {
-        const worm = team.worms[w]; const offsetX = (w - 1.5) * 50;
-        const x = clamp(baseX + offsetX, 50, TERRAIN_WIDTH - 50); const y = this._findSurfaceY(x);
+        const worm = team.worms[w];
+        // Spread worms out much more within each team's zone (±200px from base)
+        const offsetX = (w - 1.5) * 130 + randRange(-30, 30);
+        let x = clamp(baseX + offsetX, 80, TERRAIN_WIDTH - 80);
+        // Make sure worm is on solid ground, not hovering over a cave
+        let y = this._findSurfaceY(x);
+        // If surface is too low (in water zone), nudge position
+        let attempts = 0;
+        while (y > TERRAIN_HEIGHT - WATER_LEVEL - 20 && attempts < 20) {
+          x += randRange(-40, 40);
+          x = clamp(x, 80, TERRAIN_WIDTH - 80);
+          y = this._findSurfaceY(x);
+          attempts++;
+        }
         worm.x = x; worm.y = y - WORM_RADIUS;
       }
     }
@@ -1775,13 +1993,81 @@ export class Worms2DGame {
   private _aiCalculateShot(worm: Worm): void {
     const target = this._findNearestEnemy(worm);
     if (!target) { this._aiTargetAngle = -Math.PI / 4; this._aiTargetPower = 0.5; return; }
-    const dx = target.x - worm.x; const dy = (target.y - 10) - (worm.y - 10); const d = Math.sqrt(dx * dx + dy * dy);
+
+    const dx = target.x - worm.x;
+    const dy = (target.y - 10) - (worm.y - 10);
     worm.facing = dx >= 0 ? 1 : -1;
-    const weapon = WEAPONS[this._currentWeapon]; const speed = weapon.speed || 500;
+
+    const weapon = WEAPONS[this._currentWeapon];
+    const maxSpeed = weapon.speed || 500;
     const absDx = Math.abs(dx);
-    let angle = Math.atan2(dy - d * 0.3, absDx); angle = clamp(angle, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1); angle += randRange(-0.15, 0.15);
-    let power = clamp(d / (speed * 1.2), 0.2, 1.0); power += randRange(-0.1, 0.1); power = clamp(power, 0.1, 1.0);
-    this._aiTargetAngle = angle; this._aiTargetPower = power;
+    const g = GRAVITY;
+
+    // Solve projectile motion: find angle and power to hit target
+    // Using the formula: tan(angle) = (v²± sqrt(v⁴ - g(g*x² + 2*y*v²))) / (g*x)
+    // Try multiple power levels and pick the best
+    let bestAngle = -Math.PI / 4;
+    let bestPower = 0.6;
+    let bestError = Infinity;
+
+    for (let pTest = 0.3; pTest <= 1.0; pTest += 0.05) {
+      const v = maxSpeed * pTest;
+      const v2 = v * v;
+      const v4 = v2 * v2;
+      const discriminant = v4 - g * (g * absDx * absDx + 2 * dy * v2);
+
+      if (discriminant >= 0) {
+        const sqrtD = Math.sqrt(discriminant);
+        // Two solutions — high arc and low arc. Prefer low arc.
+        for (const sign of [1, -1]) {
+          const tanA = (v2 + sign * sqrtD) / (g * absDx);
+          const angle = Math.atan(tanA);
+          if (angle < -Math.PI / 2 + 0.05 || angle > Math.PI / 2 - 0.05) continue;
+
+          // Simulate to verify (accounts for wind)
+          const simDirX = Math.cos(angle) * worm.facing;
+          const simDirY = Math.sin(angle);
+          let sx = worm.x + simDirX * 20;
+          let sy = worm.y - 10 + simDirY * 20;
+          let svx = simDirX * v;
+          let svy = simDirY * v;
+          const simDt = 0.02;
+          let hitError = Infinity;
+
+          for (let step = 0; step < 300; step++) {
+            svy += g * simDt;
+            if (weapon.windAffected) svx += this._wind * 100 * simDt;
+            sx += svx * simDt;
+            sy += svy * simDt;
+
+            const err = dist(sx, sy, target.x, target.y - 10);
+            if (err < hitError) hitError = err;
+
+            // Stop if hit terrain or passed target
+            if (sy > TERRAIN_HEIGHT || this._isTerrainSolid(sx, sy)) break;
+          }
+
+          if (hitError < bestError) {
+            bestError = hitError;
+            bestAngle = angle;
+            bestPower = pTest;
+          }
+        }
+      }
+    }
+
+    // If no good ballistic solution, fall back to direct aim
+    if (bestError > 100) {
+      bestAngle = Math.atan2(dy, absDx) - 0.15;
+      bestPower = clamp(Math.sqrt(absDx * absDx + dy * dy) / (maxSpeed * 0.8), 0.3, 1.0);
+    }
+
+    // Add small imperfection so AI isn't perfect
+    bestAngle += randRange(-0.04, 0.04);
+    bestPower = clamp(bestPower + randRange(-0.03, 0.03), 0.15, 1.0);
+
+    this._aiTargetAngle = clamp(bestAngle, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
+    this._aiTargetPower = bestPower;
   }
 
   private _fireWeaponAI(worm: Worm, power: number): void {
@@ -2056,8 +2342,31 @@ export class Worms2DGame {
         hover: false,
       });
     }
-    this._titleButtons.push({ x: -100, y: 220, w: 200, h: 55, text: 'START BATTLE', action: () => { this._playSound('click'); this._startGame(); }, hover: false });
-    this._titleButtons.push({ x: -100, y: 290, w: 200, h: 45, text: 'BACK TO MENU', action: () => { this._playSound('click'); window.dispatchEvent(new CustomEvent('worms2dExit')); }, hover: false });
+    // Map selection row
+    const maps: { key: typeof this._mapType; label: string }[] = [
+      { key: 'random', label: 'Random' },
+      { key: 'hills', label: 'Hills' },
+      { key: 'caverns', label: 'Caverns' },
+      { key: 'islands', label: 'Islands' },
+      { key: 'fortress', label: 'Fortress' },
+      { key: 'canyon', label: 'Canyon' },
+      { key: 'volcano', label: 'Volcano' },
+      { key: 'arctic', label: 'Arctic' },
+      { key: 'swamp', label: 'Swamp' },
+      { key: 'ruins', label: 'Ruins' },
+    ];
+    const mapBtnW = Math.floor(340 / maps.length);
+    for (let m = 0; m < maps.length; m++) {
+      const map = maps[m];
+      this._titleButtons.push({
+        x: -170 + m * mapBtnW, y: 220, w: mapBtnW - 4, h: 35,
+        text: map.label,
+        action: () => { this._mapType = map.key; this._buildTitleButtons(); this._playSound('click'); },
+        hover: false,
+      });
+    }
+    this._titleButtons.push({ x: -100, y: 270, w: 200, h: 55, text: 'START BATTLE', action: () => { this._playSound('click'); this._startGame(); }, hover: false });
+    this._titleButtons.push({ x: -100, y: 340, w: 200, h: 45, text: 'BACK TO MENU', action: () => { this._playSound('click'); window.dispatchEvent(new CustomEvent('worms2dExit')); }, hover: false });
   }
 
   private _checkTitleButtons(): void {
@@ -2252,6 +2561,11 @@ export class Worms2DGame {
     ctx.font = '14px serif'; ctx.fillStyle = '#998866';
     ctx.fillText('Team Control:', cx, cy + 145);
 
+    // Label for map row
+    ctx.fillText('Map:', cx, cy + 207);
+
+    const mapNames: Record<string, string> = { random: 'Random', hills: 'Hills', caverns: 'Caverns', islands: 'Islands', fortress: 'Fortress', canyon: 'Canyon' };
+
     for (const btn of this._titleButtons) {
       const bx = cx + btn.x; const by = cy + btn.y;
       btn.hover = this._mouseX >= bx && this._mouseX <= bx + btn.w && this._mouseY >= by && this._mouseY <= by + btn.h;
@@ -2259,12 +2573,16 @@ export class Worms2DGame {
       const isTeamCountSelected = isTeamCountBtn && btn.text.startsWith(`${this._teamCount}`);
       const isHumanBtn = btn.text.includes('HUMAN');
       const isAiBtn = btn.text.includes(': AI');
-      const isHighlighted = isTeamCountSelected || isHumanBtn;
+      const isMapBtn = Object.values(mapNames).includes(btn.text);
+      const isMapSelected = isMapBtn && btn.text === mapNames[this._mapType];
+      const isHighlighted = isTeamCountSelected || isHumanBtn || isMapSelected;
 
       const grad = ctx.createLinearGradient(bx, by, bx, by + btn.h);
       if (isHumanBtn) {
         grad.addColorStop(0, btn.hover ? '#2a5533' : '#1a4422');
         grad.addColorStop(1, btn.hover ? '#1a3316' : '#0d220d');
+      } else if (isMapSelected) {
+        grad.addColorStop(0, '#224466'); grad.addColorStop(1, '#112244');
       } else if (isHighlighted) {
         grad.addColorStop(0, '#886622'); grad.addColorStop(1, '#664411');
       } else if (btn.hover) {
@@ -2274,12 +2592,12 @@ export class Worms2DGame {
       }
       ctx.fillStyle = grad;
       this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.fill();
-      ctx.strokeStyle = isHumanBtn ? '#44dd66' : isHighlighted ? '#ffd700' : (btn.hover ? '#ccaa44' : '#886633');
+      ctx.strokeStyle = isHumanBtn ? '#44dd66' : isMapSelected ? '#6699ff' : isHighlighted ? '#ffd700' : (btn.hover ? '#ccaa44' : '#886633');
       ctx.lineWidth = isHighlighted || isHumanBtn ? 2 : 1;
       this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.stroke();
 
-      ctx.fillStyle = isHumanBtn ? '#44ff66' : (btn.hover || isHighlighted) ? '#ffd700' : '#ccaa66';
-      ctx.font = btn.text === 'START BATTLE' ? 'bold 22px serif' : (isHumanBtn || isAiBtn) ? 'bold 13px sans-serif' : '16px serif';
+      ctx.fillStyle = isHumanBtn ? '#44ff66' : isMapSelected ? '#88bbff' : (btn.hover || isHighlighted) ? '#ffd700' : '#ccaa66';
+      ctx.font = btn.text === 'START BATTLE' ? 'bold 22px serif' : (isHumanBtn || isAiBtn || isMapBtn) ? 'bold 12px sans-serif' : '16px serif';
       ctx.fillText(btn.text, bx + btn.w / 2, by + btn.h / 2);
     }
     ctx.restore();
@@ -2481,20 +2799,27 @@ export class Worms2DGame {
     ctx.fillStyle = shieldGrad;
     ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(7, -5); ctx.lineTo(7, 4); ctx.lineTo(0, 9); ctx.lineTo(-7, 4); ctx.lineTo(-7, -5); ctx.closePath();
     ctx.fill(); ctx.strokeStyle = '#ddddaa'; ctx.lineWidth = 0.8; ctx.stroke();
-    // Heraldic design: simple lion rampant (stick figure style)
-    ctx.strokeStyle = '#ffdd88'; ctx.lineWidth = 1;
-    ctx.beginPath();
-    // Body
-    ctx.moveTo(-1, 2); ctx.lineTo(0, -2); ctx.lineTo(2, -4);
-    // Head
-    ctx.moveTo(2, -4); ctx.lineTo(3, -5);
-    // Front legs
-    ctx.moveTo(0, -2); ctx.lineTo(2, 0); ctx.moveTo(0, -1); ctx.lineTo(-2, -3);
-    // Back legs
-    ctx.moveTo(-1, 2); ctx.lineTo(-3, 4); ctx.moveTo(-1, 2); ctx.lineTo(1, 4);
-    // Tail
-    ctx.moveTo(-1, 2); ctx.lineTo(-3, 0);
-    ctx.stroke();
+    // Team-specific shield emblem
+    if (worm.team === 0) {
+      // Round Table: golden cross
+      ctx.strokeStyle = '#ffdd88'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 5); ctx.moveTo(-3, 0); ctx.lineTo(3, 0); ctx.stroke();
+    } else if (worm.team === 1) {
+      // Mordred: skull-like face
+      ctx.fillStyle = '#ffcccc';
+      ctx.beginPath(); ctx.arc(0, -1, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#660000'; ctx.fillRect(-2, -2, 1.5, 1.5); ctx.fillRect(0.5, -2, 1.5, 1.5);
+    } else if (worm.team === 2) {
+      // Merlin: star
+      ctx.fillStyle = '#88ffaa';
+      ctx.font = '8px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('\u2605', 0, 0);
+    } else if (worm.team === 3) {
+      // Grail Knights: chalice shape
+      ctx.fillStyle = '#ffdd44';
+      ctx.beginPath(); ctx.moveTo(-2, 3); ctx.lineTo(-3, -2); ctx.lineTo(-1, -3); ctx.lineTo(1, -3); ctx.lineTo(3, -2); ctx.lineTo(2, 3); ctx.closePath(); ctx.fill();
+      ctx.fillRect(-1, 3, 2, 2);
+    }
     ctx.restore();
 
     // === HELM (improved with nose guard, visor, chin guard) ===
@@ -2528,6 +2853,38 @@ export class Worms2DGame {
     ctx.fillStyle = team.lightColor; ctx.globalAlpha = 0.35;
     ctx.beginPath(); ctx.moveTo(-1, -7); ctx.quadraticCurveTo(0, -16, 4 + pw, -13); ctx.quadraticCurveTo(1, -11, 1, -7); ctx.closePath(); ctx.fill();
     ctx.globalAlpha = worm.frozen > 0 ? 0.7 : 1.0;
+    // Team-specific helm decoration
+    if (worm.team === 0) {
+      // Round Table: crown points on helm
+      ctx.fillStyle = '#ffd700';
+      for (let cp = -4; cp <= 4; cp += 4) {
+        ctx.beginPath();
+        ctx.moveTo(cp - 2, -8); ctx.lineTo(cp, -13); ctx.lineTo(cp + 2, -8);
+        ctx.closePath(); ctx.fill();
+      }
+    } else if (worm.team === 1) {
+      // Mordred's Host: horns on helm
+      ctx.fillStyle = '#aa3333';
+      ctx.beginPath(); ctx.moveTo(-6, -6); ctx.quadraticCurveTo(-10, -16, -5, -14); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(6, -6); ctx.quadraticCurveTo(10, -16, 5, -14); ctx.lineTo(5, -6); ctx.closePath(); ctx.fill();
+    } else if (worm.team === 2) {
+      // Merlin's Circle: wizard hat tip on helm
+      ctx.fillStyle = '#22aa55';
+      ctx.beginPath(); ctx.moveTo(-2, -8); ctx.lineTo(1, -22); ctx.lineTo(4, -8); ctx.closePath(); ctx.fill();
+      // Star on hat
+      ctx.fillStyle = '#ffff66'; ctx.font = '6px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('\u2605', 1, -14);
+    } else if (worm.team === 3) {
+      // Grail Knights: wings on helm sides
+      ctx.fillStyle = '#dddddd';
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(side * 7, -4);
+        ctx.quadraticCurveTo(side * 14, -12, side * 10, -16);
+        ctx.quadraticCurveTo(side * 12, -10, side * 8, -4);
+        ctx.closePath(); ctx.fill();
+      }
+    }
     ctx.restore(); // helm
 
     // === WEAPON IN HAND (weapon-specific visuals) ===
@@ -3252,6 +3609,7 @@ export class Worms2DGame {
         line('Mouse  -  Aim weapon toward cursor');
         line('Left Click (hold)  -  Charge shot power'); line('Left Click (release)  -  Fire weapon');
         line('E  -  Open weapon select menu'); line('1-9  -  Quick-select weapon by slot');
+        line('G  -  End turn early / Skip retreat');
         gap();
         heading('Camera');
         line('Mouse Wheel  -  Zoom in/out (0.5x - 2.0x)');
@@ -3297,6 +3655,18 @@ export class Worms2DGame {
         gap();
         heading('Supply Crates');
         line('Every 5 turns, a supply crate parachutes onto the battlefield. Walk a worm over it to receive bonus ammunition for a random weapon. Crates can change the tide of battle!');
+        gap();
+        heading('Map Types');
+        line('Hills - Classic rolling terrain with gentle slopes. Good for beginners.');
+        line('Caverns - Deep terrain riddled with massive cave networks and underground tunnels. Lots of cover and surprise angles.');
+        line('Islands - Multiple isolated land masses separated by water. High risk of drowning, long-range weapons shine.');
+        line('Fortress - Stepped plateaus with sheer walls, like medieval battlements. Great for defensive play.');
+        line('Canyon - A deep V-shaped gorge with high walls on each side. Vertical combat and tight quarters.');
+        line('Volcano - Jagged volcanic peaks surrounding a central caldera. Treacherous terrain with lava shelf edges.');
+        line('Arctic - Frozen tundra with ice shelf plateaus and deep crevasses. Flat sections with sudden drops.');
+        line('Swamp - Low, flat marshland dotted with mounds and hummocks. Limited high ground forces creative play.');
+        line('Ruins - Ancient stepped platforms and pillar structures. Vertical variety with crumbled sections.');
+        line('Random - Picks one of the above at random each game.');
         gap();
         heading('Status Effects');
         line('Freeze Blast - Encases the target in ice for 1 turn, reducing their damage taken but preventing them from acting.');
