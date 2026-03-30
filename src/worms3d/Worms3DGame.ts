@@ -558,8 +558,10 @@ export class Worms3DGame {
         this._renderer.setRenderTarget(this._bloomPass.target);
         this._renderer.render(this._scene, this._camera);
         this._renderer.setRenderTarget(null);
-        // Composite bloom on top
+        // Composite bloom on top — don't clear the main scene we just rendered
+        this._renderer.autoClear = false;
         this._renderer.render(this._compositeScene, this._compositeCamera);
+        this._renderer.autoClear = true;
       }
     };
     loop();
