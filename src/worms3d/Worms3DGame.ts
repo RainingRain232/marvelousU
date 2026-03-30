@@ -572,7 +572,7 @@ export class Worms3DGame {
     this._renderer.setSize(window.innerWidth, window.innerHeight);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.shadowMap.enabled = true;
-    this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this._renderer.shadowMap.type = THREE.PCFShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this._renderer.toneMappingExposure = 1.4;
     this._renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1253,9 +1253,15 @@ export class Worms3DGame {
     const positions = this._terrainGeo.attributes.position;
 
     for (let i = 0; i < positions.count; i++) {
-      positions.setY(i, this._heightData[i]);
+      const h = this._heightData[i];
+      positions.setY(i, isNaN(h) ? 0 : h);
+      // Also sanitize X/Z in case rotateX produced NaN
+      if (isNaN(positions.getX(i))) positions.setX(i, 0);
+      if (isNaN(positions.getZ(i))) positions.setZ(i, 0);
     }
+    positions.needsUpdate = true;
     this._terrainGeo.computeVertexNormals();
+    this._terrainGeo.computeBoundingSphere();
 
     // Color by height — lush greens, rocky grays, sandy beaches
     const colors = new Float32Array(positions.count * 3);
@@ -2737,6 +2743,7 @@ export class Worms3DGame {
 
     positions.needsUpdate = true;
     this._terrainGeo.computeVertexNormals();
+    this._terrainGeo.computeBoundingSphere();
     this._terrainNeedsUpdate = true;
   }
 
