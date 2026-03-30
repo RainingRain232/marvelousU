@@ -542,10 +542,10 @@ export class GrandGame {
     this._sunMesh.position.set(80, 50, -40);
     this._scene.add(this._sunMesh);
     // sun glow halo
-    const sunGlow = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8),
+    const sunGlow2 = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8),
       new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.15, depthWrite: false }));
-    sunGlow.position.copy(this._sunMesh.position);
-    this._scene.add(sunGlow);
+    sunGlow2.position.copy(this._sunMesh.position);
+    this._scene.add(sunGlow2);
 
     // build track mesh
     this._buildTrackMesh();
