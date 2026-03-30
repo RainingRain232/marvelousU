@@ -613,6 +613,8 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.DEPTHS, label: "DEPTHS", desc: "3D deep-sea descent — dive into the abyss, fight pressure-adapted horrors, manage oxygen & discover ancient ruins on the ocean floor", skipSetup: true, tag: "3D" },
   { mode: GameMode.IGWAINE, label: "IGWAINE", desc: "Solar knight arena survival — your power waxes and wanes with the sun. Fight spectral enemies, collect pentangle virtues, defeat the Green Knight", skipSetup: true, tag: "NEW" },
   { mode: GameMode.KINGDOM, label: "KINGDOM", desc: "Mario-style platformer — play as Arthur, Merlin, Guinevere or Lancelot. 4 worlds, power-ups, bosses & Camelot flavour", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.WORMS_3D, label: "WORMS 3D", desc: "3D turn-based artillery — teams of Camelot knights on destructible terrain, 20+ weapons, wind, water & explosive medieval mayhem", skipSetup: true, tag: "3D" },
+  { mode: GameMode.WORMS_2D, label: "WORMS 2D", desc: "2D turn-based artillery — classic side-view worms with Camelot knights, 30+ weapons, destructible terrain, parallax backgrounds & medieval chaos", skipSetup: true, tag: "NEW" },
 ];
 
 // ---------------------------------------------------------------------------

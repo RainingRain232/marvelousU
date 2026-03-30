@@ -459,6 +459,8 @@ function _showLoading(mode: string): void {
     [GameMode.RAMPART]: 67,
     [GameMode.IGWAINE]: 68,
     [GameMode.KINGDOM]: 89,
+    [GameMode.WORMS_3D]: 90,
+    [GameMode.WORMS_2D]: 91,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -974,6 +976,18 @@ function _showLoading(mode: string): void {
     if (menuScreen.selectedGameMode === GameMode.KINGDOM) {
       menuScreen.hide();
       _bootKingdomGame();
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.WORMS_3D) {
+      menuScreen.hide();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootWorms3DGame().then(() => loadingScreen.hide());
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.WORMS_2D) {
+      menuScreen.hide();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootWorms2DGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -4025,6 +4039,38 @@ async function _bootIgwaineGame(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 let _kingdomGame: any = null;
+
+let _worms3DGame: any = null;
+
+async function _bootWorms3DGame(): Promise<void> {
+  if (_worms3DGame) { _worms3DGame.destroy(); _worms3DGame = null; }
+  const { Worms3DGame } = await import("./worms3d/Worms3DGame");
+
+  _worms3DGame = new Worms3DGame();
+  await _worms3DGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("worms3dExit", _onExit);
+    if (_worms3DGame) { _worms3DGame.destroy(); _worms3DGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("worms3dExit", _onExit);
+}
+
+let _worms2DGame: any = null;
+
+async function _bootWorms2DGame(): Promise<void> {
+  if (_worms2DGame) { _worms2DGame.destroy(); _worms2DGame = null; }
+  const { Worms2DGame } = await import("./worms2d/Worms2DGame");
+
+  _worms2DGame = new Worms2DGame();
+  _worms2DGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("worms2dExit", _onExit);
+    if (_worms2DGame) { _worms2DGame.destroy(); _worms2DGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("worms2dExit", _onExit);
+}
 
 async function _bootKingdomGame(): Promise<void> {
   if (_kingdomGame) { _kingdomGame.destroy(); _kingdomGame = null; }

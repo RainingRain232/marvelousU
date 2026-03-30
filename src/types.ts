@@ -743,6 +743,8 @@ export enum GameMode {
   RAMPART = "rampart",
   IGWAINE = "igwaine",
   KINGDOM = "kingdom",
+  WORMS_3D = "worms_3d",
+  WORMS_2D = "worms_2d",
 }
 
 // ---------------------------------------------------------------------------
