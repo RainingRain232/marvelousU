@@ -599,7 +599,7 @@ export class LancelotGame {
       const px = Math.cos(angle) * (ARENA_RADIUS + 0.3);
       const pz = Math.sin(angle) * (ARENA_RADIUS + 0.3);
 
-      const pillarGeo = new THREE.CylinderGeometry(0.45, 0.55, WALL_HEIGHT + 3, 8);
+      const pillarGeo = new THREE.CylinderGeometry(0.45, 0.55, WALL_HEIGHT + 3, 12);
       const pillarMat = new THREE.MeshStandardMaterial({ color: 0x4a3a28, roughness: 0.9 });
       const pillar = new THREE.Mesh(pillarGeo, pillarMat);
       pillar.position.set(px, (WALL_HEIGHT + 3) / 2, pz);
@@ -607,7 +607,7 @@ export class LancelotGame {
       this._scene.add(pillar);
 
       // Pillar capital (decorative top)
-      const capGeo = new THREE.CylinderGeometry(0.6, 0.45, 0.3, 8);
+      const capGeo = new THREE.CylinderGeometry(0.6, 0.45, 0.3, 12);
       const capMat = new THREE.MeshStandardMaterial({ color: 0x5a4a38, roughness: 0.7, metalness: 0.2 });
       const cap = new THREE.Mesh(capGeo, capMat);
       cap.position.set(px, WALL_HEIGHT + 3 + 0.15, pz);
@@ -639,7 +639,7 @@ export class LancelotGame {
       flameOuter.position.copy(fPos);
       this._scene.add(flameOuter);
       this._flameMeshes.push(flameOuter);
-      const flameHalo = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.15 }));
+      const flameHalo = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 16), new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.15 }));
       flameHalo.position.copy(fPos);
       this._scene.add(flameHalo);
 
@@ -666,7 +666,7 @@ export class LancelotGame {
       const bz = Math.sin(angle) * (ARENA_RADIUS - 3);
 
       // Brazier bowl
-      const bowlGeo = new THREE.CylinderGeometry(0.4, 0.25, 0.5, 8);
+      const bowlGeo = new THREE.CylinderGeometry(0.4, 0.25, 0.5, 12);
       const bowlMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.7 });
       const bowl = new THREE.Mesh(bowlGeo, bowlMat);
       bowl.position.set(bx, 0.8, bz);
@@ -686,7 +686,7 @@ export class LancelotGame {
       const fireOuter = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.5, 12), new THREE.MeshBasicMaterial({ color: 0xff5511, transparent: true, opacity: 0.5 }));
       fireOuter.position.set(bx, 1.15, bz);
       this._scene.add(fireOuter);
-      const fireGlow = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.12 }));
+      const fireGlow = new THREE.Mesh(new THREE.SphereGeometry(0.35, 20, 16), new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.12 }));
       fireGlow.position.set(bx, 1.2, bz);
       this._scene.add(fireGlow);
 
@@ -761,7 +761,7 @@ export class LancelotGame {
   private _buildCrowd(): void {
     const count = 300;
     const dummy = new THREE.Object3D();
-    const geo = new THREE.SphereGeometry(0.18, 12, 10);
+    const geo = new THREE.SphereGeometry(0.18, 20, 16);
     const mat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 1 });
     this._crowdDots = new THREE.InstancedMesh(geo, mat, count);
 
@@ -902,17 +902,17 @@ export class LancelotGame {
 
     for (const [_side, legGroup] of [[-1, leftLegGroup], [1, rightLegGroup]] as const) {
       // Upper leg (chainmail)
-      const thighGeo = new THREE.CylinderGeometry(0.13, 0.12, 0.5, 8);
+      const thighGeo = new THREE.CylinderGeometry(0.13, 0.12, 0.5, 12);
       const thigh = new THREE.Mesh(thighGeo, chainmail.clone());
       thigh.position.set(0, -0.1, 0);
       legGroup.add(thigh);
       // Knee guard
-      const kneeGeo = new THREE.SphereGeometry(0.09, 12, 10);
+      const kneeGeo = new THREE.SphereGeometry(0.09, 20, 16);
       const knee = new THREE.Mesh(kneeGeo, armorMat.clone());
       knee.position.set(0, -0.33, 0.06);
       legGroup.add(knee);
       // Lower leg (greave)
-      const greaveGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.4, 8);
+      const greaveGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.4, 12);
       const greave = new THREE.Mesh(greaveGeo, darkMetal.clone());
       greave.position.set(0, -0.45, 0);
       greave.castShadow = true;
@@ -948,7 +948,7 @@ export class LancelotGame {
     // Shoulder pauldrons (large, layered)
     for (const side of [-1, 1]) {
       // Main pauldron dome
-      const paulGeo = new THREE.SphereGeometry(0.22, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+      const paulGeo = new THREE.SphereGeometry(0.22, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
       const paul = new THREE.Mesh(paulGeo, armorMat.clone());
       paul.position.set(side * 0.42, 1.92, 0);
       paul.castShadow = true;
@@ -963,11 +963,11 @@ export class LancelotGame {
 
     // ── Head ──
     // Helmet (great helm shape: cylinder + dome)
-    const helmBaseGeo = new THREE.CylinderGeometry(0.2, 0.22, 0.22, 8);
+    const helmBaseGeo = new THREE.CylinderGeometry(0.2, 0.22, 0.22, 12);
     const helmBase = new THREE.Mesh(helmBaseGeo, new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.35, metalness: 0.75 }));
     helmBase.position.y = 2.05;
     group.add(helmBase);
-    const helmDomeGeo = new THREE.SphereGeometry(0.2, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+    const helmDomeGeo = new THREE.SphereGeometry(0.2, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     const helmDome = new THREE.Mesh(helmDomeGeo, new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.35, metalness: 0.75 }));
     helmDome.position.y = 2.16;
     helmDome.castShadow = true;
@@ -1034,7 +1034,7 @@ export class LancelotGame {
     swordGroup.add(gaunt);
 
     // Sword handle (leather wrap)
-    const handleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.22, 8);
+    const handleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.22, 12);
     const handle = new THREE.Mesh(handleGeo, new THREE.MeshStandardMaterial({ color: 0x443311, roughness: 0.9 }));
     handle.position.y = -0.55;
     swordGroup.add(handle);
@@ -1062,7 +1062,7 @@ export class LancelotGame {
     swordGroup.add(fuller);
 
     // Pommel
-    const pommelGeo = new THREE.SphereGeometry(0.04, 12, 10);
+    const pommelGeo = new THREE.SphereGeometry(0.04, 20, 16);
     const pommelMat = new THREE.MeshStandardMaterial({ color: 0xbb9955, metalness: 0.8, roughness: 0.25 });
     const pommel = new THREE.Mesh(pommelGeo, pommelMat);
     pommel.position.y = -0.44;
@@ -1094,7 +1094,7 @@ export class LancelotGame {
     shieldGroup.add(shield);
 
     // Shield boss
-    const bossGeo = new THREE.SphereGeometry(0.1, 8, 6, 0, Math.PI);
+    const bossGeo = new THREE.SphereGeometry(0.1, 16, 12, 0, Math.PI);
     const bossMat = new THREE.MeshStandardMaterial({ color: 0xddcc88, metalness: 0.75, roughness: 0.25 });
     const boss = new THREE.Mesh(bossGeo, bossMat);
     boss.position.set(-0.15, -0.1, 0.1);
@@ -2401,7 +2401,7 @@ export class LancelotGame {
     for (let i = 0; i < 15; i++) {
       const size = 0.04 + Math.random() * 0.04;
       const sparkColors = [0xffcc44, 0xffaa33, 0xff8822, 0xffdd66];
-      const sparkGeo = new THREE.SphereGeometry(size, 12, 10);
+      const sparkGeo = new THREE.SphereGeometry(size, 20, 16);
       const sparkMat = new THREE.MeshBasicMaterial({ color: sparkColors[i % sparkColors.length], transparent: true });
       const spark = new THREE.Mesh(sparkGeo, sparkMat);
       spark.position.copy(mid);
@@ -2450,7 +2450,7 @@ export class LancelotGame {
 
   private _spawnShadowPuff(pos: THREE.Vector3): void {
     for (let i = 0; i < 6; i++) {
-      const geo = new THREE.SphereGeometry(0.15, 12, 10);
+      const geo = new THREE.SphereGeometry(0.15, 20, 16);
       const mat = new THREE.MeshBasicMaterial({ color: 0x222244, transparent: true, opacity: 0.7 });
       const puff = new THREE.Mesh(geo, mat);
       puff.position.copy(pos);
@@ -2963,7 +2963,7 @@ export class LancelotGame {
 
   private _spawnEdgeSparks(pos: THREE.Vector3): void {
     for (let i = 0; i < 4; i++) {
-      const geo = new THREE.SphereGeometry(0.03, 3, 3);
+      const geo = new THREE.SphereGeometry(0.03, 6, 4);
       const mat = new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true });
       const sp = new THREE.Mesh(geo, mat);
       sp.position.copy(pos);
@@ -3136,7 +3136,7 @@ export class LancelotGame {
   private _spawnBloodSpray(at: THREE.Vector3, from: THREE.Vector3): void {
     const dir = new THREE.Vector3().subVectors(at, from).normalize();
     for (let i = 0; i < 8; i++) {
-      const geo = new THREE.SphereGeometry(0.04, 12, 10);
+      const geo = new THREE.SphereGeometry(0.04, 20, 16);
       const mat = new THREE.MeshBasicMaterial({ color: 0xaa0000 + Math.floor(Math.random() * 0x330000), transparent: true });
       const drop = new THREE.Mesh(geo, mat);
       drop.position.set(at.x, 1.5, at.z);
@@ -3249,7 +3249,7 @@ export class LancelotGame {
 
   private _spawnSmallDust(pos: THREE.Vector3): void {
     for (let i = 0; i < 3; i++) {
-      const geo = new THREE.SphereGeometry(0.05, 3, 3);
+      const geo = new THREE.SphereGeometry(0.05, 6, 4);
       const mat = new THREE.MeshBasicMaterial({ color: 0x665544, transparent: true, opacity: 0.4 });
       const puff = new THREE.Mesh(geo, mat);
       puff.position.set(pos.x + (Math.random() - 0.5) * 0.3, 0.05, pos.z + (Math.random() - 0.5) * 0.3);
@@ -3297,7 +3297,7 @@ export class LancelotGame {
     const body = new THREE.Mesh(bodyGeo, ghostMat);
     body.position.y = 1.2;
     ghost.add(body);
-    const headGeo = new THREE.SphereGeometry(0.2, 12, 10);
+    const headGeo = new THREE.SphereGeometry(0.2, 20, 16);
     const head = new THREE.Mesh(headGeo, ghostMat.clone());
     head.position.y = 2.0;
     (head.material as THREE.MeshStandardMaterial).opacity = 0.3;
@@ -3315,7 +3315,7 @@ export class LancelotGame {
     for (let i = 0; i < 12; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 1.5 + Math.random() * 2;
-      const geo = new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 12, 10);
+      const geo = new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 20, 16);
       const mat = new THREE.MeshBasicMaterial({ color: 0x887766, transparent: true, opacity: 0.6 });
       const dust = new THREE.Mesh(geo, mat);
       dust.position.set(pos.x, 0.1, pos.z);

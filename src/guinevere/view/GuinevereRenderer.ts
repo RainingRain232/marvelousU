@@ -267,7 +267,7 @@ export class GuinevereRenderer {
     for (let ci = 0; ci < 6; ci++) {
       const ca = (ci / 6) * TAU + 0.3;
       const cp = Math.random() * 0.8 - 0.4;
-      const crater = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 8, 6), craterMat);
+      const crater = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 16, 12), craterMat);
       crater.position.set(Math.cos(ca) * Math.cos(cp) * 2.9, Math.sin(cp) * 2.9, Math.sin(ca) * Math.cos(cp) * 2.9);
       crater.scale.y = 0.3;
       crater.lookAt(0, 0, 0);
@@ -373,7 +373,7 @@ export class GuinevereRenderer {
       // Glowing vine strands clinging to the underside
       for (let vi = 0; vi < 5; vi++) {
         const va = (vi / 5) * TAU + i * 1.2;
-        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 2 + Math.random() * 3, 4), glowVineMat);
+        const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 2 + Math.random() * 3, 12), glowVineMat);
         vine.position.set(Math.cos(va) * r * 0.95, -2 - Math.random() * 2, Math.sin(va) * r * 0.95);
         group.add(vine);
       }
@@ -448,7 +448,7 @@ export class GuinevereRenderer {
       pivot.add(light);
       this._fireflyLights.push(light);
       // Firefly visible mesh
-      const ffMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
+      const ffMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12),
         new THREE.MeshBasicMaterial({ color: 0xaaff88, transparent: true, opacity: 0.7 }));
       ffMesh.position.copy(light.position);
       pivot.add(ffMesh);
@@ -479,7 +479,7 @@ export class GuinevereRenderer {
       cap.position.set(Math.cos(ma) * mr, mh + 1, Math.sin(ma) * mr);
       this._scene.add(cap);
       // Glow dots on cap
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4),
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8),
         new THREE.MeshBasicMaterial({ color: 0xaaffcc, transparent: true, opacity: 0.6 }));
       dot.position.set(Math.cos(ma) * mr + 0.08, mh + 1.05, Math.sin(ma) * mr);
       this._scene.add(dot);
@@ -506,7 +506,7 @@ export class GuinevereRenderer {
       pillar.position.set(Math.cos(sa) * sr, sh2 / 2 + 1, Math.sin(sa) * sr);
       this._scene.add(pillar);
       // Broken top
-      const broken = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 6), stoneMat);
+      const broken = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 12), stoneMat);
       broken.position.set(Math.cos(sa) * sr, sh2 + 1.15, Math.sin(sa) * sr);
       broken.rotation.z = Math.random() * 0.3;
       this._scene.add(broken);
@@ -553,7 +553,7 @@ export class GuinevereRenderer {
     // ── Arms ──
     for (const sx of [-1, 1]) {
       // Shoulder puff
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), dressMat);
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 16), dressMat);
       puff.position.set(sx * 0.38, 2.25, 0); this._playerGroup.add(puff);
       // Upper arm (sleeve)
       const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.35, 12), dressMat);
@@ -562,7 +562,7 @@ export class GuinevereRenderer {
       const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 12), skinMat);
       forearm.position.set(sx * 0.42, 1.75, 0); this._playerGroup.add(forearm);
       // Hand
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), skinMat);
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), skinMat);
       hand.position.set(sx * 0.42, 1.58, 0); this._playerGroup.add(hand);
       // Bracelet
       const bracelet = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 12), goldMat);
@@ -575,7 +575,7 @@ export class GuinevereRenderer {
     head.position.y = 2.6; this._playerGroup.add(head);
     // Eyes
     for (const sx of [-1, 1]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), new THREE.MeshBasicMaterial({ color: 0x2244aa }));
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12), new THREE.MeshBasicMaterial({ color: 0x2244aa }));
       eye.position.set(sx * 0.12, 2.64, -0.3); this._playerGroup.add(eye);
     }
     // Lips
@@ -599,11 +599,11 @@ export class GuinevereRenderer {
     // Crown points
     for (let cp = 0; cp < 5; cp++) {
       const a = (cp / 5) * TAU;
-      const point = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 6), goldMat);
+      const point = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 12), goldMat);
       point.position.set(Math.cos(a) * 0.3, 3.05, Math.sin(a) * 0.3);
       this._playerGroup.add(point);
       // Jewel on each point
-      const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6),
+      const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12),
         new THREE.MeshStandardMaterial({ color: cp % 2 === 0 ? 0x4488ff : 0xff4488, emissive: cp % 2 === 0 ? 0x4488ff : 0xff4488, emissiveIntensity: 1.0 }));
       jewel.position.set(Math.cos(a) * 0.3, 3.15, Math.sin(a) * 0.3);
       this._playerGroup.add(jewel);
@@ -649,7 +649,7 @@ export class GuinevereRenderer {
   }
 
   private _buildParticles(): void {
-    const geo = new THREE.SphereGeometry(0.15, 12, 10);
+    const geo = new THREE.SphereGeometry(0.15, 20, 16);
     const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
     this._particleInstancedMesh = new THREE.InstancedMesh(geo, mat, this._maxParticles);
     this._particleInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -864,7 +864,7 @@ export class GuinevereRenderer {
     const colors = PLANT_COLORS[plant.type];
 
     // Stem (curved, tapered)
-    const stemGeo = new THREE.CylinderGeometry(0.06, 0.1, 1, 8);
+    const stemGeo = new THREE.CylinderGeometry(0.06, 0.1, 1, 12);
     const stemMat = new THREE.MeshStandardMaterial({ color: colors.stem, roughness: 0.7 });
     const stem = new THREE.Mesh(stemGeo, stemMat);
     stem.position.y = 0.5;
@@ -873,14 +873,14 @@ export class GuinevereRenderer {
 
     // Stem node bumps
     for (let n = 0; n < 2; n++) {
-      const node = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), stemMat);
+      const node = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), stemMat);
       node.position.y = 0.3 + n * 0.4;
       node.scale.set(1, 0.5, 1);
       group.add(node);
     }
 
     // Bloom head — petal ring around a core
-    const bloomCore = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8),
+    const bloomCore = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12),
       new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 1.0, roughness: 0.2, metalness: 0.3 }));
     bloomCore.position.y = 1;
     bloomCore.name = "bloom";
@@ -904,7 +904,7 @@ export class GuinevereRenderer {
 
     // Bloom glow aura
     const glowMat = new THREE.MeshBasicMaterial({ color: colors.glow, transparent: true, opacity: 0, depthWrite: false });
-    const glowSphere = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), glowMat);
+    const glowSphere = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), glowMat);
     glowSphere.position.y = 1;
     glowSphere.name = "glow";
     group.add(glowSphere);
@@ -1065,7 +1065,7 @@ export class GuinevereRenderer {
           this._stagTrails.set(enemy.id, trail);
         }
         // Spawn a dust puff behind the stag
-        const dustGeo = new THREE.SphereGeometry(0.3, 12, 10);
+        const dustGeo = new THREE.SphereGeometry(0.3, 20, 16);
         const dustMat = new THREE.MeshBasicMaterial({ color: 0x886644, transparent: true, opacity: 0.5 });
         const dust = new THREE.Mesh(dustGeo, dustMat);
         dust.position.set(
@@ -1163,7 +1163,7 @@ export class GuinevereRenderer {
         aura.position.y = 1; group.add(aura);
         // Orbiting trail wisps
         for (let i = 0; i < 5; i++) {
-          const trail = new THREE.Mesh(new THREE.SphereGeometry(0.12 + i * 0.02, 10, 8),
+          const trail = new THREE.Mesh(new THREE.SphereGeometry(0.12 + i * 0.02, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xaaddff, transparent: true, opacity: 0.4 - i * 0.05 }));
           trail.position.set(Math.sin(i * TAU / 5) * 0.6, 0.7 + i * 0.1, Math.cos(i * TAU / 5) * 0.6);
           group.add(trail);
@@ -1188,13 +1188,13 @@ export class GuinevereRenderer {
         cHead.position.set(0, 0.5, 0.65); group.add(cHead);
         // Mandibles
         for (const sx of [-1, 1]) {
-          const mand = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 8), cDark);
+          const mand = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 12), cDark);
           mand.position.set(sx * 0.2, 0.4, 0.9); mand.rotation.x = 0.8;
           group.add(mand);
         }
         // Eyes (4 compound eyes)
         for (const [ex, ey] of [[-0.15, 0.6], [0.15, 0.6], [-0.22, 0.5], [0.22, 0.5]]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xff44ff }));
           eye.position.set(ex, ey, 0.85); group.add(eye);
         }
@@ -1203,20 +1203,20 @@ export class GuinevereRenderer {
           const side = i < 3 ? -1 : 1;
           const zOff = (i % 3 - 1) * 0.4;
           // Upper leg
-          const uLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 8), cDark);
+          const uLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 12), cDark);
           uLeg.position.set(side * 0.45, 0.5, zOff); uLeg.rotation.z = side * 0.6;
           group.add(uLeg);
           // Lower leg
-          const lLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.4, 8), cDark);
+          const lLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.4, 12), cDark);
           lLeg.position.set(side * 0.75, 0.15, zOff); lLeg.rotation.z = side * -0.3;
           group.add(lLeg);
         }
         // Abdomen
-        const abd = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), cDark);
+        const abd = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 16), cDark);
         abd.position.set(0, 0.45, -0.5); group.add(abd);
         // Poison markings
         for (let pm = 0; pm < 3; pm++) {
-          const mark = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
+          const mark = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xaa22ff, transparent: true, opacity: 0.5 }));
           mark.position.set((pm - 1) * 0.15, 0.55, -0.4); group.add(mark);
         }
@@ -1229,7 +1229,7 @@ export class GuinevereRenderer {
         const sBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.45, 1.2, 10, 16), sMat);
         sBody.position.set(0, 1.1, 0); sBody.rotation.z = Math.PI / 2; group.add(sBody);
         // Chest
-        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), sMat);
+        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 16), sMat);
         chest.position.set(0, 1.2, 0.5); group.add(chest);
         // Neck
         const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.6, 12), sMat);
@@ -1242,13 +1242,13 @@ export class GuinevereRenderer {
         snout.position.set(0, 1.8, 1.1); snout.rotation.x = 0.5; group.add(snout);
         // Eyes
         for (const sx of [-0.15, 0.15]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xffcc44 }));
           eye.position.set(sx, 1.95, 0.95); group.add(eye);
         }
         // Ears
         for (const sx of [-0.2, 0.2]) {
-          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 8), sMat);
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 12), sMat);
           ear.position.set(sx, 2.15, 0.75); ear.rotation.z = sx > 0 ? -0.3 : 0.3;
           group.add(ear);
         }
@@ -1256,15 +1256,15 @@ export class GuinevereRenderer {
         const antlerMat = new THREE.MeshStandardMaterial({ color: 0x665544, metalness: 0.2, roughness: 0.6 });
         for (const sx of [-1, 1]) {
           // Main beam
-          const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 1.0, 8), antlerMat);
+          const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 1.0, 12), antlerMat);
           beam.position.set(sx * 0.25, 2.4, 0.7); beam.rotation.z = sx * -0.4;
           group.add(beam);
           // Tine 1
-          const t1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.5, 6), antlerMat);
+          const t1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.5, 12), antlerMat);
           t1.position.set(sx * 0.35, 2.6, 0.65); t1.rotation.z = sx * -0.7;
           group.add(t1);
           // Tine 2
-          const t2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.35, 6), antlerMat);
+          const t2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.35, 12), antlerMat);
           t2.position.set(sx * 0.15, 2.7, 0.8); t2.rotation.z = sx * -0.2;
           group.add(t2);
         }
@@ -1277,12 +1277,12 @@ export class GuinevereRenderer {
           const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.5, 10), sDark);
           lower.position.set(lx, 0.2, lz); group.add(lower);
           // Hoof
-          const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 8),
+          const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12),
             new THREE.MeshStandardMaterial({ color: 0x222211 }));
           hoof.position.set(lx, -0.02, lz); group.add(hoof);
         }
         // Tail
-        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 8), sMat);
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 12), sMat);
         tail.position.set(0, 1.1, -0.7); tail.rotation.x = -0.5; group.add(tail);
         break;
       }
@@ -1295,21 +1295,21 @@ export class GuinevereRenderer {
         const abdomen = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.5, 8, 12),
           new THREE.MeshStandardMaterial({ color: 0x77993a, roughness: 0.6 }));
         abdomen.position.set(0, mFly, 0.4); group.add(abdomen);
-        const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), mMat);
+        const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 16), mMat);
         mHead.position.set(0, mFly + 0.05, -0.4); group.add(mHead);
         // Antennae
         for (const sx of [-1, 1]) {
-          const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 0.5, 6),
+          const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.015, 0.5, 12),
             new THREE.MeshStandardMaterial({ color: 0x556622 }));
           ant.position.set(sx * 0.1, mFly + 0.3, -0.5); ant.rotation.z = sx * 0.4;
           group.add(ant);
-          const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6),
+          const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xaaff44 }));
           tip.position.set(sx * 0.25, mFly + 0.5, -0.55); group.add(tip);
         }
         // Eyes
         for (const sx of [-0.08, 0.08]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xffaa22 }));
           eye.position.set(sx, mFly + 0.08, -0.55); group.add(eye);
         }
@@ -1342,7 +1342,7 @@ export class GuinevereRenderer {
         }
         // Legs
         for (let li = 0; li < 6; li++) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 6),
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.3, 12),
             new THREE.MeshStandardMaterial({ color: 0x556622 }));
           leg.position.set((li % 2 === 0 ? -0.1 : 0.1), mFly - 0.3, -0.2 + (Math.floor(li / 2)) * 0.2);
           group.add(leg);
@@ -1369,14 +1369,14 @@ export class GuinevereRenderer {
         // Bioluminescent spots on cap
         for (let sp = 0; sp < 8; sp++) {
           const a = (sp / 8) * TAU;
-          const spore = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 8, 6),
+          const spore = new THREE.Mesh(new THREE.SphereGeometry(0.06 + Math.random() * 0.04, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xaaff88, transparent: true, opacity: 0.6 }));
           spore.position.set(Math.cos(a) * 0.45, 1.5 + Math.random() * 0.2, Math.sin(a) * 0.45);
           group.add(spore);
         }
         // Eyes (tucked in body)
         for (const sx of [-0.2, 0.2]) {
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0x66ff66 }));
           eye.position.set(sx, 0.95, 0.45); group.add(eye);
         }
@@ -1390,7 +1390,7 @@ export class GuinevereRenderer {
         // Moss patches
         for (let mp = 0; mp < 4; mp++) {
           const a = Math.random() * TAU;
-          const moss = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6),
+          const moss = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12),
             new THREE.MeshStandardMaterial({ color: 0x448833, roughness: 0.9, transparent: true, opacity: 0.6 }));
           moss.position.set(Math.cos(a) * 0.4, 0.6 + Math.random() * 0.4, Math.sin(a) * 0.4);
           group.add(moss);
@@ -1416,10 +1416,10 @@ export class GuinevereRenderer {
         face.position.set(0, 3.2, 0.2); group.add(face);
         // Eyes (glowing)
         for (const sx of [-0.15, 0.15]) {
-          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8),
+          const eyeSocket = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0x220000 }));
           eyeSocket.position.set(sx, 3.35, 0.5); group.add(eyeSocket);
-          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8),
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12),
             new THREE.MeshBasicMaterial({ color: 0xff0044 }));
           eye.position.set(sx, 3.35, 0.55); group.add(eye);
         }
@@ -1429,7 +1429,7 @@ export class GuinevereRenderer {
         crown2.position.y = 3.75; crown2.rotation.x = Math.PI / 2; group.add(crown2);
         for (let ti = 0; ti < 8; ti++) {
           const ta = (ti / 8) * TAU;
-          const thorn = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.2, 6), thornMat);
+          const thorn = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.2, 12), thornMat);
           thorn.position.set(Math.cos(ta) * 0.5, 3.85, Math.sin(ta) * 0.5);
           thorn.rotation.z = Math.cos(ta) * 0.5; thorn.rotation.x = Math.sin(ta) * 0.5;
           group.add(thorn);
@@ -1444,7 +1444,7 @@ export class GuinevereRenderer {
           group.add(forearm);
           // Clawed fingers
           for (let fi = 0; fi < 3; fi++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2, 6), thornMat);
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2, 12), thornMat);
             claw.position.set(sx * 1.55 + fi * sx * 0.05, 1.3, 0.2 + fi * 0.06);
             claw.rotation.x = 0.5; group.add(claw);
           }
@@ -1544,7 +1544,7 @@ export class GuinevereRenderer {
       let mesh = this._projectileMeshes.get(proj.id);
       if (!mesh) {
         const color = proj.fromEnemy ? 0xaaff44 : 0x88ccff;
-        const geo = new THREE.SphereGeometry(0.3, 12, 10);
+        const geo = new THREE.SphereGeometry(0.3, 20, 16);
         const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 });
         mesh = new THREE.Mesh(geo, mat);
         this._projectileMeshes.set(proj.id, mesh);
