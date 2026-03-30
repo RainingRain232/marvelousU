@@ -280,6 +280,11 @@ export class Worms2DGame {
   private _vignetteAlpha = 0.25;
   private _titleTorchFlicker = 0;
 
+  // Escape / pause menu
+  private _pauseMenuOpen = false;
+  private _pauseMenuTab: 'main' | 'controls' | 'intro' | 'concepts' | 'weapons' | 'tips' = 'main';
+  private _pauseMenuScroll = 0;
+
   // ─── BOOT ──────────────────────────────────────────────────────────────────
 
   boot(): void {
@@ -369,7 +374,11 @@ export class Worms2DGame {
     };
     const mousedown = (e: MouseEvent) => { if (e.button === 0) { this._mouseDown = true; this._handleMouseDown(); } };
     const mouseup = (e: MouseEvent) => { if (e.button === 0) { this._mouseDown = false; this._handleMouseUp(); } };
-    const wheel = (e: WheelEvent) => { e.preventDefault(); this._camTargetZoom = clamp(this._camTargetZoom + (e.deltaY > 0 ? -0.1 : 0.1), 0.5, 2.0); };
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (this._pauseMenuOpen) { this._pauseMenuScroll = clamp(this._pauseMenuScroll + (e.deltaY > 0 ? 40 : -40), 0, 2000); return; }
+      this._camTargetZoom = clamp(this._camTargetZoom + (e.deltaY > 0 ? -0.1 : 0.1), 0.5, 2.0);
+    };
     const contextmenu = (e: Event) => { e.preventDefault(); };
 
     window.addEventListener('keydown', keydown);
@@ -390,12 +399,16 @@ export class Worms2DGame {
   private _handleKeyDown(key: string): void {
     if (this._phase === 'title') return;
     if (key === 'escape') {
-      if (this._weaponSelectOpen) this._weaponSelectOpen = false;
-      else if (this._teleportMode) this._teleportMode = false;
-      else if (this._placingGirder) this._placingGirder = false;
-      else if (this._rope.active) this._rope.active = false;
+      if (this._pauseMenuOpen) { this._pauseMenuOpen = false; this._pauseMenuTab = 'main'; this._pauseMenuScroll = 0; return; }
+      if (this._weaponSelectOpen) { this._weaponSelectOpen = false; return; }
+      if (this._teleportMode) { this._teleportMode = false; return; }
+      if (this._placingGirder) { this._placingGirder = false; return; }
+      if (this._rope.active) { this._rope.active = false; return; }
+      this._pauseMenuOpen = true; this._pauseMenuTab = 'main'; this._pauseMenuScroll = 0;
+      this._playSound('click');
       return;
     }
+    if (this._pauseMenuOpen) return;
     if (key === 'e' && (this._phase === 'playing' || this._phase === 'aiming') && !this._aiActive) {
       this._weaponSelectOpen = !this._weaponSelectOpen;
       if (this._weaponSelectOpen) this._playSound('click');
@@ -420,6 +433,7 @@ export class Worms2DGame {
   private _handleMouseDown(): void {
     if (this._phase === 'title') { this._checkTitleButtons(); return; }
     if (this._phase === 'victory') { this._checkVictoryButtons(); return; }
+    if (this._pauseMenuOpen) { this._checkPauseMenuClick(); return; }
     if (this._weaponSelectOpen) { this._checkWeaponSelectClick(); return; }
     if (this._teleportMode && (this._phase === 'playing' || this._phase === 'aiming')) { this._executeTeleport(); return; }
     if (this._placingGirder && (this._phase === 'playing' || this._phase === 'aiming')) { this._placeGirder(); return; }
@@ -1407,6 +1421,7 @@ export class Worms2DGame {
   // ─── UPDATE LOOP ───────────────────────────────────────────────────────────
 
   private _update(dt: number): void {
+    if (this._pauseMenuOpen) return;
     this._gameTime += dt; this._waterOffset += dt * 30; this._bgHueShift += dt * 2; this._crosshairPulse += dt * 5;
     if (this._shakeTime > 0) { this._shakeTime -= dt; if (this._shakeTime <= 0) this._shakeAmount = 0; }
     if (this._screenFlashTimer > 0) { this._screenFlashTimer -= dt; this._screenFlashAlpha *= 0.9; if (this._screenFlashTimer <= 0) this._screenFlashAlpha = 0; }
@@ -2105,6 +2120,7 @@ export class Worms2DGame {
     this._renderHUD(ctx, w, h);
     if (this._weaponSelectOpen) this._renderWeaponSelect(ctx, w, h);
     if (this._phase === 'victory') this._renderVictoryScreen(ctx, w, h);
+    if (this._pauseMenuOpen) this._renderPauseMenu(ctx, w, h);
   }
 
   // ─── TITLE SCREEN RENDER ──────────────────────────────────────────────────
@@ -2962,6 +2978,325 @@ export class Worms2DGame {
       this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.fill(); ctx.stroke();
       ctx.fillStyle = btn.hover ? '#ffd700' : '#ccaa66'; ctx.font = 'bold 18px serif'; ctx.fillText(btn.text, bx + btn.w / 2, by + btn.h / 2);
     }
+    ctx.restore();
+  }
+
+  // ─── PAUSE MENU ─────────────────────────────────────────────────────────────
+
+  private _pauseMenuButtons(): { x: number; y: number; w: number; h: number; label: string; tab: typeof this._pauseMenuTab | 'resume' | 'quit' }[] {
+    const bw = 220; const bh = 42; const gap = 10; const startY = -130;
+    return [
+      { x: -bw / 2, y: startY, w: bw, h: bh, label: 'RESUME', tab: 'resume' as const },
+      { x: -bw / 2, y: startY + (bh + gap), w: bw, h: bh, label: 'CONTROLS', tab: 'controls' as const },
+      { x: -bw / 2, y: startY + (bh + gap) * 2, w: bw, h: bh, label: 'INTRODUCTION', tab: 'intro' as const },
+      { x: -bw / 2, y: startY + (bh + gap) * 3, w: bw, h: bh, label: 'GAME CONCEPTS', tab: 'concepts' as const },
+      { x: -bw / 2, y: startY + (bh + gap) * 4, w: bw, h: bh, label: 'WEAPONS GUIDE', tab: 'weapons' as const },
+      { x: -bw / 2, y: startY + (bh + gap) * 5, w: bw, h: bh, label: 'TIPS & TRICKS', tab: 'tips' as const },
+      { x: -bw / 2, y: startY + (bh + gap) * 6 + 10, w: bw, h: bh, label: 'QUIT TO MENU', tab: 'quit' as const },
+    ];
+  }
+
+  private _checkPauseMenuClick(): void {
+    const cx = this._canvas.width / 2;
+    const cy = this._canvas.height / 2;
+
+    if (this._pauseMenuTab !== 'main') {
+      // Back button
+      const backX = cx - 250; const backY = cy - this._canvas.height * 0.4 + 10;
+      if (this._mouseX >= backX && this._mouseX <= backX + 80 && this._mouseY >= backY && this._mouseY <= backY + 30) {
+        this._pauseMenuTab = 'main'; this._pauseMenuScroll = 0; this._playSound('click'); return;
+      }
+      return;
+    }
+
+    for (const btn of this._pauseMenuButtons()) {
+      const bx = cx + btn.x; const by = cy + btn.y;
+      if (this._mouseX >= bx && this._mouseX <= bx + btn.w && this._mouseY >= by && this._mouseY <= by + btn.h) {
+        this._playSound('click');
+        if (btn.tab === 'resume') { this._pauseMenuOpen = false; this._pauseMenuTab = 'main'; }
+        else if (btn.tab === 'quit') { this._pauseMenuOpen = false; window.dispatchEvent(new CustomEvent('worms2dExit')); }
+        else { this._pauseMenuTab = btn.tab as any; this._pauseMenuScroll = 0; }
+        return;
+      }
+    }
+  }
+
+  private _renderPauseMenu(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    // Dim overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(0, 0, w, h);
+
+    const cx = w / 2;
+    const cy = h / 2;
+
+    if (this._pauseMenuTab === 'main') {
+      this._renderPauseMenuMain(ctx, cx, cy);
+    } else {
+      this._renderPauseMenuTab(ctx, w, h, cx, cy);
+    }
+  }
+
+  private _renderPauseMenuMain(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Title
+    ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 15;
+    ctx.font = 'bold 42px serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('PAUSED', cx, cy - 200);
+    ctx.shadowBlur = 0;
+
+    // Decorative line
+    ctx.strokeStyle = '#886633'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 120, cy - 175); ctx.lineTo(cx + 120, cy - 175); ctx.stroke();
+
+    // Subtitle
+    ctx.font = 'italic 14px serif'; ctx.fillStyle = '#aa8855';
+    ctx.fillText('Press ESC to return to battle', cx, cy - 160);
+
+    // Buttons
+    for (const btn of this._pauseMenuButtons()) {
+      const bx = cx + btn.x; const by = cy + btn.y;
+      const hover = this._mouseX >= bx && this._mouseX <= bx + btn.w && this._mouseY >= by && this._mouseY <= by + btn.h;
+
+      const grad = ctx.createLinearGradient(bx, by, bx, by + btn.h);
+      if (btn.tab === 'quit') {
+        if (hover) { grad.addColorStop(0, '#662222'); grad.addColorStop(1, '#441111'); }
+        else { grad.addColorStop(0, '#3a1111'); grad.addColorStop(1, '#2a0808'); }
+      } else if (hover) {
+        grad.addColorStop(0, '#554422'); grad.addColorStop(1, '#443311');
+      } else {
+        grad.addColorStop(0, '#2a2010'); grad.addColorStop(1, '#1a1508');
+      }
+
+      ctx.fillStyle = grad;
+      this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.fill();
+      ctx.strokeStyle = hover ? '#ffd700' : (btn.tab === 'quit' ? '#aa4444' : '#665533');
+      ctx.lineWidth = hover ? 2 : 1;
+      this._roundRect(ctx, bx, by, btn.w, btn.h, 8); ctx.stroke();
+
+      ctx.fillStyle = hover ? '#ffd700' : (btn.tab === 'quit' ? '#ff6644' : '#ccaa66');
+      ctx.font = btn.tab === 'resume' ? 'bold 18px serif' : '16px serif';
+      ctx.fillText(btn.label, bx + btn.w / 2, by + btn.h / 2);
+    }
+
+    // Turn info at bottom
+    if (this._teams.length > 0) {
+      ctx.font = '12px sans-serif'; ctx.fillStyle = '#777766';
+      ctx.fillText(`Turn ${this._turnNumber} \u2022 ${this._teams.filter(t => t.worms.some(w => w.alive)).length} teams alive`, cx, cy + 220);
+    }
+
+    ctx.restore();
+  }
+
+  private _renderPauseMenuTab(ctx: CanvasRenderingContext2D, w: number, h: number, cx: number, cy: number): void {
+    ctx.save();
+
+    // Panel
+    const pw = 520; const ph = h * 0.8;
+    const px = cx - pw / 2; const py = cy - ph / 2;
+
+    // Panel background
+    const panelGrad = ctx.createLinearGradient(px, py, px, py + ph);
+    panelGrad.addColorStop(0, '#1a1510'); panelGrad.addColorStop(1, '#0d0a06');
+    ctx.fillStyle = panelGrad;
+    this._roundRect(ctx, px, py, pw, ph, 12); ctx.fill();
+    ctx.strokeStyle = '#665533'; ctx.lineWidth = 2;
+    this._roundRect(ctx, px, py, pw, ph, 12); ctx.stroke();
+
+    // Inner border
+    ctx.strokeStyle = '#332a11'; ctx.lineWidth = 1;
+    this._roundRect(ctx, px + 4, py + 4, pw - 8, ph - 8, 10); ctx.stroke();
+
+    // Header bar
+    ctx.fillStyle = '#2a2010';
+    this._roundRect(ctx, px + 6, py + 6, pw - 12, 40, 8); ctx.fill();
+
+    // Tab title
+    const titles: Record<string, string> = {
+      controls: 'CONTROLS',
+      intro: 'INTRODUCTION',
+      concepts: 'GAME CONCEPTS',
+      weapons: 'WEAPONS GUIDE',
+      tips: 'TIPS & TRICKS',
+    };
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 20px serif'; ctx.fillStyle = '#ffd700';
+    ctx.fillText(titles[this._pauseMenuTab] || '', cx, py + 26);
+
+    // Back button
+    const backX = px + 12; const backY = py + 12;
+    const backHover = this._mouseX >= backX && this._mouseX <= backX + 80 && this._mouseY >= backY && this._mouseY <= backY + 30;
+    ctx.fillStyle = backHover ? '#443322' : '#2a1a10';
+    this._roundRect(ctx, backX, backY, 80, 30, 6); ctx.fill();
+    ctx.strokeStyle = backHover ? '#ffd700' : '#554433'; ctx.lineWidth = 1;
+    this._roundRect(ctx, backX, backY, 80, 30, 6); ctx.stroke();
+    ctx.font = '13px serif'; ctx.fillStyle = backHover ? '#ffd700' : '#aa9966'; ctx.textAlign = 'center';
+    ctx.fillText('\u2190 Back', backX + 40, backY + 15);
+
+    // Content area with clipping
+    const contentX = px + 15; const contentY = py + 55;
+    const contentW = pw - 30; const contentH = ph - 70;
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(contentX, contentY, contentW, contentH); ctx.clip();
+    ctx.translate(0, -this._pauseMenuScroll);
+
+    const lx = contentX + 10; let ly = contentY + 20;
+
+    const heading = (text: string) => {
+      ctx.font = 'bold 16px serif'; ctx.fillStyle = '#ffd700'; ctx.textAlign = 'left';
+      ctx.fillText(text, lx, ly); ly += 26;
+    };
+    const line = (text: string, color = '#ccbb99') => {
+      ctx.font = '13px sans-serif'; ctx.fillStyle = color; ctx.textAlign = 'left';
+      // Word wrap
+      const words = text.split(' '); let row = ''; const maxW = contentW - 30;
+      for (const word of words) {
+        const test = row + (row ? ' ' : '') + word;
+        if (ctx.measureText(test).width > maxW && row) {
+          ctx.fillText(row, lx, ly); ly += 18; row = word;
+        } else { row = test; }
+      }
+      if (row) { ctx.fillText(row, lx, ly); ly += 18; }
+      ly += 4;
+    };
+    const gap = () => { ly += 10; };
+
+    switch (this._pauseMenuTab) {
+      case 'controls':
+        heading('Movement');
+        line('A / Left Arrow  -  Move left'); line('D / Right Arrow  -  Move right');
+        line('W / Up Arrow  -  Aim up (on rope: shorten)'); line('S / Down Arrow  -  Aim down (on rope: lengthen)');
+        line('Space  -  Jump / Release rope');
+        gap();
+        heading('Combat');
+        line('Mouse  -  Aim weapon toward cursor');
+        line('Left Click (hold)  -  Charge shot power'); line('Left Click (release)  -  Fire weapon');
+        line('E  -  Open weapon select menu'); line('1-9  -  Quick-select weapon by slot');
+        gap();
+        heading('Camera');
+        line('Mouse Wheel  -  Zoom in/out (0.5x - 2.0x)');
+        line('Mouse at screen edge  -  Scroll camera');
+        line('Tab  -  Jump camera to enemy worm');
+        gap();
+        heading('Interface');
+        line('ESC  -  Pause menu / Close overlays');
+        break;
+
+      case 'intro':
+        heading('What is Worms 2D?');
+        line('Worms 2D is a turn-based artillery game set in the world of Camelot. Teams of medieval knights take turns moving, aiming, and firing weapons across a destructible landscape.');
+        gap();
+        heading('Objective');
+        line('Eliminate all enemy worms by reducing their HP to zero. The last team standing wins the battle. Worms can die from weapon damage, fall damage, or drowning in water.');
+        gap();
+        heading('Teams');
+        line('Round Table (Blue) - Led by King Arthur, featuring Lancelot, Gawain, and Percival.');
+        line("Mordred's Host (Red) - Led by Mordred, with Agravaine, Morgause, and Gareth.");
+        line("Merlin's Circle (Green) - Led by the great wizard Merlin, with Nimue, Viviane, and Taliesin.");
+        line('Grail Knights (Gold) - Led by Sir Galahad, with Bors, Tristan, and Kay.');
+        gap();
+        heading('Turn Structure');
+        line('Each turn lasts 45 seconds. You can move, aim, and fire one weapon. After firing, you get a 5-second retreat phase to move to safety. Then the next team takes their turn.');
+        break;
+
+      case 'concepts':
+        heading('Destructible Terrain');
+        line('Explosions carve holes in the terrain. Use this strategically - blast tunnels to reach enemies, collapse ground beneath them, or create shelter. Terrain shapes determine the flow of battle.');
+        gap();
+        heading('Wind');
+        line('Wind changes direction each turn and affects most projectile weapons. Check the wind indicator at the top-right and adjust your aim accordingly. Stronger wind means bigger adjustments.');
+        gap();
+        heading('Fall Damage');
+        line('Worms take damage from long falls. Knocking an enemy off a cliff can be just as deadly as a direct hit. Be careful of your own positioning near ledges!');
+        gap();
+        heading('Water');
+        line('Water at the bottom of the map is instant death. Any worm that falls into water is immediately eliminated. Use knockback weapons to push enemies toward the water!');
+        gap();
+        heading('Sudden Death');
+        line('After turn 30, Sudden Death activates. The water level rises by 2 pixels each turn, gradually shrinking the battlefield and forcing close-quarters combat.');
+        gap();
+        heading('Supply Crates');
+        line('Every 5 turns, a supply crate parachutes onto the battlefield. Walk a worm over it to receive bonus ammunition for a random weapon. Crates can change the tide of battle!');
+        gap();
+        heading('Status Effects');
+        line('Freeze Blast - Encases the target in ice for 1 turn, reducing their damage taken but preventing them from acting.');
+        line('Poison Strike - Applies poison that deals 5 damage at the end of each turn for 3 turns.');
+        break;
+
+      case 'weapons': {
+        heading('Weapon Types');
+        line('Projectile - Fired at an angle, affected by gravity and wind. Explodes on contact with terrain or worms.');
+        line('Grenade - Bounces off surfaces and explodes after a fuse timer. Can be bounced around corners.');
+        line('Hitscan - Instant hit in a line (shotgun) or cone (dragon breath). No travel time.');
+        line('Melee - Close range attacks with high knockback. Great for punting enemies into water.');
+        line('Airstrike - Target a position and missiles rain from the sky. Choose the drop zone wisely.');
+        line('Strike - Targeted attacks like lightning or Excalibur that hit a specific point.');
+        line('Utility - Teleport, ninja rope, and girder help with positioning and defense.');
+        gap();
+
+        heading('All Weapons');
+        const weaponKeys = Object.keys(WEAPONS);
+        for (let i = 0; i < weaponKeys.length; i++) {
+          const wk = weaponKeys[i]; const wd = WEAPONS[wk];
+          const ammoStr = wd.ammo === -1 ? 'Unlimited' : `${wd.ammo} per team`;
+          ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#eedd99'; ctx.textAlign = 'left';
+          ctx.fillText(`${wd.icon} ${wd.name}`, lx, ly);
+          ctx.font = '11px sans-serif'; ctx.fillStyle = '#998866';
+          ctx.fillText(`${wd.type.toUpperCase()} \u2022 Dmg: ${wd.damage} \u2022 Blast: ${wd.radius} \u2022 ${ammoStr}`, lx + 160, ly);
+          ly += 16;
+          ctx.font = '12px sans-serif'; ctx.fillStyle = '#aa9977';
+          ctx.fillText(wd.description + (wd.windAffected ? ' (wind affected)' : ''), lx + 20, ly);
+          ly += 20;
+        }
+        break;
+      }
+
+      case 'tips':
+        heading('Beginner Tips');
+        line('Start with the Bazooka - it has unlimited ammo and is reliable at most ranges.');
+        line('Always account for wind. A strong headwind can turn your rocket back on you!');
+        line('Use grenades to hit enemies behind cover. The bounce mechanic lets you reach tricky spots.');
+        gap();
+        heading('Intermediate Strategy');
+        line('Dig tunnels with weak explosions to create protected positions for your worms.');
+        line('Use the Baseball Bat near water for easy eliminations - its massive knockback is devastating near edges.');
+        line('Save powerful limited weapons (Holy Hand Grenade, Meteor, Holy Grail) for clustered enemies or dire situations.');
+        line('Place mines on narrow paths that enemies must cross.');
+        gap();
+        heading('Advanced Tactics');
+        line("Chain explosions: shoot an oil barrel or mine near enemies for bonus damage and area denial.");
+        line('The Ninja Rope lets you reach elevated positions and attack from unexpected angles.');
+        line('Earthquake affects ALL worms equally - use it when enemies are near edges and your worms are safe.');
+        line('Teleport is an escape tool. Use it to reposition a worm that would otherwise be trapped.');
+        line('Dragon Breath hits everything in a cone - line up multiple enemies for maximum value.');
+        gap();
+        heading('Sudden Death Strategy');
+        line('As water rises, high ground becomes critical. Use Girders to build platforms above the rising waterline.');
+        line('Knock enemies downhill toward the encroaching water for easy kills.');
+        line('Save a Teleport for emergency repositioning when the water gets close.');
+        break;
+    }
+
+    ctx.restore();
+
+    // Scroll indicator if content overflows
+    const maxScroll = Math.max(0, ly + this._pauseMenuScroll - (contentY + contentH));
+    if (maxScroll > 0) {
+      const scrollPct = this._pauseMenuScroll / maxScroll;
+      const trackH = contentH - 20;
+      const thumbH = Math.max(30, trackH * (contentH / (ly + this._pauseMenuScroll - contentY)));
+      const thumbY = contentY + 10 + scrollPct * (trackH - thumbH);
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+      this._roundRect(ctx, contentX + contentW - 8, contentY + 10, 6, trackH, 3); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.4)';
+      this._roundRect(ctx, contentX + contentW - 8, thumbY, 6, thumbH, 3); ctx.fill();
+    }
+
     ctx.restore();
   }
 
