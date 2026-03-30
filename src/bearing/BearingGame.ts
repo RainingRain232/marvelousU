@@ -824,7 +824,7 @@ export class BearingGame {
     this._camera.add(this._torchLight);
     this._scene.add(this._camera);
     this._torchMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.03, 12, 10),
+      new THREE.SphereGeometry(0.03, 20, 16),
       new THREE.MeshStandardMaterial({ color: 0xff8833, emissive: 0xff8833, emissiveIntensity: 1.5, toneMapped: false })
     );
     this._torchMesh.position.set(0.3, -0.3, -0.5);
@@ -1026,16 +1026,16 @@ export class BearingGame {
         canopyGeo = new THREE.ConeGeometry(canopySize * 0.7, canopySize * 2.5, 12);
       } else if (treeType < 0.5) {
         // round deciduous
-        canopyGeo = new THREE.SphereGeometry(canopySize, 7, 5);
+        canopyGeo = new THREE.SphereGeometry(canopySize, 16, 12);
       } else if (treeType < 0.7) {
         // wide flat-top (like an acacia)
-        canopyGeo = new THREE.CylinderGeometry(canopySize * 1.2, canopySize * 0.8, canopySize * 0.5, 8);
+        canopyGeo = new THREE.CylinderGeometry(canopySize * 1.2, canopySize * 0.8, canopySize * 0.5, 16);
       } else if (treeType < 0.85) {
         // cluster: two overlapping spheres
-        canopyGeo = new THREE.SphereGeometry(canopySize * 0.8, 12, 10);
+        canopyGeo = new THREE.SphereGeometry(canopySize * 0.8, 20, 16);
       } else {
         // tall narrow cypress
-        canopyGeo = new THREE.ConeGeometry(canopySize * 0.4, canopySize * 3, 10);
+        canopyGeo = new THREE.ConeGeometry(canopySize * 0.4, canopySize * 3, 12);
       }
 
       const foliageColor = new THREE.Color(palette.foliage).offsetHSL(0, 0, (rng() - 0.5) * 0.06);
@@ -1047,7 +1047,7 @@ export class BearingGame {
       // second canopy sphere for cluster type
       if (treeType >= 0.7 && treeType < 0.85) {
         const c2 = new THREE.Mesh(
-          new THREE.SphereGeometry(canopySize * 0.6, 12, 10),
+          new THREE.SphereGeometry(canopySize * 0.6, 20, 16),
           new THREE.MeshStandardMaterial({ color: foliageColor.clone().offsetHSL(0, 0, 0.03), roughness: 0.8 })
         );
         c2.position.set(x + (rng() - 0.5) * canopySize, h + trunkH + canopySize * 0.7, z + (rng() - 0.5) * canopySize);
@@ -1105,7 +1105,7 @@ export class BearingGame {
 
       // stone pillar
       const pillar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.3, 0.5, 2, 8),
+        new THREE.CylinderGeometry(0.3, 0.5, 2, 16),
         new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.7 })
       );
       pillar.position.y = 1; pillar.castShadow = true;
@@ -1113,14 +1113,14 @@ export class BearingGame {
 
       // glowing orb on top
       const orb = new THREE.Mesh(
-        new THREE.SphereGeometry(0.4, 12, 8),
+        new THREE.SphereGeometry(0.4, 16, 12),
         new THREE.MeshStandardMaterial({ color: 0xddaa44, emissive: 0xddaa44, emissiveIntensity: 1.5, toneMapped: false })
       );
       orb.position.y = 2.5; orb.name = "orb";
       group.add(orb);
 
       // vertical beam of light
-      const beamGeo = new THREE.CylinderGeometry(0.08, 0.35, 12, 8);
+      const beamGeo = new THREE.CylinderGeometry(0.08, 0.35, 12, 16);
       const beam = new THREE.Mesh(beamGeo, new THREE.MeshStandardMaterial({
         color: 0xddaa44, emissive: 0xddaa44, emissiveIntensity: 0.8,
         transparent: true, opacity: 0.25, toneMapped: false,
@@ -1191,7 +1191,7 @@ export class BearingGame {
         break;
       }
       case "ruined_tower": {
-        const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 8, 1, true), stoneMat);
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 6, 16, 1, true), stoneMat);
         tower.position.copy(pos); tower.position.y += 3;
         tower.castShadow = true; this._scene.add(tower);
         // rubble
@@ -1207,7 +1207,7 @@ export class BearingGame {
       }
       case "ancient_tree": {
         const bigTrunk = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.6, 1, 6, 8),
+          new THREE.CylinderGeometry(0.6, 1, 6, 16),
           new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.9 })
         );
         bigTrunk.position.copy(pos); bigTrunk.position.y += 3; bigTrunk.castShadow = true;
@@ -1243,7 +1243,7 @@ export class BearingGame {
         // small stone structure with glow
         const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 1.5), stoneMat);
         base.position.copy(pos); base.position.y += 0.3; this._scene.add(base);
-        const top = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.2, 10),
+        const top = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.2, 12),
           new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.7 }));
         top.position.copy(pos); top.position.y += 1.2; this._scene.add(top);
         const glow = new THREE.PointLight(0x88aaff, 0.6, 10);
@@ -1445,7 +1445,7 @@ export class BearingGame {
         this._playFootstep(200, 0.08); // splash
         // water splash particle
         const splash = new THREE.Mesh(
-          new THREE.SphereGeometry(0.06, 12, 10),
+          new THREE.SphereGeometry(0.06, 20, 16),
           new THREE.MeshBasicMaterial({ color: 0x6699cc, transparent: true, opacity: 0.5 })
         );
         splash.position.copy(this._playerPos); splash.position.y -= PLAYER_HEIGHT - 0.2;
@@ -2052,7 +2052,7 @@ export class BearingGame {
       if (h < 1) continue;
 
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.05, 12, 10),
+        new THREE.SphereGeometry(0.05, 20, 16),
         new THREE.MeshStandardMaterial({ color: 0xccff44, emissive: 0xccff44, emissiveIntensity: 2.0, toneMapped: false })
       );
       const basePos = new THREE.Vector3(x, h + 1 + rng() * 2, z);
@@ -2326,7 +2326,7 @@ export class BearingGame {
     this._fogWisps = [];
     if (this._weather !== "foggy") return;
     for (let i = 0; i < 40; i++) {
-      const geo = new THREE.SphereGeometry(2 + Math.random() * 3, 12, 10);
+      const geo = new THREE.SphereGeometry(2 + Math.random() * 3, 20, 16);
       const mat = new THREE.MeshBasicMaterial({ color: 0xcccccc, transparent: true, opacity: 0.06 + Math.random() * 0.04, depthWrite: false });
       const wisp = new THREE.Mesh(geo, mat);
       wisp.position.set(
@@ -2555,7 +2555,7 @@ export class BearingGame {
   private _spawnDiscoveryParticles(pos: THREE.Vector3): void {
     for (let i = 0; i < 30; i++) {
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08, 12, 10),
+        new THREE.SphereGeometry(0.08, 20, 16),
         new THREE.MeshStandardMaterial({ color: 0xddaa44, emissive: 0xddaa44, emissiveIntensity: 2.0, toneMapped: false, transparent: true })
       );
       mesh.position.copy(pos);
@@ -2596,7 +2596,7 @@ export class BearingGame {
       const h = getHeight(this._heightmap, TERRAIN_SEGMENTS, x, z);
       const group = new THREE.Group();
       // bird body
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10),
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16),
         new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 }));
       group.add(body);
       // wings
@@ -2661,7 +2661,7 @@ export class BearingGame {
     // log embers (small horizontal cylinders)
     for (let li = 0; li < 3; li++) {
       const a = (li / 3) * Math.PI * 2 + 0.3;
-      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.5, 10),
+      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.5, 12),
         new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xff3300, emissiveIntensity: 0.8, toneMapped: false, roughness: 0.9 }));
       log.position.copy(pos); log.position.y += 0.08;
       log.rotation.z = Math.PI / 2; log.rotation.y = a;
@@ -2698,7 +2698,7 @@ export class BearingGame {
       sparkPos.x += (Math.random() - 0.5) * 0.3;
       sparkPos.z += (Math.random() - 0.5) * 0.3;
       const spark = new THREE.Mesh(
-        new THREE.SphereGeometry(0.025, 3, 3),
+        new THREE.SphereGeometry(0.025, 6, 4),
         new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0xffaa33, emissiveIntensity: 3.0, toneMapped: false })
       );
       spark.position.copy(sparkPos);
@@ -2717,7 +2717,7 @@ export class BearingGame {
       smokePos.x += (Math.random() - 0.5) * 0.4;
       smokePos.z += (Math.random() - 0.5) * 0.4;
       const smoke = new THREE.Mesh(
-        new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 12, 10),
+        new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 20, 16),
         new THREE.MeshBasicMaterial({ color: 0x555544, transparent: true, opacity: 0.2, depthWrite: false })
       );
       smoke.position.copy(smokePos);
@@ -2998,7 +2998,7 @@ export class BearingGame {
 
       const color = flowerColors[Math.floor(rng() * flowerColors.length)];
       const flower = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08 + rng() * 0.06, 12, 10),
+        new THREE.SphereGeometry(0.08 + rng() * 0.06, 20, 16),
         new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2, roughness: 0.6 })
       );
       flower.position.set(x, h + 0.15, z);
@@ -3007,7 +3007,7 @@ export class BearingGame {
       // stem
       if (rng() > 0.5) {
         const stem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.01, 0.01, 0.2, 8),
+          new THREE.CylinderGeometry(0.01, 0.01, 0.2, 12),
           new THREE.MeshStandardMaterial({ color: 0x337722, roughness: 0.8 })
         );
         stem.position.set(x, h + 0.08, z);
@@ -3025,7 +3025,7 @@ export class BearingGame {
 
       // stem
       const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.03, 0.04, 0.12, 10),
+        new THREE.CylinderGeometry(0.03, 0.04, 0.12, 12),
         new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.7 })
       );
       stem.position.set(x, h + 0.06, z);
@@ -3033,7 +3033,7 @@ export class BearingGame {
       // cap
       const capColor = rng() > 0.5 ? 0xcc3322 : 0x885533;
       const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.SphereGeometry(0.06, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
         new THREE.MeshStandardMaterial({ color: capColor, roughness: 0.6 })
       );
       cap.position.set(x, h + 0.13, z);

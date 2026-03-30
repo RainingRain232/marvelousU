@@ -624,15 +624,15 @@ export class MatrixGame {
       const pz = Math.sin(a) * (ARENA_RADIUS + 1);
 
       // Main pillar shaft
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 6, 10), pillarMat);
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 6, 12), pillarMat);
       pillar.position.set(px, 3, pz); pillar.castShadow = true;
       this._scene.add(pillar);
       // Pillar base
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.3, 10), pillarMat);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.3, 12), pillarMat);
       base.position.set(px, 0.15, pz);
       this._scene.add(base);
       // Pillar capital
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.2, 10), pillarMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.2, 12), pillarMat);
       cap.position.set(px, 6.1, pz);
       this._scene.add(cap);
       // Glowing ring at mid-height
@@ -641,13 +641,13 @@ export class MatrixGame {
       midRing.rotation.x = Math.PI / 2;
       this._scene.add(midRing);
       // Glowing top orb
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 10), accentGlow);
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 16), accentGlow);
       top.position.set(px, 6.3, pz);
       this._scene.add(top);
       // Light beam from top (every 4th pillar)
       if (i % 4 === 0) {
         const beam = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.15, 6, 8),
+          new THREE.CylinderGeometry(0.02, 0.15, 6, 12),
           new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.06, depthWrite: false }),
         );
         beam.position.set(px, 3, pz);
@@ -817,7 +817,7 @@ export class MatrixGame {
       const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.4, 14), darkMat);
       shin.position.set(sx, 0.35, 0); shin.castShadow = true; this._playerMesh.add(shin);
       // Knee joint
-      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), darkShiny);
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 20, 16), darkShiny);
       knee.position.set(sx, 0.55, 0); this._playerMesh.add(knee);
       // Thigh
       const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.35, 14), darkMat);
@@ -858,7 +858,7 @@ export class MatrixGame {
       pRing.position.set(sx * 0.35, 1.35, 0); pRing.rotation.x = Math.PI / 2;
       this._playerMesh.add(pRing);
       // Accent dot
-      const pDot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), accentMat);
+      const pDot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), accentMat);
       pDot.position.set(sx * 0.38, 1.42, -0.08); this._playerMesh.add(pDot);
     }
 
@@ -867,7 +867,7 @@ export class MatrixGame {
       const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 12), darkMat);
       upperArm.position.set(sx * 0.38, 1.2, 0); upperArm.castShadow = true; this._playerMesh.add(upperArm);
       // Elbow joint
-      const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), darkShiny);
+      const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), darkShiny);
       elbow.position.set(sx * 0.4, 1.05, 0); this._playerMesh.add(elbow);
       // Forearm
       const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.25, 12), darkMat);
@@ -897,7 +897,7 @@ export class MatrixGame {
     const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.03, 0.1), darkShiny);
     jaw.position.set(0, 1.5, -0.14); this._playerMesh.add(jaw);
     // Hair/back of head detail
-    const backHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10, 0, Math.PI * 2, Math.PI * 0.3, Math.PI * 0.5), skinMat);
+    const backHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16, 0, Math.PI * 2, Math.PI * 0.3, Math.PI * 0.5), skinMat);
     backHead.position.set(0, 1.65, 0.08); this._playerMesh.add(backHead);
 
     // ── Cape (higher poly, flows behind) ──
@@ -920,18 +920,18 @@ export class MatrixGame {
     const edgeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.005, 1.15, 0.11), accentMat);
     edgeGlow.position.set(0.44, 1.05, -0.25); this._playerMesh.add(edgeGlow);
     // Blade tip
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.15, 4), bladeMat);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.15, 12), bladeMat);
     tip.position.set(0.44, 1.68, -0.25); this._playerMesh.add(tip);
     // Cross-guard
     const guard = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.04, 0.05),
       new THREE.MeshStandardMaterial({ color: 0x00aa44, metalness: 0.8, roughness: 0.2 }));
     guard.position.set(0.44, 0.42, -0.25); this._playerMesh.add(guard);
     // Grip (wrapped)
-    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 10),
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 12),
       new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7, metalness: 0.3 }));
     grip.position.set(0.44, 0.32, -0.25); this._playerMesh.add(grip);
     // Pommel
-    const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), accentMat);
+    const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.035, 16, 12), accentMat);
     pommel.position.set(0.44, 0.22, -0.25); this._playerMesh.add(pommel);
 
     this._playerMesh.position.copy(this._playerPos);
@@ -1393,16 +1393,16 @@ export class MatrixGame {
       // Eyes (all types get two)
       const eyeMat = new THREE.MeshStandardMaterial({ color: eyeColor, emissive: eyeColor, emissiveIntensity: 3.0, toneMapped: false });
       for (const ex of [-0.07, 0.07]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), eyeMat);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 20, 16), eyeMat);
         eye.position.set(ex, bodyH + 0.14, -headR * 0.85); group.add(eye);
       }
 
       // ── Shoulders ──
       for (const sx of [-1, 1]) {
-        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(bodyW * 0.45, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), accentMat);
+        const shoulder = new THREE.Mesh(new THREE.SphereGeometry(bodyW * 0.45, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), accentMat);
         shoulder.position.set(sx * (bodyW + 0.15), bodyH * 0.7, 0); group.add(shoulder);
         // Shoulder glow dot
-        const sDot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), wireGlow);
+        const sDot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 12), wireGlow);
         sDot.position.set(sx * (bodyW + 0.15), bodyH * 0.75, -bodyW * 0.3); group.add(sDot);
       }
 
@@ -1413,7 +1413,7 @@ export class MatrixGame {
         const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(bodyW * 0.15, bodyH * 0.18, 8, 12), accentMat);
         forearm.position.set(sx * (bodyW + 0.2), bodyH * 0.22, -0.05); group.add(forearm);
         // Hand
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(bodyW * 0.18, 10, 8), bodyMat);
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(bodyW * 0.18, 16, 12), bodyMat);
         hand.position.set(sx * (bodyW + 0.2), bodyH * 0.1, -0.08); group.add(hand);
       }
 
@@ -1435,17 +1435,17 @@ export class MatrixGame {
         bow.position.set(-bodyW - 0.2, bodyH * 0.55, -0.12); bow.rotation.z = Math.PI / 2;
         group.add(bow);
         // Bowstring
-        const string = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.65, 6),
+        const string = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.65, 12),
           new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.5 }));
         string.position.set(-bodyW - 0.2, bodyH * 0.55, -0.12);
         group.add(string);
         // Quiver on back
-        const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.4, 10), bowMat);
+        const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.4, 12), bowMat);
         quiver.position.set(0.1, bodyH * 0.5, 0.18); quiver.rotation.z = 0.15;
         group.add(quiver);
         // Arrow tips sticking out of quiver
         for (let ar = 0; ar < 3; ar++) {
-          const aShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 6),
+          const aShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 12),
             new THREE.MeshStandardMaterial({ color: 0xccaa66, roughness: 0.7 }));
           aShaft.position.set(0.08 + ar * 0.02, bodyH * 0.75, 0.18);
           group.add(aShaft);
@@ -1453,7 +1453,7 @@ export class MatrixGame {
       } else if (eType === "fireball") {
         // Glowing energy hands with aura spheres
         for (const sx of [-1, 1]) {
-          const handGlow = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10),
+          const handGlow = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 16),
             new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff4400, emissiveIntensity: 2.0, toneMapped: false }));
           handGlow.position.set(sx * (bodyW + 0.2), bodyH * 0.1, -0.15); group.add(handGlow);
           // Aura ring
@@ -1480,10 +1480,10 @@ export class MatrixGame {
         group.add(axeBlade);
         // Haft
         const haftMat = new THREE.MeshStandardMaterial({ color: 0x553322, roughness: 0.8 });
-        const axeHaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7, 10), haftMat);
+        const axeHaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7, 12), haftMat);
         axeHaft.position.set(bodyW + 0.25, bodyH * 0.3, -0.1); group.add(axeHaft);
         // Leather wrap on haft
-        const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 10), new THREE.MeshStandardMaterial({ color: 0x443311, roughness: 0.9 }));
+        const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 12), new THREE.MeshStandardMaterial({ color: 0x443311, roughness: 0.9 }));
         wrap.position.set(bodyW + 0.25, bodyH * 0.15, -0.1); group.add(wrap);
         // Heavy shoulder armor
         const heavyShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), metalMat);
@@ -1612,10 +1612,10 @@ export class MatrixGame {
     let geo: THREE.BufferGeometry;
     let mat: THREE.MeshStandardMaterial;
     if (type === "arrow") {
-      geo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 10);
+      geo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 12);
       mat = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff8800, emissiveIntensity: 1.0, toneMapped: false });
     } else if (type === "fireball") {
-      geo = new THREE.SphereGeometry(0.2, 12, 10);
+      geo = new THREE.SphereGeometry(0.2, 20, 16);
       mat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff4400, emissiveIntensity: 2.0, toneMapped: false });
     } else {
       geo = new THREE.BoxGeometry(0.3, 0.3, 0.1);
@@ -1659,7 +1659,7 @@ export class MatrixGame {
       // trail
       if (this._btActive && Math.random() > 0.5) {
         const trail = new THREE.Mesh(
-          new THREE.SphereGeometry(0.04, 3, 3),
+          new THREE.SphereGeometry(0.04, 6, 4),
           new THREE.MeshBasicMaterial({ color: proj.type === "fireball" ? 0xff4400 : 0xffaa44, transparent: true, opacity: 0.5 })
         );
         trail.position.copy(proj.mesh.position);
@@ -1793,7 +1793,7 @@ export class MatrixGame {
   private _spawnSparks(pos: THREE.Vector3, color: number, count: number): void {
     for (let i = 0; i < count; i++) {
       const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.04, 3, 3),
+        new THREE.SphereGeometry(0.04, 6, 4),
         new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.0, toneMapped: false })
       );
       mesh.position.copy(pos);
