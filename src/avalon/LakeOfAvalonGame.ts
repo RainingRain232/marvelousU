@@ -556,6 +556,7 @@ export class LakeOfAvalonGame {
   private _staffOrb: THREE.Mesh | null = null;
   private _staffOrbLight: THREE.PointLight | null = null;
   private _elementAura: THREE.Mesh | null = null;
+  private _staffParticles: THREE.Group | null = null;
 
   // Lady of the Lake event
   private _ladyActive = false;
@@ -1017,7 +1018,7 @@ export class LakeOfAvalonGame {
     this._boatGroup.add(hull);
 
     // Bow (front taper)
-    const bowGeo = new THREE.ConeGeometry(0.8, 1.2, 10);
+    const bowGeo = new THREE.ConeGeometry(0.8, 1.2, 20);
     bowGeo.rotateX(-Math.PI / 2);
     const bow = new THREE.Mesh(bowGeo, hullMat);
     bow.position.set(0, 0.25, -2.1);
@@ -1044,32 +1045,94 @@ export class LakeOfAvalonGame {
     this._boatGroup.add(lanternLight);
     this._pointLights.push(lanternLight);
 
-    // Player figure (simple standing figure)
-    const bodyGeo = new THREE.CylinderGeometry(0.25, 0.3, 1.2, 8);
+    // Skiff / boat hull beneath the player
+    const skiffMat = new THREE.MeshStandardMaterial({ color: 0x442200, roughness: 0.85, metalness: 0.05 });
+    const skiffHull = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.3, 0.35, 24, 1), skiffMat);
+    skiffHull.scale.set(1.0, 1.0, 2.0);
+    skiffHull.position.set(0, 0.55, 0);
+    skiffHull.castShadow = true;
+    this._boatGroup.add(skiffHull);
+    // Skiff rim
+    const skiffRim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.6, 0.04, 12, 32),
+      new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.7 }),
+    );
+    skiffRim.scale.set(1.0, 1.0, 2.0);
+    skiffRim.position.set(0, 0.72, 0);
+    skiffRim.rotation.x = Math.PI / 2;
+    this._boatGroup.add(skiffRim);
+
+    // Player figure (robed mage)
+    const bodyGeo = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 20);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.7 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.position.set(0, 1.3, 0);
     body.castShadow = true;
     this._boatGroup.add(body);
 
+    // Robe hem detail (torus at base)
+    const hemGeo = new THREE.TorusGeometry(0.35, 0.04, 12, 28);
+    const hemMat = new THREE.MeshStandardMaterial({ color: 0x223355, roughness: 0.6 });
+    const hem = new THREE.Mesh(hemGeo, hemMat);
+    hem.position.set(0, 0.72, 0);
+    hem.rotation.x = Math.PI / 2;
+    this._boatGroup.add(hem);
+
     // Head
-    const headGeo = new THREE.SphereGeometry(0.22, 16, 12);
+    const headGeo = new THREE.SphereGeometry(0.22, 24, 20);
     const headMat = new THREE.MeshStandardMaterial({ color: 0xddbb99, roughness: 0.6 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.set(0, 2.1, 0);
     head.castShadow = true;
     this._boatGroup.add(head);
 
+    // Hood / cowl over head
+    const hoodGeo = new THREE.ConeGeometry(0.3, 0.45, 20);
+    const hoodMat = new THREE.MeshStandardMaterial({ color: 0x2a3a55, roughness: 0.8 });
+    const hood = new THREE.Mesh(hoodGeo, hoodMat);
+    hood.position.set(0, 2.35, 0.02);
+    hood.castShadow = true;
+    this._boatGroup.add(hood);
+
+    // Left arm (holding staff)
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x334466, roughness: 0.7 });
+    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.7, 16), armMat);
+    leftArm.position.set(0.32, 1.65, -0.1);
+    leftArm.rotation.z = -0.5;
+    leftArm.rotation.x = -0.3;
+    leftArm.castShadow = true;
+    this._boatGroup.add(leftArm);
+
+    // Right arm (extended slightly)
+    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.65, 16), armMat);
+    rightArm.position.set(-0.3, 1.6, -0.05);
+    rightArm.rotation.z = 0.4;
+    rightArm.rotation.x = -0.15;
+    rightArm.castShadow = true;
+    this._boatGroup.add(rightArm);
+
     // Staff (spell casting)
-    const staffGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 12);
+    const staffGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 16);
     const staffMat = new THREE.MeshStandardMaterial({ color: 0x886644 });
     const staff = new THREE.Mesh(staffGeo, staffMat);
     staff.position.set(0.35, 1.6, -0.2);
     staff.rotation.x = -0.3;
     this._boatGroup.add(staff);
 
+    // Staff spiral wrap detail (small spheres along the staff)
+    const spiralMat = new THREE.MeshStandardMaterial({ color: 0xaa8855, roughness: 0.4, metalness: 0.3 });
+    for (let s = 0; s < 8; s++) {
+      const t = s / 8;
+      const spiralBead = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12), spiralMat);
+      const sy = 0.8 + t * 1.6;
+      const sx = 0.35 + Math.cos(t * Math.PI * 4) * 0.06;
+      const sz = -0.2 + Math.sin(t * Math.PI * 4) * 0.06 - t * 0.35;
+      spiralBead.position.set(sx, sy, sz);
+      this._boatGroup.add(spiralBead);
+    }
+
     // Staff orb (element-reactive)
-    const orbGeo = new THREE.SphereGeometry(0.14, 16, 12);
+    const orbGeo = new THREE.SphereGeometry(0.14, 24, 20);
     const orbMat = new THREE.MeshBasicMaterial({ color: 0x9966ff });
     const orb = new THREE.Mesh(orbGeo, orbMat);
     orb.position.set(0.35, 2.5, -0.55);
@@ -1080,8 +1143,21 @@ export class LakeOfAvalonGame {
     orbLight.position.copy(orb.position);
     this._staffOrbLight = orbLight;
 
+    // Glowing staff particles (orbiting the orb)
+    const particlesGroup = new THREE.Group();
+    const particleMat = new THREE.MeshBasicMaterial({ color: 0x9966ff, transparent: true, opacity: 0.7 });
+    for (let p = 0; p < 6; p++) {
+      const particle = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 12), particleMat.clone());
+      const a = (p / 6) * Math.PI * 2;
+      particle.position.set(Math.cos(a) * 0.25, Math.sin(a) * 0.25, 0);
+      particlesGroup.add(particle);
+    }
+    particlesGroup.position.copy(orb.position);
+    this._boatGroup.add(particlesGroup);
+    this._staffParticles = particlesGroup;
+
     // Element aura around player
-    const auraGeo = new THREE.RingGeometry(0.8, 1.2, 16);
+    const auraGeo = new THREE.RingGeometry(0.8, 1.2, 28);
     auraGeo.rotateX(-Math.PI / 2);
     const auraMat = new THREE.MeshBasicMaterial({
       color: 0x9966ff, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false,
@@ -2119,40 +2195,62 @@ export class LakeOfAvalonGame {
     if (kind === "wisp") {
       // Glowing orb
       const core = new THREE.Mesh(
-        new THREE.SphereGeometry(def.size * 0.4, 16, 12),
+        new THREE.SphereGeometry(def.size * 0.4, 24, 20),
         new THREE.MeshBasicMaterial({ color: def.color }),
       );
       group.add(core);
       const halo = new THREE.Mesh(
-        new THREE.SphereGeometry(def.size * 0.7, 16, 12),
+        new THREE.SphereGeometry(def.size * 0.7, 24, 20),
         new THREE.MeshBasicMaterial({ color: def.emissive, transparent: true, opacity: 0.3, depthWrite: false }),
       );
       group.add(halo);
+      // Inner glow ring
+      const wispRing = new THREE.Mesh(
+        new THREE.TorusGeometry(def.size * 0.5, 0.03, 12, 24),
+        new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.5 }),
+      );
+      group.add(wispRing);
       const light = new THREE.PointLight(def.color, 1.0, 8);
       group.add(light);
     } else if (kind === "water_serpent") {
       // Segmented body
-      for (let s = 0; s < 5; s++) {
+      const serpMat = new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.3, roughness: 0.4 });
+      for (let s = 0; s < 7; s++) {
         const seg = new THREE.Mesh(
-          new THREE.SphereGeometry(def.size * (1 - s * 0.15) * 0.5, 12, 10),
-          new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.3, roughness: 0.4 }),
+          new THREE.SphereGeometry(def.size * (1 - s * 0.1) * 0.5, 24, 20),
+          serpMat,
         );
-        seg.position.z = s * 0.8;
+        seg.position.z = s * 0.7;
         seg.castShadow = true;
         group.add(seg);
       }
+      // Dorsal fin
+      const finMat = new THREE.MeshStandardMaterial({ color: 0x226644, emissive: def.emissive, emissiveIntensity: 0.2, roughness: 0.5 });
+      for (let f = 0; f < 4; f++) {
+        const fin = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 12), finMat);
+        fin.position.set(0, def.size * 0.35, f * 0.9 + 0.3);
+        group.add(fin);
+      }
     } else if (kind === "kraken_arm") {
       // Tentacle
-      for (let s = 0; s < 8; s++) {
-        const r = def.size * 0.3 * (1 - s * 0.1);
+      const krakenMat = new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.2, roughness: 0.5 });
+      for (let s = 0; s < 10; s++) {
+        const r = def.size * 0.3 * (1 - s * 0.08);
         const seg = new THREE.Mesh(
-          new THREE.CylinderGeometry(r, r * 1.1, 0.6, 12),
-          new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.2, roughness: 0.5 }),
+          new THREE.CylinderGeometry(r, r * 1.1, 0.5, 20),
+          krakenMat,
         );
-        seg.position.y = s * 0.5;
+        seg.position.y = s * 0.45;
         seg.rotation.z = Math.sin(s * 0.8) * 0.3;
         seg.castShadow = true;
         group.add(seg);
+      }
+      // Sucker details
+      const suckerMat = new THREE.MeshStandardMaterial({ color: 0x995566, roughness: 0.6 });
+      for (let s = 0; s < 5; s++) {
+        const sucker = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), suckerMat);
+        sucker.position.set(def.size * 0.25, s * 0.9 + 0.3, 0);
+        group.add(sucker);
       }
     } else if (kind === "bog_wraith") {
       // Ghostly humanoid
@@ -2160,16 +2258,33 @@ export class LakeOfAvalonGame {
         color: def.color, emissive: def.emissive, emissiveIntensity: 0.4,
         transparent: true, opacity: 0.7, depthWrite: false,
       });
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 1.5, 12), bodyMat);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 1.5, 20), bodyMat);
       torso.position.y = 1;
       group.add(torso);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), bodyMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 20), bodyMat);
       head.position.y = 2;
       group.add(head);
+      // Wraith hood
+      const wraithHood = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.5, 20), bodyMat);
+      wraithHood.position.y = 2.3;
+      group.add(wraithHood);
+      // Ghostly tendrils at base
+      const tendrilMat = new THREE.MeshStandardMaterial({
+        color: def.color, emissive: def.emissive, emissiveIntensity: 0.3,
+        transparent: true, opacity: 0.4, depthWrite: false,
+      });
+      for (let t = 0; t < 4; t++) {
+        const tendril = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, 0.8, 12), tendrilMat);
+        const ta = (t / 4) * Math.PI * 2;
+        tendril.position.set(Math.cos(ta) * 0.4, 0.3, Math.sin(ta) * 0.4);
+        tendril.rotation.z = Math.cos(ta) * 0.3;
+        tendril.rotation.x = Math.sin(ta) * 0.3;
+        group.add(tendril);
+      }
       // Glowing eyes
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
       for (let e = 0; e < 2; e++) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), eyeMat);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), eyeMat);
         eye.position.set(e === 0 ? -0.12 : 0.12, 2.05, -0.25);
         group.add(eye);
       }
@@ -2179,20 +2294,32 @@ export class LakeOfAvalonGame {
         color: def.color, emissive: def.emissive, emissiveIntensity: 0.5,
         transparent: true, opacity: 0.85,
       });
-      const robe = new THREE.Mesh(new THREE.ConeGeometry(0.8, 2.2, 12), witchMat);
+      const robe = new THREE.Mesh(new THREE.ConeGeometry(0.8, 2.2, 20), witchMat);
       robe.position.y = 1.1;
       group.add(robe);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), witchMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 20), witchMat);
       head.position.y = 2.5;
       group.add(head);
+      // Witch hood
+      const witchHood = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.55, 20), witchMat);
+      witchHood.position.y = 2.8;
+      group.add(witchHood);
+      // Robe hem ring
+      const witchHem = new THREE.Mesh(
+        new THREE.TorusGeometry(0.8, 0.04, 12, 24),
+        new THREE.MeshStandardMaterial({ color: def.color, emissive: def.emissive, emissiveIntensity: 0.3, transparent: true, opacity: 0.6 }),
+      );
+      witchHem.position.y = 0.1;
+      witchHem.rotation.x = Math.PI / 2;
+      group.add(witchHem);
       // Staff
-      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 10),
+      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5, 16),
         new THREE.MeshStandardMaterial({ color: 0x664488 }));
       staff.position.set(0.4, 1.8, -0.3);
       staff.rotation.x = -0.2;
       group.add(staff);
       // Staff orb
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10),
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 24, 20),
         new THREE.MeshBasicMaterial({ color: 0xff44ff }));
       orb.position.set(0.4, 3.0, -0.6);
       group.add(orb);
@@ -2205,22 +2332,29 @@ export class LakeOfAvalonGame {
       const levMat = new THREE.MeshStandardMaterial({
         color: def.color, emissive: def.emissive, emissiveIntensity: 0.4, roughness: 0.3,
       });
-      for (let s = 0; s < 8; s++) {
-        const r = def.size * (1 - s * 0.08) * 0.4;
-        const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), levMat);
-        seg.position.z = s * 1.2;
+      for (let s = 0; s < 10; s++) {
+        const r = def.size * (1 - s * 0.065) * 0.4;
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 20), levMat);
+        seg.position.z = s * 1.0;
         seg.castShadow = true;
         group.add(seg);
       }
+      // Dorsal spines
+      const spineMat = new THREE.MeshStandardMaterial({ color: 0x223344, emissive: 0x112244, emissiveIntensity: 0.3, roughness: 0.4 });
+      for (let sp = 0; sp < 6; sp++) {
+        const spine = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.4, 12), spineMat);
+        spine.position.set(0, def.size * 0.4, sp * 1.2 + 0.5);
+        group.add(spine);
+      }
       // Jaw / head
-      const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.5, 12),
+      const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.5, 20),
         new THREE.MeshStandardMaterial({ color: 0x334466, emissive: 0x112244, emissiveIntensity: 0.3 }));
       jaw.position.set(0, 0, -1.0);
       jaw.rotation.x = -Math.PI / 2;
       group.add(jaw);
       // Glowing eyes
       for (let i = 0; i < 2; i++) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10),
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 20),
           new THREE.MeshBasicMaterial({ color: 0xff2222 }));
         eye.position.set(i === 0 ? -0.3 : 0.3, 0.2, -0.5);
         group.add(eye);
@@ -2240,20 +2374,42 @@ export class LakeOfAvalonGame {
       hull.position.y = 0.5;
       group.add(hull);
       // Bow
-      const bow = new THREE.Mesh(new THREE.ConeGeometry(1, 1.5, 10), shipMat);
+      const bow = new THREE.Mesh(new THREE.ConeGeometry(1, 1.5, 20), shipMat);
       bow.position.set(0, 0.5, -2.5);
       bow.rotation.x = -Math.PI / 2;
       group.add(bow);
+      // Figurehead
+      const figurehead = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 20),
+        new THREE.MeshBasicMaterial({ color: 0x66aacc, transparent: true, opacity: 0.5 }));
+      figurehead.position.set(0, 0.5, -3.3);
+      group.add(figurehead);
       // Mast
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4, 10),
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4, 16),
         new THREE.MeshStandardMaterial({ color: 0x556677 }));
       mast.position.set(0, 3, 0);
       group.add(mast);
+      // Second mast
+      const mast2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3, 16),
+        new THREE.MeshStandardMaterial({ color: 0x556677 }));
+      mast2.position.set(0, 2.5, 1.5);
+      group.add(mast2);
       // Ghost sail
       const sail = new THREE.Mesh(new THREE.PlaneGeometry(2, 2.5),
         new THREE.MeshBasicMaterial({ color: 0x8899aa, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
       sail.position.set(0, 3.5, 0);
       group.add(sail);
+      // Second sail
+      const sail2 = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.8),
+        new THREE.MeshBasicMaterial({ color: 0x8899aa, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false }));
+      sail2.position.set(0, 3, 1.5);
+      group.add(sail2);
+      // Railing
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x556677, transparent: true, opacity: 0.5 });
+      for (let r = 0; r < 6; r++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8), railMat);
+        post.position.set(r < 3 ? -1.0 : 1.0, 1.3, (r % 3 - 1) * 1.5);
+        group.add(post);
+      }
       // Ghostly lanterns
       for (let i = 0; i < 3; i++) {
         const lantern = new THREE.PointLight(0x44aaff, 0.8, 6);
@@ -2268,22 +2424,36 @@ export class LakeOfAvalonGame {
         roughness: 0.5, metalness: 0.6,
       });
       // Body
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, 0.5), armorMat);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 1.4, 20), armorMat);
       body.position.y = 1.2;
       body.castShadow = true;
       group.add(body);
+      // Shoulder pauldrons
+      for (let side = -1; side <= 1; side += 2) {
+        const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), armorMat);
+        pauldron.position.set(side * 0.42, 1.85, 0);
+        pauldron.scale.set(1, 0.7, 1);
+        group.add(pauldron);
+      }
       // Head (helmet)
-      const helm = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), armorMat);
+      const helm = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 20), armorMat);
       helm.position.y = 2.2;
       group.add(helm);
+      // Helmet visor slit
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.05),
+        new THREE.MeshBasicMaterial({ color: 0x44aaff }));
+      visor.position.set(0, 2.2, -0.28);
+      group.add(visor);
       // Shield
       const shield = new THREE.Mesh(
-        new THREE.BoxGeometry(0.1, 0.7, 0.5),
+        new THREE.CylinderGeometry(0.35, 0.35, 0.08, 20),
         new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.8, roughness: 0.3 }),
       );
-      shield.position.set(-0.5, 1.3, 0);
+      shield.position.set(-0.55, 1.3, -0.1);
+      shield.rotation.z = Math.PI / 2;
+      shield.rotation.x = 0.2;
       group.add(shield);
-      // Sword
+      // Sword blade
       const sword = new THREE.Mesh(
         new THREE.BoxGeometry(0.06, 1.0, 0.06),
         new THREE.MeshStandardMaterial({ color: 0x99aabb, metalness: 0.9, roughness: 0.2 }),
@@ -2291,6 +2461,12 @@ export class LakeOfAvalonGame {
       sword.position.set(0.5, 1.5, -0.3);
       sword.rotation.x = -0.4;
       group.add(sword);
+      // Sword crossguard
+      const crossguard = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x99aabb, metalness: 0.9, roughness: 0.2 }));
+      crossguard.position.set(0.5, 1.05, -0.15);
+      crossguard.rotation.x = -0.4;
+      group.add(crossguard);
     }
 
     // HP bar
@@ -3692,6 +3868,18 @@ export class LakeOfAvalonGame {
     }
     if (this._staffOrbLight) {
       this._staffOrbLight.color.setHex(elemDef.color);
+    }
+    // Staff particles orbit
+    if (this._staffParticles) {
+      this._staffParticles.rotation.y = this._waterTime * 2.5;
+      this._staffParticles.rotation.x = Math.sin(this._waterTime * 1.5) * 0.3;
+      this._staffParticles.children.forEach((p, i) => {
+        const mat = (p as THREE.Mesh).material as THREE.MeshBasicMaterial;
+        mat.color.setHex(elemDef.color);
+        mat.opacity = 0.4 + Math.sin(this._waterTime * 3 + i) * 0.3;
+        const s = 0.8 + Math.sin(this._waterTime * 4 + i * 1.2) * 0.4;
+        p.scale.setScalar(s);
+      });
     }
     // Element aura ring
     if (this._elementAura) {

@@ -124,7 +124,7 @@ export class LeviathanRenderer {
     this._camera = new THREE.PerspectiveCamera(LEVIATHAN.CAMERA_FOV, w / h, 0.3, 200);
 
     this._boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    this._sphereGeo = new THREE.SphereGeometry(0.5, 16, 12);
+    this._sphereGeo = new THREE.SphereGeometry(0.5, 24, 20);
 
     // Lighting — very dark ambient, player lantern is primary light
     this._ambientLight = new THREE.AmbientLight(0x081015, 0.3);
@@ -162,11 +162,23 @@ export class LeviathanRenderer {
     body.position.y = 0; body.castShadow = true;
     this._playerGroup.add(body);
 
+    // Belt / waist detail
+    const beltMat = new THREE.MeshStandardMaterial({ color: 0x443322, metalness: 0.4, roughness: 0.6 });
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 12, 24), beltMat);
+    belt.position.y = -0.35; belt.rotation.x = Math.PI / 2;
+    this._playerGroup.add(belt);
+
     // Helmet (dome)
     const helmetMat = new THREE.MeshStandardMaterial({ color: 0x556677, metalness: 0.7, roughness: 0.3 });
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12), helmetMat);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 20), helmetMat);
     helmet.position.y = 0.8; helmet.castShadow = true;
     this._playerGroup.add(helmet);
+
+    // Helmet crest / ridge
+    const crestMat = new THREE.MeshStandardMaterial({ color: 0x667788, metalness: 0.8, roughness: 0.2 });
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.5), crestMat);
+    crest.position.set(0, 1.0, 0);
+    this._playerGroup.add(crest);
 
     // Visor (glowing)
     const visorMat = new THREE.MeshStandardMaterial({ color: 0x44ccff, emissive: 0x44ccff, emissiveIntensity: 0.8 });
@@ -174,8 +186,23 @@ export class LeviathanRenderer {
     visor.position.set(0, 0.82, 0.32);
     this._playerGroup.add(visor);
 
-    // Arms
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.2), armorMat);
+    // Glowing eyes (small emissive spheres behind visor)
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x66eeff, emissive: 0x66eeff, emissiveIntensity: 1.2 });
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), eyeMat);
+    eyeL.position.set(-0.08, 0.83, 0.33);
+    const eyeR = eyeL.clone(); eyeR.position.set(0.08, 0.83, 0.33);
+    this._playerGroup.add(eyeL, eyeR);
+
+    // Shoulder pads / pauldrons
+    const pauldronMat = new THREE.MeshStandardMaterial({ color: COL.PLAYER_ARMOR, metalness: 0.7, roughness: 0.3 });
+    const pauldronL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 16), pauldronMat);
+    pauldronL.scale.set(1.2, 0.7, 1.0);
+    pauldronL.position.set(-0.48, 0.45, 0);
+    const pauldronR = pauldronL.clone(); pauldronR.position.set(0.48, 0.45, 0);
+    this._playerGroup.add(pauldronL, pauldronR);
+
+    // Arms (rounded cylinders instead of boxes)
+    const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8, 16), armorMat);
     armL.position.set(-0.5, 0, 0);
     const armR = armL.clone(); armR.position.set(0.5, 0, 0);
     this._playerGroup.add(armL, armR);
@@ -211,15 +238,34 @@ export class LeviathanRenderer {
 
     // Lantern (left hand) — glowing sphere
     const lanternMat = new THREE.MeshStandardMaterial({ color: COL.LANTERN, emissive: COL.LANTERN, emissiveIntensity: 1.0 });
-    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), lanternMat);
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), lanternMat);
     lantern.position.set(-0.55, 0.1, -0.2);
     this._playerGroup.add(lantern);
+
+    // Legs (cylinders with knee joints)
+    const legMat = new THREE.MeshStandardMaterial({ color: COL.PLAYER, metalness: 0.4, roughness: 0.5 });
+    const kneeMat = new THREE.MeshStandardMaterial({ color: COL.PLAYER_ARMOR, metalness: 0.6, roughness: 0.3 });
+    // Upper legs
+    const upperLegL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.35, 14), legMat);
+    upperLegL.position.set(-0.18, -0.72, 0);
+    const upperLegR = upperLegL.clone(); upperLegR.position.set(0.18, -0.72, 0);
+    this._playerGroup.add(upperLegL, upperLegR);
+    // Knee joints
+    const kneeL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), kneeMat);
+    kneeL.position.set(-0.18, -0.92, 0);
+    const kneeR = kneeL.clone(); kneeR.position.set(0.18, -0.92, 0);
+    this._playerGroup.add(kneeL, kneeR);
+    // Lower legs
+    const lowerLegL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 14), legMat);
+    lowerLegL.position.set(-0.18, -1.12, 0);
+    const lowerLegR = lowerLegL.clone(); lowerLegR.position.set(0.18, -1.12, 0);
+    this._playerGroup.add(lowerLegL, lowerLegR);
 
     // Flippers
     const flipMat = new THREE.MeshStandardMaterial({ color: 0x334455, metalness: 0.3, roughness: 0.7 });
     const flipL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.6), flipMat);
-    flipL.position.set(-0.15, -0.7, 0.15);
-    const flipR = flipL.clone(); flipR.position.set(0.15, -0.7, 0.15);
+    flipL.position.set(-0.18, -1.35, 0.15);
+    const flipR = flipL.clone(); flipR.position.set(0.18, -1.35, 0.15);
     this._playerGroup.add(flipL, flipR);
 
     this._scene.add(this._playerGroup);
@@ -1100,7 +1146,7 @@ export class LeviathanRenderer {
         switch (enemy.type) {
           case "angler": {
             // Bulbous body with dangling lure
-            const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), mat);
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 20), mat);
             body.scale.set(1.2, 0.8, 1); body.castShadow = true;
             group.add(body);
             // Huge jaw
@@ -1108,10 +1154,10 @@ export class LeviathanRenderer {
             jaw.position.set(0, -0.3, 0.4);
             group.add(jaw);
             // Dangling lure on stalk
-            const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 10), mat);
+            const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 16), mat);
             stalk.position.set(0, 0.7, 0.3); stalk.rotation.z = 0.3;
             group.add(stalk);
-            const lure = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), glowMat);
+            const lure = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16), glowMat);
             lure.position.set(0.3, 1.1, 0.3);
             group.add(lure);
             const light = new THREE.PointLight(colors.glow, 0.6, 10);
@@ -1121,13 +1167,13 @@ export class LeviathanRenderer {
           }
           case "jellyfish": {
             // Dome + trailing tentacles
-            const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), glowMat);
+            const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), glowMat);
             dome.castShadow = true;
             group.add(dome);
             // Tentacles (4 trailing cylinders)
             const tentMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.3, transparent: true, opacity: 0.6 });
             for (let t = 0; t < 4; t++) {
-              const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.01, 1.2, 8), tentMat);
+              const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.01, 1.2, 16), tentMat);
               tent.position.set((t - 1.5) * 0.15, -0.6, 0);
               group.add(tent);
             }
@@ -1141,7 +1187,7 @@ export class LeviathanRenderer {
             torso.castShadow = true; group.add(torso);
             // Coral growths on shoulders
             const coralMat = new THREE.MeshStandardMaterial({ color: 0x44aa66, emissive: 0x44aa66, emissiveIntensity: 0.3 });
-            const coralL = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1, 10), coralMat);
+            const coralL = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1, 18), coralMat);
             coralL.position.set(-1.2, 1, 0); group.add(coralL);
             const coralR = coralL.clone(); coralR.position.x = 1.2; group.add(coralR);
             // Fists
@@ -1156,7 +1202,7 @@ export class LeviathanRenderer {
             // Thick segmented tentacle rising from floor
             const segMat = new THREE.MeshStandardMaterial({ color: colors.body, roughness: 0.7, metalness: 0.2 });
             for (let s = 0; s < 5; s++) {
-              const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.5 - s * 0.06, 0.5 - (s - 1) * 0.06, 1.5, 6), segMat);
+              const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.5 - s * 0.06, 0.5 - (s - 1) * 0.06, 1.5, 16), segMat);
               seg.position.y = s * 1.3; seg.castShadow = true;
               seg.rotation.z = Math.sin(s * 0.8) * 0.15;
               group.add(seg);
@@ -1164,7 +1210,7 @@ export class LeviathanRenderer {
             // Suction cups (glow)
             const cupMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.4 });
             for (let c = 0; c < 3; c++) {
-              const cup = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), cupMat);
+              const cup = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), cupMat);
               cup.position.set(0.4, c * 1.5 + 0.5, 0); group.add(cup);
             }
             const light = new THREE.PointLight(colors.glow, 0.4, 8);
@@ -1173,7 +1219,7 @@ export class LeviathanRenderer {
           }
           case "siren": {
             // Ghostly humanoid figure
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 1.8, 12), mat);
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 1.8, 20), mat);
             body.castShadow = true; group.add(body);
             const head = new THREE.Mesh(this._sphereGeo, mat);
             head.scale.setScalar(0.5); head.position.y = 1.2; group.add(head);
@@ -1182,7 +1228,7 @@ export class LeviathanRenderer {
             const hair = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.5), hairMat);
             hair.position.set(0, 0.5, -0.3); group.add(hair);
             // Glowing eyes
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), glowMat);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), glowMat);
             eye.position.set(-0.12, 1.25, 0.2); group.add(eye);
             const eyeR = eye.clone(); eyeR.position.x = 0.12; group.add(eyeR);
             const light = new THREE.PointLight(colors.glow, 0.5, 10);
@@ -1193,7 +1239,7 @@ export class LeviathanRenderer {
             // Corrupted armored knight — large, dark, menacing
             const torso = new THREE.Mesh(this._boxGeo, mat);
             torso.scale.set(2, 2.5, 1.5); torso.castShadow = true; group.add(torso);
-            const helm = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), mat);
+            const helm = new THREE.Mesh(new THREE.SphereGeometry(0.6, 20, 16), mat);
             helm.position.y = 1.8; helm.scale.y = 0.8; group.add(helm);
             // Corrupted sword
             const swordMat = new THREE.MeshStandardMaterial({ color: 0x884444, emissive: 0xff4444, emissiveIntensity: 0.5, metalness: 0.9 });
@@ -1208,7 +1254,7 @@ export class LeviathanRenderer {
             visor.position.set(0, 1.85, 0.55); group.add(visor);
             // Dark aura
             const auraMat = new THREE.MeshBasicMaterial({ color: 0x441122, transparent: true, opacity: 0.08, side: THREE.DoubleSide });
-            const aura = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 12), auraMat);
+            const aura = new THREE.Mesh(new THREE.SphereGeometry(3, 24, 20), auraMat);
             group.add(aura);
             const light = new THREE.PointLight(colors.glow, 1.5, 20);
             light.position.y = 1; group.add(light);
@@ -1217,7 +1263,7 @@ export class LeviathanRenderer {
           default: {
             const body = new THREE.Mesh(this._boxGeo, mat);
             body.castShadow = true; group.add(body);
-            const glowOrb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), glowMat);
+            const glowOrb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16), glowMat);
             glowOrb.position.set(0, 0.8, 0.4); group.add(glowOrb);
             const light = new THREE.PointLight(colors.glow, 0.5, 8);
             light.position.y = 0.5; group.add(light);

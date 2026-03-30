@@ -364,12 +364,34 @@ export class LotRenderer {
     this._playerGroup = new THREE.Group();
 
     // Body (armored knight)
-    const bodyGeo = new THREE.CylinderGeometry(0.4, 0.5, 1.8, 8);
+    const bodyGeo = new THREE.CylinderGeometry(0.4, 0.5, 1.8, 16);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x7788aa, metalness: 0.7, roughness: 0.3 });
     this._playerBody = new THREE.Mesh(bodyGeo, bodyMat);
     this._playerBody.position.y = 0.9;
     this._playerBody.castShadow = true;
     this._playerGroup.add(this._playerBody);
+
+    // Chest plate detail
+    const chestGeo = new THREE.CylinderGeometry(0.38, 0.42, 0.7, 16);
+    const chestMat = new THREE.MeshStandardMaterial({ color: 0x8899bb, metalness: 0.8, roughness: 0.2 });
+    const chest = new THREE.Mesh(chestGeo, chestMat);
+    chest.position.set(0, 1.2, 0.08);
+    chest.scale.set(1.05, 1, 0.7);
+    this._playerGroup.add(chest);
+
+    // Belt detail
+    const beltGeo = new THREE.TorusGeometry(0.45, 0.05, 8, 16);
+    const beltMat = new THREE.MeshStandardMaterial({ color: 0x665533, metalness: 0.4, roughness: 0.6 });
+    const belt = new THREE.Mesh(beltGeo, beltMat);
+    belt.position.y = 0.5;
+    belt.rotation.x = Math.PI / 2;
+    this._playerGroup.add(belt);
+    // Belt buckle
+    const buckleGeo = new THREE.BoxGeometry(0.12, 0.12, 0.06);
+    const buckleMat = new THREE.MeshStandardMaterial({ color: 0xffcc44, metalness: 0.9, roughness: 0.1 });
+    const buckle = new THREE.Mesh(buckleGeo, buckleMat);
+    buckle.position.set(0, 0.5, 0.45);
+    this._playerGroup.add(buckle);
 
     // Helmet
     const helmetGeo = new THREE.SphereGeometry(0.35, 16, 12);
@@ -378,6 +400,18 @@ export class LotRenderer {
     this._playerHelmet.position.y = 2.0;
     this._playerHelmet.scale.y = 1.2;
     this._playerGroup.add(this._playerHelmet);
+
+    // Helmet crest / plume
+    const crestGeo = new THREE.CylinderGeometry(0.03, 0.06, 0.5, 12);
+    const crestMat = new THREE.MeshStandardMaterial({ color: 0xcc2233, roughness: 0.6 });
+    const crest = new THREE.Mesh(crestGeo, crestMat);
+    crest.position.set(0, 2.45, -0.05);
+    this._playerGroup.add(crest);
+    // Plume feathers (thin box running front to back)
+    const plumeMat = new THREE.MeshStandardMaterial({ color: 0xdd3344, roughness: 0.7 });
+    const plume = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.35), plumeMat);
+    plume.position.set(0, 2.35, -0.1);
+    this._playerGroup.add(plume);
 
     // Visor slit (dark)
     const visorGeo = new THREE.BoxGeometry(0.5, 0.08, 0.1);
@@ -432,27 +466,50 @@ export class LotRenderer {
     // Gauntlets (arms)
     const gauntletMat = new THREE.MeshStandardMaterial({ color: 0x5566aa, metalness: 0.7, roughness: 0.3 });
     for (const side of [-0.6, 0.6]) {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.8, 12), gauntletMat);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.8, 16), gauntletMat);
       arm.position.set(side, 1.1, 0.15);
       this._playerGroup.add(arm);
+      // Hand (small sphere at arm end)
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), gauntletMat);
+      hand.position.set(side, 0.65, 0.15);
+      this._playerGroup.add(hand);
     }
 
     // Leg armor / boots
     const bootMat = new THREE.MeshStandardMaterial({ color: 0x445577, metalness: 0.5, roughness: 0.5 });
     for (const side of [-0.2, 0.2]) {
-      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.5, 12), bootMat);
-      boot.position.set(side, 0.25, 0);
+      // Upper boot (shin guard)
+      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.4, 16), bootMat);
+      boot.position.set(side, 0.3, 0);
       this._playerGroup.add(boot);
+      // Rounded boot toe (sphere at base)
+      const toe = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), bootMat);
+      toe.position.set(side, 0.08, 0.04);
+      toe.scale.set(1, 0.5, 1.3);
+      this._playerGroup.add(toe);
     }
 
-    // Cape (simple trailing plane)
+    // Cape / cloak (larger, multi-segment)
     const capeMat = new THREE.MeshStandardMaterial({
-      color: 0x2233aa, side: THREE.DoubleSide, transparent: true, opacity: 0.8,
+      color: 0x2233aa, side: THREE.DoubleSide, transparent: true, opacity: 0.85,
     });
-    const cape = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), capeMat);
-    cape.position.set(0, 1.2, -0.35);
-    cape.rotation.x = 0.15;
+    const cape = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.6, 4, 6), capeMat);
+    cape.position.set(0, 1.1, -0.38);
+    cape.rotation.x = 0.12;
     this._playerGroup.add(cape);
+    // Cape inner lining (slightly different color, visible from inside)
+    const liningMat = new THREE.MeshStandardMaterial({
+      color: 0x112266, side: THREE.BackSide, transparent: true, opacity: 0.7,
+    });
+    const lining = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 1.5, 4, 6), liningMat);
+    lining.position.set(0, 1.1, -0.37);
+    lining.rotation.x = 0.12;
+    this._playerGroup.add(lining);
+    // Cape clasp at neck
+    const claspMat = new THREE.MeshStandardMaterial({ color: 0xffcc44, metalness: 0.9 });
+    const clasp = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), claspMat);
+    clasp.position.set(0, 1.85, -0.3);
+    this._playerGroup.add(clasp);
 
     this._scene.add(this._playerGroup);
   }
@@ -1123,20 +1180,46 @@ export class LotRenderer {
       case "skeleton": {
         const boneMat = new THREE.MeshStandardMaterial({ color: 0xccbb99, roughness: 0.8 });
         // Ribcage torso
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 1.0, 12), boneMat);
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 1.0, 16), boneMat);
         torso.position.y = 1.0; torso.castShadow = true; g.add(torso);
+        // Individual rib bones (curved torus segments on the front)
+        const ribMat = new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 0.7 });
+        for (let i = 0; i < 4; i++) {
+          const rib = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.025, 8, 12, Math.PI), ribMat);
+          rib.position.set(0, 0.7 + i * 0.2, 0.05);
+          rib.rotation.x = Math.PI / 2;
+          rib.scale.set(1.1 - i * 0.05, 1, 1);
+          g.add(rib);
+        }
         // Spine visible behind
-        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 10), boneMat);
+        const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 12), boneMat);
         spine.position.set(0, 0.9, -0.15); g.add(spine);
+        // Spine vertebrae bumps
+        for (let i = 0; i < 5; i++) {
+          const vert = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), boneMat);
+          vert.position.set(0, 0.4 + i * 0.25, -0.18);
+          vert.scale.set(1.2, 0.6, 1);
+          g.add(vert);
+        }
         // Pelvis
         const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, 0.25), boneMat);
         pelvis.position.y = 0.45; g.add(pelvis);
         // Skull
-        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 16), new THREE.MeshStandardMaterial({ color: 0xddccaa }));
         skull.position.y = 1.7; skull.scale.set(1, 1.15, 1); g.add(skull);
-        // Jaw (slight gap)
-        const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.12), boneMat);
-        jaw.position.set(0, 1.52, 0.12); g.add(jaw);
+        // Jaw (hinged, slightly open)
+        const jawUpper = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.14), boneMat);
+        jawUpper.position.set(0, 1.55, 0.12); g.add(jawUpper);
+        const jawLower = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.12), boneMat);
+        jawLower.position.set(0, 1.49, 0.13);
+        jawLower.rotation.x = 0.15; // slightly open
+        g.add(jawLower);
+        // Teeth (small boxes along jaw)
+        for (const s of [-0.05, 0, 0.05]) {
+          const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.015),
+            new THREE.MeshStandardMaterial({ color: 0xeeddbb }));
+          tooth.position.set(s, 1.52, 0.19); g.add(tooth);
+        }
         // Eyes (red glow)
         for (const s of [-0.07, 0.07]) {
           const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
@@ -1144,15 +1227,23 @@ export class LotRenderer {
         }
         // Arms (bone segments)
         for (const s of [-1, 1]) {
-          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.6, 10), boneMat);
+          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.6, 12), boneMat);
           upper.position.set(s * 0.35, 1.25, 0); upper.rotation.z = s * 0.3; g.add(upper);
-          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.5, 10), boneMat);
+          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.5, 12), boneMat);
           lower.position.set(s * 0.5, 0.85, 0.15); lower.rotation.z = s * 0.5; g.add(lower);
+          // Bony hand
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), boneMat);
+          hand.position.set(s * 0.58, 0.6, 0.2); g.add(hand);
         }
         // Legs (bone segments)
         for (const s of [-0.15, 0.15]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.6, 10), boneMat);
-          leg.position.set(s, 0.15, 0); g.add(leg);
+          const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 12), boneMat);
+          thigh.position.set(s, 0.3, 0); g.add(thigh);
+          const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.35, 12), boneMat);
+          shin.position.set(s, 0.0, 0.02); g.add(shin);
+          // Bony foot
+          const foot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.14), boneMat);
+          foot.position.set(s, -0.15, 0.04); g.add(foot);
         }
         // Rusty sword
         const sword = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.03),
@@ -1170,7 +1261,7 @@ export class LotRenderer {
           emissive: 0x4422aa, emissiveIntensity: 0.6, side: THREE.DoubleSide,
         });
         // Main robe (cone tapering down to wispy tendrils)
-        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2.2, 8), robeMat);
+        const robe = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2.2, 16), robeMat);
         robe.position.y = 1.1; g.add(robe);
         // Inner darker robe layer
         const inner = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.8, 12),
@@ -1206,39 +1297,76 @@ export class LotRenderer {
         // Massive torso (irregular box)
         const torso = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.8, 1.0), rockMat);
         torso.position.y = 1.2; torso.castShadow = true; g.add(torso);
+        // Rocky surface bumps on torso
+        for (const bump of [
+          { x: 0.5, y: 1.6, z: 0.45, s: 0.18 },
+          { x: -0.4, y: 0.9, z: 0.48, s: 0.15 },
+          { x: 0.3, y: 0.6, z: 0.42, s: 0.12 },
+          { x: -0.2, y: 1.8, z: 0.4, s: 0.14 },
+        ]) {
+          const rock = new THREE.Mesh(new THREE.SphereGeometry(bump.s, 8, 6), rockMat);
+          rock.position.set(bump.x, bump.y, bump.z);
+          rock.scale.set(1.2, 0.8, 0.7);
+          g.add(rock);
+        }
         // Belly boulder
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), rockMat);
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), rockMat);
         belly.position.set(0, 0.8, 0.3); g.add(belly);
         // Head (small, sunken into shoulders)
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.55),
           new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.9 }));
         head.position.y = 2.3; g.add(head);
-        // Glowing cracks (multiple)
+        // Heavy brow ridge
+        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.1, 0.3),
+          new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 }));
+        brow.position.set(0, 2.45, 0.15); g.add(brow);
+        // Glowing cracks (more extensive, wrapping around body)
+        const crackMat = new THREE.MeshBasicMaterial({ color: 0xff6622 });
         for (const crack of [
           { x: 0.2, y: 1.0, z: 0.51, w: 0.06, h: 1.2 },
           { x: -0.3, y: 1.3, z: 0.51, w: 0.05, h: 0.8 },
           { x: 0.1, y: 0.7, z: 0.51, w: 0.04, h: 0.6 },
+          { x: -0.5, y: 1.0, z: 0.51, w: 0.035, h: 0.5 },
+          { x: 0.4, y: 1.6, z: 0.51, w: 0.04, h: 0.7 },
         ]) {
-          const cm = new THREE.Mesh(new THREE.BoxGeometry(crack.w, crack.h, 0.01),
-            new THREE.MeshBasicMaterial({ color: 0xff6622 }));
+          const cm = new THREE.Mesh(new THREE.BoxGeometry(crack.w, crack.h, 0.01), crackMat);
           cm.position.set(crack.x, crack.y, crack.z); g.add(cm);
         }
+        // Side cracks
+        for (const crack of [
+          { x: 0.66, y: 1.1, z: 0.2, rY: Math.PI / 2, w: 0.04, h: 0.9 },
+          { x: -0.66, y: 1.4, z: -0.1, rY: Math.PI / 2, w: 0.035, h: 0.6 },
+        ]) {
+          const cm = new THREE.Mesh(new THREE.BoxGeometry(crack.w, crack.h, 0.01), crackMat);
+          cm.position.set(crack.x, crack.y, crack.z); cm.rotation.y = crack.rY; g.add(cm);
+        }
+        // Glowing core (visible through cracks, larger and brighter)
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12),
+          new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.4 }));
+        core.position.set(0, 1.1, 0.15); g.add(core);
+        // Core pulsing outer shell
+        const coreOuter = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12),
+          new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.1 }));
+        coreOuter.position.set(0, 1.1, 0.15); g.add(coreOuter);
         // Heavy arms (thick cylinders with fist spheres)
         for (const s of [-1, 1]) {
-          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.0, 12), rockMat);
+          const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.0, 16), rockMat);
           upper.position.set(s * 0.85, 1.4, 0); upper.rotation.z = s * 0.2; g.add(upper);
-          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.9, 12), rockMat);
+          // Arm crack
+          const armCrack = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.01), crackMat);
+          armCrack.position.set(s * 0.85, 1.4, 0.21); g.add(armCrack);
+          const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.9, 16), rockMat);
           lower.position.set(s * 1.0, 0.6, 0.1); g.add(lower);
-          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), rockMat);
+          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12), rockMat);
           fist.position.set(s * 1.0, 0.15, 0.15); g.add(fist);
         }
         // Stumpy legs
         for (const s of [-0.35, 0.35]) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.6, 12), rockMat);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.6, 16), rockMat);
           leg.position.set(s, 0.1, 0); g.add(leg);
         }
-        // Inner glow
-        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 10),
+        // Inner glow (overall aura)
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 12),
           new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.06 }));
         glow.position.y = 1.0; g.add(glow);
         break;
@@ -1246,7 +1374,7 @@ export class LotRenderer {
       case "boss": {
         const demonMat = new THREE.MeshStandardMaterial({ color: 0x441122, metalness: 0.5, roughness: 0.4 });
         // Armored torso
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 2.4, 8), demonMat);
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 2.4, 16), demonMat);
         torso.position.y = 1.5; torso.castShadow = true; g.add(torso);
         // Chest plate (darker, metallic)
         const plate = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 0.3),
@@ -1305,7 +1433,7 @@ export class LotRenderer {
       case "champion": {
         // Armored knight (mirror of player but different color)
         const body = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.4, 0.5, 1.8, 8),
+          new THREE.CylinderGeometry(0.4, 0.5, 1.8, 16),
           new THREE.MeshStandardMaterial({ color: 0x993333, metalness: 0.7, roughness: 0.3 }),
         );
         body.position.y = 0.9;
@@ -1337,18 +1465,25 @@ export class LotRenderer {
       case "skeleton_archer": {
         // Similar to skeleton but with a bow
         const body = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.25, 0.3, 1.5, 12),
+          new THREE.CylinderGeometry(0.25, 0.3, 1.5, 16),
           new THREE.MeshStandardMaterial({ color: 0xbbaa88, roughness: 0.8 }),
         );
         body.position.y = 0.75;
         body.castShadow = true;
         g.add(body);
         const skull = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22, 12, 10),
+          new THREE.SphereGeometry(0.22, 16, 12),
           new THREE.MeshStandardMaterial({ color: 0xccbbaa }),
         );
         skull.position.y = 1.65;
         g.add(skull);
+        // Jaw
+        const archerJaw = new THREE.Mesh(
+          new THREE.BoxGeometry(0.16, 0.04, 0.1),
+          new THREE.MeshStandardMaterial({ color: 0xbbaa88 }),
+        );
+        archerJaw.position.set(0, 1.5, 0.12);
+        g.add(archerJaw);
         // Bow (arc shape)
         const bow = new THREE.Mesh(
           new THREE.TorusGeometry(0.4, 0.03, 10, 8, Math.PI),
