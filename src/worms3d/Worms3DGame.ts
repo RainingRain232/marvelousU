@@ -3311,6 +3311,14 @@ export class Worms3DGame {
     }
 
     this._phase = "camera_pan";
+
+    // Snap camera to first worm so it doesn't start pointing at the sky
+    const firstWorm = this._getCurrentWorm();
+    if (firstWorm) {
+      this._camTarget.copy(firstWorm.pos);
+      this._camSmooth.copy(firstWorm.pos);
+    }
+
     this._startTurn();
   }
 
@@ -5341,34 +5349,113 @@ export class Worms3DGame {
       this._pauseOverlay = document.createElement("div");
       this._pauseOverlay.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 55;
-        background: rgba(0,0,0,0.7); display: flex; flex-direction: column;
+        background: rgba(0,0,0,0.75); display: flex; flex-direction: column;
         justify-content: center; align-items: center;
         font-family: 'Segoe UI', Arial, sans-serif; pointer-events: auto;
       `;
+      const btnStyle = `padding:14px 50px;font-size:18px;color:#fff;border-radius:8px;cursor:pointer;
+        margin-bottom:10px;transition:transform 0.15s,background 0.2s;width:260px;text-align:center;box-sizing:border-box;`;
+      const panelStyle = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        width:560px;max-height:80vh;background:linear-gradient(180deg,#1a1510,#0d0a06);border:2px solid #665533;
+        border-radius:12px;padding:30px;overflow-y:auto;color:#ccbb99;font-size:14px;line-height:1.7;`;
+
       this._pauseOverlay.innerHTML = `
-        <div style="font-size:48px;font-weight:bold;color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.4);margin-bottom:30px;">
-          PAUSED
+        <div id="w3d-pause-main" style="display:flex;flex-direction:column;align-items:center;">
+          <div style="font-size:48px;font-weight:bold;color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.4);margin-bottom:8px;">
+            PAUSED
+          </div>
+          <div style="color:#886633;font-size:14px;margin-bottom:24px;">Press ESC to return to battle</div>
+          <div id="w3d-resume" style="${btnStyle}background:linear-gradient(135deg,#446600,#88aa22);border:2px solid #aacc44;font-weight:bold;"
+            onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+            Resume
+          </div>
+          <div id="w3d-controls-btn" style="${btnStyle}background:rgba(100,80,40,0.4);border:1px solid #665533;"
+            onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+            Controls
+          </div>
+          <div id="w3d-intro-btn" style="${btnStyle}background:rgba(100,80,40,0.4);border:1px solid #665533;"
+            onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+            Introduction
+          </div>
+          <div id="w3d-quit" style="${btnStyle}background:rgba(150,40,40,0.3);border:1px solid #884444;color:#ff8866;margin-top:10px;"
+            onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+            Quit to Menu
+          </div>
         </div>
-        <div id="worms3d-resume" style="padding:14px 50px;font-size:20px;font-weight:bold;color:#fff;
-          background:linear-gradient(135deg,#446600,#88aa22);border:2px solid #aacc44;border-radius:8px;
-          cursor:pointer;margin-bottom:12px;transition:transform 0.15s;"
-          onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
-          Resume
+        <div id="w3d-controls-panel" style="${panelStyle}display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#ffd700;font-size:24px;">Controls</h2>
+            <div id="w3d-controls-back" style="padding:6px 18px;background:rgba(100,80,40,0.5);border:1px solid #665533;
+              border-radius:6px;cursor:pointer;color:#ccaa66;font-size:13px;">&#8592; Back</div>
+          </div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Movement</h3>
+          <div><b style="color:#ffd700">W/A/S/D</b> — Move forward, left, backward, right</div>
+          <div><b style="color:#ffd700">Space</b> — Jump / Backflip (with S)</div>
+          <div><b style="color:#ffd700">Shift</b> — Sprint (uses energy)</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Combat</h3>
+          <div><b style="color:#ffd700">Mouse</b> — Look / Aim direction</div>
+          <div><b style="color:#ffd700">Right-click drag</b> — Rotate camera</div>
+          <div><b style="color:#ffd700">Enter (hold)</b> — Charge shot power</div>
+          <div><b style="color:#ffd700">Enter (release)</b> — Fire weapon</div>
+          <div><b style="color:#ffd700">Click</b> — Aim target (airstrikes, teleport)</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Weapons & Tools</h3>
+          <div><b style="color:#ffd700">1-9</b> — Quick-select weapon by slot</div>
+          <div><b style="color:#ffd700">Tab / Right-click</b> — Open weapon panel</div>
+          <div><b style="color:#ffd700">U</b> — Undo movement (before firing)</div>
+          <div><b style="color:#ffd700">G</b> — Skip turn</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Camera</h3>
+          <div><b style="color:#ffd700">Scroll wheel</b> — Zoom in/out</div>
+          <div><b style="color:#ffd700">Q / E</b> — Rotate camera left/right</div>
+          <div><b style="color:#ffd700">F</b> — Toggle free camera mode</div>
+          <div><b style="color:#ffd700">T</b> — Taunt</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">System</h3>
+          <div><b style="color:#ffd700">ESC</b> — Pause menu</div>
         </div>
-        <div id="worms3d-quit" style="padding:14px 50px;font-size:20px;color:#ccc;
-          background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);border-radius:8px;
-          cursor:pointer;transition:transform 0.15s;"
-          onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
-          Quit to Menu
+        <div id="w3d-intro-panel" style="${panelStyle}display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#ffd700;font-size:24px;">Introduction</h2>
+            <div id="w3d-intro-back" style="padding:6px 18px;background:rgba(100,80,40,0.5);border:1px solid #665533;
+              border-radius:6px;cursor:pointer;color:#ccaa66;font-size:13px;">&#8592; Back</div>
+          </div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">What is Worms 3D?</h3>
+          <div>Worms 3D is a turn-based artillery game set in the world of Camelot. Teams of medieval knights take turns moving across a 3D destructible landscape, aiming, and firing an arsenal of weapons to eliminate the opposition.</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Objective</h3>
+          <div>Be the last team standing. Reduce enemy worms' HP to zero through weapon damage, fall damage, or by knocking them into the water. Use the terrain, wind, and your weapon arsenal strategically.</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Turn Structure</h3>
+          <div>Each turn you have a time limit to move your worm and fire one weapon. After firing, you get a short retreat phase to move to safety. Then the next team takes their turn. Wind changes each turn and affects projectiles.</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Terrain & Environment</h3>
+          <div>The island terrain is fully destructible — explosions carve craters, creating new paths and hazards. The map features medieval castles, ruins, trees, and rocks. Oil barrels can be detonated for chain explosions. Supply crates drop periodically with bonus weapons.</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Sudden Death</h3>
+          <div>After the sudden death timer expires, all worms are set to 1 HP and the water begins to rise, forcing a dramatic endgame confrontation.</div>
+          <h3 style="color:#ddbb66;margin:16px 0 8px;">Teams of Camelot</h3>
+          <div><b style="color:#6699ff">Round Table</b> — Arthur, Lancelot, Gawain, Percival</div>
+          <div><b style="color:#ff5555">Mordred's Host</b> — Mordred, Agravaine, Morgause, Gareth</div>
+          <div><b style="color:#55ee77">Merlin's Circle</b> — Merlin, Nimue, Viviane, Taliesin</div>
+          <div><b style="color:#ffcc44">Grail Knights</b> — Galahad, Bors, Tristan, Kay</div>
         </div>
       `;
       document.body.appendChild(this._pauseOverlay);
-      this._pauseOverlay.querySelector("#worms3d-resume")!.addEventListener("click", () => this._togglePause());
-      this._pauseOverlay.querySelector("#worms3d-quit")!.addEventListener("click", () => {
-        this._paused = false;
-        this._pauseOverlay?.remove();
-        this._pauseOverlay = null;
+
+      const mainPanel = this._pauseOverlay.querySelector("#w3d-pause-main") as HTMLElement;
+      const controlsPanel = this._pauseOverlay.querySelector("#w3d-controls-panel") as HTMLElement;
+      const introPanel = this._pauseOverlay.querySelector("#w3d-intro-panel") as HTMLElement;
+
+      this._pauseOverlay.querySelector("#w3d-resume")!.addEventListener("click", () => this._togglePause());
+      this._pauseOverlay.querySelector("#w3d-quit")!.addEventListener("click", () => {
+        this._paused = false; this._pauseOverlay?.remove(); this._pauseOverlay = null;
         window.dispatchEvent(new Event("worms3dExit"));
+      });
+      this._pauseOverlay.querySelector("#w3d-controls-btn")!.addEventListener("click", () => {
+        mainPanel.style.display = "none"; controlsPanel.style.display = "block";
+      });
+      this._pauseOverlay.querySelector("#w3d-intro-btn")!.addEventListener("click", () => {
+        mainPanel.style.display = "none"; introPanel.style.display = "block";
+      });
+      this._pauseOverlay.querySelector("#w3d-controls-back")!.addEventListener("click", () => {
+        controlsPanel.style.display = "none"; mainPanel.style.display = "flex";
+      });
+      this._pauseOverlay.querySelector("#w3d-intro-back")!.addEventListener("click", () => {
+        introPanel.style.display = "none"; mainPanel.style.display = "flex";
       });
     } else {
       this._pauseOverlay?.remove();

@@ -415,6 +415,12 @@ export class Worms2DGame {
       return;
     }
     if (key === 'tab' && this._phase !== 'title' && this._phase !== 'victory') { this._cycleCameraToNextWorm(); return; }
+    if (key === 'g' && (this._phase === 'playing' || this._phase === 'aiming' || this._phase === 'retreat') && !this._aiActive) {
+      this._playSound('click');
+      if (this._phase === 'retreat') { this._advanceToNextTeam(); }
+      else { this._endTurn(); }
+      return;
+    }
     if (key >= '1' && key <= '9' && (this._phase === 'playing' || this._phase === 'aiming')) {
       const idx = parseInt(key) - 1;
       if (idx < WEAPON_KEYS.length) this._selectWeapon(WEAPON_KEYS[idx]);
@@ -1663,12 +1669,32 @@ export class Worms2DGame {
     this._aiTimer += dt;
     switch (this._aiPhase) {
       case 'thinking': {
-        if (this._aiTimer > 0.8) { this._aiSelectWeapon(worm); this._aiPhase = 'moving'; this._aiTimer = 0; this._aiMoveTime = randRange(0, 1.0); this._aiMoveDir = Math.random() > 0.5 ? 1 : -1; }
+        if (this._aiTimer > 0.8) {
+          this._aiSelectWeapon(worm);
+          this._aiPhase = 'moving'; this._aiTimer = 0;
+          this._aiMoveTime = randRange(0.5, 2.0);
+          // Move toward nearest enemy
+          const target = this._findNearestEnemy(worm);
+          this._aiMoveDir = target ? (target.x > worm.x ? 1 : -1) : (Math.random() > 0.5 ? 1 : -1);
+        }
         break;
       }
       case 'moving': {
-        if (this._aiTimer < this._aiMoveTime && worm.grounded) { worm.vx = this._aiMoveDir * MOVE_SPEED; worm.facing = this._aiMoveDir; }
-        else { worm.vx = 0; this._aiPhase = 'aiming'; this._aiTimer = 0; this._aiCalculateShot(worm); }
+        if (this._aiTimer < this._aiMoveTime) {
+          if (worm.grounded) {
+            worm.vx = this._aiMoveDir * MOVE_SPEED;
+            worm.facing = this._aiMoveDir;
+            // Jump over small obstacles
+            if (this._isTerrainSolid(worm.x + this._aiMoveDir * (WORM_RADIUS + 3), worm.y - 2) &&
+                !this._isTerrainSolid(worm.x + this._aiMoveDir * (WORM_RADIUS + 3), worm.y - 15)) {
+              worm.vy = JUMP_FORCE * 0.7;
+              worm.vx = this._aiMoveDir * MOVE_SPEED * 1.2;
+              worm.grounded = false;
+            }
+          }
+        } else {
+          worm.vx = 0; this._aiPhase = 'aiming'; this._aiTimer = 0; this._aiCalculateShot(worm);
+        }
         this._camTargetX = worm.x; this._camTargetY = worm.y; break;
       }
       case 'aiming': {
@@ -2846,7 +2872,7 @@ export class Worms2DGame {
       const team = this._teams[this._currentTeam]; let ammoText = '∞';
       if (weaponDef.ammo !== -1 && team) { ammoText = `${team.ammo.get(this._currentWeapon) ?? 0}`; }
       ctx.font = '11px sans-serif'; ctx.fillStyle = '#aaa'; ctx.fillText(`Ammo: ${ammoText}`, wx + 38, wy + 30);
-      ctx.fillStyle = '#666'; ctx.fillText('E: Weapons', wx + 110, wy + 30);
+      ctx.fillStyle = '#666'; ctx.fillText('E: Weapons  G: End turn', wx + 110, wy + 30);
     }
 
     // Power bar (glowing when charging)
