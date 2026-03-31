@@ -3269,7 +3269,7 @@ export class Worms3DGame {
         Press ESC to return to main menu
       </div>
       <div style="margin-top: 8px; color: #666; font-size: 12px; max-width:600px; text-align:center; line-height:1.5;">
-        WASD: Move (Shift: Sprint) | Mouse drag: Camera | Scroll: Zoom | Q/E: Rotate<br>
+        WASD: Move (Shift: Sprint) | Mouse drag: Camera | Scroll: Zoom | Q/E: Rotate | R/F: Up/Down<br>
         Left click (hold): Aim & fire | Right click: Weapon menu<br>
         Space: Jump (S+Space: Backflip) | Tab: Cycle weapons | P: Pause<br>
         T: Taunt | G: Skip turn | U: Undo move | C: Free camera<br>
@@ -5473,6 +5473,7 @@ export class Worms3DGame {
           <h3 style="color:#ddbb66;margin:16px 0 8px;">Camera</h3>
           <div><b style="color:#ffd700">Scroll wheel</b> — Zoom in/out</div>
           <div><b style="color:#ffd700">Q / E</b> — Rotate camera left/right</div>
+          <div><b style="color:#ffd700">R / F</b> — Camera up/down (pitch)</div>
           <div><b style="color:#ffd700">F</b> — Toggle free camera mode</div>
           <div><b style="color:#ffd700">T</b> — Taunt</div>
           <h3 style="color:#ddbb66;margin:16px 0 8px;">System</h3>
@@ -7983,6 +7984,9 @@ export class Worms3DGame {
     // Keyboard camera rotation
     if (this._keys.has("q")) this._camTheta += dt * 2;
     if (this._keys.has("e")) this._camTheta -= dt * 2;
+    // Keyboard camera up/down
+    if (this._keys.has("r")) this._camPhi = Math.max(0.1, this._camPhi - dt * 1.5);
+    if (this._keys.has("f") && !this._freeCamera) this._camPhi = Math.min(Math.PI * 0.45, this._camPhi + dt * 1.5);
   }
 
   /* ═══════════ worm visuals ═══════════ */
