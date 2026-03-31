@@ -1064,6 +1064,115 @@ export class Worms2DGame {
         cy = clamp(cy, TERRAIN_HEIGHT * 0.45, TERRAIN_HEIGHT * 0.88);
       }
     }
+
+    // Overhanging ledges — horizontal shelves carved into cliff faces
+    const ledgeCount = Math.round(randInt(8, 16) * caveMult);
+    for (let l = 0; l < ledgeCount; l++) {
+      const lx = randRange(100, TERRAIN_WIDTH - 100);
+      // Find the surface at this X
+      let surfY = 0;
+      for (let y = 0; y < TERRAIN_HEIGHT; y++) {
+        if (this._terrainMask[y * TERRAIN_WIDTH + Math.floor(lx)] === 1) { surfY = y; break; }
+      }
+      if (surfY < 50 || surfY > TERRAIN_HEIGHT - WATER_LEVEL - 30) continue;
+      // Carve a ledge below surface (creates an overhang above and a platform below)
+      const ledgeDepth = randRange(20, 60);
+      const ledgeWidth = randRange(60, 160);
+      const ledgeY = surfY + randRange(30, 80);
+      const ledgeThickness = randRange(15, 35);
+      for (let dx = -ledgeWidth / 2; dx <= ledgeWidth / 2; dx++) {
+        for (let dy = 0; dy < ledgeThickness; dy++) {
+          const px = Math.floor(lx + dx);
+          const py = Math.floor(ledgeY + dy);
+          if (px >= 0 && px < TERRAIN_WIDTH && py >= 0 && py < TERRAIN_HEIGHT) {
+            this._terrainMask[py * TERRAIN_WIDTH + px] = 0;
+          }
+        }
+      }
+    }
+
+    // Surface caves — open from the side, carved into hillsides
+    const surfaceCaveCount = Math.round(randInt(6, 12) * caveMult);
+    for (let sc = 0; sc < surfaceCaveCount; sc++) {
+      const scx = randRange(150, TERRAIN_WIDTH - 150);
+      // Find surface
+      let surfY = 0;
+      for (let y = 0; y < TERRAIN_HEIGHT; y++) {
+        if (this._terrainMask[y * TERRAIN_WIDTH + Math.floor(scx)] === 1) { surfY = y; break; }
+      }
+      if (surfY < 50 || surfY > TERRAIN_HEIGHT - WATER_LEVEL - 20) continue;
+      // Carve an opening from surface going inward
+      const caveW = randRange(40, 100);
+      const caveH = randRange(25, 55);
+      const caveDepthY = surfY + randRange(5, 25);
+      const dir = Math.random() > 0.5 ? 1 : -1; // which direction to extend
+      for (let dx = 0; Math.abs(dx) < caveW; dx += dir) {
+        for (let dy = -caveH / 2; dy < caveH / 2; dy++) {
+          const progress = Math.abs(dx) / caveW;
+          const hereH = caveH * (1 - progress * progress); // narrowing
+          if (Math.abs(dy) > hereH / 2) continue;
+          const px = Math.floor(scx + dx);
+          const py = Math.floor(caveDepthY + dy);
+          if (px >= 0 && px < TERRAIN_WIDTH && py >= 0 && py < TERRAIN_HEIGHT) {
+            this._terrainMask[py * TERRAIN_WIDTH + px] = 0;
+          }
+        }
+      }
+    }
+
+    // Vertical shafts — narrow vertical drops through terrain
+    const shaftCount = Math.round(randInt(3, 7) * caveMult);
+    for (let sh = 0; sh < shaftCount; sh++) {
+      const sx = randRange(200, TERRAIN_WIDTH - 200);
+      let surfY = 0;
+      for (let y = 0; y < TERRAIN_HEIGHT; y++) {
+        if (this._terrainMask[y * TERRAIN_WIDTH + Math.floor(sx)] === 1) { surfY = y; break; }
+      }
+      if (surfY < 50) continue;
+      const shaftW = randRange(12, 30);
+      const shaftDepth = randRange(80, 200);
+      const wobble = randRange(0.02, 0.06);
+      for (let dy = 0; dy < shaftDepth; dy++) {
+        const wx = Math.sin(dy * wobble) * 8; // slight wobble
+        const r = shaftW / 2 + Math.sin(dy * 0.1) * 3;
+        for (let dx = -r; dx <= r; dx++) {
+          const px = Math.floor(sx + dx + wx);
+          const py = Math.floor(surfY + dy);
+          if (px >= 0 && px < TERRAIN_WIDTH && py >= 0 && py < TERRAIN_HEIGHT) {
+            this._terrainMask[py * TERRAIN_WIDTH + px] = 0;
+          }
+        }
+      }
+    }
+
+    // Floating platforms / bridges — add terrain back in the air above caves
+    const platformCount = randInt(4, 10);
+    for (let p = 0; p < platformCount; p++) {
+      const px = randRange(200, TERRAIN_WIDTH - 200);
+      // Find surface
+      let surfY = 0;
+      for (let y = 0; y < TERRAIN_HEIGHT; y++) {
+        if (this._terrainMask[y * TERRAIN_WIDTH + Math.floor(px)] === 1) { surfY = y; break; }
+      }
+      // Place platform above the surface in air (only if there's a cave below)
+      const platY = surfY - randRange(30, 80);
+      if (platY < 30) continue;
+      const platW = randRange(40, 100);
+      const platH = randRange(6, 14);
+      // Only place if there's air around the platform
+      const midCheck = this._terrainMask[Math.floor(platY) * TERRAIN_WIDTH + Math.floor(px)];
+      if (midCheck === 1) continue; // don't place inside solid terrain
+      for (let dx = -platW / 2; dx <= platW / 2; dx++) {
+        for (let dy = 0; dy < platH; dy++) {
+          const ppx = Math.floor(px + dx);
+          const ppy = Math.floor(platY + dy);
+          if (ppx >= 0 && ppx < TERRAIN_WIDTH && ppy >= 0 && ppy < TERRAIN_HEIGHT) {
+            this._terrainMask[ppy * TERRAIN_WIDTH + ppx] = 1;
+          }
+        }
+      }
+    }
+
     this._renderTerrainFull();
     this._terrainDirty = false;
   }
