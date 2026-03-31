@@ -615,6 +615,7 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.KINGDOM, label: "KINGDOM", desc: "Mario-style platformer — play as Arthur, Merlin, Guinevere or Lancelot. 4 worlds, power-ups, bosses & Camelot flavour", skipSetup: true, tag: "NEW" },
   { mode: GameMode.WORMS_3D, label: "WORMS 3D", desc: "3D turn-based artillery — teams of Camelot knights on destructible terrain, 20+ weapons, wind, water & explosive medieval mayhem", skipSetup: true, tag: "3D" },
   { mode: GameMode.WORMS_2D, label: "WORMS 2D", desc: "2D turn-based artillery — classic side-view worms with Camelot knights, 30+ weapons, destructible terrain, parallax backgrounds & medieval chaos", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.HOLY_TENNIS, label: "HOLY TENNIS", desc: "3D medieval tennis — wield swords as rackets and volley the Holy Grail across a moonlit castle court. Full tennis scoring, deuce, tiebreaks & best-of-3 sets", skipSetup: true, tag: "NEW" },
 ];
 
 // ---------------------------------------------------------------------------

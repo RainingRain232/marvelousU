@@ -461,6 +461,7 @@ function _showLoading(mode: string): void {
     [GameMode.KINGDOM]: 89,
     [GameMode.WORMS_3D]: 90,
     [GameMode.WORMS_2D]: 91,
+    [GameMode.HOLY_TENNIS]: 92,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -988,6 +989,12 @@ function _showLoading(mode: string): void {
       menuScreen.hide();
       _showLoading(menuScreen.selectedGameMode);
       _bootWorms2DGame().then(() => loadingScreen.hide());
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.HOLY_TENNIS) {
+      menuScreen.hide();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootHolyTennisGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -4070,6 +4077,22 @@ async function _bootWorms2DGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("worms2dExit", _onExit);
+}
+
+let _holyTennisGame: any = null;
+
+async function _bootHolyTennisGame(): Promise<void> {
+  if (_holyTennisGame) { _holyTennisGame.destroy(); _holyTennisGame = null; }
+  const { HolyTennisGame } = await import("./holytennis/HolyTennisGame");
+
+  _holyTennisGame = new HolyTennisGame();
+  await _holyTennisGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("holyTennisExit", _onExit);
+    if (_holyTennisGame) { _holyTennisGame.destroy(); _holyTennisGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("holyTennisExit", _onExit);
 }
 
 async function _bootKingdomGame(): Promise<void> {
