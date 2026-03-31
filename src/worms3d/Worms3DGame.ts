@@ -1247,7 +1247,7 @@ export class Worms3DGame {
         h *= islandMask * TERRAIN_HEIGHT;
         h -= 1; // sink edges below water
 
-        this._heightData[z * (res + 1) + x] = h;
+        this._heightData[z * (res + 1) + x] = isNaN(h) ? 0 : h;
       }
     }
 
@@ -2772,7 +2772,8 @@ export class Worms3DGame {
 
     const hx0 = h00 + fx * (h10 - h00);
     const hx1 = h01 + fx * (h11 - h01);
-    return hx0 + fz * (hx1 - hx0);
+    const result = hx0 + fz * (hx1 - hx0);
+    return isNaN(result) ? 0 : result;
   }
 
   private _deformTerrain(cx: number, cz: number, radius: number, depth: number): void {
@@ -2800,6 +2801,7 @@ export class Worms3DGame {
           const crater = depth * factor * factor; // smooth falloff
           const idx = z * (res + 1) + x;
           this._heightData[idx] -= crater;
+          if (isNaN(this._heightData[idx])) this._heightData[idx] = 0;
           positions.setY(idx, this._heightData[idx]);
         }
       }
