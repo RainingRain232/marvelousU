@@ -124,7 +124,7 @@ export class LeviathanRenderer {
     this._camera = new THREE.PerspectiveCamera(LEVIATHAN.CAMERA_FOV, w / h, 0.3, 200);
 
     this._boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    this._sphereGeo = new THREE.SphereGeometry(0.5, 24, 20);
+    this._sphereGeo = new THREE.SphereGeometry(0.5, 32, 24);
 
     // Lighting — very dark ambient, player lantern is primary light
     this._ambientLight = new THREE.AmbientLight(0x081015, 0.3);
@@ -294,7 +294,7 @@ export class LeviathanRenderer {
     // Pressure wave expanding rings
     for (let i = 0; i < 2; i++) {
       const mat = new THREE.MeshBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
-      const mesh = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.0, 24), mat);
+      const mesh = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.0, 32), mat);
       mesh.visible = false; this._scene.add(mesh); this._waveRings.push(mesh);
     }
     // Falling debris for escape phase
@@ -308,7 +308,7 @@ export class LeviathanRenderer {
     // Sonar ping rings (stronger opacity)
     for (let i = 0; i < 3; i++) {
       const mat = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
-      const mesh = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.0, 32), mat);
+      const mesh = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.0, 40), mat);
       mesh.visible = false; this._scene.add(mesh); this._sonarRings.push(mesh);
     }
   }
@@ -401,17 +401,101 @@ export class LeviathanRenderer {
     });
     for (let i = 0; i < 8; i++) {
       const y = -(i / 8) * depth;
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(w / 2 - 2, 0.8, 10, 12, Math.PI), ceilingMat.clone());
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(w / 2 - 2, 0.8, 16, 32, Math.PI), ceilingMat.clone());
       arch.position.set(0, y + 12, 0);
       arch.rotation.z = Math.PI / 2;
       arch.rotation.y = Math.PI / 2;
       this._scene.add(arch);
+      // Keystone at arch apex
+      const keystoneMat = new THREE.MeshStandardMaterial({ color: 0x3a3530, roughness: 0.8, metalness: 0.2 });
+      const keystone = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 1.2), keystoneMat);
+      keystone.position.set(0, y + 12 + w / 2 - 2.5, 0);
+      this._scene.add(keystone);
+    }
+
+    // Stalagmites rising from floor
+    const stalagMat = new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.95, metalness: 0.05 });
+    for (let i = 0; i < 15; i++) {
+      const sx = (Math.random() - 0.5) * w * 0.9;
+      const sz = (Math.random() - 0.5) * 20;
+      const sh = 1.5 + Math.random() * 4;
+      const sr = 0.3 + Math.random() * 0.6;
+      const stalag = new THREE.Mesh(new THREE.ConeGeometry(sr, sh, 16), stalagMat.clone());
+      stalag.position.set(sx, -depth - 5 + sh / 2, sz);
+      stalag.castShadow = true;
+      this._scene.add(stalag);
+    }
+
+    // Stalactites hanging from ceiling
+    for (let i = 0; i < 12; i++) {
+      const sx = (Math.random() - 0.5) * w * 0.6;
+      const sz = (Math.random() - 0.5) * 15;
+      const sh = 1 + Math.random() * 3;
+      const sr = 0.2 + Math.random() * 0.4;
+      const stalac = new THREE.Mesh(new THREE.ConeGeometry(sr, sh, 14), stalagMat.clone());
+      stalac.position.set(sx, 10 - sh / 2, sz);
+      stalac.rotation.x = Math.PI; // upside down
+      stalac.castShadow = true;
+      this._scene.add(stalac);
+    }
+
+    // Scattered floor boulders
+    const boulderMat = new THREE.MeshStandardMaterial({ color: 0x383028, roughness: 0.92, metalness: 0.08 });
+    for (let i = 0; i < 20; i++) {
+      const bx = (Math.random() - 0.5) * w * 0.85;
+      const by = -depth - 5;
+      const bz = (Math.random() - 0.5) * 25;
+      const bSize = 0.3 + Math.random() * 0.8;
+      const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(bSize, 1), boulderMat.clone());
+      boulder.position.set(bx, by + bSize * 0.4, bz);
+      boulder.rotation.set(Math.random() * 2, Math.random() * 2, Math.random() * 2);
+      boulder.scale.set(1 + Math.random() * 0.5, 0.6 + Math.random() * 0.4, 1 + Math.random() * 0.3);
+      boulder.castShadow = true; boulder.receiveShadow = true;
+      this._scene.add(boulder);
+    }
+
+    // Wall alcoves / carved niches along cathedral walls
+    const alcoveMat = new THREE.MeshStandardMaterial({ color: 0x2a2520, roughness: 0.95, metalness: 0.1, side: THREE.DoubleSide });
+    for (let side = -1; side <= 1; side += 2) {
+      for (let i = 0; i < 6; i++) {
+        const ay = -(i / 6) * depth * 0.8 - 10;
+        // Alcove frame — arch shape
+        const alcoveArch = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.15, 12, 20, Math.PI), alcoveMat.clone());
+        alcoveArch.position.set(side * (w / 2 + 0.3), ay + 1.5, (Math.random() - 0.5) * 10);
+        alcoveArch.rotation.y = side * Math.PI / 2;
+        this._scene.add(alcoveArch);
+        // Alcove back indentation (small box recess)
+        const recessMat = new THREE.MeshStandardMaterial({ color: 0x1a1815, roughness: 0.98, metalness: 0.05 });
+        const recess = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.5, 2.5), recessMat);
+        recess.position.set(side * (w / 2 + 0.8), ay, alcoveArch.position.z);
+        this._scene.add(recess);
+      }
+    }
+
+    // Barnacle clusters on walls (small bumpy spheres)
+    const barnacleMat = new THREE.MeshStandardMaterial({ color: 0x445544, roughness: 0.9, metalness: 0.1 });
+    for (let i = 0; i < 30; i++) {
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const bx = side * (w / 2 + 0.2);
+      const by = -(Math.random() * depth * 0.9);
+      const bz = (Math.random() - 0.5) * 20;
+      const cluster = new THREE.Group();
+      const count = 3 + Math.floor(Math.random() * 5);
+      for (let b = 0; b < count; b++) {
+        const bs = 0.05 + Math.random() * 0.12;
+        const barnacle = new THREE.Mesh(new THREE.SphereGeometry(bs, 12, 10), barnacleMat);
+        barnacle.position.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.1);
+        barnacle.scale.y = 0.6;
+        cluster.add(barnacle);
+      }
+      cluster.position.set(bx, by, bz);
+      this._scene.add(cluster);
     }
   }
 
   private _buildPlankton(): void {
     const count = 120;
-    const sparkGeo = new THREE.SphereGeometry(0.03, 16, 12);
+    const sparkGeo = new THREE.SphereGeometry(0.03, 8, 6);
     const sparkMat = new THREE.MeshBasicMaterial({ color: 0x88bbcc, transparent: true, opacity: 0.5 });
     this._planktonMesh = new THREE.InstancedMesh(sparkGeo, sparkMat, count);
     this._planktonMesh.frustumCulled = false;
@@ -485,25 +569,48 @@ export class LeviathanRenderer {
     for (const pil of state.cathedralPillars) {
       const h = pil.broken ? pil.height * 0.6 : pil.height;
       // Main shaft
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, h, 8), pillarMat.clone());
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, h, 20), pillarMat.clone());
       shaft.position.set(pil.pos.x, pil.pos.y + h / 2, pil.pos.z);
       shaft.rotation.z = pil.leanAngle;
       shaft.castShadow = true; shaft.receiveShadow = true;
       this._scene.add(shaft); this._pillarMeshes.push(shaft);
-      // Base (wider)
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 1.0, 8), capMat.clone());
+      // Fluting grooves along the pillar shaft
+      const fluteMat = new THREE.MeshStandardMaterial({ color: 0x2e2a25, roughness: 0.9, metalness: 0.15 });
+      for (let f = 0; f < 6; f++) {
+        const fluteAngle = (f / 6) * Math.PI * 2;
+        const flute = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, h * 0.85, 8), fluteMat);
+        flute.position.set(
+          pil.pos.x + Math.cos(fluteAngle) * 0.75,
+          pil.pos.y + h / 2,
+          pil.pos.z + Math.sin(fluteAngle) * 0.75,
+        );
+        flute.rotation.z = pil.leanAngle;
+        this._scene.add(flute);
+      }
+      // Base (wider) with molding
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 1.0, 20), capMat.clone());
       base.position.set(pil.pos.x, pil.pos.y + 0.5, pil.pos.z);
       this._scene.add(base);
+      // Base molding ring
+      const baseMolding = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.08, 12, 24), capMat.clone());
+      baseMolding.position.set(pil.pos.x, pil.pos.y + 1.0, pil.pos.z);
+      baseMolding.rotation.x = Math.PI / 2;
+      this._scene.add(baseMolding);
       // Capital (ornamental top) — only if not broken
       if (!pil.broken) {
-        const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.8, 0.8, 8), capMat.clone());
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.8, 0.8, 20), capMat.clone());
         cap.position.set(pil.pos.x, pil.pos.y + h - 0.4, pil.pos.z);
         this._scene.add(cap);
         // Ring decoration
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.1, 10, 8), capMat.clone());
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.1, 16, 24), capMat.clone());
         ring.position.set(pil.pos.x, pil.pos.y + h * 0.5, pil.pos.z);
         ring.rotation.x = Math.PI / 2;
         this._scene.add(ring);
+        // Second ornamental ring near top
+        const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.06, 12, 24), capMat.clone());
+        ring2.position.set(pil.pos.x, pil.pos.y + h - 1.0, pil.pos.z);
+        ring2.rotation.x = Math.PI / 2;
+        this._scene.add(ring2);
       }
     }
 
@@ -516,10 +623,49 @@ export class LeviathanRenderer {
       });
       let mesh: THREE.Mesh;
       switch (coral.type) {
-        case "brain": mesh = new THREE.Mesh(new THREE.SphereGeometry(coral.size, 16, 12), mat); break;
-        case "fan": mesh = new THREE.Mesh(new THREE.PlaneGeometry(coral.size * 2, coral.size * 1.5), mat.clone()); mesh.material = new THREE.MeshStandardMaterial({ ...mat, side: THREE.DoubleSide, color: coral.glowColor, emissive: coral.glowColor, emissiveIntensity: 0.4 }); break;
-        case "tube": mesh = new THREE.Mesh(new THREE.CylinderGeometry(coral.size * 0.3, coral.size * 0.3, coral.size * 2, 10), mat); break;
-        default: mesh = new THREE.Mesh(new THREE.ConeGeometry(coral.size * 0.5, coral.size * 1.5, 10), mat); break;
+        case "brain": mesh = new THREE.Mesh(new THREE.SphereGeometry(coral.size, 32, 24), mat); break;
+        case "fan": {
+          // Fan coral as a curved disc shape instead of flat plane
+          const fanMat = new THREE.MeshStandardMaterial({ color: coral.glowColor, emissive: coral.glowColor, emissiveIntensity: 0.4, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.2 });
+          mesh = new THREE.Mesh(new THREE.CircleGeometry(coral.size * 1.2, 24, 0, Math.PI), fanMat);
+          // Add ribbing veins
+          const ribMat = new THREE.MeshStandardMaterial({ color: coral.glowColor, emissive: coral.glowColor, emissiveIntensity: 0.6 });
+          for (let r = 0; r < 5; r++) {
+            const ribAngle = (r / 5) * Math.PI;
+            const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, coral.size * 1.1, 8), ribMat);
+            rib.position.set(Math.cos(ribAngle) * coral.size * 0.5, Math.sin(ribAngle) * coral.size * 0.5, 0);
+            rib.rotation.z = ribAngle - Math.PI / 2;
+            group.add(rib);
+          }
+          break;
+        }
+        case "tube": {
+          // Tube coral cluster — multiple tubes of varying height
+          mesh = new THREE.Mesh(new THREE.CylinderGeometry(coral.size * 0.3, coral.size * 0.35, coral.size * 2, 20), mat);
+          const tubeMat = mat.clone();
+          for (let t = 0; t < 3; t++) {
+            const tubeH = coral.size * (1.2 + Math.random() * 0.8);
+            const tube = new THREE.Mesh(new THREE.CylinderGeometry(coral.size * 0.15, coral.size * 0.2, tubeH, 16), tubeMat);
+            const ang = (t / 3) * Math.PI * 2;
+            tube.position.set(Math.cos(ang) * coral.size * 0.4, tubeH * 0.3, Math.sin(ang) * coral.size * 0.4);
+            group.add(tube);
+          }
+          break;
+        }
+        default: {
+          // Fire coral — branching structure
+          mesh = new THREE.Mesh(new THREE.ConeGeometry(coral.size * 0.5, coral.size * 1.5, 20), mat);
+          // Add sub-branches
+          for (let b = 0; b < 3; b++) {
+            const branchMat = mat.clone();
+            const branch = new THREE.Mesh(new THREE.ConeGeometry(coral.size * 0.2, coral.size * 0.8, 12), branchMat);
+            const bAng = (b / 3) * Math.PI * 2 + 0.5;
+            branch.position.set(Math.cos(bAng) * coral.size * 0.35, coral.size * 0.4 + b * 0.2, Math.sin(bAng) * coral.size * 0.35);
+            branch.rotation.z = (Math.random() - 0.5) * 0.4;
+            group.add(branch);
+          }
+          break;
+        }
       }
       mesh.position.set(0, coral.size * 0.5, 0);
       group.add(mesh);
@@ -543,13 +689,13 @@ export class LeviathanRenderer {
       let mesh: THREE.Mesh;
       const mat = ruin.type === "altar" ? altarMat.clone() : ruinMat.clone();
       switch (ruin.type) {
-        case "arch": mesh = new THREE.Mesh(new THREE.TorusGeometry(ruin.size, 0.5, 12, 8, Math.PI), mat); break;
+        case "arch": mesh = new THREE.Mesh(new THREE.TorusGeometry(ruin.size, 0.5, 16, 24, Math.PI), mat); break;
         case "wall": mesh = new THREE.Mesh(new THREE.BoxGeometry(ruin.size * 3, ruin.size * 2, 0.5), mat); break;
         case "altar": {
           mesh = new THREE.Mesh(new THREE.BoxGeometry(ruin.size * 2, ruin.size * 0.6, ruin.size * 1.2), mat);
           // Altar ornamental ring
           const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(ruin.size * 0.8, 0.1, 10, 12),
+            new THREE.TorusGeometry(ruin.size * 0.8, 0.1, 16, 24),
             new THREE.MeshStandardMaterial({ color: 0x44ccaa, emissive: 0x44ccaa, emissiveIntensity: 0.5 }),
           );
           ring.position.set(ruin.pos.x, ruin.pos.y + ruin.size * 0.4, ruin.pos.z);
@@ -566,7 +712,7 @@ export class LeviathanRenderer {
           this._scene.add(crystal);
           break;
         }
-        case "statue": mesh = new THREE.Mesh(new THREE.CylinderGeometry(ruin.size * 0.4, ruin.size * 0.5, ruin.size * 2.5, 12), mat); break;
+        case "statue": mesh = new THREE.Mesh(new THREE.CylinderGeometry(ruin.size * 0.4, ruin.size * 0.5, ruin.size * 2.5, 24), mat); break;
         default: mesh = new THREE.Mesh(this._boxGeo, mat); mesh.scale.set(ruin.size, ruin.size * 0.5, ruin.size); break;
       }
       mesh.position.set(ruin.pos.x, ruin.pos.y, ruin.pos.z);
@@ -581,7 +727,7 @@ export class LeviathanRenderer {
         color: COL.AIR_POCKET, emissive: COL.AIR_POCKET,
         emissiveIntensity: 0.5, transparent: true, opacity: 0.3,
       });
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(pocket.radius, 12, 8), mat);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(pocket.radius, 32, 24), mat);
       mesh.position.set(pocket.pos.x, pocket.pos.y, pocket.pos.z);
       this._scene.add(mesh); this._airPocketMeshes.push(mesh);
       // Glow light
@@ -609,7 +755,7 @@ export class LeviathanRenderer {
     for (const current of state.currents) {
       const mat = new THREE.MeshBasicMaterial({ color: 0x44aacc, transparent: true, opacity: 0.06, side: THREE.DoubleSide });
       const len = 20;
-      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(current.width * 0.5, current.width * 0.5, len, 8, 1, true), mat);
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(current.width * 0.5, current.width * 0.5, len, 20, 1, true), mat);
       const mid = { x: (current.startPos.x + current.endPos.x) / 2, y: (current.startPos.y + current.endPos.y) / 2, z: (current.startPos.z + current.endPos.z) / 2 };
       mesh.position.set(mid.x, mid.y, mid.z);
       mesh.rotation.z = Math.atan2(current.direction.y, 1) || 0;
@@ -627,14 +773,14 @@ export class LeviathanRenderer {
         color: 0xff4422, emissive: 0xff4422, emissiveIntensity: 0.4,
         transparent: true, opacity: 0.6, side: THREE.DoubleSide,
       });
-      const ring = new THREE.Mesh(new THREE.RingGeometry(vent.radius * 0.3, vent.radius, 12), ringMat);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(vent.radius * 0.3, vent.radius, 24), ringMat);
       ring.rotation.x = -Math.PI / 2;
       group.add(ring);
       // Glow column (visible when active)
       const colMat = new THREE.MeshBasicMaterial({
         color: 0xff6622, transparent: true, opacity: 0.08, side: THREE.DoubleSide,
       });
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(vent.radius * 0.8, vent.radius, 6, 8, 1, true), colMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(vent.radius * 0.8, vent.radius, 6, 20, 1, true), colMat);
       col.position.y = 3;
       group.add(col);
       // Point light
@@ -654,19 +800,19 @@ export class LeviathanRenderer {
         color: 0xffaa44, emissive: 0xffaa44, emissiveIntensity: 0.8,
         metalness: 0.3, roughness: 0.2,
       });
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), orbMat);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 20), orbMat);
       group.add(orb);
       // Danger ring
       const dangerMat = new THREE.MeshBasicMaterial({
         color: 0xff6644, transparent: true, opacity: 0.1, side: THREE.DoubleSide,
       });
-      const dangerRing = new THREE.Mesh(new THREE.RingGeometry(mine.radius - 0.2, mine.radius, 16), dangerMat);
+      const dangerRing = new THREE.Mesh(new THREE.RingGeometry(mine.radius - 0.2, mine.radius, 32), dangerMat);
       dangerRing.rotation.x = -Math.PI / 2;
       group.add(dangerRing);
       // Tendril spikes
       const spikeMat = new THREE.MeshStandardMaterial({ color: 0xcc8833, emissive: 0xff8844, emissiveIntensity: 0.3 });
       for (let s = 0; s < 4; s++) {
-        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.4, 8), spikeMat);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.4, 16), spikeMat);
         const angle = (s / 4) * Math.PI * 2;
         spike.position.set(Math.cos(angle) * 0.25, 0, Math.sin(angle) * 0.25);
         spike.rotation.z = angle;
@@ -685,7 +831,7 @@ export class LeviathanRenderer {
       const mat = new THREE.MeshBasicMaterial({
         color: 0x44aa44, transparent: true, opacity: 0.1, side: THREE.DoubleSide,
       });
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), mat);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 20), mat);
       mesh.visible = false;
       this._scene.add(mesh);
       this._poisonCloudPool.push(mesh);
@@ -1146,18 +1292,38 @@ export class LeviathanRenderer {
         switch (enemy.type) {
           case "angler": {
             // Bulbous body with dangling lure
-            const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 20), mat);
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 24), mat);
             body.scale.set(1.2, 0.8, 1); body.castShadow = true;
             group.add(body);
-            // Huge jaw
+            // Huge jaw with teeth
             const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.5), mat);
             jaw.position.set(0, -0.3, 0.4);
             group.add(jaw);
+            // Lower jaw
+            const lowerJaw = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.15, 0.45), mat);
+            lowerJaw.position.set(0, -0.45, 0.38);
+            group.add(lowerJaw);
+            // Teeth
+            const toothMat = new THREE.MeshStandardMaterial({ color: 0xccccaa, roughness: 0.3, metalness: 0.5 });
+            for (let t = 0; t < 6; t++) {
+              const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.15, 8), toothMat);
+              tooth.position.set(-0.25 + t * 0.1, -0.22, 0.6);
+              tooth.rotation.x = Math.PI;
+              group.add(tooth);
+            }
+            // Fins
+            const finMat = new THREE.MeshStandardMaterial({ color: colors.body, roughness: 0.7, metalness: 0.2, side: THREE.DoubleSide });
+            const finL = new THREE.Mesh(new THREE.CircleGeometry(0.25, 12, 0, Math.PI), finMat);
+            finL.position.set(-0.6, 0, 0); finL.rotation.y = -Math.PI / 4;
+            group.add(finL);
+            const finR = new THREE.Mesh(new THREE.CircleGeometry(0.25, 12, 0, Math.PI), finMat);
+            finR.position.set(0.6, 0, 0); finR.rotation.y = Math.PI / 4;
+            group.add(finR);
             // Dangling lure on stalk
             const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 16), mat);
             stalk.position.set(0, 0.7, 0.3); stalk.rotation.z = 0.3;
             group.add(stalk);
-            const lure = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16), glowMat);
+            const lure = new THREE.Mesh(new THREE.SphereGeometry(0.15, 24, 20), glowMat);
             lure.position.set(0.3, 1.1, 0.3);
             group.add(lure);
             const light = new THREE.PointLight(colors.glow, 0.6, 10);
@@ -1167,14 +1333,29 @@ export class LeviathanRenderer {
           }
           case "jellyfish": {
             // Dome + trailing tentacles
-            const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.6), glowMat);
+            const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.6), glowMat);
             dome.castShadow = true;
             group.add(dome);
-            // Tentacles (4 trailing cylinders)
+            // Inner membrane (translucent)
+            const membraneMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.2, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+            const membrane = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.5), membraneMat);
+            membrane.position.y = -0.05;
+            group.add(membrane);
+            // Oral arms (thicker central structures)
+            const armMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.25, transparent: true, opacity: 0.5 });
+            for (let a = 0; a < 4; a++) {
+              const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.8, 12), armMat);
+              const aAngle = (a / 4) * Math.PI * 2;
+              arm.position.set(Math.cos(aAngle) * 0.1, -0.5, Math.sin(aAngle) * 0.1);
+              group.add(arm);
+            }
+            // Tentacles (8 trailing cylinders — more than before)
             const tentMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.3, transparent: true, opacity: 0.6 });
-            for (let t = 0; t < 4; t++) {
-              const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.01, 1.2, 16), tentMat);
-              tent.position.set((t - 1.5) * 0.15, -0.6, 0);
+            for (let t = 0; t < 8; t++) {
+              const tentLen = 0.8 + Math.random() * 0.8;
+              const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.008, tentLen, 12), tentMat);
+              const tAngle = (t / 8) * Math.PI * 2;
+              tent.position.set(Math.cos(tAngle) * 0.25, -0.6 - tentLen * 0.3, Math.sin(tAngle) * 0.25);
               group.add(tent);
             }
             const light = new THREE.PointLight(colors.glow, 0.4, 6);
@@ -1182,18 +1363,42 @@ export class LeviathanRenderer {
             break;
           }
           case "coral_golem": {
-            // Massive rocky body with coral growths
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2.5, 1.5), mat);
+            // Massive rocky body — dodecahedron for organic rock look
+            const torso = new THREE.Mesh(new THREE.DodecahedronGeometry(1.3, 1), mat);
+            torso.scale.set(1, 1.2, 0.9);
             torso.castShadow = true; group.add(torso);
-            // Coral growths on shoulders
+            // Rocky texture chunks on torso
+            const chunkMat = new THREE.MeshStandardMaterial({ color: 0x556655, roughness: 0.9, metalness: 0.15 });
+            for (let c = 0; c < 5; c++) {
+              const chunk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25 + Math.random() * 0.2, 0), chunkMat);
+              chunk.position.set((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 0.8);
+              group.add(chunk);
+            }
+            // Coral growths on shoulders — multiple branching
             const coralMat = new THREE.MeshStandardMaterial({ color: 0x44aa66, emissive: 0x44aa66, emissiveIntensity: 0.3 });
-            const coralL = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1, 18), coralMat);
-            coralL.position.set(-1.2, 1, 0); group.add(coralL);
-            const coralR = coralL.clone(); coralR.position.x = 1.2; group.add(coralR);
-            // Fists
-            const fist = new THREE.Mesh(this._sphereGeo, mat);
-            fist.scale.setScalar(0.8); fist.position.set(-1.3, -0.5, 0); group.add(fist);
+            for (const sx of [-1.2, 1.2]) {
+              const coralBase = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1, 20), coralMat);
+              coralBase.position.set(sx, 1, 0); group.add(coralBase);
+              // Sub-branches
+              for (let b = 0; b < 3; b++) {
+                const branch = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.5, 12), coralMat.clone());
+                branch.position.set(sx + (Math.random() - 0.5) * 0.4, 1.3 + b * 0.15, (Math.random() - 0.5) * 0.3);
+                branch.rotation.z = (Math.random() - 0.5) * 0.6;
+                group.add(branch);
+              }
+            }
+            // Fists — dodecahedron for rocky look
+            const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 1), mat);
+            fist.position.set(-1.3, -0.5, 0); group.add(fist);
             const fistR = fist.clone(); fistR.position.x = 1.3; group.add(fistR);
+            // Glowing cracks (emissive lines on body)
+            const crackMat = new THREE.MeshStandardMaterial({ color: 0x44aa44, emissive: 0x44aa44, emissiveIntensity: 0.8 });
+            for (let c = 0; c < 3; c++) {
+              const crack = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.8 + Math.random() * 0.5, 0.03), crackMat);
+              crack.position.set((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.5, 0.7);
+              crack.rotation.z = (Math.random() - 0.5) * 0.5;
+              group.add(crack);
+            }
             const light = new THREE.PointLight(colors.glow, 0.3, 8);
             light.position.y = 1; group.add(light);
             break;
@@ -1201,32 +1406,56 @@ export class LeviathanRenderer {
           case "tentacle": {
             // Thick segmented tentacle rising from floor
             const segMat = new THREE.MeshStandardMaterial({ color: colors.body, roughness: 0.7, metalness: 0.2 });
-            for (let s = 0; s < 5; s++) {
-              const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.5 - s * 0.06, 0.5 - (s - 1) * 0.06, 1.5, 16), segMat);
-              seg.position.y = s * 1.3; seg.castShadow = true;
+            for (let s = 0; s < 7; s++) {
+              const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.5 - s * 0.05, 0.5 - (s - 1) * 0.05, 1.3, 24), segMat);
+              seg.position.y = s * 1.1; seg.castShadow = true;
               seg.rotation.z = Math.sin(s * 0.8) * 0.15;
               group.add(seg);
             }
-            // Suction cups (glow)
+            // Suction cups (glow) — more of them, along the tentacle
             const cupMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.4 });
-            for (let c = 0; c < 3; c++) {
-              const cup = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), cupMat);
-              cup.position.set(0.4, c * 1.5 + 0.5, 0); group.add(cup);
+            for (let c = 0; c < 8; c++) {
+              const cup = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), cupMat);
+              const cupAngle = (c % 2 === 0) ? 0 : Math.PI;
+              cup.position.set(Math.cos(cupAngle) * 0.35, c * 0.9 + 0.4, Math.sin(cupAngle) * 0.35);
+              cup.scale.y = 0.5; // flattened
+              group.add(cup);
             }
+            // Tip — tapered ending
+            const tipMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.5 });
+            const tip = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 16), tipMat);
+            tip.position.y = 7.5;
+            group.add(tip);
             const light = new THREE.PointLight(colors.glow, 0.4, 8);
             light.position.y = 3; group.add(light);
             break;
           }
           case "siren": {
             // Ghostly humanoid figure
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 1.8, 20), mat);
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 1.8, 24), mat);
             body.castShadow = true; group.add(body);
-            const head = new THREE.Mesh(this._sphereGeo, mat);
-            head.scale.setScalar(0.5); head.position.y = 1.2; group.add(head);
-            // Flowing "hair" (trailing planes)
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 24, 20), mat);
+            head.position.y = 1.2; group.add(head);
+            // Arms — ethereal, trailing
+            const armMat = new THREE.MeshStandardMaterial({ color: colors.body, emissive: colors.glow, emissiveIntensity: 0.15, transparent: true, opacity: 0.7 });
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 1.0, 12), armMat);
+            armL.position.set(-0.4, 0.5, 0); armL.rotation.z = 0.5;
+            group.add(armL);
+            const armR = armL.clone(); armR.position.x = 0.4; armR.rotation.z = -0.5;
+            group.add(armR);
+            // Flowing "hair" (multiple trailing planes for volume)
             const hairMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.4, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
-            const hair = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.5), hairMat);
-            hair.position.set(0, 0.5, -0.3); group.add(hair);
+            for (let h = 0; h < 3; h++) {
+              const hair = new THREE.Mesh(new THREE.PlaneGeometry(0.5 + h * 0.15, 1.2 + h * 0.2), hairMat.clone());
+              hair.position.set((h - 1) * 0.15, 0.5, -0.25 - h * 0.05);
+              hair.rotation.y = (h - 1) * 0.3;
+              group.add(hair);
+            }
+            // Spectral tail (flowing lower body)
+            const tailMat = new THREE.MeshStandardMaterial({ color: colors.glow, emissive: colors.glow, emissiveIntensity: 0.2, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+            const tail = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.5, 20), tailMat);
+            tail.position.y = -1.5; tail.rotation.x = Math.PI;
+            group.add(tail);
             // Glowing eyes
             const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), glowMat);
             eye.position.set(-0.12, 1.25, 0.2); group.add(eye);
@@ -1239,23 +1468,61 @@ export class LeviathanRenderer {
             // Corrupted armored knight — large, dark, menacing
             const torso = new THREE.Mesh(this._boxGeo, mat);
             torso.scale.set(2, 2.5, 1.5); torso.castShadow = true; group.add(torso);
-            const helm = new THREE.Mesh(new THREE.SphereGeometry(0.6, 20, 16), mat);
+            // Shoulder armor plates
+            const armorMat = new THREE.MeshStandardMaterial({ color: 0x3a3340, metalness: 0.7, roughness: 0.3 });
+            const shoulderL = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 16), armorMat);
+            shoulderL.scale.set(1.3, 0.7, 1); shoulderL.position.set(-1.2, 1.2, 0);
+            group.add(shoulderL);
+            const shoulderR = shoulderL.clone(); shoulderR.position.x = 1.2;
+            group.add(shoulderR);
+            // Helmet — more detailed
+            const helm = new THREE.Mesh(new THREE.SphereGeometry(0.6, 28, 22), mat);
             helm.position.y = 1.8; helm.scale.y = 0.8; group.add(helm);
-            // Corrupted sword
+            // Helmet horns
+            const hornMat = new THREE.MeshStandardMaterial({ color: 0x554444, metalness: 0.6, roughness: 0.4 });
+            const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 12), hornMat);
+            hornL.position.set(-0.4, 2.2, 0); hornL.rotation.z = 0.4;
+            group.add(hornL);
+            const hornR = hornL.clone(); hornR.position.x = 0.4; hornR.rotation.z = -0.4;
+            group.add(hornR);
+            // Corrupted sword — with fuller and cross-guard
             const swordMat = new THREE.MeshStandardMaterial({ color: 0x884444, emissive: 0xff4444, emissiveIntensity: 0.5, metalness: 0.9 });
             const sword = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3, 0.06), swordMat);
             sword.position.set(1.3, 0.5, 0); group.add(sword);
-            // Shield
-            const shieldMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.6 });
+            // Sword fuller (groove)
+            const fullerMat = new THREE.MeshStandardMaterial({ color: 0x662222, emissive: 0xff2222, emissiveIntensity: 0.8 });
+            const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.5, 0.02), fullerMat);
+            fuller.position.set(1.3, 0.6, 0.035); group.add(fuller);
+            // Sword cross-guard
+            const crossGuard = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.08), swordMat);
+            crossGuard.position.set(1.3, -0.9, 0); group.add(crossGuard);
+            // Shield — with emblem
+            const shieldMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.6, roughness: 0.4 });
             const shield = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.5, 1), shieldMat);
             shield.position.set(-1.3, 0.3, 0); group.add(shield);
+            // Shield boss (central emblem)
+            const bossMat = new THREE.MeshStandardMaterial({ color: 0x664444, emissive: 0xff4444, emissiveIntensity: 0.3, metalness: 0.8 });
+            const boss = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), bossMat);
+            boss.position.set(-1.35, 0.3, 0); boss.scale.x = 0.5; group.add(boss);
             // Glowing visor
             const visor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.05), glowMat);
             visor.position.set(0, 1.85, 0.55); group.add(visor);
+            // Tattered cape
+            const capeMat = new THREE.MeshStandardMaterial({ color: 0x221122, emissive: 0x440022, emissiveIntensity: 0.1, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+            const cape = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.5), capeMat);
+            cape.position.set(0, 0, -0.8); group.add(cape);
             // Dark aura
             const auraMat = new THREE.MeshBasicMaterial({ color: 0x441122, transparent: true, opacity: 0.08, side: THREE.DoubleSide });
-            const aura = new THREE.Mesh(new THREE.SphereGeometry(3, 24, 20), auraMat);
+            const aura = new THREE.Mesh(new THREE.SphereGeometry(3, 32, 24), auraMat);
             group.add(aura);
+            // Corrupted energy particles orbiting
+            const orbMat = new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xff4444, emissiveIntensity: 1.0 });
+            for (let o = 0; o < 4; o++) {
+              const oAngle = (o / 4) * Math.PI * 2;
+              const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), orbMat);
+              orb.position.set(Math.cos(oAngle) * 2, 1 + Math.sin(oAngle) * 0.5, Math.sin(oAngle) * 2);
+              group.add(orb);
+            }
             const light = new THREE.PointLight(colors.glow, 1.5, 20);
             light.position.y = 1; group.add(light);
             break;
@@ -1263,7 +1530,7 @@ export class LeviathanRenderer {
           default: {
             const body = new THREE.Mesh(this._boxGeo, mat);
             body.castShadow = true; group.add(body);
-            const glowOrb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16), glowMat);
+            const glowOrb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 24, 20), glowMat);
             glowOrb.position.set(0, 0.8, 0.4); group.add(glowOrb);
             const light = new THREE.PointLight(colors.glow, 0.5, 8);
             light.position.y = 0.5; group.add(light);

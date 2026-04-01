@@ -34,6 +34,8 @@ export class CaesarHUD {
   private _toolButtons: Map<string, HTMLButtonElement> = new Map();
   private _helpOverlay: HTMLDivElement | null = null;
   private _statsOverlay: HTMLDivElement | null = null;
+  private _escapeMenu: HTMLDivElement | null = null;
+  private _wikiOverlay: HTMLDivElement | null = null;
 
   // Callbacks
   onSelectTool: ((tool: CaesarTool) => void) | null = null;
@@ -318,13 +320,14 @@ export class CaesarHUD {
     `;
     this._root!.appendChild(this._advisorPanel);
 
-    // Tooltip (follows mouse near bottom bar)
+    // Tooltip (follows mouse — rich HTML version)
     this._tooltip = document.createElement("div");
     this._tooltip.style.cssText = `
-      position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.85); padding: 4px 12px; border-radius: 3px;
-      font-size: 12px; pointer-events: none; display: none; color: #ff6b6b;
-      white-space: nowrap;
+      position: fixed; z-index: 350;
+      background: rgba(20,14,8,0.95); padding: 10px 14px; border-radius: 6px;
+      font-size: 12px; pointer-events: none; display: none; color: #f0e6d2;
+      border: 1px solid #8b6914; box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      max-width: 320px; line-height: 1.5;
     `;
     this._root!.appendChild(this._tooltip);
 
