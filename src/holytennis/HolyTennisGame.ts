@@ -496,6 +496,25 @@ export class HolyTennisGame {
   // Bats
   private _bats: Bat[] = [];
 
+  // Visual enhancement objects
+  private _starMat: THREE.PointsMaterial | null = null;
+  private _clouds: { mesh: THREE.Mesh; speed: number; baseX: number }[] = [];
+  private _embers: { mesh: THREE.Mesh; vel: THREE.Vector3; life: number; maxLife: number }[] = [];
+  private _impactRings: { mesh: THREE.Mesh; life: number }[] = [];
+  private _holyBeam: THREE.Mesh | null = null;
+  private _holyBeamLight: THREE.SpotLight | null = null;
+  private _mistMeshes: THREE.Mesh[] = [];
+  private _auroraMesh: THREE.Mesh | null = null;
+  private _auroraTime = 0;
+  private _lastShotWasPower = false;
+  private _grailSparkles: THREE.Points | null = null;
+  private _grailSparkleGeo: THREE.BufferGeometry | null = null;
+  private _fireflies: { mesh: THREE.Mesh; pos: THREE.Vector3; phase: number; speed: number }[] = [];
+  private _bannerMeshes: THREE.Mesh[] = [];
+  private _swordGlowLights: [THREE.PointLight | null, THREE.PointLight | null] = [null, null];
+  private _bounceRings: { mesh: THREE.Mesh; life: number }[] = [];
+  private _smokeParticles: { mesh: THREE.Mesh; vel: THREE.Vector3; life: number; maxLife: number }[] = [];
+
   // Landing prediction
   private _predictedLanding: THREE.Vector3 | null = null;
   private _predictionArc: THREE.Vector3[] = [];
@@ -582,15 +601,87 @@ export class HolyTennisGame {
     });
     this._scene.add(new THREE.Mesh(new THREE.SphereGeometry(200, 32, 32), skyMat));
 
-    // Stars
-    const sp: number[] = [];
-    for (let i = 0; i < 800; i++) {
+    // Twinkling stars
+    const sp: number[] = [], starSizes: number[] = [];
+    for (let i = 0; i < 1200; i++) {
       const th = Math.random() * Math.PI * 2, ph = Math.random() * Math.PI * 0.5;
       sp.push(180 * Math.sin(ph) * Math.cos(th), 180 * Math.cos(ph), 180 * Math.sin(ph) * Math.sin(th));
+      starSizes.push(0.2 + Math.random() * 0.8);
     }
     const sg = new THREE.BufferGeometry();
     sg.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
-    this._scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: true })));
+    sg.setAttribute("size", new THREE.Float32BufferAttribute(starSizes, 1));
+    this._starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: true, transparent: true });
+    this._scene.add(new THREE.Points(sg, this._starMat));
+
+    // Clouds
+    for (let i = 0; i < 8; i++) {
+      const cGroup = new THREE.Group();
+      const puffCount = 3 + Math.floor(Math.random() * 4);
+      for (let p = 0; p < puffCount; p++) {
+        const puff = new THREE.Mesh(
+          new THREE.SphereGeometry(4 + Math.random() * 6, 8, 6),
+          new THREE.MeshBasicMaterial({ color: 0x2a2a4a, transparent: true, opacity: 0.12 + Math.random() * 0.08 })
+        );
+        puff.position.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 4);
+        puff.scale.y = 0.4;
+        cGroup.add(puff);
+      }
+      const baseX = (Math.random() - 0.5) * 200;
+      cGroup.position.set(baseX, 50 + Math.random() * 30, (Math.random() - 0.5) * 100);
+      this._scene.add(cGroup);
+      this._clouds.push({ mesh: cGroup as any, speed: 0.5 + Math.random() * 1.5, baseX });
+    }
+
+    // Aurora borealis
+    const auroraGeo = new THREE.PlaneGeometry(160, 30, 64, 4);
+    const auroraMat = new THREE.ShaderMaterial({
+      transparent: true, side: THREE.DoubleSide, depthWrite: false,
+      uniforms: { time: { value: 0 } },
+      vertexShader: `
+        varying vec2 vUv; varying vec3 vPos;
+        uniform float time;
+        void main() {
+          vUv = uv; vPos = position;
+          vec3 p = position;
+          p.y += sin(p.x * 0.05 + time * 0.5) * 3.0 + sin(p.x * 0.12 + time * 0.8) * 1.5;
+          p.z += sin(p.x * 0.08 + time * 0.3) * 2.0;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vUv; varying vec3 vPos;
+        uniform float time;
+        void main() {
+          float wave = sin(vUv.x * 6.28 + time * 0.4) * 0.5 + 0.5;
+          float edge = smoothstep(0.0, 0.3, vUv.y) * smoothstep(1.0, 0.6, vUv.y);
+          vec3 col1 = vec3(0.1, 0.8, 0.4);
+          vec3 col2 = vec3(0.2, 0.4, 0.9);
+          vec3 col3 = vec3(0.6, 0.2, 0.8);
+          vec3 col = mix(col1, col2, wave);
+          col = mix(col, col3, sin(vUv.x * 3.14 + time * 0.2) * 0.5 + 0.5);
+          float alpha = edge * 0.06 * (0.7 + wave * 0.3);
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+    });
+    this._auroraMesh = new THREE.Mesh(auroraGeo, auroraMat);
+    this._auroraMesh.position.set(0, 90, 30);
+    this._auroraMesh.rotation.x = -0.3;
+    this._scene.add(this._auroraMesh);
+
+    // Ground mist
+    for (let i = 0; i < 20; i++) {
+      const mist = new THREE.Mesh(
+        new THREE.PlaneGeometry(4 + Math.random() * 6, 1 + Math.random() * 1.5),
+        new THREE.MeshBasicMaterial({ color: 0x667788, transparent: true, opacity: 0.04 + Math.random() * 0.04, side: THREE.DoubleSide, depthWrite: false })
+      );
+      mist.position.set((Math.random() - 0.5) * 30, 0.2 + Math.random() * 0.5, (Math.random() - 0.5) * 30);
+      mist.rotation.y = Math.random() * Math.PI;
+      mist.rotation.x = -0.1;
+      this._scene.add(mist);
+      this._mistMeshes.push(mist);
+    }
 
     // Lights
     this._scene.add(new THREE.AmbientLight(0x334466, 0.6));
@@ -744,6 +835,14 @@ export class HolyTennisGame {
       const cH = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.01), goldE); cH.position.set(0, 0.85, -0.42 * side); group.add(cH);
       const cV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.3, 0.01), goldE); cV.position.set(0, 0.85, -0.42 * side); group.add(cV);
 
+      // Cape (short cloak hanging from shoulders)
+      const capeGeo = new THREE.PlaneGeometry(0.65, 1.0, 1, 4);
+      const capeMat = new THREE.MeshStandardMaterial({ color: colBanner, side: THREE.DoubleSide, roughness: 0.85, transparent: true, opacity: 0.9 });
+      const cape = new THREE.Mesh(capeGeo, capeMat);
+      cape.position.set(0, 1.0, 0.4 * side); // behind the knight
+      cape.name = "cape";
+      group.add(cape);
+
       // Belt
       const belt = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.03, 6, 16), new THREE.MeshStandardMaterial({ color: 0x553311, roughness: 0.8 }));
       belt.position.y = 0.6; belt.rotation.x = Math.PI / 2; group.add(belt);
@@ -753,6 +852,12 @@ export class HolyTennisGame {
       // Sword
       const swordGroup = this._createSword();
       swordGroup.position.set(0.5, 1.0, 0); group.add(swordGroup);
+
+      // Sword glow light (activated during swings)
+      const swordGlow = new THREE.PointLight(i === 0 ? 0x4466ff : 0xff4422, 0, 3, 2);
+      swordGlow.position.set(0, 1.0, 0);
+      swordGroup.add(swordGlow);
+      this._swordGlowLights[i] = swordGlow;
 
       // Player shadow
       const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 12), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 }));
@@ -860,6 +965,35 @@ export class HolyTennisGame {
 
     g.scale.setScalar(0.5); g.position.set(0, 1.5, 0); this._scene.add(g);
 
+    // Holy beam (vertical pillar of light, visible during long rallies)
+    const beamGeo = new THREE.CylinderGeometry(0.15, 0.4, 12, 8, 1, true);
+    const beamMat = new THREE.MeshBasicMaterial({ color: COL_GOLD_GLOW, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+    this._holyBeam = new THREE.Mesh(beamGeo, beamMat);
+    this._holyBeam.position.set(0, 6, 0);
+    this._scene.add(this._holyBeam);
+
+    // Spotlight for holy beam
+    this._holyBeamLight = new THREE.SpotLight(COL_GOLD_GLOW, 0, 20, Math.PI / 8, 0.8, 1.5);
+    this._holyBeamLight.position.set(0, 15, 0);
+    this._holyBeamLight.target.position.set(0, 0, 0);
+    this._scene.add(this._holyBeamLight);
+    this._scene.add(this._holyBeamLight.target);
+
+    // Orbiting sparkle ring around the grail
+    const sparkCount = 24;
+    const sparkPos = new Float32Array(sparkCount * 3);
+    const sparkSizes = new Float32Array(sparkCount);
+    for (let i = 0; i < sparkCount; i++) {
+      sparkPos[i * 3] = 0; sparkPos[i * 3 + 1] = 0; sparkPos[i * 3 + 2] = 0;
+      sparkSizes[i] = 0.8 + Math.random() * 1.2;
+    }
+    this._grailSparkleGeo = new THREE.BufferGeometry();
+    this._grailSparkleGeo.setAttribute("position", new THREE.Float32BufferAttribute(sparkPos, 3));
+    this._grailSparkleGeo.setAttribute("size", new THREE.Float32BufferAttribute(sparkSizes, 1));
+    this._grailSparkles = new THREE.Points(this._grailSparkleGeo,
+      new THREE.PointsMaterial({ color: COL_GOLD, size: 0.08, sizeAttenuation: true, transparent: true, opacity: 0.7, depthWrite: false }));
+    this._scene.add(this._grailSparkles);
+
     // Shadow
     const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 }));
     shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.02; this._scene.add(shadow);
@@ -898,6 +1032,57 @@ export class HolyTennisGame {
         c.castShadow = true; this._scene.add(c);
       }
     }
+    // Stained glass windows
+    const windowColors = [0xff2244, 0x2244ff, 0xffcc00, 0x22cc44, 0xcc44ff, 0xff8800];
+    const windowPositions: [number, number, number, number][] = [ // x, y, z, rotY
+      [-19.4, 5.5, -7, Math.PI / 2], [-19.4, 5.5, 7, Math.PI / 2],
+      [19.4, 5.5, -7, -Math.PI / 2], [19.4, 5.5, 7, -Math.PI / 2],
+      [-5, 5.5, -19.4, 0], [5, 5.5, -19.4, 0],
+      [-5, 5.5, 19.4, Math.PI], [5, 5.5, 19.4, Math.PI],
+    ];
+    for (let wi = 0; wi < windowPositions.length; wi++) {
+      const [wx, wy, wz, wr] = windowPositions[wi];
+      // Window frame
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.5, 1.5), new THREE.MeshStandardMaterial({ color: 0x333322, roughness: 0.7 }));
+      frame.position.set(wx, wy, wz); frame.rotation.y = wr; this._scene.add(frame);
+      // Pointed arch top
+      const archTop = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.8, 3), new THREE.MeshStandardMaterial({ color: 0x333322, roughness: 0.7 }));
+      archTop.position.set(wx, wy + 1.65, wz); archTop.rotation.y = wr; archTop.rotation.z = Math.PI; this._scene.add(archTop);
+      // Glowing glass pane
+      const col = windowColors[wi % windowColors.length];
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 2.2),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.25, side: THREE.DoubleSide }));
+      glass.position.set(wx + (Math.abs(wr) > 1 ? (wr > 0 ? 0.06 : -0.06) : 0), wy, wz + (Math.abs(wr) < 1 ? (wr > 0 ? -0.06 : 0.06) : 0));
+      glass.rotation.y = wr; this._scene.add(glass);
+      // Light from window
+      const wLight = new THREE.PointLight(col, 0.4, 6, 2);
+      wLight.position.set(wx + (Math.abs(wr) > 1 ? (wr > 0 ? -1 : 1) : 0), wy, wz + (Math.abs(wr) < 1 ? (wr > 0 ? 1 : -1) : 0));
+      this._scene.add(wLight);
+    }
+
+    // Ivy / moss on walls
+    const ivyMat = new THREE.MeshStandardMaterial({ color: 0x225522, roughness: 0.9, side: THREE.DoubleSide });
+    for (let iv = 0; iv < 40; iv++) {
+      const wallIdx = Math.floor(Math.random() * 4);
+      const wc = walls[wallIdx];
+      const ivySize = 0.5 + Math.random() * 1.5;
+      const ivy = new THREE.Mesh(new THREE.PlaneGeometry(ivySize, ivySize * (0.8 + Math.random() * 0.8)), ivyMat);
+      const ivX = wc.d > 1 ? wc.x + (Math.random() > 0.5 ? 0.52 : -0.52) : wc.x - wc.w / 2 + Math.random() * wc.w;
+      const ivZ = wc.d > 1 ? wc.z - wc.d / 2 + Math.random() * wc.d : wc.z + (Math.random() > 0.5 ? 0.52 : -0.52);
+      const ivY = Math.random() * 4 + 1;
+      ivy.position.set(ivX, ivY, ivZ);
+      if (wc.d > 1) ivy.rotation.y = Math.PI / 2;
+      this._scene.add(ivy);
+      // Ivy leaf clusters
+      for (let lf = 0; lf < 3; lf++) {
+        const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.1 + Math.random() * 0.15, 5),
+          new THREE.MeshStandardMaterial({ color: 0x336633 + Math.floor(Math.random() * 0x002200), roughness: 0.8, side: THREE.DoubleSide }));
+        leaf.position.set(ivX + (Math.random() - 0.5) * ivySize * 0.6, ivY + (Math.random() - 0.5) * ivySize * 0.5, ivZ + (Math.random() > 0.5 ? 0.01 : -0.01));
+        if (wc.d > 1) leaf.rotation.y = Math.PI / 2;
+        this._scene.add(leaf);
+      }
+    }
+
     // Torches
     const tp = [[-19.3,4,-10],[-19.3,4,0],[-19.3,4,10],[19.3,4,-10],[19.3,4,0],[19.3,4,10],[-8,4,-19.3],[0,4,-19.3],[8,4,-19.3],[-8,4,19.3],[0,4,19.3],[8,4,19.3]];
     for (const p of tp) {
@@ -937,11 +1122,113 @@ export class HolyTennisGame {
         this._spectators.push({ mesh: sm, headMesh: hd, baseY: bY, phase: Math.random() * Math.PI * 2, speed: 1 + Math.random() * 2 });
       }
     }}
-    // Moon
-    const moon = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 16), new THREE.MeshBasicMaterial({ color: 0xeeeedd }));
-    moon.position.set(-60, 80, 40); this._scene.add(moon);
-    const mg = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 16), new THREE.MeshBasicMaterial({ color: 0xccccbb, transparent: true, opacity: 0.08 }));
-    mg.position.copy(moon.position); this._scene.add(mg);
+    // Spectator flags (some spectators hold team pennants)
+    for (let fi = 0; fi < 12; fi++) {
+      const spec = this._spectators[Math.floor(Math.random() * this._spectators.length)];
+      const flagCol = Math.random() > 0.5 ? COL_BANNER_BLUE : COL_BANNER_RED;
+      // Pole
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.0, 4),
+        new THREE.MeshStandardMaterial({ color: 0x664422, roughness: 0.8 }));
+      pole.position.set(spec.mesh.position.x + 0.2, spec.baseY + 0.8, spec.mesh.position.z);
+      this._scene.add(pole);
+      // Flag cloth
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.25, 4, 2),
+        new THREE.MeshStandardMaterial({ color: flagCol, side: THREE.DoubleSide, roughness: 0.8 }));
+      flag.position.set(spec.mesh.position.x + 0.4, spec.baseY + 1.15, spec.mesh.position.z);
+      flag.name = "specFlag";
+      this._scene.add(flag);
+      this._bannerMeshes.push(flag);
+    }
+
+    // Cobblestone surround
+    const cobbleMat = new THREE.MeshStandardMaterial({ color: 0x555544, roughness: 0.95, metalness: 0.05 });
+    for (let cz = -14; cz <= 14; cz += 2) {
+      for (const cx of [-COURT_WIDTH / 2 - 2.5, COURT_WIDTH / 2 + 2.5]) {
+        const stone = new THREE.Mesh(new THREE.CylinderGeometry(0.3 + Math.random() * 0.2, 0.35 + Math.random() * 0.2, 0.06, 6),
+          cobbleMat);
+        stone.position.set(cx + (Math.random() - 0.5) * 0.5, 0.01, cz + (Math.random() - 0.5) * 0.5);
+        stone.rotation.y = Math.random() * Math.PI;
+        this._scene.add(stone);
+      }
+    }
+
+    // Grass tufts around court edges
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x337722, roughness: 0.9, side: THREE.DoubleSide });
+    for (let gi = 0; gi < 80; gi++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = COURT_WIDTH / 2 + 2 + Math.random() * 5;
+      const gx = Math.cos(angle) * dist * 0.8;
+      const gz = Math.sin(angle) * dist;
+      if (Math.abs(gx) > 18 || Math.abs(gz) > 18) continue;
+      const tuft = new THREE.Group();
+      const bladeCount = 3 + Math.floor(Math.random() * 4);
+      for (let b = 0; b < bladeCount; b++) {
+        const bladeH = 0.15 + Math.random() * 0.25;
+        const blade = new THREE.Mesh(new THREE.PlaneGeometry(0.03, bladeH), grassMat);
+        blade.position.set((Math.random() - 0.5) * 0.1, bladeH / 2, (Math.random() - 0.5) * 0.1);
+        blade.rotation.y = Math.random() * Math.PI;
+        blade.rotation.z = (Math.random() - 0.5) * 0.3;
+        tuft.add(blade);
+      }
+      tuft.position.set(gx, 0, gz);
+      this._scene.add(tuft);
+    }
+
+    // Fireflies
+    for (let ff = 0; ff < 15; ff++) {
+      const ffMesh = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0xccff44, transparent: true, opacity: 0.6 }));
+      const ffPos = new THREE.Vector3((Math.random() - 0.5) * 30, 0.5 + Math.random() * 2, (Math.random() - 0.5) * 30);
+      ffMesh.position.copy(ffPos);
+      this._scene.add(ffMesh);
+      this._fireflies.push({ mesh: ffMesh, pos: ffPos, phase: Math.random() * Math.PI * 2, speed: 0.5 + Math.random() * 1.5 });
+    }
+
+    // Arena entrance gate (back wall center)
+    const gateMat = new THREE.MeshStandardMaterial({ color: 0x444433, roughness: 0.7, metalness: 0.1 });
+    // Stone arch
+    const archL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 1.2), gateMat);
+    archL.position.set(-2, 2.5, -20); this._scene.add(archL);
+    const archR = archL.clone(); archR.position.x = 2; this._scene.add(archR);
+    const archTop = new THREE.Mesh(new THREE.BoxGeometry(4.8, 1, 1.2), gateMat);
+    archTop.position.set(0, 5.5, -20); this._scene.add(archTop);
+    // Keystone
+    const keystone = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.3),
+      new THREE.MeshStandardMaterial({ color: COL_GOLD, metalness: 0.6, roughness: 0.3 }));
+    keystone.position.set(0, 5.5, -19.4); this._scene.add(keystone);
+    // Portcullis bars
+    const barMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7, roughness: 0.3 });
+    for (let bar = -3; bar <= 3; bar++) {
+      const vBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4.5, 4), barMat);
+      vBar.position.set(bar * 0.5, 2.5, -19.6); this._scene.add(vBar);
+    }
+    for (let hBar = 0; hBar < 4; hBar++) {
+      const hB = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 3.5, 4), barMat);
+      hB.position.set(0, 1 + hBar * 1.2, -19.6); hB.rotation.z = Math.PI / 2; this._scene.add(hB);
+    }
+
+    // Enhanced moon with craters
+    const moonGeo = new THREE.SphereGeometry(3, 24, 24);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xeeeedd });
+    const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    moonMesh.position.set(-60, 80, 40); this._scene.add(moonMesh);
+    // Craters (darker circles on moon surface)
+    const craters = [[0.5, 0.8, 0.4], [-0.3, 0.2, 0.6], [0.8, -0.4, 0.3], [-0.6, -0.6, 0.5], [0.1, -0.8, 0.35]];
+    for (const [cx, cy, cSize] of craters) {
+      const crater = new THREE.Mesh(new THREE.CircleGeometry(cSize, 8),
+        new THREE.MeshBasicMaterial({ color: 0xccccaa }));
+      const cPos = new THREE.Vector3(cx, cy, 1).normalize().multiplyScalar(3.01);
+      crater.position.copy(moonMesh.position).add(cPos);
+      crater.lookAt(moonMesh.position.clone().add(cPos.clone().multiplyScalar(2)));
+      this._scene.add(crater);
+    }
+    // Moon glow layers
+    for (let gl = 0; gl < 3; gl++) {
+      const glowMesh = new THREE.Mesh(new THREE.SphereGeometry(4 + gl * 2, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xccccbb, transparent: true, opacity: 0.04 - gl * 0.01 }));
+      glowMesh.position.copy(moonMesh.position); this._scene.add(glowMesh);
+    }
+
     // Corner towers
     for (const tx of [-20, 20]) for (const tz of [-20, 20]) {
       const tw = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 10, 8), wMat);
@@ -1324,6 +1611,10 @@ export class HolyTennisGame {
     this._camShake = 0.15 + power * 0.3;
     this._audio.playSwordHit(power);
     this._spawnHitParticles(this._grail.pos.clone(), power);
+    this._spawnImpactRing(this._grail.pos.clone());
+
+    // Power shot fire trail flag
+    this._lastShotWasPower = p.lastShotType === ShotType.POWER;
 
     // Screen flash on power shots
     if (p.lastShotType === ShotType.POWER) this._screenFlash = 0.3;
@@ -1470,6 +1761,11 @@ export class HolyTennisGame {
       const inB = this._isInBounds(g.pos.x, g.pos.z);
       const inSB = this._isInServiceBox(g.pos.x, g.pos.z, g.lastHitBy);
       this._audio.playBounce(); this._spawnBounceParticles(g.pos.clone()); this._addChalkMark(g.pos.x, g.pos.z, inB);
+      // Ground ripple ring on bounce
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.05, 0.1, 16),
+        new THREE.MeshBasicMaterial({ color: 0xaaddaa, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(g.pos.x, 0.02, g.pos.z);
+      this._scene.add(ring); this._bounceRings.push({ mesh: ring, life: 0.4 });
       if (g.isServe && g.bounceCount === 1) { if (!inSB) { this._handleFault(); return; } g.hasBounced = true; }
       if (!g.isServe || g.hasBounced) {
         if (g.bounceCount >= 2) { if (g.lastHitBy >= 0) { this._message = "Double bounce!"; this._awardPoint(g.lastHitBy); } return; }
@@ -1614,6 +1910,27 @@ export class HolyTennisGame {
       let ad = ta - p.facingAngle; while (ad > Math.PI) ad -= Math.PI * 2; while (ad < -Math.PI) ad += Math.PI * 2;
       p.facingAngle += ad * 6 * dt; p.mesh.rotation.y = p.facingAngle;
       p.mesh.rotation.z = p.bodyLean;
+      // Cape sway (fake cloth physics)
+      const cape = p.mesh.getObjectByName("cape") as THREE.Mesh | undefined;
+      if (cape) {
+        const runSway = Math.sin(p.runPhase * 0.8) * 0.15;
+        const windSway = Math.sin(this._totalTime * 2 + i * 3) * 0.08;
+        cape.rotation.x = -0.2 + runSway + windSway + Math.abs(p.bodyLean) * 0.5;
+        cape.rotation.z = p.bodyLean * -0.3 + Math.sin(this._totalTime * 3 + i) * 0.05;
+        // Cape vertices deform (simple wave on the geometry)
+        const pos = cape.geometry.attributes.position;
+        if (pos) {
+          for (let vi = 0; vi < pos.count; vi++) {
+            const vy = pos.getY(vi); // along cape length
+            // Only deform lower vertices (cape bottom waves more)
+            if (vy < -0.1) {
+              const wave = Math.sin(this._totalTime * 4 + vi * 0.5 + i) * 0.04 * Math.abs(vy);
+              pos.setZ(vi, wave);
+            }
+          }
+          pos.needsUpdate = true;
+        }
+      }
       // Legs
       const ls = Math.sin(p.runPhase) * 0.4;
       if (p.legMeshes.length >= 2) {
@@ -1758,12 +2075,52 @@ export class HolyTennisGame {
   private _updateTrail(): void {
     for (const m of this._trailMeshes) { this._scene.remove(m); m.geometry.dispose(); (m.material as THREE.Material).dispose(); }
     this._trailMeshes = [];
-    if (!this._grail.inPlay || this._grail.trail.length < 2) return;
-    for (let i = 0; i < this._grail.trail.length; i++) {
-      const t = i / this._grail.trail.length;
-      const m = new THREE.Mesh(new THREE.SphereGeometry(0.015 + t * 0.04, 4, 4),
-        new THREE.MeshBasicMaterial({ color: COL_GOLD_GLOW, transparent: true, opacity: t * 0.5 }));
-      m.position.copy(this._grail.trail[i]); this._scene.add(m); this._trailMeshes.push(m);
+    if (!this._grail.inPlay || this._grail.trail.length < 3) return;
+    const trail = this._grail.trail;
+    const isPower = this._lastShotWasPower;
+    const enchant = Math.min(1, this._rallyHits * 0.12);
+
+    // Ribbon trail: connected quads facing camera
+    for (let i = 1; i < trail.length; i++) {
+      const t = i / trail.length;
+      const width = (0.02 + t * 0.06) * (1 + enchant * 0.5);
+      const col = isPower
+        ? new THREE.Color().setHSL(0.05 + t * 0.05, 1, 0.4 + t * 0.3) // orange-red fire gradient
+        : new THREE.Color(COL_GOLD_GLOW);
+
+      // Cross-section perpendicular to direction, facing camera
+      const dir = new THREE.Vector3().subVectors(trail[i], trail[Math.max(0, i - 1)]).normalize();
+      const toCamera = new THREE.Vector3().subVectors(this._camera.position, trail[i]).normalize();
+      const right = new THREE.Vector3().crossVectors(dir, toCamera).normalize().multiplyScalar(width);
+
+      const geo = new THREE.BufferGeometry();
+      const p0 = trail[i - 1], p1 = trail[i];
+      const v = [
+        p0.x - right.x, p0.y - right.y, p0.z - right.z,
+        p0.x + right.x, p0.y + right.y, p0.z + right.z,
+        p1.x + right.x, p1.y + right.y, p1.z + right.z,
+        p1.x - right.x, p1.y - right.y, p1.z - right.z,
+      ];
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+      geo.setIndex([0, 1, 2, 0, 2, 3]);
+
+      const mat = new THREE.MeshBasicMaterial({
+        color: col, transparent: true, opacity: t * (isPower ? 0.6 : 0.4) * (0.5 + enchant * 0.5),
+        side: THREE.DoubleSide, depthWrite: false,
+      });
+      const m = new THREE.Mesh(geo, mat);
+      this._scene.add(m); this._trailMeshes.push(m);
+    }
+
+    // Power shot: extra fire sparks along trail
+    if (isPower && Math.random() < 0.4 && trail.length > 5) {
+      const rIdx = Math.floor(trail.length * 0.5 + Math.random() * trail.length * 0.5);
+      const pt = trail[Math.min(rIdx, trail.length - 1)];
+      const spark = new THREE.Mesh(new THREE.SphereGeometry(0.02, 3, 3),
+        new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xff4400 : 0xffaa00, transparent: true }));
+      spark.position.copy(pt).add(new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2));
+      this._scene.add(spark);
+      this._particles.push({ mesh: spark, vel: new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() + 0.5, (Math.random() - 0.5) * 2), life: 0.3, maxLife: 0.3 });
     }
   }
 
@@ -1848,6 +2205,182 @@ export class HolyTennisGame {
     }
   }
 
+  private _spawnImpactRing(pos: THREE.Vector3): void {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.1, 0.15, 24),
+      new THREE.MeshBasicMaterial({ color: COL_GOLD_GLOW, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false })
+    );
+    ring.position.copy(pos);
+    ring.lookAt(this._camera.position);
+    this._scene.add(ring);
+    this._impactRings.push({ mesh: ring, life: 0.5 });
+  }
+
+  private _spawnTorchEmbers(): void {
+    if (Math.random() > 0.15) return; // spawn rate
+    const torchIdx = Math.floor(Math.random() * this._torchLights.length);
+    const tl = this._torchLights[torchIdx];
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(0.015 + Math.random() * 0.02, 3, 3),
+      new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xffaa33 : 0xff6622, transparent: true })
+    );
+    m.position.set(tl.position.x + (Math.random() - 0.5) * 0.3, tl.position.y, tl.position.z + (Math.random() - 0.5) * 0.3);
+    this._scene.add(m);
+    this._embers.push({
+      mesh: m,
+      vel: new THREE.Vector3((Math.random() - 0.5) * 0.5, 1 + Math.random() * 2, (Math.random() - 0.5) * 0.5),
+      life: 1 + Math.random() * 2,
+      maxLife: 3,
+    });
+  }
+
+  private _updateVisualEffects(dt: number): void {
+    // Twinkling stars
+    if (this._starMat) {
+      this._starMat.opacity = 0.7 + Math.sin(this._totalTime * 0.5) * 0.3;
+      this._starMat.size = 0.4 + Math.sin(this._totalTime * 1.2) * 0.15;
+    }
+
+    // Clouds drift
+    for (const c of this._clouds) {
+      c.mesh.position.x += c.speed * dt;
+      if (c.mesh.position.x > 120) c.mesh.position.x = -120;
+    }
+
+    // Aurora
+    if (this._auroraMesh) {
+      this._auroraTime += dt;
+      (this._auroraMesh.material as THREE.ShaderMaterial).uniforms.time.value = this._auroraTime;
+    }
+
+    // Mist sway
+    for (const m of this._mistMeshes) {
+      m.position.x += Math.sin(this._totalTime * 0.3 + m.position.z) * 0.005;
+      m.position.z += Math.cos(this._totalTime * 0.2 + m.position.x) * 0.003;
+    }
+
+    // Torch embers
+    this._spawnTorchEmbers();
+    for (let i = this._embers.length - 1; i >= 0; i--) {
+      const e = this._embers[i];
+      e.vel.x += (Math.random() - 0.5) * 2 * dt; // wander
+      e.mesh.position.add(e.vel.clone().multiplyScalar(dt));
+      e.life -= dt;
+      const a = Math.max(0, e.life / e.maxLife);
+      (e.mesh.material as THREE.MeshBasicMaterial).opacity = a;
+      e.mesh.scale.setScalar(0.5 + a * 0.5);
+      if (e.life <= 0) { this._scene.remove(e.mesh); e.mesh.geometry.dispose(); (e.mesh.material as THREE.Material).dispose(); this._embers.splice(i, 1); }
+    }
+
+    // Impact rings expand and fade
+    for (let i = this._impactRings.length - 1; i >= 0; i--) {
+      const r = this._impactRings[i];
+      r.life -= dt;
+      const t = 1 - r.life / 0.5;
+      r.mesh.scale.setScalar(1 + t * 8);
+      (r.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.8);
+      r.mesh.lookAt(this._camera.position);
+      if (r.life <= 0) { this._scene.remove(r.mesh); r.mesh.geometry.dispose(); (r.mesh.material as THREE.Material).dispose(); this._impactRings.splice(i, 1); }
+    }
+
+    // Grail sparkle ring
+    if (this._grailSparkleGeo && this._grailSparkles) {
+      const pos = this._grailSparkleGeo.attributes.position;
+      const sparkCount = pos.count;
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = (i / sparkCount) * Math.PI * 2 + this._totalTime * 2;
+        const r = 0.4 + Math.sin(this._totalTime * 3 + i) * 0.1;
+        const y = Math.sin(this._totalTime * 4 + i * 0.5) * 0.15;
+        pos.setXYZ(i,
+          this._grail.pos.x + Math.cos(angle) * r,
+          this._grail.pos.y + y,
+          this._grail.pos.z + Math.sin(angle) * r
+        );
+      }
+      pos.needsUpdate = true;
+      (this._grailSparkles.material as THREE.PointsMaterial).opacity = this._grail.inPlay ? 0.6 + Math.sin(this._totalTime * 5) * 0.2 : 0.3;
+    }
+
+    // Sword glow during swings
+    for (let pi = 0; pi < 2; pi++) {
+      const glow = this._swordGlowLights[pi];
+      if (glow) {
+        const p = this._players[pi];
+        const targetIntensity = p.isSwinging ? 2.5 : 0;
+        glow.intensity = THREE.MathUtils.lerp(glow.intensity, targetIntensity, 8 * dt);
+      }
+    }
+
+    // Fireflies
+    for (const ff of this._fireflies) {
+      ff.phase += ff.speed * dt;
+      ff.mesh.position.set(
+        ff.pos.x + Math.sin(ff.phase * 0.7) * 1.5,
+        ff.pos.y + Math.sin(ff.phase * 1.3) * 0.5,
+        ff.pos.z + Math.cos(ff.phase * 0.9) * 1.5
+      );
+      (ff.mesh.material as THREE.MeshBasicMaterial).opacity = 0.3 + Math.sin(ff.phase * 3) * 0.4;
+    }
+
+    // Banner wave
+    for (const b of this._bannerMeshes) {
+      const bPos = b.geometry.attributes.position;
+      if (bPos) {
+        for (let vi = 0; vi < bPos.count; vi++) {
+          const x = bPos.getX(vi);
+          if (x > 0) {
+            bPos.setZ(vi, Math.sin(this._totalTime * 4 + x * 8) * 0.03 * x);
+          }
+        }
+        bPos.needsUpdate = true;
+      }
+    }
+
+    // Bounce rings
+    for (let i = this._bounceRings.length - 1; i >= 0; i--) {
+      const r = this._bounceRings[i]; r.life -= dt;
+      const t = 1 - r.life / 0.4;
+      r.mesh.scale.setScalar(1 + t * 5);
+      (r.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (1 - t) * 0.5);
+      if (r.life <= 0) { this._scene.remove(r.mesh); r.mesh.geometry.dispose(); (r.mesh.material as THREE.Material).dispose(); this._bounceRings.splice(i, 1); }
+    }
+
+    // Torch smoke
+    if (Math.random() < 0.08) {
+      const ti = Math.floor(Math.random() * this._torchLights.length);
+      const tl = this._torchLights[ti];
+      const smoke = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 4),
+        new THREE.MeshBasicMaterial({ color: 0x444444, transparent: true, opacity: 0.15 }));
+      smoke.position.set(tl.position.x + (Math.random() - 0.5) * 0.2, tl.position.y + 0.3, tl.position.z + (Math.random() - 0.5) * 0.2);
+      this._scene.add(smoke);
+      this._smokeParticles.push({
+        mesh: smoke,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.4 + Math.random() * 0.3, (Math.random() - 0.5) * 0.3),
+        life: 2 + Math.random() * 2, maxLife: 4,
+      });
+    }
+    for (let i = this._smokeParticles.length - 1; i >= 0; i--) {
+      const s = this._smokeParticles[i];
+      s.mesh.position.add(s.vel.clone().multiplyScalar(dt));
+      s.mesh.scale.setScalar(1 + (1 - s.life / s.maxLife) * 3); // smoke expands
+      s.life -= dt;
+      (s.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (s.life / s.maxLife) * 0.12);
+      if (s.life <= 0) { this._scene.remove(s.mesh); s.mesh.geometry.dispose(); (s.mesh.material as THREE.Material).dispose(); this._smokeParticles.splice(i, 1); }
+    }
+
+    // Holy beam (intensifies with rally)
+    if (this._holyBeam && this._holyBeamLight) {
+      const beamIntensity = this._grail.inPlay ? Math.min(1, this._rallyHits * 0.08) : 0;
+      (this._holyBeam.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.lerp(
+        (this._holyBeam.material as THREE.MeshBasicMaterial).opacity, beamIntensity * 0.12, 3 * dt);
+      this._holyBeam.position.set(this._grail.pos.x, this._grail.pos.y + 6, this._grail.pos.z);
+      this._holyBeam.rotation.y += dt * 0.5;
+      this._holyBeamLight.position.set(this._grail.pos.x, 15, this._grail.pos.z);
+      this._holyBeamLight.target.position.copy(this._grail.pos);
+      this._holyBeamLight.intensity = THREE.MathUtils.lerp(this._holyBeamLight.intensity, beamIntensity * 3, 3 * dt);
+    }
+  }
+
   private _animateCrowdReaction(): void { for (const s of this._spectators) s.speed = 5 + Math.random() * 5; }
   private _updateCrowd(dt: number): void {
     for (const s of this._spectators) {
@@ -1882,6 +2415,7 @@ export class HolyTennisGame {
     }
     this._updateCrowd(dt); this._updateChalkMarks(dt); this._updateShootingStars(dt);
     this._updateConfetti(dt); this._updateSwordTrails(); this._updateBats(dt);
+    this._updateVisualEffects(dt);
     // Wind drift
     this._wind.lerp(this._windTarget, WIND_CHANGE_SPEED * dt);
     if (Math.random() < 0.005) this._windTarget.set((Math.random() - 0.5) * WIND_MAX * 2, (Math.random() - 0.5) * WIND_MAX * 2);
