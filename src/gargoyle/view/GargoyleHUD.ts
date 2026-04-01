@@ -204,8 +204,8 @@ export class GargoyleHUD {
     // --- Tutorial tips ---
     if (state.tutorialTips && state.tutorialTips.length > 0 && (state.phase === "night" || state.phase === "dawn")) {
       const tip = state.tutorialTips[0];
-      html += `<div style="position:absolute;bottom:130px;left:50%;transform:translateX(-50%);text-align:center;">
-        <div style="background:rgba(10,10,20,0.85);padding:8px 18px;border-radius:6px;border:1px solid #333;display:inline-block;">
+      html += `<div style="position:absolute;bottom:130px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:auto;">
+        <div style="background:rgba(10,10,20,0.85);padding:8px 18px;border-radius:6px;border:1px solid #333;display:inline-block;pointer-events:auto;">
           <span style="font-size:12px;color:#aaa;">${tip}</span>
           <button id="gargoyle-tip-dismiss" style="pointer-events:auto;margin-left:12px;padding:2px 10px;font-size:11px;
             background:#222;color:#888;border:1px solid #444;border-radius:4px;cursor:pointer;">Got it</button>

@@ -137,7 +137,7 @@ export class GargoyleGame {
     this._onContextMenu = (e: Event) => e.preventDefault();
     this._onClick = () => {
       const s = this._state;
-      if (s.phase === "night" || s.phase === "dawn" || s.phase === "dusk") {
+      if ((s.phase === "night" || s.phase === "dawn" || s.phase === "dusk") && s.gameTime > 0.5) {
         this._renderer.canvas.requestPointerLock();
       }
     };
