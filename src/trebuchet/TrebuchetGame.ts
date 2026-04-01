@@ -662,77 +662,127 @@ export class TrebuchetGame {
       this._grassTufts.push(tuft);
     }
 
-    // ── Castle wall ──
+    // ── Castle wall with individual bricks ──
     this._wallMesh = new THREE.Group();
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x999988, roughness: 0.75 });
-
-    // Wall segments
     const wallSegWidth = FIELD_WIDTH / 2 - GATE_WIDTH / 2;
-    const wallLeftGeo = new THREE.BoxGeometry(wallSegWidth, WALL_HEIGHT, 3);
-    const wallLeft = new THREE.Mesh(wallLeftGeo, wallMat);
-    wallLeft.position.set(-(GATE_WIDTH / 2 + wallSegWidth / 2), WALL_HEIGHT / 2, WALL_Z);
-    wallLeft.castShadow = true;
-    wallLeft.receiveShadow = true;
-    this._wallMesh.add(wallLeft);
 
-    const wallRight = new THREE.Mesh(wallLeftGeo, wallMat);
-    wallRight.position.set(GATE_WIDTH / 2 + wallSegWidth / 2, WALL_HEIGHT / 2, WALL_Z);
-    wallRight.castShadow = true;
-    wallRight.receiveShadow = true;
-    this._wallMesh.add(wallRight);
+    // Wall base (solid core behind bricks)
+    for (const side of [-1, 1]) {
+      const wallCore = new THREE.Mesh(new THREE.BoxGeometry(wallSegWidth, WALL_HEIGHT, 3), new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.85 }));
+      wallCore.position.set(side * (GATE_WIDTH / 2 + wallSegWidth / 2), WALL_HEIGHT / 2, WALL_Z);
+      wallCore.castShadow = true; wallCore.receiveShadow = true;
+      this._wallMesh.add(wallCore);
+    }
 
-    // Stone block lines (horizontal grooves)
-    const grooveMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.9 });
-    for (let y = 1.5; y < WALL_HEIGHT; y += 1.5) {
-      for (const side of [-1, 1]) {
-        const groove = new THREE.Mesh(new THREE.BoxGeometry(wallSegWidth + 0.05, 0.04, 3.05), grooveMat);
-        groove.position.set(side * (GATE_WIDTH / 2 + wallSegWidth / 2), y, WALL_Z);
-        this._wallMesh.add(groove);
+    // Individual brick rows on wall face (front face only, for visual detail)
+    const brickH = 0.5, brickD = 0.15;
+    const brickColors = [0x9a9888, 0x8e8e7e, 0xa09880, 0x949488, 0x88887a];
+    const mortarMat = new THREE.MeshStandardMaterial({ color: 0x6a6a5a, roughness: 0.95 });
+    for (const side of [-1, 1]) {
+      const wallCenterX = side * (GATE_WIDTH / 2 + wallSegWidth / 2);
+      const wallStartX = wallCenterX - wallSegWidth / 2;
+      let row = 0;
+      for (let by = 0.25; by < WALL_HEIGHT; by += brickH + 0.06) {
+        const offset = (row % 2 === 0) ? 0 : 0.5; // alternating brick offset
+        const brickW = 1.0 + (row * 31 % 3) * 0.1;
+        for (let bx = offset; bx < wallSegWidth; bx += brickW + 0.06) {
+          const actualW = Math.min(brickW, wallSegWidth - bx - 0.03);
+          if (actualW < 0.3) continue;
+          const colorIdx = (row * 7 + Math.floor(bx * 3)) % brickColors.length;
+          const brickMat = new THREE.MeshStandardMaterial({ color: brickColors[colorIdx], roughness: 0.8 + Math.random() * 0.15 });
+          const brick = new THREE.Mesh(new THREE.BoxGeometry(actualW, brickH, brickD), brickMat);
+          brick.position.set(wallStartX + bx + actualW / 2, by, WALL_Z - 1.5 - brickD / 2);
+          this._wallMesh.add(brick);
+        }
+        // Mortar line
+        const mortar = new THREE.Mesh(new THREE.BoxGeometry(wallSegWidth, 0.04, 0.02), mortarMat);
+        mortar.position.set(wallCenterX, by + brickH / 2 + 0.02, WALL_Z - 1.5 - brickD);
+        this._wallMesh.add(mortar);
+        row++;
       }
     }
 
-    // Crenellations (merlons)
-    const merlonGeo = new THREE.BoxGeometry(1.2, 1.5, 1.5);
+    // Crenellations (merlons) with brick detail
     for (let x = -FIELD_WIDTH / 2 + 1; x <= FIELD_WIDTH / 2 - 1; x += 2.5) {
       if (Math.abs(x) < GATE_WIDTH / 2 + 0.5) continue;
-      const merlon = new THREE.Mesh(merlonGeo, wallMat);
+      const merlon = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 1.5), wallMat);
       merlon.position.set(x, WALL_HEIGHT + 0.75, WALL_Z);
       merlon.castShadow = true;
       this._wallMesh.add(merlon);
+      // Merlon cap stone
+      const capMat = new THREE.MeshStandardMaterial({ color: 0xaaa898, roughness: 0.6 });
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.15, 1.6), capMat);
+      cap.position.set(x, WALL_HEIGHT + 1.5, WALL_Z);
+      this._wallMesh.add(cap);
     }
 
-    // ── Towers with more detail ──
+    // Wall-top walkway
+    const walkwayMat = new THREE.MeshStandardMaterial({ color: 0x8a8a7a, roughness: 0.8 });
+    for (const side of [-1, 1]) {
+      const walkway = new THREE.Mesh(new THREE.BoxGeometry(wallSegWidth, 0.15, 2.5), walkwayMat);
+      walkway.position.set(side * (GATE_WIDTH / 2 + wallSegWidth / 2), WALL_HEIGHT + 0.05, WALL_Z - 0.5);
+      walkway.receiveShadow = true;
+      this._wallMesh.add(walkway);
+    }
+
+    // ── Towers with more detail (higher polygon) ──
     const towerMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.6 });
     for (const xSide of [-1, 1]) {
       const towerX = xSide * (FIELD_WIDTH / 2 + 1);
       const towerH = WALL_HEIGHT + 4;
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, towerH, 12), towerMat);
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, towerH, 24), towerMat);
       tower.position.set(towerX, towerH / 2, WALL_Z);
       tower.castShadow = true;
       this._wallMesh.add(tower);
 
+      // Tower stone band rings
+      const bandMat2 = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.7 });
+      for (let bandY = 2; bandY < towerH; bandY += 3) {
+        const band = new THREE.Mesh(new THREE.TorusGeometry(2.7, 0.12, 8, 24), bandMat2);
+        band.position.set(towerX, bandY, WALL_Z);
+        band.rotation.x = Math.PI / 2;
+        this._wallMesh.add(band);
+      }
+
       // Tower crenellations ring
-      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 5) {
         const tm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.8), wallMat);
         tm.position.set(towerX + Math.cos(a) * 2.7, towerH + 0.5, WALL_Z + Math.sin(a) * 2.7);
         this._wallMesh.add(tm);
       }
 
-      // Roof
+      // Roof (higher polygon)
       const roof = new THREE.Mesh(
-        new THREE.ConeGeometry(3.2, 3, 12),
+        new THREE.ConeGeometry(3.2, 3, 24),
         new THREE.MeshStandardMaterial({ color: 0x773333, roughness: 0.5 }),
       );
       roof.position.set(towerX, towerH + 2.5, WALL_Z);
       this._wallMesh.add(roof);
 
-      // Tower window slits
+      // Roof finial (spike on top)
+      const finial = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6 }));
+      finial.position.set(towerX, towerH + 4.2, WALL_Z);
+      this._wallMesh.add(finial);
+
+      // Tower window slits with stone frames
       const slitMat = new THREE.MeshBasicMaterial({ color: 0x111100 });
-      for (let sy = 3; sy < towerH - 1; sy += 3) {
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x7a7a6a, roughness: 0.7 });
+      for (let sy = 3; sy < towerH - 1; sy += 2.5) {
         const slit = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.3), slitMat);
         slit.position.set(towerX + xSide * 2.6, sy, WALL_Z);
         this._wallMesh.add(slit);
+        // Arrow slit frame (arch)
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.0, 0.08), frameMat);
+        frame.position.set(towerX + xSide * 2.65, sy, WALL_Z);
+        this._wallMesh.add(frame);
       }
+
+      // Tower base flare
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.8 });
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.5, 1.5, 24), baseMat);
+      base.position.set(towerX, 0.75, WALL_Z);
+      this._wallMesh.add(base);
     }
 
     this._scene.add(this._wallMesh);
@@ -763,7 +813,7 @@ export class TrebuchetGame {
 
     // Gate arch
     const archMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.6 });
-    const archGeo = new THREE.TorusGeometry(GATE_WIDTH / 2, 0.5, 12, 12, Math.PI);
+    const archGeo = new THREE.TorusGeometry(GATE_WIDTH / 2, 0.5, 16, 24, Math.PI);
     const arch = new THREE.Mesh(archGeo, archMat);
     arch.position.set(0, WALL_HEIGHT, WALL_Z + 0.5);
     arch.rotation.z = Math.PI;
@@ -866,7 +916,7 @@ export class TrebuchetGame {
       const tz = 5 + Math.random() * (FIELD_LENGTH + 5);
       const treeGroup = new THREE.Group();
       const trunkH = 2.5 + Math.random() * 2;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, trunkH, 12), trunkMat);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, trunkH, 16), trunkMat);
       trunk.position.y = trunkH / 2;
       trunk.castShadow = true;
       treeGroup.add(trunk);
@@ -1082,7 +1132,7 @@ export class TrebuchetGame {
     }
 
     // Cross beam (axle)
-    const crossBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2.4, 12), metalMat);
+    const crossBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2.4, 16), metalMat);
     crossBeam.rotation.z = Math.PI / 2;
     crossBeam.position.set(0, 4.5, 0);
     this._trebuchetGroup.add(crossBeam);
@@ -1807,8 +1857,8 @@ export class TrebuchetGame {
     this._mouseX = Math.max(-1, Math.min(1, this._mouseX));
     this._mouseY = Math.max(-1, Math.min(1, this._mouseY));
 
-    // Map mouse X to horizontal angle (sweep across the field)
-    this._aimAngleH = this._mouseX * 0.8; // ±0.8 radians
+    // Map mouse X to horizontal angle (sweep across the field) — negated so mouse-right aims right
+    this._aimAngleH = -this._mouseX * 0.8; // ±0.8 radians
 
     // Map mouse Y to vertical angle (elevation) — mouse up = aim higher
     this._aimAngleV = 0.3 + ((this._mouseY + 1) / 2) * 0.8; // 0.3 to 1.1 radians
@@ -2126,7 +2176,7 @@ export class TrebuchetGame {
     const group = new THREE.Group();
 
     // ── Shadow blob beneath every enemy ──
-    const shadowGeo = new THREE.CircleGeometry(Math.max(def.width, def.depth) * 0.6, 12);
+    const shadowGeo = new THREE.CircleGeometry(Math.max(def.width, def.depth) * 0.6, 20);
     const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
     const shadow = new THREE.Mesh(shadowGeo, shadowMat);
     shadow.rotation.x = -Math.PI / 2;
@@ -2145,18 +2195,30 @@ export class TrebuchetGame {
       group.add(body);
 
       // Head
-      const head = new THREE.Mesh(new THREE.SphereGeometry(def.width * 0.3, 16, 12), skinMat);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(def.width * 0.3, 24, 18), skinMat);
       head.position.y = def.height * 0.78;
       head.castShadow = true;
       group.add(head);
 
       // Helmet (slightly larger half-sphere on top)
       const helmet = new THREE.Mesh(
-        new THREE.SphereGeometry(def.width * 0.33, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.6),
+        new THREE.SphereGeometry(def.width * 0.33, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.6),
         armorMat,
       );
       helmet.position.y = def.height * 0.82;
       group.add(helmet);
+
+      // Helmet nasal guard
+      const nasalMat = new THREE.MeshStandardMaterial({ color: 0x555566, roughness: 0.3, metalness: 0.5 });
+      const nasal = new THREE.Mesh(new THREE.BoxGeometry(0.04, def.width * 0.25, 0.08), nasalMat);
+      nasal.position.set(0, def.height * 0.75, -def.width * 0.3);
+      group.add(nasal);
+
+      // Chainmail coif around neck
+      const coifMat = new THREE.MeshStandardMaterial({ color: 0x666677, roughness: 0.5, metalness: 0.3 });
+      const coif = new THREE.Mesh(new THREE.CylinderGeometry(def.width * 0.25, def.width * 0.3, def.height * 0.1, 16), coifMat);
+      coif.position.y = def.height * 0.68;
+      group.add(coif);
 
       // Arms (with weapons)
       for (const armSide of [-1, 1]) {
@@ -2206,7 +2268,7 @@ export class TrebuchetGame {
         shieldGroup.add(shieldBody);
         // Shield boss (center metal knob)
         const boss = new THREE.Mesh(
-          new THREE.SphereGeometry(0.12, 20, 16),
+          new THREE.SphereGeometry(0.12, 24, 20),
           armorMat,
         );
         boss.position.z = -0.06;
@@ -2220,10 +2282,10 @@ export class TrebuchetGame {
         group.add(shieldGroup);
 
         // Spear in right hand
-        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0x665522 }));
+        const spearShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2, 16), new THREE.MeshStandardMaterial({ color: 0x665522 }));
         spearShaft.position.set(def.width * 0.4, def.height * 0.6, 0);
         group.add(spearShaft);
-        const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 12), armorMat);
+        const spearTip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 16), armorMat);
         spearTip.position.set(def.width * 0.4, def.height * 0.6 + 1.1, 0);
         group.add(spearTip);
       }
@@ -2297,7 +2359,7 @@ export class TrebuchetGame {
         const wheelMat = new THREE.MeshStandardMaterial({ color: 0x443322 });
         for (const wx of [-1, 1]) {
           for (const wz of [-1, 1]) {
-            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.15, 12), wheelMat);
+            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.15, 20), wheelMat);
             wheel.rotation.z = Math.PI / 2;
             wheel.position.set(wx * def.width / 2, 0.5, wz * def.depth / 3);
             group.add(wheel);
@@ -2330,14 +2392,14 @@ export class TrebuchetGame {
         // Support poles
         for (const px of [-0.8, 0.8]) {
           for (const pz of [-2, 2]) {
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, def.height, 12), mat);
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, def.height, 16), mat);
             pole.position.set(px, def.height / 2, pz);
             group.add(pole);
           }
         }
         // Ram pole (iron-tipped log)
         const ramPole = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.2, 0.15, def.depth + 2, 12),
+          new THREE.CylinderGeometry(0.2, 0.15, def.depth + 2, 20),
           new THREE.MeshStandardMaterial({ color: 0x443322 }),
         );
         ramPole.rotation.x = Math.PI / 2;
@@ -2345,7 +2407,7 @@ export class TrebuchetGame {
         group.add(ramPole);
         // Iron ram head
         const tip = new THREE.Mesh(
-          new THREE.ConeGeometry(0.35, 1.0, 12),
+          new THREE.ConeGeometry(0.35, 1.0, 20),
           metalMat2,
         );
         tip.rotation.x = -Math.PI / 2;
@@ -2369,12 +2431,12 @@ export class TrebuchetGame {
         arm.rotation.x = -0.3;
         group.add(arm);
         // Bucket
-        const bucket = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 16), mat);
+        const bucket = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 20), mat);
         bucket.position.set(0, def.height + 0.5, -1.8);
         group.add(bucket);
         // Wheels
         for (const wx of [-1, 1]) {
-          const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.12, 12), new THREE.MeshStandardMaterial({ color: 0x443322 }));
+          const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.12, 20), new THREE.MeshStandardMaterial({ color: 0x443322 }));
           wheel.rotation.z = Math.PI / 2;
           wheel.position.set(wx * def.width / 2, 0.45, 0);
           group.add(wheel);
@@ -2457,7 +2519,7 @@ export class TrebuchetGame {
     group.add(shadow);
 
     // ── Torso (barrel-shaped) ──
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.35, w * 0.4, h * 0.4, 12), mat);
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.35, w * 0.4, h * 0.4, 20), mat);
     torso.position.y = h * 0.5;
     torso.castShadow = true;
     group.add(torso);

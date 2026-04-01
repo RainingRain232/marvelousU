@@ -8,6 +8,7 @@ import {
   CAESAR_BUILDING_DEFS,
   HOUSING_TIER_NAMES,
   type CaesarBuildingCategory,
+  type CaesarBuildingDef,
   getMaintenanceCost,
 } from "../config/CaesarBuildingDefs";
 import { CaesarResourceType, RESOURCE_META } from "../config/CaesarResourceDefs";
@@ -355,7 +356,13 @@ export class CaesarHUD {
       if (e.key === "3") this.onSelectTool?.("road");
       if (e.key === "4") this.onSelectTool?.("demolish");
       if (e.key === "Delete" || e.key === "Backspace") this.onSelectTool?.("demolish");
-      if (e.key === "Escape") { this.onSelectTool?.("select"); this._hideHelpOverlay(); }
+      if (e.key === "Escape") {
+        if (this._wikiOverlay) { this._hideWikiOverlay(); }
+        else if (this._helpOverlay) { this._hideHelpOverlay(); }
+        else if (this._statsOverlay) { this._hideStatsOverlay(); }
+        else if (this._escapeMenu) { this._hideEscapeMenu(); }
+        else { this._showEscapeMenu(); }
+      }
       if (e.key === "?" || e.key === "/") { this._showHelpOverlay(); }
       if (e.key === "F5") { e.preventDefault(); this.onSave?.(); }
       if (e.key === "F9") { e.preventDefault(); this.onLoad?.(); }
@@ -636,13 +643,23 @@ export class CaesarHUD {
     if (bdef.woodCost > 0) costStr += ` ${bdef.woodCost}w`;
     if (bdef.stoneCost > 0) costStr += ` ${bdef.stoneCost}s`;
 
+    // Terrain requirement label
+    let terrainStr = "";
+    if (bdef.requiresTerrain) {
+      const terrainNames: Record<string, string> = { forest: "Forest", hill: "Hill", stone_deposit: "Stone deposit", iron_deposit: "Iron deposit", meadow: "Grass/Meadow" };
+      terrainStr = terrainNames[bdef.requiresTerrain] || bdef.requiresTerrain;
+    }
+
     const btn = document.createElement("button");
     btn.textContent = `${bdef.label} (${costStr})`;
-    const produces = bdef.outputs.length > 0 ? `\nProduces: ${bdef.outputs.map(o => RESOURCE_META[o.type].label).join(", ")}` : "";
-    const requires = bdef.inputs.length > 0 ? `\nRequires: ${bdef.inputs.map(i => RESOURCE_META[i.type].label).join(", ")}` : "";
-    btn.title = `${bdef.label}${produces}${requires}\nCost: ${bdef.cost} gold${bdef.woodCost > 0 ? `, ${bdef.woodCost} wood` : ""}${bdef.stoneCost > 0 ? `, ${bdef.stoneCost} stone` : ""}${maint > 0 ? `\nMaintenance: ${maint}g/tax` : ""}\nWorkers: ${bdef.maxWorkers || 0}\n${bdef.description}`;
+    if (terrainStr) {
+      const terrainTag = document.createElement("span");
+      terrainTag.textContent = `Requires ${terrainStr.toLowerCase()} terrain`;
+      terrainTag.style.cssText = `display:block; font-size:9px; color:#ff8844; margin-top:1px;`;
+      btn.appendChild(terrainTag);
+    }
     btn.style.cssText = `
-      padding: 3px 8px; font-size: 11px;
+      padding: 3px 8px; font-size: 11px; text-align: left;
       background: ${canAfford ? "#3a2a15" : "#2a1a0a"};
       color: ${canAfford ? "#f0e6d2" : "#665544"};
       border: 1px solid ${state.selectedBuildingType === type ? "#ffd700" : "#5a4020"};
@@ -653,19 +670,102 @@ export class CaesarHUD {
     });
     btn.addEventListener("mouseenter", (e) => {
       if (this._tooltip) {
-        this._tooltip.textContent = btn.title;
+        this._tooltip.innerHTML = this._buildRichTooltip(bdef, maint, canAfford, gold, wood, stone);
         this._tooltip.style.display = "block";
-        this._tooltip.style.left = (e.clientX + 10) + "px";
-        this._tooltip.style.top = (e.clientY - 30) + "px";
+        // Position above the cursor
+        const tx = Math.min(e.clientX, window.innerWidth - 340);
+        this._tooltip.style.left = tx + "px";
+        this._tooltip.style.top = "auto";
+        this._tooltip.style.bottom = (window.innerHeight - e.clientY + 12) + "px";
         this._tooltip.style.transform = "none";
-        this._tooltip.style.bottom = "auto";
-        this._tooltip.style.whiteSpace = "pre-line";
+      }
+    });
+    btn.addEventListener("mousemove", (e) => {
+      if (this._tooltip && this._tooltip.style.display !== "none") {
+        const tx = Math.min(e.clientX, window.innerWidth - 340);
+        this._tooltip.style.left = tx + "px";
+        this._tooltip.style.bottom = (window.innerHeight - e.clientY + 12) + "px";
       }
     });
     btn.addEventListener("mouseleave", () => {
       if (this._tooltip) this._tooltip.style.display = "none";
     });
     container.appendChild(btn);
+  }
+
+  private _buildRichTooltip(bdef: CaesarBuildingDef, maint: number, canAfford: boolean, gold: number, wood: number, stone: number): string {
+    const sizeLabel = bdef.size === "large" ? `${bdef.footprint.w}x${bdef.footprint.h} (large)` : bdef.size === "medium" ? `${bdef.footprint.w}x${bdef.footprint.h} (medium)` : "1x1 (small)";
+    const goldOk = gold >= bdef.cost;
+    const woodOk = wood >= bdef.woodCost;
+    const stoneOk = stone >= bdef.stoneCost;
+
+    let html = `<div style="color:#ffd700; font-size:14px; font-weight:bold; margin-bottom:4px; border-bottom:1px solid #5a4020; padding-bottom:4px;">${bdef.label}</div>`;
+    html += `<div style="color:#cdb891; margin-bottom:6px; font-style:italic;">${bdef.description}</div>`;
+
+    // Cost section
+    html += `<div style="margin-bottom:4px;">`;
+    html += `<span style="color:#aa9977;">Cost:</span> `;
+    html += `<span style="color:${goldOk ? "#ffd700" : "#ff4444"}">${bdef.cost}g</span>`;
+    if (bdef.woodCost > 0) html += ` + <span style="color:${woodOk ? "#8bc34a" : "#ff4444"}">${bdef.woodCost} wood</span>`;
+    if (bdef.stoneCost > 0) html += ` + <span style="color:${stoneOk ? "#90a4ae" : "#ff4444"}">${bdef.stoneCost} stone</span>`;
+    if (!canAfford) html += ` <span style="color:#ff4444; font-size:10px;">(insufficient)</span>`;
+    html += `</div>`;
+
+    if (maint > 0) html += `<div><span style="color:#aa9977;">Maintenance:</span> <span style="color:#ff9800;">${maint}g/tax period</span></div>`;
+
+    // Size and workers
+    html += `<div><span style="color:#aa9977;">Size:</span> ${sizeLabel}`;
+    if (bdef.maxWorkers > 0) html += ` &nbsp;|&nbsp; <span style="color:#aa9977;">Workers:</span> ${bdef.maxWorkers}`;
+    html += `</div>`;
+
+    // Build time
+    if (bdef.buildTime > 0) html += `<div><span style="color:#aa9977;">Build time:</span> ${bdef.buildTime}s</div>`;
+
+    // Production
+    if (bdef.outputs.length > 0 || bdef.inputs.length > 0) {
+      html += `<div style="margin-top:4px; padding-top:4px; border-top:1px solid #3a2a15;">`;
+      if (bdef.inputs.length > 0) {
+        html += `<div><span style="color:#ff8a65;">Consumes:</span> ${bdef.inputs.map(i => `<span style="color:#ffab91">${i.amount} ${RESOURCE_META[i.type].label}</span>`).join(", ")}</div>`;
+      }
+      if (bdef.outputs.length > 0) {
+        html += `<div><span style="color:#66bb6a;">Produces:</span> ${bdef.outputs.map(o => `<span style="color:#a5d6a7">${o.amount} ${RESOURCE_META[o.type].label}</span>`).join(", ")}`;
+        if (bdef.productionTime > 0) html += ` <span style="color:#777; font-size:10px;">every ${bdef.productionTime}s</span>`;
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+
+    // Services
+    if (bdef.walkerService) {
+      html += `<div><span style="color:#aa9977;">Service:</span> <span style="color:#64b5f6;">${bdef.walkerService}</span> (range: ${bdef.walkerRange} tiles)</div>`;
+    }
+
+    // Storage
+    if (bdef.storageCapacity > 0) {
+      html += `<div><span style="color:#aa9977;">Storage:</span> +${bdef.storageCapacity} capacity</div>`;
+    }
+
+    // Desirability
+    if (bdef.desirability !== 0) {
+      const dColor = bdef.desirability > 0 ? "#4caf50" : "#f44336";
+      html += `<div><span style="color:#aa9977;">Desirability:</span> <span style="color:${dColor}">${bdef.desirability > 0 ? "+" : ""}${bdef.desirability}</span> (range: ${bdef.desirabilityRange} tiles)</div>`;
+    }
+
+    // Terrain requirement
+    if (bdef.requiresTerrain) {
+      const terrainNames: Record<string, string> = { forest: "Forest", hill: "Hill", stone_deposit: "Stone deposit", iron_deposit: "Iron deposit", meadow: "Grass/Meadow" };
+      html += `<div style="color:#ff8844; margin-top:2px;">Requires ${terrainNames[bdef.requiresTerrain] || bdef.requiresTerrain} terrain</div>`;
+    }
+
+    // Military
+    if (bdef.garrisonSlots > 0) {
+      html += `<div><span style="color:#aa9977;">Garrison:</span> ${bdef.garrisonSlots} slots</div>`;
+    }
+    if (bdef.hp > 0) {
+      html += `<div><span style="color:#aa9977;">HP:</span> ${bdef.hp}</div>`;
+    }
+
+    return html;
   }
 
   private _updateInfoPanel(state: CaesarState): void {
@@ -931,11 +1031,16 @@ export class CaesarHUD {
 
   private _updateTooltip(state: CaesarState): void {
     if (!this._tooltip) return;
+    // Only show placement error tooltip when not already showing a building hover tooltip
     if (state.tooltipText && (state.selectedTool === "build" || state.selectedTool === "road")) {
-      this._tooltip.textContent = state.tooltipText;
+      // Don't overwrite building button hover tooltips
+      if (this._tooltip.style.display === "block" && this._tooltip.children.length > 0) return;
+      this._tooltip.innerHTML = `<span style="color:#ff6b6b;">${state.tooltipText}</span>`;
       this._tooltip.style.display = "block";
-    } else {
-      this._tooltip.style.display = "none";
+      this._tooltip.style.left = "50%";
+      this._tooltip.style.top = "auto";
+      this._tooltip.style.bottom = "100px";
+      this._tooltip.style.transform = "translateX(-50%)";
     }
   }
 
@@ -1020,6 +1125,276 @@ export class CaesarHUD {
       Trade Profit: ${Math.floor(state.tradeProfit)}<br>
       Raids Defeated: ${state.raidsDefeated}<br>
     `;
+  }
+
+  // ---- Escape Menu ----
+
+  private _showEscapeMenu(): void {
+    if (this._escapeMenu) return;
+    this._escapeMenu = document.createElement("div");
+    this._escapeMenu.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); pointer-events: all; z-index: 300;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: #2a1f14; border: 2px solid #8b6914; border-radius: 10px;
+      padding: 28px 36px; min-width: 300px; text-align: center;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    `;
+    box.innerHTML = `
+      <h2 style="margin:0 0 20px; color:#ffd700; font-family:serif; font-size:22px;">Menu</h2>
+    `;
+
+    const buttons: { label: string; action: () => void; color?: string }[] = [
+      { label: "Resume", action: () => this._hideEscapeMenu(), color: "#5a8a20" },
+      { label: "Save Game (F5)", action: () => { this.onSave?.(); this._hideEscapeMenu(); }, color: "#2a6a4a" },
+      { label: "Load Game (F9)", action: () => { this.onLoad?.(); this._hideEscapeMenu(); }, color: "#2a5a6a" },
+      { label: "Controls", action: () => { this._hideEscapeMenu(); this._showHelpOverlay(); } },
+      { label: "Game Wiki", action: () => { this._showWikiOverlay(); } },
+      { label: "Tutorial", action: () => { this._hideEscapeMenu(); this._showTutorialOverlay(); } },
+      { label: "Game Concepts", action: () => { this._hideEscapeMenu(); this._showConceptsOverlay(); } },
+      { label: "Exit to Menu", action: () => { this._hideEscapeMenu(); this.onExit?.(); }, color: "#6a2a2a" },
+    ];
+
+    for (const b of buttons) {
+      const btn = document.createElement("button");
+      btn.textContent = b.label;
+      btn.style.cssText = `
+        display: block; width: 100%; margin-bottom: 8px; padding: 10px 20px;
+        font-size: 14px; background: ${b.color || "#3a2a15"}; color: #f0e6d2;
+        border: 1px solid #5a4020; border-radius: 5px; cursor: pointer;
+        transition: background 0.15s;
+      `;
+      btn.addEventListener("mouseenter", () => { btn.style.background = "#8b6914"; });
+      btn.addEventListener("mouseleave", () => { btn.style.background = b.color || "#3a2a15"; });
+      btn.addEventListener("click", b.action);
+      box.appendChild(btn);
+    }
+
+    const escHint = document.createElement("div");
+    escHint.style.cssText = "color:#8a7a60; font-size:11px; margin-top:8px;";
+    escHint.textContent = "Press Escape to close";
+    box.appendChild(escHint);
+
+    this._escapeMenu.appendChild(box);
+    this._escapeMenu.addEventListener("click", (e) => {
+      if (e.target === this._escapeMenu) this._hideEscapeMenu();
+    });
+    this._root!.appendChild(this._escapeMenu);
+  }
+
+  private _hideEscapeMenu(): void {
+    if (this._escapeMenu?.parentNode) this._escapeMenu.parentNode.removeChild(this._escapeMenu);
+    this._escapeMenu = null;
+  }
+
+  // ---- Wiki Overlay ----
+
+  private _showWikiOverlay(): void {
+    if (this._wikiOverlay) return;
+    this._wikiOverlay = document.createElement("div");
+    this._wikiOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); pointer-events: all; z-index: 350;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: #2a1f14; border: 2px solid #8b6914; border-radius: 10px;
+      padding: 24px 28px; max-width: 700px; width: 90vw; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    `;
+
+    // Build wiki content from building defs
+    let buildingsByCategory: Record<string, string[]> = {};
+    for (const type of Object.values(CaesarBuildingType)) {
+      const bdef = CAESAR_BUILDING_DEFS[type as CaesarBuildingType];
+      if (!buildingsByCategory[bdef.category]) buildingsByCategory[bdef.category] = [];
+      const maint = getMaintenanceCost(type as CaesarBuildingType);
+      let entry = `<div style="margin-bottom:8px; padding:6px 10px; background:#1a1208; border-radius:4px; border:1px solid #3a2a15;">`;
+      entry += `<b style="color:#ffd700;">${bdef.label}</b>`;
+      entry += ` <span style="color:#8a7a60; font-size:10px;">${bdef.footprint.w}x${bdef.footprint.h} | ${bdef.cost}g`;
+      if (bdef.woodCost > 0) entry += ` ${bdef.woodCost}w`;
+      if (bdef.stoneCost > 0) entry += ` ${bdef.stoneCost}s`;
+      entry += `</span>`;
+      entry += `<br><span style="color:#cdb891;">${bdef.description}</span>`;
+      if (bdef.outputs.length > 0) entry += `<br><span style="color:#66bb6a;">Produces:</span> ${bdef.outputs.map(o => `${o.amount} ${RESOURCE_META[o.type].label}`).join(", ")}`;
+      if (bdef.inputs.length > 0) entry += `<br><span style="color:#ff8a65;">Requires:</span> ${bdef.inputs.map(i => `${i.amount} ${RESOURCE_META[i.type].label}`).join(", ")}`;
+      if (bdef.walkerService) entry += `<br><span style="color:#64b5f6;">Service:</span> ${bdef.walkerService} (${bdef.walkerRange} tiles)`;
+      if (bdef.storageCapacity > 0) entry += `<br><span style="color:#aa9977;">Storage:</span> +${bdef.storageCapacity}`;
+      if (maint > 0) entry += `<br><span style="color:#ff9800;">Maintenance:</span> ${maint}g/tax`;
+      if (bdef.requiresTerrain) entry += `<br><span style="color:#ff8844;">Requires: ${bdef.requiresTerrain} terrain</span>`;
+      if (bdef.maxWorkers > 0) entry += ` &nbsp;|&nbsp; <span style="color:#aaa;">Workers: ${bdef.maxWorkers}</span>`;
+      entry += `</div>`;
+      buildingsByCategory[bdef.category].push(entry);
+    }
+
+    const categoryLabels: Record<string, string> = {
+      housing: "Housing", infrastructure: "Infrastructure", food: "Food Production & Distribution",
+      industry: "Industry", religion: "Religion", safety: "Military & Safety",
+      entertainment: "Entertainment", commerce: "Commerce & Trade",
+    };
+
+    let wikiHTML = `<h2 style="margin:0 0 16px; color:#ffd700; font-family:serif; text-align:center; font-size:20px;">Building Wiki</h2>`;
+    for (const [cat, entries] of Object.entries(buildingsByCategory)) {
+      wikiHTML += `<h3 style="color:#cdb891; margin:12px 0 6px; border-bottom:1px solid #3a2a15; padding-bottom:4px;">${categoryLabels[cat] || cat}</h3>`;
+      wikiHTML += entries.join("");
+    }
+
+    wikiHTML += `<div style="text-align:center; margin-top:16px;">
+      <button id="caesar-wiki-close" style="padding:8px 28px; font-size:14px; background:#8b6914; color:#fff; border:none; border-radius:4px; cursor:pointer;">Close (Esc)</button>
+    </div>`;
+
+    box.innerHTML = wikiHTML;
+    this._wikiOverlay.appendChild(box);
+    this._wikiOverlay.addEventListener("click", (e) => {
+      if (e.target === this._wikiOverlay) this._hideWikiOverlay();
+    });
+    this._root!.appendChild(this._wikiOverlay);
+    box.querySelector("#caesar-wiki-close")!.addEventListener("click", () => this._hideWikiOverlay());
+  }
+
+  private _hideWikiOverlay(): void {
+    if (this._wikiOverlay?.parentNode) this._wikiOverlay.parentNode.removeChild(this._wikiOverlay);
+    this._wikiOverlay = null;
+  }
+
+  // ---- Tutorial Overlay ----
+
+  private _showTutorialOverlay(): void {
+    if (this._helpOverlay) return;
+    this._helpOverlay = document.createElement("div");
+    this._helpOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); pointer-events: all; z-index: 300;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: #2a1f14; border: 2px solid #8b6914; border-radius: 10px;
+      padding: 24px 32px; max-width: 600px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    `;
+    box.innerHTML = `
+      <h2 style="margin:0 0 16px; color:#ffd700; font-family:serif; text-align:center;">Step-by-Step Tutorial</h2>
+      <div style="font-size:12px; color:#cdb891; line-height:1.8;">
+        <div style="background:#1a1208; padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ffd700;">
+          <b style="color:#ffd700;">Step 1: Roads First</b><br>
+          Press <b style="color:#fff;">3</b> or click "Road" to enter road mode. Click and drag to lay roads.
+          All buildings must be placed adjacent to a road.
+        </div>
+        <div style="background:#1a1208; padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #8bc34a;">
+          <b style="color:#8bc34a;">Step 2: Housing</b><br>
+          Press <b style="color:#fff;">2</b> for Build mode, select Housing. Place housing plots next to roads.
+          Residents will move in automatically. More services = higher tier housing.
+        </div>
+        <div style="background:#1a1208; padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ff9800;">
+          <b style="color:#ff9800;">Step 3: Food Chain</b><br>
+          Build Farms on grass/meadow tiles, then Mills to grind wheat into flour,
+          then Bakeries to bake food. Build a Market to distribute food to housing.
+        </div>
+        <div style="background:#1a1208; padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #64b5f6;">
+          <b style="color:#64b5f6;">Step 4: Services</b><br>
+          Build Wells for water, Chapels for religion, Taverns for entertainment.
+          Housing needs these services to evolve to higher tiers.
+        </div>
+        <div style="background:#1a1208; padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ce93d8;">
+          <b style="color:#ce93d8;">Step 5: Industry</b><br>
+          Lumber Camps (on forest), Quarries (on stone), Iron Mines (on iron deposits).
+          Weavers make cloth, Blacksmiths make tools — both needed for high-tier housing.
+        </div>
+        <div style="background:#1a1208; padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ef5350;">
+          <b style="color:#ef5350;">Step 6: Safety</b><br>
+          Build Watchposts to prevent fires and provide safety. Barracks train soldiers
+          to defend against raids. Walls and towers fortify your town.
+        </div>
+        <div style="background:#1a1208; padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ffd700;">
+          <b style="color:#ffd700;">Step 7: Win!</b><br>
+          Meet all scenario goals (population, prosperity, culture, peace, favor)
+          to achieve victory. Pay tribute to the King each year to maintain Favor.
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:12px;">
+        <button id="caesar-tut-close" style="padding:8px 28px; font-size:14px; background:#8b6914; color:#fff; border:none; border-radius:4px; cursor:pointer;">Close (Esc)</button>
+      </div>
+    `;
+    this._helpOverlay.appendChild(box);
+    this._helpOverlay.addEventListener("click", (e) => {
+      if (e.target === this._helpOverlay) this._hideHelpOverlay();
+    });
+    this._root!.appendChild(this._helpOverlay);
+    box.querySelector("#caesar-tut-close")!.addEventListener("click", () => this._hideHelpOverlay());
+  }
+
+  // ---- Concepts Overlay ----
+
+  private _showConceptsOverlay(): void {
+    if (this._helpOverlay) return;
+    this._helpOverlay = document.createElement("div");
+    this._helpOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); pointer-events: all; z-index: 300;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: #2a1f14; border: 2px solid #8b6914; border-radius: 10px;
+      padding: 24px 32px; max-width: 620px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    `;
+    box.innerHTML = `
+      <h2 style="margin:0 0 16px; color:#ffd700; font-family:serif; text-align:center;">Game Concepts</h2>
+      <div style="font-size:12px; color:#cdb891; line-height:1.7;">
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Ratings</h3>
+        <b style="color:#4caf50;">Prosperity</b> — Reflects your town's economic health. Grows with population, trade, and gold reserves. Declines with unemployment and poverty.<br>
+        <b style="color:#64b5f6;">Culture</b> — Measures cultural development. Build churches, cathedrals, taverns, and festival grounds. Higher housing tiers also boost culture.<br>
+        <b style="color:#ff9800;">Peace</b> — Military security rating. Build watchposts, barracks, walls, and towers. Successfully defending raids boosts peace.<br>
+        <b style="color:#ef5350;">Favor</b> — The King's opinion of you. Pay tribute on time! Missing tributes severely damages favor. Starts at 50.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Housing Evolution</h3>
+        Housing evolves through 6 tiers as you provide services:<br>
+        <span style="color:#888;">Tent</span> → <span style="color:#aaa;">Shack</span> → <span style="color:#ccc;">Cottage</span> → <span style="color:#ddd;">House</span> → <span style="color:#eee;">Villa</span> → <span style="color:#fff;">Mansion</span><br>
+        Each tier needs: more services (food, water, religion, entertainment), higher desirability, and advanced goods (cloth at tier 4, tools at tier 5).<br>
+        Higher tiers house more people and pay more tax.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Walkers & Services</h3>
+        Service buildings spawn walkers that travel along roads. When a walker passes housing, that housing receives the service.
+        Walkers have a limited range — place service buildings close to the housing they serve.
+        Services include: food (market), water (well), religion (chapel/church), entertainment (tavern), safety (watchpost), and commerce (guild hall).<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Desirability</h3>
+        Each tile has a desirability score affected by nearby buildings. Wells, churches, and parks increase desirability.
+        Farms, industry buildings, and some structures decrease it. Housing needs positive desirability to evolve.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Production Chains</h3>
+        <span style="color:#8bc34a;">Food:</span> Farm (wheat) → Mill (flour) → Bakery (food) → Market (distributes)<br>
+        <span style="color:#8bc34a;">Alt Food:</span> Farm (wheat) → Butcher (food) → Market<br>
+        <span style="color:#ff9800;">Cloth:</span> Farm → Weaver (cloth) → Housing needs / Guild hall (gold)<br>
+        <span style="color:#90a4ae;">Tools:</span> Iron Mine (iron) → Blacksmith (tools) → Housing needs / Guild hall (gold)<br>
+        <span style="color:#8d6e63;">Building:</span> Lumber Camp (wood) + Quarry (stone) → Construction materials<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Trade & Tribute</h3>
+        Merchant caravans arrive periodically with goods to buy and sell. Guild halls convert surplus cloth/tools into gold.
+        Every year the King demands tribute — pay it to maintain Favor. Missing tribute can lead to defeat.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Fires & Raids</h3>
+        Buildings can catch fire! Watchposts reduce fire risk. Click a burning building to extinguish it (costs 20g).
+        Bandits may raid your town — build barracks and walls to defend. Soldiers automatically engage enemies.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Employment</h3>
+        Workers are drawn from your housing population. Buildings need workers to function — understaffed buildings produce less.
+        Set worker priority (High/Normal/Low) on individual buildings to control allocation. High unemployment lowers morale.
+
+      </div>
+      <div style="text-align:center; margin-top:12px;">
+        <button id="caesar-concepts-close" style="padding:8px 28px; font-size:14px; background:#8b6914; color:#fff; border:none; border-radius:4px; cursor:pointer;">Close (Esc)</button>
+      </div>
+    `;
+    this._helpOverlay.appendChild(box);
+    this._helpOverlay.addEventListener("click", (e) => {
+      if (e.target === this._helpOverlay) this._hideHelpOverlay();
+    });
+    this._root!.appendChild(this._helpOverlay);
+    box.querySelector("#caesar-concepts-close")!.addEventListener("click", () => this._hideHelpOverlay());
   }
 
   destroy(): void {

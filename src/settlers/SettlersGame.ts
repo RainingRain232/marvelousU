@@ -718,7 +718,14 @@ export class SettlersGame {
   }
 
   private _handleEscape(): void {
-    // Escape always deselects / cancels current action (never pauses)
-    this._handleRightClick();
+    // If an overlay or escape menu is open, close it
+    if (this._hud.handleEscapeKey()) return;
+    // If a tool is active, deselect it first
+    if (this._state.selectedTool !== "select" || this._state.selectedBuildingType || this._state.roadDrawing.active) {
+      this._handleRightClick();
+      return;
+    }
+    // Otherwise show escape menu
+    this._hud.showEscapeMenu();
   }
 }

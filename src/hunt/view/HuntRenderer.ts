@@ -297,18 +297,58 @@ export class HuntRenderer {
 
     // Draw prey (sorted by Y for depth)
     const sortedPrey = [...state.prey.filter(p => p.alive)].sort((a, b) => a.y - b.y);
+    const now = Date.now();
     for (const prey of sortedPrey) {
       const def = PREY[prey.type];
       const px = ox + prey.x, py = oy + prey.y;
       const r = def.size;
       const cos = Math.cos(prey.angle), sin = Math.sin(prey.angle);
+      // Walking animation phase based on speed + time
+      const walkSpeed = prey.speed > 0.1 ? 1 : 0;
+      const walkPhase = now / (prey.startled ? 80 : 150);
+
+      // Helper: draw articulated leg with upper/lower segments, knee joint, and foot
+      const drawLeg = (hipX: number, hipY: number, legLen: number, thickness: number, color: number, footColor: number, footR: number, phase: number, hasClaw = false) => {
+        const swing = walkSpeed * Math.sin(phase) * 0.35;
+        const upperLen = legLen * 0.5;
+        const lowerLen = legLen * 0.55;
+        // Upper leg (angled slightly back/forward with walk)
+        const upperAngle = Math.PI / 2 + swing * 0.6;
+        const kneeX = hipX + Math.cos(upperAngle) * upperLen * 0.3;
+        const kneeY = hipY + Math.sin(upperAngle) * upperLen;
+        g.moveTo(hipX, hipY).lineTo(kneeX, kneeY).stroke({ color, width: thickness });
+        // Knee joint
+        g.circle(kneeX, kneeY, thickness * 0.45).fill({ color: color - 0x080800 });
+        // Lower leg (angled forward from knee)
+        const lowerAngle = Math.PI / 2 - swing * 0.4;
+        const footX = kneeX + Math.cos(lowerAngle) * lowerLen * 0.2;
+        const footY = kneeY + Math.sin(lowerAngle) * lowerLen;
+        g.moveTo(kneeX, kneeY).lineTo(footX, footY).stroke({ color: color - 0x060600, width: thickness * 0.85 });
+        // Foot/hoof/paw
+        g.ellipse(footX, footY, footR * 1.2, footR * 0.7).fill({ color: footColor });
+        // Claws if applicable
+        if (hasClaw) {
+          for (let ci = -1; ci <= 1; ci++) {
+            g.moveTo(footX + ci * footR * 0.5, footY).lineTo(footX + ci * footR * 0.7, footY + footR * 0.8).stroke({ color: 0x444433, width: r * 0.02 });
+          }
+        }
+      };
+
       // Shadow
       g.ellipse(px + 1, py + r * 0.8, r * 0.9, 2.5).fill({ color: 0x000000, alpha: 0.15 });
 
       if (prey.type === "rabbit") {
-        // Legs (4 short)
-        for (const [lcos, lsin] of [[cos - sin * 0.4, sin + cos * 0.4], [cos + sin * 0.4, sin - cos * 0.4], [-cos * 0.3 - sin * 0.3, -sin * 0.3 + cos * 0.3], [-cos * 0.3 + sin * 0.3, -sin * 0.3 - cos * 0.3]]) {
-          g.ellipse(px + lcos * r * 0.5, py + lsin * r * 0.5, r * 0.15, r * 0.25).fill({ color: def.color - 0x111100 });
+        // Articulated legs — front pair and powerful rear pair
+        const legPositions: [number, number, number][] = [
+          [0.35, 0.25, 0], [0.35, -0.25, 1.5], // front
+          [-0.3, 0.2, 3.0], [-0.3, -0.2, 4.5], // rear (larger)
+        ];
+        for (let li = 0; li < legPositions.length; li++) {
+          const [lf, ls, phOff] = legPositions[li];
+          const hipX = px + cos * r * lf + sin * r * ls;
+          const hipY = py + sin * r * lf - cos * r * ls;
+          const isRear = li >= 2;
+          drawLeg(hipX, hipY, isRear ? r * 0.55 : r * 0.35, isRear ? r * 0.1 : r * 0.08, def.color - 0x111100, 0x332211, r * 0.06, walkPhase + phOff);
         }
         // Body
         g.ellipse(px, py, r * 0.9, r * 0.7).fill({ color: def.color });
@@ -323,7 +363,7 @@ export class HuntRenderer {
           const ex = px + cos * r * 0.6 + sin * es * r * 0.15;
           const ey = py + sin * r * 0.6 - cos * es * r * 0.15;
           g.ellipse(ex, ey - r * 0.5, r * 0.12, r * 0.4).fill({ color: def.color });
-          g.ellipse(ex, ey - r * 0.5, r * 0.07, r * 0.3).fill({ color: 0xddaaaa, alpha: 0.3 }); // inner ear
+          g.ellipse(ex, ey - r * 0.5, r * 0.07, r * 0.3).fill({ color: 0xddaaaa, alpha: 0.3 });
         }
         // Nose
         g.circle(px + cos * r * 0.9, py + sin * r * 0.9, r * 0.08).fill({ color: 0xddaaaa });
@@ -337,18 +377,25 @@ export class HuntRenderer {
         g.circle(px - cos * r * 0.85, py - sin * r * 0.85, r * 0.2).fill({ color: 0xeeddcc, alpha: 0.7 });
         g.circle(px - cos * r * 0.8, py - sin * r * 0.8, r * 0.12).fill({ color: 0xffffff, alpha: 0.4 });
       } else if (prey.type === "deer" || prey.type === "stag") {
-        // Legs (4 slender)
-        const legOff = [[0.4, 0.3], [0.4, -0.3], [-0.5, 0.25], [-0.5, -0.25]];
-        for (const [lf, ls] of legOff) {
-          const lx = px + cos * r * lf + sin * r * ls;
-          const ly = py + sin * r * lf - cos * r * ls;
-          g.moveTo(lx, ly).lineTo(lx + sin * r * 0.1, ly + r * 0.6).stroke({ color: def.color - 0x111100, width: r * 0.1 });
-          g.circle(lx + sin * r * 0.1, ly + r * 0.6, r * 0.06).fill({ color: 0x332211 }); // hoof
+        // Articulated legs — 4 slender with proper joints
+        const deerLegs: [number, number, number][] = [
+          [0.4, 0.3, 0], [0.4, -0.3, 2], [-0.5, 0.25, 3.5], [-0.5, -0.25, 5],
+        ];
+        for (const [lf, ls, phOff] of deerLegs) {
+          const hipX = px + cos * r * lf + sin * r * ls;
+          const hipY = py + sin * r * lf - cos * r * ls;
+          drawLeg(hipX, hipY, r * 0.65, r * 0.08, def.color - 0x111100, 0x332211, r * 0.05, walkPhase + phOff);
         }
         // Body (elongated, graceful)
         g.ellipse(px, py, r * 1.3, r * 0.7).fill({ color: def.color });
         // Back shading
         g.ellipse(px - cos * r * 0.2, py - sin * r * 0.2 - r * 0.15, r * 0.9, r * 0.3).fill({ color: def.color - 0x111100, alpha: 0.2 });
+        // Spotted pattern on sides
+        for (let si = 0; si < 6; si++) {
+          const sx = px + ((si * 3571) % 7 - 3) * r * 0.15;
+          const sy = py + ((si * 2713) % 5 - 2) * r * 0.1;
+          g.circle(sx, sy, r * 0.06).fill({ color: 0xddccbb, alpha: 0.12 });
+        }
         // White belly
         g.ellipse(px, py + r * 0.15, r * 0.8, r * 0.3).fill({ color: 0xddccbb, alpha: 0.25 });
         // White rump patch
@@ -364,30 +411,36 @@ export class HuntRenderer {
         // Ears
         for (const es of [-1, 1]) {
           g.ellipse(px + cos * r * 1.35 + sin * es * r * 0.2, py + sin * r * 1.35 - cos * es * r * 0.2 - r * 0.5, r * 0.08, r * 0.18).fill({ color: def.color });
+          g.ellipse(px + cos * r * 1.35 + sin * es * r * 0.2, py + sin * r * 1.35 - cos * es * r * 0.2 - r * 0.5, r * 0.04, r * 0.12).fill({ color: 0xddaaaa, alpha: 0.2 });
         }
         // Nose
         g.circle(px + cos * r * 1.6, py + sin * r * 1.6 - r * 0.3, r * 0.07).fill({ color: 0x222211 });
-        // Antlers (stag only — more detailed, branching)
+        // Mouth line
+        g.moveTo(px + cos * r * 1.5, py + sin * r * 1.5 - r * 0.25).lineTo(px + cos * r * 1.55, py + sin * r * 1.55 - r * 0.22).stroke({ color: 0x222211, width: 0.5, alpha: 0.3 });
+        // Antlers (stag only)
         if (prey.type === "stag") {
           const ax = px + cos * r * 1.5, ay = py + sin * r * 1.5 - r * 0.55;
           for (const es of [-1, 1]) {
-            // Main beam
             g.moveTo(ax + sin * es * r * 0.05, ay).lineTo(ax + sin * es * r * 0.3, ay - r * 0.6).stroke({ color: 0xaa8844, width: r * 0.06 });
-            // Tines
             g.moveTo(ax + sin * es * r * 0.15, ay - r * 0.25).lineTo(ax + sin * es * r * 0.4, ay - r * 0.35).stroke({ color: 0xaa8844, width: r * 0.04 });
             g.moveTo(ax + sin * es * r * 0.25, ay - r * 0.45).lineTo(ax + sin * es * r * 0.5, ay - r * 0.4).stroke({ color: 0xaa8844, width: r * 0.03 });
             g.moveTo(ax + sin * es * r * 0.28, ay - r * 0.55).lineTo(ax + sin * es * r * 0.35, ay - r * 0.7).stroke({ color: 0xaa8844, width: r * 0.025 });
           }
-          g.circle(px, py, r * 1.5).fill({ color: 0xffd700, alpha: 0.04 + Math.sin(Date.now() / 300) * 0.02 });
+          g.circle(px, py, r * 1.5).fill({ color: 0xffd700, alpha: 0.04 + Math.sin(now / 300) * 0.02 });
         }
         // Tail
-        g.ellipse(px - cos * r * 1.1, py - sin * r * 1.1 - r * 0.1, r * 0.12, r * 0.08).fill({ color: def.color - 0x111100 });
+        const deerTailSway = Math.sin(now / 300) * 0.15;
+        g.moveTo(px - cos * r * 1.0, py - sin * r * 1.0).lineTo(px - cos * r * 1.15 + Math.sin(deerTailSway) * r * 0.1, py - sin * r * 1.15 - r * 0.05).stroke({ color: def.color, width: r * 0.06 });
+        g.ellipse(px - cos * r * 1.15, py - sin * r * 1.15 - r * 0.05, r * 0.1, r * 0.06).fill({ color: 0xddccbb, alpha: 0.4 });
       } else if (prey.type === "boar") {
-        // Legs
-        for (const [lf, ls] of [[0.4, 0.35], [0.4, -0.35], [-0.4, 0.3], [-0.4, -0.3]]) {
-          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
-          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.45).stroke({ color: def.color - 0x111100, width: r * 0.12 });
-          g.circle(lx, ly + r * 0.45, r * 0.07).fill({ color: 0x332211 });
+        // Articulated legs — stocky
+        const boarLegs: [number, number, number][] = [
+          [0.4, 0.35, 0], [0.4, -0.35, 2], [-0.4, 0.3, 3.5], [-0.4, -0.3, 5],
+        ];
+        for (const [lf, ls, phOff] of boarLegs) {
+          const hipX = px + cos * r * lf + sin * r * ls;
+          const hipY = py + sin * r * lf - cos * r * ls;
+          drawLeg(hipX, hipY, r * 0.5, r * 0.12, def.color - 0x111100, 0x332211, r * 0.07, walkPhase + phOff);
         }
         // Body (bulky)
         g.ellipse(px, py, r * 1.2, r * 0.85).fill({ color: def.color });
@@ -410,9 +463,9 @@ export class HuntRenderer {
           g.ellipse(px + cos * r * 0.6 + sin * es * r * 0.3, py + sin * r * 0.6 - cos * es * r * 0.3 - r * 0.25, r * 0.12, r * 0.15).fill({ color: def.color });
         }
         // Bristle ridge (spiky hair along back)
-        for (let bi = 0; bi < 5; bi++) {
-          const bx = px + cos * r * (-0.3 + bi * 0.2), by = py + sin * r * (-0.3 + bi * 0.2) - r * 0.55;
-          g.moveTo(bx, by).lineTo(bx, by - r * 0.15).stroke({ color: 0x443322, width: r * 0.04, alpha: 0.5 });
+        for (let bi = 0; bi < 7; bi++) {
+          const bx2 = px + cos * r * (-0.4 + bi * 0.15), by2 = py + sin * r * (-0.4 + bi * 0.15) - r * 0.55;
+          g.moveTo(bx2, by2).lineTo(bx2 + Math.sin(now / 200 + bi) * 0.5, by2 - r * 0.15).stroke({ color: 0x443322, width: r * 0.04, alpha: 0.5 });
         }
         // Tail (curly)
         const tAngle = prey.angle + Math.PI;
@@ -420,7 +473,7 @@ export class HuntRenderer {
           .quadraticCurveTo(px + Math.cos(tAngle) * r * 1.3, py + Math.sin(tAngle) * r * 1.3 - r * 0.3, px + Math.cos(tAngle) * r * 1.1, py + Math.sin(tAngle) * r * 1.1)
           .stroke({ color: def.color, width: r * 0.05 });
       } else if (prey.type === "pheasant") {
-        // Tail feathers (long, colorful, trailing — drawn first/behind)
+        // Tail feathers (long, colorful, trailing)
         const tailColors = [0x886644, 0x996655, 0x775533, 0xaa7755, 0x887744];
         for (let fi = 0; fi < 5; fi++) {
           const fa = prey.angle + Math.PI + (fi - 2) * 0.15;
@@ -428,20 +481,46 @@ export class HuntRenderer {
           g.moveTo(px - cos * r * 0.3, py - sin * r * 0.3)
             .quadraticCurveTo(px + Math.cos(fa) * fLen * 0.5, py + Math.sin(fa) * fLen * 0.5 + (fi - 2) * r * 0.1, px + Math.cos(fa) * fLen, py + Math.sin(fa) * fLen)
             .stroke({ color: tailColors[fi], width: r * 0.08, alpha: 0.6 });
+          // Feather barbs
+          if (fi === 2) {
+            for (let bi = 1; bi < 4; bi++) {
+              const bt = bi / 4;
+              const bx2 = px - cos * r * 0.3 + Math.cos(fa) * fLen * bt;
+              const by2 = py - sin * r * 0.3 + Math.sin(fa) * fLen * bt;
+              g.moveTo(bx2, by2).lineTo(bx2 + Math.cos(fa + 0.5) * r * 0.15, by2 + Math.sin(fa + 0.5) * r * 0.15).stroke({ color: 0x887744, width: 0.5, alpha: 0.3 });
+            }
+          }
         }
-        // Legs
+        // Articulated bird legs — thin, jointed
         for (const ls of [-0.15, 0.15]) {
-          g.moveTo(px + sin * r * ls, py - cos * r * ls).lineTo(px + sin * r * ls, py - cos * r * ls + r * 0.4).stroke({ color: 0xddaa44, width: r * 0.05 });
+          const lhx = px + sin * r * ls, lhy = py - cos * r * ls;
+          const lSwing = walkSpeed * Math.sin(walkPhase + (ls > 0 ? 0 : Math.PI)) * 0.3;
+          const kneeX2 = lhx + Math.cos(Math.PI * 0.4 + lSwing) * r * 0.15;
+          const kneeY2 = lhy + Math.sin(Math.PI * 0.4 + lSwing) * r * 0.2;
+          const footX2 = kneeX2;
+          const footY2 = kneeY2 + r * 0.2;
+          g.moveTo(lhx, lhy).lineTo(kneeX2, kneeY2).stroke({ color: 0xddaa44, width: r * 0.05 });
+          g.moveTo(kneeX2, kneeY2).lineTo(footX2, footY2).stroke({ color: 0xddaa44, width: r * 0.04 });
+          // Bird toes (3)
+          for (const toe of [-0.4, 0, 0.4]) {
+            g.moveTo(footX2, footY2).lineTo(footX2 + Math.cos(toe) * r * 0.1, footY2 + r * 0.05).stroke({ color: 0xddaa44, width: r * 0.02 });
+          }
         }
         // Body
         g.ellipse(px, py, r * 0.8, r * 0.55).fill({ color: def.color });
         // Wing detail
         g.ellipse(px - cos * r * 0.15 + sin * r * 0.15, py - sin * r * 0.15 - cos * r * 0.15, r * 0.5, r * 0.35).fill({ color: def.color - 0x111100, alpha: 0.4 });
+        // Wing feather lines
+        for (let wf = 0; wf < 3; wf++) {
+          const wfx = px - cos * r * (0.1 - wf * 0.1) + sin * r * 0.2;
+          const wfy = py - sin * r * (0.1 - wf * 0.1) - cos * r * 0.2;
+          g.moveTo(wfx, wfy).lineTo(wfx - sin * r * 0.3, wfy + cos * r * 0.3).stroke({ color: def.color - 0x222200, width: 0.5, alpha: 0.3 });
+        }
         // Head (red/green iridescent)
         g.circle(px + cos * r * 0.55, py + sin * r * 0.55, r * 0.35).fill({ color: 0x224422 });
         // Red face wattle
         g.circle(px + cos * r * 0.65 + sin * r * 0.1, py + sin * r * 0.65 - cos * r * 0.1, r * 0.12).fill({ color: 0xcc2222, alpha: 0.6 });
-        // Beak (larger, golden)
+        // Beak
         g.moveTo(px + cos * r * 0.75, py + sin * r * 0.75)
           .lineTo(px + cos * r * 1.1, py + sin * r * 1.1)
           .stroke({ color: 0xddaa44, width: r * 0.07 });
@@ -449,14 +528,18 @@ export class HuntRenderer {
         g.ellipse(px + cos * r * 0.4, py + sin * r * 0.4, r * 0.25, r * 0.08).fill({ color: 0xffffff, alpha: 0.25 });
       } else if (prey.type === "fox") {
         // Bushy tail (drawn first, behind body)
-        const tailAngle = prey.angle + Math.PI + Math.sin(Date.now() / 200) * 0.3;
+        const tailAngle = prey.angle + Math.PI + Math.sin(now / 200) * 0.3;
         g.ellipse(px + Math.cos(tailAngle) * r * 1.2, py + Math.sin(tailAngle) * r * 1.2, r * 0.5, r * 0.25).fill({ color: def.color, alpha: 0.85 });
         g.ellipse(px + Math.cos(tailAngle) * r * 1.4, py + Math.sin(tailAngle) * r * 1.4, r * 0.3, r * 0.15).fill({ color: def.color, alpha: 0.7 });
-        g.circle(px + Math.cos(tailAngle) * r * 1.55, py + Math.sin(tailAngle) * r * 1.55, r * 0.1).fill({ color: 0xffffff, alpha: 0.5 }); // white tip
-        // Legs
-        for (const [lf, ls] of [[0.3, 0.25], [0.3, -0.25], [-0.35, 0.2], [-0.35, -0.2]]) {
-          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
-          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.4).stroke({ color: 0x222211, width: r * 0.07 });
+        g.circle(px + Math.cos(tailAngle) * r * 1.55, py + Math.sin(tailAngle) * r * 1.55, r * 0.1).fill({ color: 0xffffff, alpha: 0.5 });
+        // Articulated legs
+        const foxLegs: [number, number, number][] = [
+          [0.3, 0.25, 0], [0.3, -0.25, 2], [-0.35, 0.2, 3.5], [-0.35, -0.2, 5],
+        ];
+        for (const [lf, ls, phOff] of foxLegs) {
+          const hipX = px + cos * r * lf + sin * r * ls;
+          const hipY = py + sin * r * lf - cos * r * ls;
+          drawLeg(hipX, hipY, r * 0.45, r * 0.06, 0x222211, 0x222211, r * 0.04, walkPhase + phOff);
         }
         // Body
         g.ellipse(px, py, r * 1.1, r * 0.55).fill({ color: def.color });
@@ -476,7 +559,7 @@ export class HuntRenderer {
           const ex = px + cos * r * 0.8 + sin * es * r * 0.2;
           const ey = py + sin * r * 0.8 - cos * es * r * 0.2;
           g.moveTo(ex - sin * es * r * 0.1, ey + cos * es * r * 0.1).lineTo(ex, ey - r * 0.25).lineTo(ex + sin * es * r * 0.1, ey - cos * es * r * 0.1).fill({ color: def.color });
-          g.moveTo(ex, ey - r * 0.2).lineTo(ex, ey - r * 0.25).stroke({ color: 0x222211, width: r * 0.04 }); // dark tip
+          g.moveTo(ex, ey - r * 0.2).lineTo(ex, ey - r * 0.25).stroke({ color: 0x222211, width: r * 0.04 });
         }
         // Whiskers
         for (const ws of [-1, 1]) {
@@ -485,11 +568,14 @@ export class HuntRenderer {
             .stroke({ color: 0xccccbb, width: 0.5, alpha: 0.25 });
         }
       } else if (prey.type === "wolf") {
-        // Legs
-        for (const [lf, ls] of [[0.4, 0.25], [0.4, -0.25], [-0.4, 0.2], [-0.4, -0.2]]) {
-          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
-          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.5).stroke({ color: def.color - 0x111111, width: r * 0.1 });
-          g.circle(lx, ly + r * 0.5, r * 0.06).fill({ color: 0x333333 });
+        // Articulated legs — muscular
+        const wolfLegs: [number, number, number][] = [
+          [0.4, 0.25, 0], [0.4, -0.25, 2], [-0.4, 0.2, 3.5], [-0.4, -0.2, 5],
+        ];
+        for (const [lf, ls, phOff] of wolfLegs) {
+          const hipX = px + cos * r * lf + sin * r * ls;
+          const hipY = py + sin * r * lf - cos * r * ls;
+          drawLeg(hipX, hipY, r * 0.55, r * 0.09, def.color - 0x111111, 0x333333, r * 0.05, walkPhase + phOff);
         }
         // Body (lean, muscular)
         g.ellipse(px, py, r * 1.3, r * 0.6).fill({ color: def.color });
@@ -497,12 +583,18 @@ export class HuntRenderer {
         g.ellipse(px, py - r * 0.15, r * 1.0, r * 0.25).fill({ color: def.color - 0x111111, alpha: 0.3 });
         // Lighter belly
         g.ellipse(px, py + r * 0.15, r * 0.8, r * 0.2).fill({ color: def.color + 0x111111, alpha: 0.2 });
+        // Rib/muscle lines
+        for (let rl = 0; rl < 3; rl++) {
+          const rx = px + cos * r * (-0.2 + rl * 0.2);
+          const ry = py + sin * r * (-0.2 + rl * 0.2);
+          g.moveTo(rx, ry - r * 0.3).quadraticCurveTo(rx + sin * r * 0.15, ry, rx, ry + r * 0.2).stroke({ color: def.color - 0x111111, width: 0.5, alpha: 0.15 });
+        }
         // Head
         g.ellipse(px + cos * r * 0.85, py + sin * r * 0.85, r * 0.4, r * 0.32).fill({ color: def.color });
         // Snout
         g.ellipse(px + cos * r * 1.05, py + sin * r * 1.05, r * 0.2, r * 0.15).fill({ color: def.color + 0x111111 });
-        g.circle(px + cos * r * 1.15, py + sin * r * 1.15, r * 0.06).fill({ color: 0x111111 }); // nose
-        // Pointed ears (triangular)
+        g.circle(px + cos * r * 1.15, py + sin * r * 1.15, r * 0.06).fill({ color: 0x111111 });
+        // Pointed ears
         for (const es of [-1, 1]) {
           const ex = px + cos * r * 0.7 + sin * es * r * 0.25;
           const ey = py + sin * r * 0.7 - cos * es * r * 0.25;
@@ -528,17 +620,21 @@ export class HuntRenderer {
               .lineTo(px + cos * r * 1.15 + sin * fs * r * 0.1, py + sin * r * 1.15 - cos * fs * r * 0.1 + r * 0.08)
               .stroke({ color: 0xeeeeee, width: r * 0.03 });
           }
+          // Snarl line
+          g.moveTo(px + cos * r * 0.98 - sin * r * 0.12, py + sin * r * 0.98 + cos * r * 0.12)
+            .lineTo(px + cos * r * 1.1, py + sin * r * 1.1)
+            .lineTo(px + cos * r * 0.98 + sin * r * 0.12, py + sin * r * 0.98 - cos * r * 0.12)
+            .stroke({ color: 0x111111, width: 0.5, alpha: 0.4 });
         }
       } else if (prey.type === "bear") {
-        // Legs (4 thick)
-        for (const [lf, ls] of [[0.35, 0.35], [0.35, -0.35], [-0.35, 0.3], [-0.35, -0.3]]) {
-          const lx = px + cos * r * lf + sin * r * ls, ly = py + sin * r * lf - cos * r * ls;
-          g.moveTo(lx, ly).lineTo(lx, ly + r * 0.5).stroke({ color: def.color - 0x111100, width: r * 0.16 });
-          g.circle(lx, ly + r * 0.5, r * 0.09).fill({ color: 0x332211 }); // paw
-          // Claws
-          for (let ci = -1; ci <= 1; ci++) {
-            g.moveTo(lx + ci * r * 0.04, ly + r * 0.5).lineTo(lx + ci * r * 0.06, ly + r * 0.57).stroke({ color: 0x444433, width: r * 0.02 });
-          }
+        // Articulated legs — thick and powerful
+        const bearLegs: [number, number, number][] = [
+          [0.35, 0.35, 0], [0.35, -0.35, 2], [-0.35, 0.3, 3.5], [-0.35, -0.3, 5],
+        ];
+        for (const [lf, ls, phOff] of bearLegs) {
+          const hipX = px + cos * r * lf + sin * r * ls;
+          const hipY = py + sin * r * lf - cos * r * ls;
+          drawLeg(hipX, hipY, r * 0.55, r * 0.15, def.color - 0x111100, 0x332211, r * 0.09, walkPhase + phOff, true);
         }
         // Body (massive, round)
         g.ellipse(px, py, r * 1.1, r * 0.85).fill({ color: def.color });
@@ -546,12 +642,18 @@ export class HuntRenderer {
         g.ellipse(px - cos * r * 0.2, py - sin * r * 0.2 - r * 0.2, r * 0.6, r * 0.35).fill({ color: def.color - 0x0a0a00, alpha: 0.4 });
         // Lighter belly
         g.ellipse(px + cos * r * 0.1, py + sin * r * 0.1 + r * 0.15, r * 0.7, r * 0.3).fill({ color: def.color + 0x111100, alpha: 0.2 });
+        // Fur texture lines
+        for (let fl = 0; fl < 5; fl++) {
+          const fx2 = px + ((fl * 3571 - 7) % 7) * r * 0.12;
+          const fy2 = py + ((fl * 2713 - 5) % 5) * r * 0.1 - r * 0.1;
+          g.moveTo(fx2, fy2).lineTo(fx2 + r * 0.08, fy2 + r * 0.12).stroke({ color: def.color - 0x0a0a00, width: 0.5, alpha: 0.15 });
+        }
         // Head
         g.circle(px + cos * r * 0.7, py + sin * r * 0.7, r * 0.5).fill({ color: def.color });
         // Round ears
         for (const es of [-1, 1]) {
           g.circle(px + cos * r * 0.6 + sin * es * r * 0.35, py + sin * r * 0.6 - cos * es * r * 0.35 - r * 0.15, r * 0.15).fill({ color: def.color });
-          g.circle(px + cos * r * 0.6 + sin * es * r * 0.35, py + sin * r * 0.6 - cos * es * r * 0.35 - r * 0.15, r * 0.08).fill({ color: def.color + 0x111100, alpha: 0.3 }); // inner ear
+          g.circle(px + cos * r * 0.6 + sin * es * r * 0.35, py + sin * r * 0.6 - cos * es * r * 0.35 - r * 0.15, r * 0.08).fill({ color: def.color + 0x111100, alpha: 0.3 });
         }
         // Snout
         g.ellipse(px + cos * r * 0.95, py + sin * r * 0.95, r * 0.22, r * 0.18).fill({ color: 0x664433 });
@@ -560,19 +662,27 @@ export class HuntRenderer {
         // Eyes (small, dark)
         for (const es of [-1, 1]) {
           g.circle(px + cos * r * 0.75 + sin * es * r * 0.15, py + sin * r * 0.75 - cos * es * r * 0.15, r * 0.05).fill({ color: 0x111111 });
+          g.circle(px + cos * r * 0.75 + sin * es * r * 0.15 + r * 0.01, py + sin * r * 0.75 - cos * es * r * 0.15 - r * 0.01, r * 0.02).fill({ color: 0x444444, alpha: 0.4 });
         }
         // Aggressive glow
         if (prey.aggressive) {
           g.circle(px, py, r * 1.3).fill({ color: 0xff2200, alpha: 0.05 });
         }
       } else {
+        // Generic — also gets articulated legs
+        const genLegs: [number, number, number][] = [[0.3, 0.2, 0], [0.3, -0.2, 2], [-0.3, 0.2, 3.5], [-0.3, -0.2, 5]];
+        for (const [lf, ls, phOff] of genLegs) {
+          const hipX = px + cos * r * lf + sin * r * ls;
+          const hipY = py + sin * r * lf - cos * r * ls;
+          drawLeg(hipX, hipY, r * 0.4, r * 0.08, def.color - 0x111100, 0x332211, r * 0.05, walkPhase + phOff);
+        }
         g.ellipse(px, py, r * 1.2, r * 0.8).fill({ color: def.color });
         g.circle(px + cos * r, py + sin * r, r * 0.5).fill({ color: def.color });
       }
       // Eye (universal, scaled)
       const hx = px + cos * r * 0.8, hy = py + sin * r * 0.8;
       g.circle(hx + cos * 3 + sin * 2, hy + sin * 3 - cos * 2, r * 0.12).fill({ color: 0x111111 });
-      g.circle(hx + cos * 3.5 + sin * 2.5, hy + sin * 3.5 - cos * 2.5, r * 0.05).fill({ color: 0xffffff, alpha: 0.4 }); // eye shine
+      g.circle(hx + cos * 3.5 + sin * 2.5, hy + sin * 3.5 - cos * 2.5, r * 0.05).fill({ color: 0xffffff, alpha: 0.4 });
       // Startled indicator (scaled)
       if (prey.startled) {
         g.moveTo(px, py - r - 8).lineTo(px, py - r - 20).stroke({ color: 0xff4444, width: 3 });
@@ -600,40 +710,88 @@ export class HuntRenderer {
       }
     }
 
-    // Draw player (archer) — scaled up
+    // Draw player (archer) — detailed
     const ppx = ox + state.playerX, ppy = oy + state.playerY;
+    const isMoving = Math.abs(state.playerVX) > 0.1 || Math.abs(state.playerVY) > 0.1;
+    const playerWalk = isMoving ? now / 150 : 0;
     // Shadow
-    g.ellipse(ppx + 2, ppy + 18, 12, 4).fill({ color: 0x000000, alpha: 0.15 });
-    // Legs
-    g.rect(ppx - 5, ppy + 4, 4, 14).fill({ color: 0x553311 });
-    g.rect(ppx + 1, ppy + 4, 4, 14).fill({ color: 0x553311 });
-    // Boots
-    g.rect(ppx - 6, ppy + 16, 5, 3).fill({ color: 0x332211 });
-    g.rect(ppx, ppy + 16, 5, 3).fill({ color: 0x332211 });
-    // Body (tunic)
-    g.ellipse(ppx, ppy - 2, 10, 14).fill({ color: 0x446622 });
-    // Leather vest
-    g.ellipse(ppx, ppy - 3, 8, 10).fill({ color: 0x554422, alpha: 0.5 });
-    // Belt
-    g.rect(ppx - 9, ppy + 4, 18, 3).fill({ color: 0x443311 });
-    g.rect(ppx - 1, ppy + 4, 3, 3).fill({ color: 0xaa8844 }); // buckle
-    // Quiver on back
-    g.rect(ppx + 6, ppy - 12, 4, 16).fill({ color: 0x664422, alpha: 0.6 });
-    for (let qi = 0; qi < 3; qi++) {
-      g.moveTo(ppx + 7 + qi, ppy - 12).lineTo(ppx + 7 + qi, ppy - 18).stroke({ color: 0xccaa66, width: 1, alpha: 0.5 });
+    g.ellipse(ppx + 2, ppy + 20, 14, 5).fill({ color: 0x000000, alpha: 0.15 });
+    // Legs — articulated with knees
+    for (const [lx, phOff] of [[-4, 0], [2, Math.PI]] as [number, number][]) {
+      const hipX = ppx + lx, hipY = ppy + 4;
+      const swing = isMoving ? Math.sin(playerWalk + phOff) * 0.3 : 0;
+      const kneeX = hipX + Math.cos(Math.PI / 2 + swing * 0.5) * 2;
+      const kneeY = hipY + 7;
+      const footX = kneeX + Math.cos(Math.PI / 2 - swing * 0.3) * 1;
+      const footY = kneeY + 7;
+      // Upper leg
+      g.moveTo(hipX, hipY).lineTo(kneeX, kneeY).stroke({ color: 0x553311, width: 4.5 });
+      // Knee joint
+      g.circle(kneeX, kneeY, 2.2).fill({ color: 0x4a2a0a });
+      // Lower leg
+      g.moveTo(kneeX, kneeY).lineTo(footX, footY).stroke({ color: 0x553311, width: 4 });
+      // Boot
+      g.roundRect(footX - 3, footY - 1, 6, 4, 1).fill({ color: 0x332211 });
+      // Boot sole
+      g.rect(footX - 3.5, footY + 2, 7, 1.5).fill({ color: 0x221100 });
+      // Boot lacing
+      g.moveTo(footX - 1, footY).lineTo(footX + 1, footY - 1).stroke({ color: 0x443322, width: 0.5, alpha: 0.5 });
     }
-    // Head
+    // Body (tunic — more shaped)
+    g.moveTo(ppx - 9, ppy + 5).quadraticCurveTo(ppx - 11, ppy - 4, ppx - 8, ppy - 14).lineTo(ppx + 8, ppy - 14).quadraticCurveTo(ppx + 11, ppy - 4, ppx + 9, ppy + 5).fill({ color: 0x446622 });
+    // Leather vest/jerkin
+    g.moveTo(ppx - 7, ppy + 3).quadraticCurveTo(ppx - 9, ppy - 3, ppx - 6, ppy - 12).lineTo(ppx + 6, ppy - 12).quadraticCurveTo(ppx + 9, ppy - 3, ppx + 7, ppy + 3).fill({ color: 0x554422, alpha: 0.6 });
+    // Vest stitching
+    g.moveTo(ppx, ppy - 12).lineTo(ppx, ppy + 3).stroke({ color: 0x443311, width: 0.5, alpha: 0.4 });
+    // Collar
+    g.moveTo(ppx - 5, ppy - 13).quadraticCurveTo(ppx, ppy - 11, ppx + 5, ppy - 13).stroke({ color: 0x446622, width: 2 });
+    // Belt
+    g.rect(ppx - 9, ppy + 3, 18, 3).fill({ color: 0x443311 });
+    g.roundRect(ppx - 2, ppy + 3, 4, 3, 0.5).fill({ color: 0xaa8844 }); // buckle
+    // Belt pouch
+    g.roundRect(ppx - 8, ppy + 2, 4, 5, 1).fill({ color: 0x554422, alpha: 0.5 });
+    // Quiver on back
+    g.roundRect(ppx + 5, ppy - 14, 5, 18, 1).fill({ color: 0x664422, alpha: 0.65 });
+    g.roundRect(ppx + 5, ppy - 14, 5, 18, 1).stroke({ color: 0x553311, width: 0.5, alpha: 0.3 });
+    // Arrows in quiver (count matches ammo)
+    const quiverArrows = Math.min(state.arrowsLeft, 5);
+    for (let qi = 0; qi < quiverArrows; qi++) {
+      g.moveTo(ppx + 6 + qi, ppy - 14).lineTo(ppx + 6 + qi, ppy - 20 - qi).stroke({ color: 0xccaa66, width: 1, alpha: 0.5 });
+      // Fletching
+      g.moveTo(ppx + 6 + qi, ppy - 19 - qi).lineTo(ppx + 5 + qi, ppy - 21 - qi).stroke({ color: 0xff6644, width: 0.5, alpha: 0.4 });
+    }
+    // Head — more detailed
     g.circle(ppx, ppy - 18, 8).fill({ color: 0xddbbaa });
+    // Jaw/chin
+    g.ellipse(ppx, ppy - 14, 5, 3).fill({ color: 0xddbbaa });
     // Hood
-    g.circle(ppx, ppy - 19, 9).fill({ color: 0x446622, alpha: 0.7 });
-    g.ellipse(ppx, ppy - 22, 10, 4).fill({ color: 0x446622 });
+    g.circle(ppx, ppy - 19, 9.5).fill({ color: 0x446622, alpha: 0.7 });
+    g.ellipse(ppx, ppy - 23, 10, 4).fill({ color: 0x446622 });
+    // Hood rim shadow
+    g.moveTo(ppx - 8, ppy - 16).quadraticCurveTo(ppx, ppy - 14, ppx + 8, ppy - 16).stroke({ color: 0x335511, width: 1.5, alpha: 0.4 });
     // Face details
-    g.circle(ppx - 2, ppy - 18, 1).fill({ color: 0x222211 }); // eye
-    g.circle(ppx + 2, ppy - 18, 1).fill({ color: 0x222211 }); // eye
-    // Arms
+    g.circle(ppx - 2.5, ppy - 18, 1.2).fill({ color: 0x222211 }); // eye
+    g.circle(ppx + 2.5, ppy - 18, 1.2).fill({ color: 0x222211 }); // eye
+    g.circle(ppx - 2.2, ppy - 18.3, 0.4).fill({ color: 0xffffff, alpha: 0.4 }); // eye shine
+    g.circle(ppx + 2.8, ppy - 18.3, 0.4).fill({ color: 0xffffff, alpha: 0.4 });
+    // Nose
+    g.moveTo(ppx, ppy - 17).lineTo(ppx - 0.5, ppy - 15.5).lineTo(ppx + 0.5, ppy - 15.5).fill({ color: 0xccaa99, alpha: 0.4 });
+    // Mouth
+    g.moveTo(ppx - 1.5, ppy - 14.5).quadraticCurveTo(ppx, ppy - 14, ppx + 1.5, ppy - 14.5).stroke({ color: 0xaa8877, width: 0.5, alpha: 0.3 });
+    // Arms — with upper/lower arm segments
     const aimCos = Math.cos(state.aimAngle), aimSin = Math.sin(state.aimAngle);
-    g.moveTo(ppx - 6, ppy - 6).lineTo(ppx + aimCos * 12, ppy + aimSin * 12 - 6).stroke({ color: 0xddbbaa, width: 3 });
-    g.moveTo(ppx + 4, ppy - 6).lineTo(ppx + aimCos * 16, ppy + aimSin * 16 - 6).stroke({ color: 0xddbbaa, width: 3 });
+    // Back arm (draw arm — pulling string)
+    const backElbowX = ppx - 4 + aimCos * 4, backElbowY = ppy - 8 + aimSin * 4;
+    g.moveTo(ppx - 5, ppy - 8).lineTo(backElbowX, backElbowY).stroke({ color: 0xddbbaa, width: 3.5 });
+    g.circle(backElbowX, backElbowY, 1.5).fill({ color: 0xccaa99 }); // elbow
+    g.moveTo(backElbowX, backElbowY).lineTo(ppx + aimCos * 12, ppy + aimSin * 12 - 6).stroke({ color: 0xddbbaa, width: 3 });
+    // Front arm (bow arm)
+    const frontElbowX = ppx + 3 + aimCos * 8, frontElbowY = ppy - 8 + aimSin * 8;
+    g.moveTo(ppx + 4, ppy - 8).lineTo(frontElbowX, frontElbowY).stroke({ color: 0xddbbaa, width: 3.5 });
+    g.circle(frontElbowX, frontElbowY, 1.5).fill({ color: 0xccaa99 });
+    g.moveTo(frontElbowX, frontElbowY).lineTo(ppx + aimCos * 18, ppy + aimSin * 18 - 6).stroke({ color: 0xddbbaa, width: 3 });
+    // Bracer on bow arm
+    g.moveTo(ppx + aimCos * 14, ppy + aimSin * 14 - 6).lineTo(ppx + aimCos * 17, ppy + aimSin * 17 - 6).stroke({ color: 0x664422, width: 4 });
     // Bow (larger)
     const bowDist = 18;
     const bx = ppx + aimCos * bowDist;

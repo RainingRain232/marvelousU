@@ -59,6 +59,10 @@ export class SettlersHUD {
   private _minimapLegendVisible = false;
   private _minimapMouseDown: ((e: MouseEvent) => void) | null = null;
   private _minimapMouseMove: ((e: MouseEvent) => void) | null = null;
+  private _escapeMenu: HTMLDivElement | null = null;
+  private _fullWikiOverlay: HTMLDivElement | null = null;
+  private _tutorialOverlay: HTMLDivElement | null = null;
+  private _conceptsOverlay: HTMLDivElement | null = null;
 
   // Camera info for minimap viewport indicator
   private _cameraTargetX = 0;
@@ -1745,6 +1749,425 @@ export class SettlersHUD {
     const worldZ = (my / this._minimap.height) * mapWorldH;
 
     this.onMinimapClick?.(worldX, worldZ);
+  }
+
+  // ---- Escape Menu ----
+
+  get isEscapeMenuOpen(): boolean { return this._escapeMenu !== null; }
+
+  showEscapeMenu(): void {
+    if (this._escapeMenu) return;
+    this._escapeMenu = document.createElement("div");
+    this._escapeMenu.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.75); pointer-events: all; z-index: 300;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: linear-gradient(135deg, #1a1840, #120f2a);
+      border: 2px solid rgba(180,160,100,0.4); border-radius: 12px;
+      padding: 28px 36px; min-width: 320px; text-align: center;
+      box-shadow: 0 0 50px rgba(0,0,0,0.6);
+    `;
+    box.innerHTML = `<h2 style="margin:0 0 20px; color:#ffd700; font-family:serif; font-size:22px;">Menu</h2>`;
+
+    const buttons: { label: string; action: () => void; bg?: string }[] = [
+      { label: "Resume", action: () => this.hideEscapeMenu(), bg: "linear-gradient(180deg, #3a5a28, #2a4520)" },
+      { label: "Save Game (F5)", action: () => { this.onSave?.(); this.hideEscapeMenu(); }, bg: "linear-gradient(180deg, #1a4a3a, #143828)" },
+      { label: "Load Game (F9)", action: () => { this.onLoad?.(); this.hideEscapeMenu(); }, bg: "linear-gradient(180deg, #1a3a4a, #142838)" },
+      { label: "Controls", action: () => { this.hideEscapeMenu(); this._showControlsOverlay(); } },
+      { label: "Building Wiki", action: () => { this._showFullWikiOverlay(); } },
+      { label: "Tutorial", action: () => { this._showTutorialOverlay(); } },
+      { label: "Game Concepts", action: () => { this._showConceptsOverlay(); } },
+      { label: "Exit to Menu", action: () => { this.hideEscapeMenu(); this.onExit?.(); }, bg: "linear-gradient(180deg, #4a2828, #382020)" },
+    ];
+
+    for (const b of buttons) {
+      const btn = document.createElement("button");
+      btn.textContent = b.label;
+      const defaultBg = "linear-gradient(180deg, #35305a, #2a2548)";
+      btn.style.cssText = `
+        display: block; width: 100%; margin-bottom: 8px; padding: 10px 20px;
+        font-size: 14px; background: ${b.bg || defaultBg}; color: #e0d8c8;
+        border: 1px solid rgba(180,160,100,0.3); border-radius: 6px; cursor: pointer;
+        transition: all 0.15s; font-family: inherit; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      `;
+      btn.addEventListener("mouseenter", () => { btn.style.borderColor = "rgba(255,215,0,0.6)"; btn.style.transform = "scale(1.02)"; });
+      btn.addEventListener("mouseleave", () => { btn.style.borderColor = "rgba(180,160,100,0.3)"; btn.style.transform = "scale(1)"; });
+      btn.addEventListener("click", b.action);
+      box.appendChild(btn);
+    }
+
+    const hint = document.createElement("div");
+    hint.style.cssText = "color: #887a60; font-size: 11px; margin-top: 8px;";
+    hint.textContent = "Press Escape to close";
+    box.appendChild(hint);
+
+    this._escapeMenu.appendChild(box);
+    this._escapeMenu.addEventListener("click", (e) => {
+      if (e.target === this._escapeMenu) this.hideEscapeMenu();
+    });
+    this._root.appendChild(this._escapeMenu);
+  }
+
+  hideEscapeMenu(): void {
+    if (this._escapeMenu?.parentNode) this._escapeMenu.parentNode.removeChild(this._escapeMenu);
+    this._escapeMenu = null;
+  }
+
+  private _closeAllOverlays(): void {
+    this._hideOverlay("_fullWikiOverlay");
+    this._hideOverlay("_tutorialOverlay");
+    this._hideOverlay("_conceptsOverlay");
+  }
+
+  private _hideOverlay(field: "_fullWikiOverlay" | "_tutorialOverlay" | "_conceptsOverlay"): void {
+    const el = this[field];
+    if (el?.parentNode) el.parentNode.removeChild(el);
+    (this as any)[field] = null;
+  }
+
+  get hasOverlayOpen(): boolean {
+    return !!(this._fullWikiOverlay || this._tutorialOverlay || this._conceptsOverlay);
+  }
+
+  handleEscapeKey(): boolean {
+    // Returns true if escape was consumed by closing something
+    if (this._fullWikiOverlay) { this._hideOverlay("_fullWikiOverlay"); return true; }
+    if (this._tutorialOverlay) { this._hideOverlay("_tutorialOverlay"); return true; }
+    if (this._conceptsOverlay) { this._hideOverlay("_conceptsOverlay"); return true; }
+    if (this._escapeMenu) { this.hideEscapeMenu(); return true; }
+    return false;
+  }
+
+  // ---- Controls Overlay ----
+
+  private _showControlsOverlay(): void {
+    if (this._tutorialOverlay) return;
+    this._tutorialOverlay = document.createElement("div");
+    this._tutorialOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); pointer-events: all; z-index: 350;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: linear-gradient(135deg, #1a1840, #120f2a);
+      border: 2px solid rgba(180,160,100,0.4); border-radius: 12px;
+      padding: 24px 32px; max-width: 500px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    `;
+    box.innerHTML = `
+      <h2 style="margin:0 0 16px; color:#ffd700; font-family:serif; text-align:center;">Controls</h2>
+      <div style="font-size:12px; color:#c8c0b0; line-height:1.8;">
+        <b style="color:#ffd700;">Camera:</b><br>
+        WASD / Arrow keys: Pan camera<br>
+        Scroll wheel: Zoom in/out<br>
+        9 / 0: Fine zoom in / out<br><br>
+
+        <b style="color:#ffd700;">Tools:</b><br>
+        B: Build mode<br>
+        R: Road mode<br>
+        F: Flag mode<br>
+        X: Demolish mode<br>
+        T: Attack mode<br>
+        Escape: Open menu / cancel<br>
+        Right-click: Cancel / deselect<br><br>
+
+        <b style="color:#ffd700;">Game:</b><br>
+        Space: Toggle pause<br>
+        + / -: Speed up / slow down<br>
+        F5: Save game<br>
+        F9: Load game<br>
+        H: Toggle wiki panel<br>
+        M: Toggle audio panel<br>
+      </div>
+      <div style="text-align:center; margin-top:12px;">
+        <button class="settlers-overlay-close" style="padding:8px 28px; font-size:14px; background:linear-gradient(180deg,#35305a,#2a2548); color:#e0d8c8; border:1px solid rgba(180,160,100,0.3); border-radius:6px; cursor:pointer;">Close (Esc)</button>
+      </div>
+    `;
+    this._tutorialOverlay.appendChild(box);
+    this._tutorialOverlay.addEventListener("click", (e) => { if (e.target === this._tutorialOverlay) this._hideOverlay("_tutorialOverlay"); });
+    this._root.appendChild(this._tutorialOverlay);
+    box.querySelector(".settlers-overlay-close")!.addEventListener("click", () => this._hideOverlay("_tutorialOverlay"));
+  }
+
+  // ---- Full Building Wiki Overlay ----
+
+  private _showFullWikiOverlay(): void {
+    if (this._fullWikiOverlay) return;
+    this._fullWikiOverlay = document.createElement("div");
+    this._fullWikiOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); pointer-events: all; z-index: 350;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: linear-gradient(135deg, #1a1840, #120f2a);
+      border: 2px solid rgba(180,160,100,0.4); border-radius: 12px;
+      padding: 24px 28px; max-width: 720px; width: 92vw; max-height: 82vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    `;
+
+    const categoryLabels: Record<string, string> = {
+      economy: "Economy", military: "Military", infrastructure: "Infrastructure",
+    };
+    const catColors: Record<string, string> = {
+      economy: "#80cc66", military: "#cc6666", infrastructure: "#6688cc",
+    };
+
+    let html = `<h2 style="margin:0 0 16px; color:#ffd700; font-family:serif; text-align:center; font-size:20px;">Building Wiki</h2>`;
+
+    // Production chains summary
+    html += `<div style="margin-bottom:16px; padding:10px 14px; background:rgba(0,0,0,0.3); border-radius:8px; border:1px solid rgba(180,160,100,0.15);">`;
+    html += `<div style="color:#ffd700; font-size:13px; margin-bottom:6px; font-weight:bold;">Production Chains</div>`;
+    for (const chain of PRODUCTION_CHAINS) {
+      html += `<div style="color:#aaddff; margin-top:4px; font-weight:600; font-size:11px;">${chain.name}</div>`;
+      for (const step of chain.steps) {
+        html += `<div style="color:#b8c8a0; padding-left:10px; font-size:10px;">${step}</div>`;
+      }
+    }
+    html += `</div>`;
+
+    // Buildings by category
+    for (const cat of ["economy", "military", "infrastructure"]) {
+      const buildings = Object.values(BUILDING_DEFS).filter(d => d.category === cat);
+      if (buildings.length === 0) continue;
+
+      html += `<h3 style="color:${catColors[cat]}; margin:14px 0 8px; border-bottom:1px solid rgba(180,160,100,0.15); padding-bottom:4px; font-size:14px;">${categoryLabels[cat]}</h3>`;
+
+      for (const bdef of buildings) {
+        html += `<div style="margin-bottom:8px; padding:8px 12px; background:rgba(0,0,0,0.25); border-radius:6px; border:1px solid rgba(180,160,100,0.1);">`;
+        html += `<div style="display:flex; justify-content:space-between; align-items:baseline;">`;
+        html += `<b style="color:#ffd700; font-size:12px;">${bdef.label}</b>`;
+        html += `<span style="color:#887a60; font-size:10px;">${bdef.footprint.w}x${bdef.footprint.h} ${bdef.size}</span>`;
+        html += `</div>`;
+
+        // Description based on type
+        const descriptions: Record<string, string> = {
+          headquarters: "Your main base. Stores initial resources and projects territory. Losing it means defeat.",
+          storehouse: "Additional storage building. Extends your supply network for carriers.",
+          woodcutter: "Chops trees in nearby forest and produces wood logs.",
+          quarry: "Mines stone from mountain terrain.",
+          fisher: "Catches fish near water. Fish is used as food for miners.",
+          hunter: "Hunts game in forest areas. Produces meat for food.",
+          farm: "Grows wheat on meadow terrain. Wheat is used for bread and beer production.",
+          sawmill: "Converts raw wood logs into planks for construction.",
+          mill: "Grinds wheat into flour for the bakery.",
+          bakery: "Bakes flour and water into bread. Bread is a high-quality food for stables.",
+          brewery: "Brews wheat and water into beer. Beer is needed for military training.",
+          iron_mine: "Extracts iron ore from mountain deposits. Requires food (any type) to operate.",
+          gold_mine: "Extracts gold ore from mountain gold deposits. Requires food to operate.",
+          coal_mine: "Mines coal from mountain deposits. Requires food to operate. Coal is essential for smelting.",
+          smelter: "Smelts iron ore with coal into usable iron bars.",
+          mint: "Processes gold ore with coal into gold coins.",
+          sword_smith: "Forges iron and coal into swords for soldiers.",
+          shield_smith: "Forges iron and coal into shields for soldiers.",
+          barracks: "Trains soldiers from swords, shields, and beer.",
+          bowyer: "Crafts planks and iron into bows for archers.",
+          archery_range: "Trains archers from bows and beer.",
+          stable: "Trains powerful knights from swords, shields, beer, and bread.",
+          market: "Enables resource trading. Convert surplus resources into ones you need (3:1 or 2:1 ratio).",
+          guard_house: "Small military outpost. Garrisons 3 soldiers and projects territory.",
+          watchtower: "Medium military tower. Garrisons 6 soldiers with larger territory.",
+          fortress: "Large military stronghold. Garrisons 9 soldiers with maximum territory projection.",
+          wall: "Defensive wall segment. Blocks enemy movement.",
+          gate: "Allows your units to pass through walls while blocking enemies.",
+          catapult_tower: "Ranged defensive tower that hurls projectiles at approaching enemies.",
+        };
+
+        html += `<div style="color:#b8c8a0; font-size:11px; margin:3px 0;">${descriptions[bdef.type] || ""}</div>`;
+
+        // Construction cost
+        if (bdef.constructionCost.length > 0) {
+          html += `<div style="font-size:10px;"><span style="color:#aa9977;">Build cost:</span> ${bdef.constructionCost.map(c => {
+            const meta = RESOURCE_META[c.type];
+            return `<span style="color:${meta?.color || "#ccc"}">${c.amount} ${meta?.label || c.type}</span>`;
+          }).join(" + ")}</div>`;
+        }
+
+        // Production
+        if (bdef.outputs.length > 0) {
+          html += `<div style="font-size:10px;"><span style="color:#66bb6a;">Produces:</span> ${bdef.outputs.map(o => {
+            const meta = RESOURCE_META[o.type];
+            return `<span style="color:${meta?.color || "#afd8a0"}">${o.amount} ${meta?.label || o.type}</span>`;
+          }).join(", ")}`;
+          if (bdef.productionTime > 0) html += ` <span style="color:#666;">every ${bdef.productionTime}s</span>`;
+          html += `</div>`;
+        }
+        if (bdef.inputs.length > 0) {
+          html += `<div style="font-size:10px;"><span style="color:#ff8a65;">Consumes:</span> ${bdef.inputs.map(i => {
+            const meta = RESOURCE_META[i.type];
+            return `<span style="color:${meta?.color || "#ffa888"}">${i.amount} ${meta?.label || i.type}</span>`;
+          }).join(" + ")}</div>`;
+        }
+
+        // Terrain
+        if (bdef.requiresTerrain) {
+          html += `<div style="font-size:10px; color:#ff8844;">Requires: ${bdef.requiresTerrain} terrain</div>`;
+        }
+
+        // Military info
+        if (bdef.garrisonSlots > 0) {
+          html += `<div style="font-size:10px;"><span style="color:#aa9977;">Garrison:</span> ${bdef.garrisonSlots} soldiers</div>`;
+        }
+        if (bdef.territoryRadius > 0) {
+          html += `<div style="font-size:10px;"><span style="color:#aa9977;">Territory radius:</span> ${bdef.territoryRadius} tiles</div>`;
+        }
+        if (bdef.hp > 0) {
+          html += `<div style="font-size:10px;"><span style="color:#aa9977;">HP:</span> ${bdef.hp}</div>`;
+        }
+
+        html += `</div>`;
+      }
+    }
+
+    html += `<div style="text-align:center; margin-top:16px;">
+      <button class="settlers-overlay-close" style="padding:8px 28px; font-size:14px; background:linear-gradient(180deg,#35305a,#2a2548); color:#e0d8c8; border:1px solid rgba(180,160,100,0.3); border-radius:6px; cursor:pointer;">Close (Esc)</button>
+    </div>`;
+
+    box.innerHTML = html;
+    this._fullWikiOverlay.appendChild(box);
+    this._fullWikiOverlay.addEventListener("click", (e) => { if (e.target === this._fullWikiOverlay) this._hideOverlay("_fullWikiOverlay"); });
+    this._root.appendChild(this._fullWikiOverlay);
+    box.querySelector(".settlers-overlay-close")!.addEventListener("click", () => this._hideOverlay("_fullWikiOverlay"));
+  }
+
+  // ---- Tutorial Overlay ----
+
+  private _showTutorialOverlay(): void {
+    if (this._tutorialOverlay) return;
+    this._tutorialOverlay = document.createElement("div");
+    this._tutorialOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); pointer-events: all; z-index: 350;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: linear-gradient(135deg, #1a1840, #120f2a);
+      border: 2px solid rgba(180,160,100,0.4); border-radius: 12px;
+      padding: 24px 32px; max-width: 600px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    `;
+    box.innerHTML = `
+      <h2 style="margin:0 0 16px; color:#ffd700; font-family:serif; text-align:center;">Step-by-Step Tutorial</h2>
+      <div style="font-size:12px; color:#c8c0b0; line-height:1.8;">
+        <div style="background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ffd700;">
+          <b style="color:#ffd700;">Step 1: Expand Territory</b><br>
+          Your Headquarters provides initial territory. Build Guard Houses and Watchtowers to expand your borders into resource-rich areas.
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #80cc66;">
+          <b style="color:#80cc66;">Step 2: Roads & Flags</b><br>
+          Press R to build roads connecting buildings to your HQ. Place flags (F) at intersections to create carrier routes. Carriers transport goods along roads between flags.
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #66aaff;">
+          <b style="color:#66aaff;">Step 3: Basic Economy</b><br>
+          Build a Woodcutter (forest) and Quarry (mountain) for raw materials. Add a Sawmill to convert wood into planks. Planks + Stone = more buildings.
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ff9800;">
+          <b style="color:#ff9800;">Step 4: Food Production</b><br>
+          Build a Fisher (water) or Hunter (forest) for food. Mines need food to operate! Later, build Farms (meadow) + Mills + Bakeries for bread.
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #aa66ff;">
+          <b style="color:#aa66ff;">Step 5: Mining & Industry</b><br>
+          Build Iron/Coal/Gold Mines on mountains with deposits. Feed ore + coal into Smelters (iron bars) and Mints (gold coins). Iron goes to weapon smiths.
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #cc6666;">
+          <b style="color:#cc6666;">Step 6: Military</b><br>
+          Swordsmiths + Shieldsmiths make weapons. Brewery makes beer. Barracks trains soldiers from swords + shields + beer. Garrison soldiers in military buildings to defend territory.
+        </div>
+        <div style="background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px; margin-bottom:8px; border-left:3px solid #ff4444;">
+          <b style="color:#ff4444;">Step 7: Conquer!</b><br>
+          Use Attack mode (T) to send soldiers against enemy military buildings. Capturing a building claims its territory. Destroy the enemy HQ to win!
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:12px;">
+        <button class="settlers-overlay-close" style="padding:8px 28px; font-size:14px; background:linear-gradient(180deg,#35305a,#2a2548); color:#e0d8c8; border:1px solid rgba(180,160,100,0.3); border-radius:6px; cursor:pointer;">Close (Esc)</button>
+      </div>
+    `;
+    this._tutorialOverlay.appendChild(box);
+    this._tutorialOverlay.addEventListener("click", (e) => { if (e.target === this._tutorialOverlay) this._hideOverlay("_tutorialOverlay"); });
+    this._root.appendChild(this._tutorialOverlay);
+    box.querySelector(".settlers-overlay-close")!.addEventListener("click", () => this._hideOverlay("_tutorialOverlay"));
+  }
+
+  // ---- Game Concepts Overlay ----
+
+  private _showConceptsOverlay(): void {
+    if (this._conceptsOverlay) return;
+    this._conceptsOverlay = document.createElement("div");
+    this._conceptsOverlay.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85); pointer-events: all; z-index: 350;
+    `;
+    const box = document.createElement("div");
+    box.style.cssText = `
+      background: linear-gradient(135deg, #1a1840, #120f2a);
+      border: 2px solid rgba(180,160,100,0.4); border-radius: 12px;
+      padding: 24px 32px; max-width: 620px; max-height: 80vh; overflow-y: auto;
+      box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    `;
+    box.innerHTML = `
+      <h2 style="margin:0 0 16px; color:#ffd700; font-family:serif; text-align:center;">Game Concepts</h2>
+      <div style="font-size:12px; color:#c8c0b0; line-height:1.7;">
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Territory</h3>
+        You can only build within your territory. Territory is projected by your Headquarters, Guard Houses, Watchtowers, and Fortresses.
+        Larger military buildings project farther. Capturing enemy military buildings claims their territory for you.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Roads & Carriers</h3>
+        Roads connect buildings. Carriers walk between flags on roads, transporting resources from producers to consumers.
+        Place flags at road intersections to create efficient routes. Without roads, buildings cannot receive inputs or deliver outputs.
+        Roads can be upgraded for faster carrier movement.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Flags</h3>
+        Flags are waypoints on roads. Each flag can hold up to 8 resource stacks. Carriers pick up goods at one flag and drop them at the next.
+        Place flags strategically — too few means slow transport, too many means short carry distances.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Production Chains</h3>
+        Most buildings need input resources. Resources flow through chains:<br>
+        <span style="color:#80cc66;">Food:</span> Fisher/Hunter → direct food, or Farm → Mill → Bakery (bread)<br>
+        <span style="color:#ff9800;">Iron:</span> Iron Mine (needs food) → Smelter (needs coal) → Iron bars<br>
+        <span style="color:#cc6666;">Weapons:</span> Iron + Coal → Swordsmith/Shieldsmith → Barracks (+ beer) → Soldiers<br>
+        <span style="color:#ffd700;">Gold:</span> Gold Mine → Mint (needs coal) → Gold coins<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Mining</h3>
+        Mines must be placed on mountain terrain near resource deposits (iron, gold, coal, stone).
+        All mines except Quarry require food to operate — the worker eats one food item per production cycle.
+        Any food type works (fish, meat, bread).<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Military Units</h3>
+        <b style="color:#cc8866;">Soldiers</b> — trained at Barracks (sword + shield + beer). Standard infantry.<br>
+        <b style="color:#88cc66;">Archers</b> — trained at Archery Range (bow + beer). Ranged attackers.<br>
+        <b style="color:#ffcc44;">Knights</b> — trained at Stable (sword + shield + beer + 2 bread). Powerful heavy cavalry.<br>
+        Soldiers garrison military buildings. Use Attack mode (T) to send them against enemies.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Combat</h3>
+        Click a military building with Attack mode to send your soldiers to capture it.
+        Attacking soldiers fight defending garrison. If attackers win, you capture the building and its territory.
+        Destroy the enemy Headquarters to achieve military victory.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Trading</h3>
+        Build a Market to convert surplus resources. Standard rate is 3:1 (3 of one resource for 1 of another).
+        Raw-to-raw trades are 2:1. Gold can be used for premium purchases. Markets help balance resource shortages.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Building Upgrades</h3>
+        Most buildings can be upgraded to increase production efficiency. Higher levels produce faster.
+        Upgrades cost additional resources. Upgraded buildings are more valuable targets for enemies.<br><br>
+
+        <h3 style="color:#ffd700; margin:12px 0 4px;">Win Conditions</h3>
+        <b style="color:#cc6666;">Military Victory:</b> Destroy the enemy Headquarters.<br>
+        <b style="color:#ffd700;">Economic Victory:</b> Accumulate enough gold and reach the required score.<br>
+        <b style="color:#80cc66;">Combined:</b> Achieve both military and economic goals.
+
+      </div>
+      <div style="text-align:center; margin-top:12px;">
+        <button class="settlers-overlay-close" style="padding:8px 28px; font-size:14px; background:linear-gradient(180deg,#35305a,#2a2548); color:#e0d8c8; border:1px solid rgba(180,160,100,0.3); border-radius:6px; cursor:pointer;">Close (Esc)</button>
+      </div>
+    `;
+    this._conceptsOverlay.appendChild(box);
+    this._conceptsOverlay.addEventListener("click", (e) => { if (e.target === this._conceptsOverlay) this._hideOverlay("_conceptsOverlay"); });
+    this._root.appendChild(this._conceptsOverlay);
+    box.querySelector(".settlers-overlay-close")!.addEventListener("click", () => this._hideOverlay("_conceptsOverlay"));
   }
 
   destroy(): void {
