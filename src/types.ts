@@ -746,6 +746,7 @@ export enum GameMode {
   WORMS_3D = "worms_3d",
   WORMS_2D = "worms_2d",
   HOLY_TENNIS = "holy_tennis",
+  OWLS = "owls",
 }
 
 // ---------------------------------------------------------------------------

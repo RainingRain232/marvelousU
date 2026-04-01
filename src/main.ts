@@ -281,6 +281,7 @@ function _showLoading(mode: string): void {
     trebuchet: "TREBUCHET",
     grail_keeper: "GRAIL KEEPER",
     gargoyle: "GARGOYLE",
+    owls: "OWLS",
     lot: "LOT",
     guinevere: "GUINEVERE",
     forest: "FOREST",
@@ -462,6 +463,7 @@ function _showLoading(mode: string): void {
     [GameMode.WORMS_3D]: 90,
     [GameMode.WORMS_2D]: 91,
     [GameMode.HOLY_TENNIS]: 92,
+    [GameMode.OWLS]: 93,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -995,6 +997,12 @@ function _showLoading(mode: string): void {
       menuScreen.hide();
       _showLoading(menuScreen.selectedGameMode);
       _bootHolyTennisGame().then(() => loadingScreen.hide());
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.OWLS) {
+      menuScreen.hide();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootOwlsGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -4093,6 +4101,26 @@ async function _bootHolyTennisGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("holyTennisExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Owls: Night Hunter boot
+// ---------------------------------------------------------------------------
+
+let _owlsGame: any = null;
+
+async function _bootOwlsGame(): Promise<void> {
+  if (_owlsGame) { _owlsGame.destroy(); _owlsGame = null; }
+  const { OwlsGame } = await import("./owls/OwlsGame");
+
+  _owlsGame = new OwlsGame();
+  await _owlsGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("owlsExit", _onExit);
+    if (_owlsGame) { _owlsGame.destroy(); _owlsGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("owlsExit", _onExit);
 }
 
 async function _bootKingdomGame(): Promise<void> {
