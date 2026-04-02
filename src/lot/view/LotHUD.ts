@@ -11,6 +11,7 @@ export class LotHUD {
   private _onExit!: () => void;
   private _menuBuilt = false;
   private _menuDifficulty = "";
+  private _gameOverBuilt = false;
 
   build(onExit: () => void): void {
     this._onExit = onExit;
@@ -39,6 +40,17 @@ export class LotHUD {
     }
     this._menuBuilt = false;
 
+    // Game over is static — only rebuild once to keep buttons stable for clicks
+    if (state.phase === "game_over") {
+      if (!this._gameOverBuilt) {
+        this._gameOverBuilt = true;
+        this._root.innerHTML = this._renderGameOver(state);
+        this._bindEvents(state);
+      }
+      return;
+    }
+    this._gameOverBuilt = false;
+
     let html = "";
     switch (state.phase) {
       case "draw": html = this._renderDraw(state); break;
@@ -46,7 +58,6 @@ export class LotHUD {
       case "victory": html = this._renderVictory(state); break;
       case "buff_select": html = this._renderBuffSelect(state); break;
       case "intermission": html = this._renderIntermission(state); break;
-      case "game_over": html = this._renderGameOver(state); break;
     }
 
     this._root.innerHTML = html;

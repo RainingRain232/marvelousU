@@ -111,6 +111,12 @@ export class KingdomRenderer {
   }
 
   destroy(): void {
+    for (const t of this._hudTexts) t.destroy();
+    for (const t of this._uiTexts) t.destroy();
+    for (const t of this._popupTexts) t.destroy();
+    this._hudTexts.length = 0;
+    this._uiTexts.length = 0;
+    this._popupTexts.length = 0;
     this.container.removeChildren();
     for (const g of [this._bg, this._bgDecor, this._tiles, this._entities, this._player, this._fx, this._hud, this._ui]) g.destroy();
   }
@@ -1425,63 +1431,129 @@ export class KingdomRenderer {
       const headCx = sx + w / 2;
       const headCy = sy + headR + bob;
       g.circle(headCx, headCy, headR).fill(c.skin);
-      g.circle(headCx - headR * 0.2, headCy - headR * 0.15, headR * 0.3).fill({ color: lighten(c.skin, 20), alpha: 0.5 }); // cheek highlight
+      // Face highlight (cheek)
+      g.ellipse(headCx - headR * 0.2, headCy - headR * 0.1, headR * 0.35, headR * 0.25).fill({ color: lighten(c.skin, 18), alpha: 0.45 });
       // Nose
-      g.circle(headCx + f * headR * 0.35, headCy + headR * 0.1, headR * 0.08).fill(darken(c.skin, 15));
+      g.ellipse(headCx + f * headR * 0.12, headCy + headR * 0.15, headR * 0.08, headR * 0.06).fill(darken(c.skin, 18));
 
-      // Eyes (with expression)
-      const eyeX = f > 0 ? headCx + headR * 0.25 : headCx - headR * 0.45;
-      g.circle(eyeX, headCy - headR * 0.1, headR * 0.22).fill(0xFFFFFF);
-      g.circle(eyeX + f * 1.5, headCy - headR * 0.12, headR * 0.13).fill(0x222222);
-      // Eyebrow
-      g.roundRect(eyeX - headR * 0.18, headCy - headR * 0.35, headR * 0.35, 2, 1).fill(darken(c.hair, 10));
+      // Both eyes visible (front-facing, shifted slightly toward facing direction)
+      const eyeShift = f * headR * 0.08;
+      for (const side of [-1, 1]) {
+        const ex = headCx + side * headR * 0.3 + eyeShift;
+        const ey = headCy - headR * 0.1;
+        g.ellipse(ex, ey, headR * 0.2, headR * 0.18).fill(0xFFFFFF);
+        g.circle(ex + f * headR * 0.06, ey, headR * 0.11).fill(0x334466);
+        g.circle(ex + f * headR * 0.08, ey - headR * 0.02, headR * 0.06).fill(0x111122);
+        // Eye glint
+        g.circle(ex + f * headR * 0.02, ey - headR * 0.06, headR * 0.04).fill({ color: 0xFFFFFF, alpha: 0.7 });
+        // Eyebrow
+        g.moveTo(ex - headR * 0.16, ey - headR * 0.22)
+          .lineTo(ex + side * headR * 0.06, ey - headR * 0.28)
+          .lineTo(ex + headR * 0.16, ey - headR * 0.2)
+          .lineTo(ex + headR * 0.14, ey - headR * 0.16)
+          .lineTo(ex - headR * 0.14, ey - headR * 0.17).fill(darken(c.hair || c.skin, 30));
+      }
+      // Mouth
+      g.moveTo(headCx - headR * 0.12, headCy + headR * 0.35)
+        .lineTo(headCx, headCy + headR * 0.4)
+        .lineTo(headCx + headR * 0.12, headCy + headR * 0.35).stroke({ color: darken(c.skin, 30), width: 1 });
+      // Ears
+      for (const side of [-1, 1]) {
+        g.ellipse(headCx + side * headR * 0.88, headCy + headR * 0.05, headR * 0.12, headR * 0.2).fill(c.skin);
+        g.ellipse(headCx + side * headR * 0.88, headCy + headR * 0.05, headR * 0.07, headR * 0.12).fill(darken(c.skin, 12));
+      }
 
       this._drawCharAccent(g, char, headCx, headCy, headR, w, h, f, fire, torsoTop, torsoH, sx, sy, c);
     } else {
       // SMALL character
-      const headR = h * 0.2;
+      const headR = h * 0.22;
       const bodyTop = sy + headR * 2 + bob;
       const bodyH = h - headR * 2 - bob;
 
       // Shadow
-      g.ellipse(sx + w / 2, sy + h, w * 0.4, 2).fill({ color: 0x000000, alpha: 0.25 });
+      g.ellipse(sx + w / 2, sy + h, w * 0.4, 2.5).fill({ color: 0x000000, alpha: 0.25 });
 
-      // Body (rounded)
-      g.roundRect(sx + 1, bodyTop, w - 2, bodyH, 3).fill(primary);
-      // Body highlight
-      g.roundRect(sx + 2, bodyTop + 1, (w - 4) * 0.4, 2, 1).fill({ color: primaryLt, alpha: 0.5 });
-
-      // Legs (rounded)
+      // Legs with boots (draw behind body)
       const lw = w * 0.26;
-      const footY = sy + h - 4;
+      const legTop = bodyTop + bodyH * 0.52;
+      const legH = h - headR * 2 - bodyH * 0.52 - bob;
+      const bootH = 4;
       if (jumpFrame) {
-        g.roundRect(sx + w * 0.12, bodyTop + bodyH * 0.58, lw, bodyH * 0.3, 2).fill(c.secondary);
-        g.roundRect(sx + w * 0.62, bodyTop + bodyH * 0.58, lw, bodyH * 0.3, 2).fill(c.secondary);
+        // Spread legs when jumping
+        g.roundRect(sx + w * 0.08, legTop, lw, legH * 0.6, 2).fill(c.secondary);
+        g.roundRect(sx + w * 0.62, legTop, lw, legH * 0.6, 2).fill(c.secondary);
+        g.roundRect(sx + w * 0.05, legTop + legH * 0.6 - 1, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
+        g.roundRect(sx + w * 0.59, legTop + legH * 0.6 - 1, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
       } else {
         const lo = legPhase === 1 ? 2 : legPhase === 3 ? -2 : 0;
-        g.roundRect(sx + w * 0.12, bodyTop + bodyH * 0.55 + lo, lw, bodyH * 0.45 - lo, 2).fill(c.secondary);
-        g.roundRect(sx + w * 0.62, bodyTop + bodyH * 0.55 - lo, lw, bodyH * 0.45 + lo, 2).fill(c.secondary);
+        g.roundRect(sx + w * 0.12, legTop + lo, lw, legH - lo, 2).fill(c.secondary);
+        g.roundRect(sx + w * 0.62, legTop - lo, lw, legH + lo, 2).fill(c.secondary);
+        // Knee highlights
+        g.ellipse(sx + w * 0.25, legTop + legH * 0.3, lw * 0.25, 1.5).fill({ color: lighten(c.secondary, 18), alpha: 0.4 });
+        g.ellipse(sx + w * 0.75, legTop + legH * 0.3, lw * 0.25, 1.5).fill({ color: lighten(c.secondary, 18), alpha: 0.4 });
+        // Boots
+        g.roundRect(sx + w * 0.06, sy + h - bootH, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
+        g.roundRect(sx + w * 0.58, sy + h - bootH, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
       }
-      // Shoes (rounded)
-      g.roundRect(sx + w * 0.06, footY, lw + 3, 4, 2).fill(darken(c.secondary, 30));
-      g.roundRect(sx + w * 0.58, footY, lw + 3, 4, 2).fill(darken(c.secondary, 30));
 
-      // Arm (rounded)
-      const armLen = bodyH * 0.4;
-      const armOff = walk === 1 ? -2 : walk === 3 ? 2 : 0;
-      g.roundRect(f > 0 ? sx + w - 1 : sx - w * 0.14 + 1, bodyTop + 4 + armOff, w * 0.14, armLen, 2).fill(primaryLt);
-      // Hand
-      g.circle(f > 0 ? sx + w - 1 + w * 0.07 : sx - w * 0.14 + 1 + w * 0.07, bodyTop + 4 + armOff + armLen, w * 0.06).fill(c.skin);
+      // Torso (with belt and shading)
+      g.roundRect(sx + 1, bodyTop, w - 2, bodyH * 0.55, 3).fill(primary);
+      // Torso highlight
+      g.roundRect(sx + 2, bodyTop + 1, (w - 4) * 0.4, bodyH * 0.15, 1).fill({ color: primaryLt, alpha: 0.5 });
+      // Torso shadow at bottom
+      g.roundRect(sx + 2, bodyTop + bodyH * 0.4, w - 4, bodyH * 0.12, 1).fill({ color: darken(primary, 20), alpha: 0.3 });
+      // Belt
+      g.roundRect(sx + 1, bodyTop + bodyH * 0.48, w - 2, 3, 1).fill(darken(c.secondary, 20));
+      g.circle(sx + w / 2, bodyTop + bodyH * 0.5, 1.5).fill(0xCCAA33); // buckle
+
+      // Arms (both visible, with hands)
+      const armW2 = w * 0.15;
+      const armLen = bodyH * 0.42;
+      const armSwing = walk === 1 ? -2 : walk === 3 ? 2 : 0;
+      // Back arm
+      const backArmX = f > 0 ? sx - armW2 + 1 : sx + w - 1;
+      g.roundRect(backArmX, bodyTop + 3 - armSwing, armW2, armLen, 2).fill(darken(primary, 15));
+      g.circle(backArmX + armW2 / 2, bodyTop + 3 - armSwing + armLen, armW2 * 0.4).fill(darken(c.skin, 8));
+      // Front arm
+      const frontArmX = f > 0 ? sx + w - 1 : sx - armW2 + 1;
+      g.roundRect(frontArmX, bodyTop + 3 + armSwing, armW2, armLen, 2).fill(primaryLt);
+      g.circle(frontArmX + armW2 / 2, bodyTop + 3 + armSwing + armLen, armW2 * 0.4).fill(c.skin);
+      // Shoulder pads
+      g.ellipse(sx + 1, bodyTop + 3, armW2 * 0.7, 2.5).fill(lighten(primary, 15));
+      g.ellipse(sx + w - 1, bodyTop + 3, armW2 * 0.7, 2.5).fill(lighten(primary, 15));
 
       // Head
       const headCx = sx + w / 2;
       const headCy = sy + headR + bob;
+      // Neck
+      g.roundRect(headCx - 2, headCy + headR * 0.7, 4, headR * 0.4, 1).fill(c.skin);
       g.circle(headCx, headCy, headR).fill(c.skin);
+      // Face highlight
+      g.ellipse(headCx - headR * 0.2, headCy - headR * 0.1, headR * 0.3, headR * 0.2).fill({ color: lighten(c.skin, 18), alpha: 0.4 });
 
-      // Eyes
-      const eyeX = f > 0 ? headCx + headR * 0.2 : headCx - headR * 0.4;
-      g.circle(eyeX, headCy - 1, headR * 0.25).fill(0xFFFFFF);
-      g.circle(eyeX + f * 1, headCy - 1, headR * 0.14).fill(0x222222);
+      // Both eyes (front-facing)
+      const eyeShift = f * headR * 0.06;
+      for (const side of [-1, 1]) {
+        const ex = headCx + side * headR * 0.32 + eyeShift;
+        const ey = headCy - headR * 0.08;
+        g.ellipse(ex, ey, headR * 0.18, headR * 0.16).fill(0xFFFFFF);
+        g.circle(ex + f * headR * 0.05, ey, headR * 0.1).fill(0x334466);
+        g.circle(ex + f * headR * 0.07, ey - headR * 0.02, headR * 0.05).fill(0x111122);
+        // Glint
+        g.circle(ex, ey - headR * 0.05, headR * 0.035).fill({ color: 0xFFFFFF, alpha: 0.6 });
+        // Eyebrow
+        g.roundRect(ex - headR * 0.14, ey - headR * 0.22, headR * 0.28, 1.5, 0.5).fill(darken(c.hair || c.skin, 30));
+      }
+      // Nose
+      g.ellipse(headCx + f * headR * 0.1, headCy + headR * 0.15, headR * 0.06, headR * 0.04).fill(darken(c.skin, 15));
+      // Mouth
+      g.moveTo(headCx - headR * 0.1, headCy + headR * 0.32)
+        .lineTo(headCx, headCy + headR * 0.36)
+        .lineTo(headCx + headR * 0.1, headCy + headR * 0.32).stroke({ color: darken(c.skin, 28), width: 0.8 });
+      // Ears
+      for (const side of [-1, 1]) {
+        g.ellipse(headCx + side * headR * 0.88, headCy + headR * 0.05, headR * 0.1, headR * 0.16).fill(c.skin);
+      }
 
       this._drawCharAccent(g, char, headCx, headCy, headR, w, h, f, fire, bodyTop, bodyH, sx, sy, c);
     }
@@ -2908,126 +2980,417 @@ export class KingdomRenderer {
   private _drawCharSelect(s: KingdomState): void {
     const g = this._ui;
     const sw = s.sw, sh = s.sh, cx = sw / 2;
+    const t = Date.now() / 1000;
 
-    // Background
-    for (let i = 0; i < 8; i++) g.rect(0, i * (sh / 8), sw, sh / 8 + 1).fill(lerpColor(0x0A0A24, 0x141430, i / 7));
+    // Rich gradient background with dark vignette
+    for (let i = 0; i < 16; i++) {
+      const y0 = i * (sh / 16);
+      g.rect(0, y0, sw, sh / 16 + 1).fill(lerpColor(0x05061A, 0x12143A, i / 15));
+    }
+    // Subtle radial vignette corners
+    for (let corner = 0; corner < 4; corner++) {
+      const vx = corner % 2 === 0 ? 0 : sw;
+      const vy = corner < 2 ? 0 : sh;
+      g.circle(vx, vy, sh * 0.5).fill({ color: 0x000000, alpha: 0.3 });
+    }
 
-    // Title
+    // Animated background particles (floating embers)
+    for (let p = 0; p < 30; p++) {
+      const px = ((p * 137.5 + t * 15 * (0.3 + (p % 5) * 0.15)) % sw);
+      const py = sh - ((p * 73.7 + t * 25 * (0.4 + (p % 3) * 0.2)) % (sh * 1.2));
+      const pa = 0.15 + Math.sin(t * 2 + p) * 0.1;
+      const ps = 1.5 + Math.sin(t * 3 + p * 2) * 0.8;
+      g.circle(px, py, ps).fill({ color: lerpColor(0xFFAA44, 0xFFD700, (p % 7) / 7), alpha: pa });
+    }
+
+    // Decorative border frame
+    const frameM = 20;
+    g.rect(frameM, frameM, sw - frameM * 2, 1).fill({ color: 0xFFD700, alpha: 0.15 });
+    g.rect(frameM, sh - frameM, sw - frameM * 2, 1).fill({ color: 0xFFD700, alpha: 0.15 });
+    g.rect(frameM, frameM, 1, sh - frameM * 2).fill({ color: 0xFFD700, alpha: 0.15 });
+    g.rect(sw - frameM, frameM, 1, sh - frameM * 2).fill({ color: 0xFFD700, alpha: 0.15 });
+    // Corner ornaments
+    for (const [ox, oy] of [[frameM, frameM], [sw - frameM, frameM], [frameM, sh - frameM], [sw - frameM, sh - frameM]]) {
+      g.circle(ox, oy, 4).fill({ color: 0xFFD700, alpha: 0.3 });
+      g.circle(ox, oy, 2).fill({ color: 0xFFD700, alpha: 0.5 });
+    }
+
+    // Title with glow
+    const titleGlow = 0.6 + Math.sin(t * 1.5) * 0.15;
+    g.roundRect(cx - 220, 24, 440, 48, 6).fill({ color: 0xFFD700, alpha: 0.06 });
+    g.rect(cx - 200, 76, 400, 2).fill({ color: 0xFFD700, alpha: titleGlow * 0.5 });
+    g.rect(cx - 150, 80, 300, 1).fill({ color: 0xFFD700, alpha: titleGlow * 0.25 });
     const t0 = this._uiTexts[0]; t0.visible = true; t0.style = BIG_TEXT;
-    t0.text = "CHOOSE YOUR CHAMPION"; t0.x = cx - t0.width / 2; t0.y = 30;
-
-    // Decorative line
-    g.rect(cx - 200, 72, 400, 2).fill({ color: 0xFFD700, alpha: 0.4 });
+    t0.text = "CHOOSE YOUR CHAMPION"; t0.x = cx - t0.width / 2; t0.y = 32;
 
     // Character cards
-    const cardW = Math.min(180, (sw - 100) / 4);
-    const totalW = CHAR_LIST.length * cardW + (CHAR_LIST.length - 1) * 16;
+    const cardW = Math.min(220, (sw - 80) / 4);
+    const gap = 14;
+    const totalW = CHAR_LIST.length * cardW + (CHAR_LIST.length - 1) * gap;
     const startX = cx - totalW / 2;
-    const cardY = sh * 0.18;
-    const cardH = sh * 0.58;
+    const cardY = sh * 0.13;
+    const cardH = sh * 0.63;
 
     for (let i = 0; i < CHAR_LIST.length; i++) {
       const char = CHAR_LIST[i];
-      const x = startX + i * (cardW + 16);
+      const x = startX + i * (cardW + gap);
       const sel = i === s.charSelectIndex;
       const colors = CHAR_COLORS[char];
       const stats = CHAR_STATS[char];
+      const pulse = sel ? 0.7 + Math.sin(t * 3) * 0.3 : 0;
 
-      // Card glow when selected
+      // Selected card: animated outer glow layers
       if (sel) {
-        g.roundRect(x - 5, cardY - 5, cardW + 10, cardH + 10, 8).fill({ color: 0xFFD700, alpha: 0.25 });
+        g.roundRect(x - 10, cardY - 10, cardW + 20, cardH + 20, 12).fill({ color: 0xFFD700, alpha: 0.08 });
+        g.roundRect(x - 6, cardY - 6, cardW + 12, cardH + 12, 10).fill({ color: 0xFFD700, alpha: 0.12 + pulse * 0.08 });
+        g.roundRect(x - 3, cardY - 3, cardW + 6, cardH + 6, 8).fill({ color: 0xFFD700, alpha: 0.25 + pulse * 0.1 });
       }
+
       // Card border
-      g.roundRect(x - 2, cardY - 2, cardW + 4, cardH + 4, 6).fill(sel ? 0xFFD700 : 0x333355);
-      // Card bg
-      g.roundRect(x, cardY, cardW, cardH, 5).fill(sel ? 0x1A1A44 : 0x111133);
+      const borderCol = sel ? 0xFFD700 : 0x2A2A4A;
+      g.roundRect(x - 2, cardY - 2, cardW + 4, cardH + 4, 7).fill(borderCol);
 
-      // Character preview — large portrait
-      const prevCx = x + cardW / 2;
-      const prevY = cardY + cardH * 0.2;
-      const pScale = 2.2;
-      // Body
-      const bw = 20 * pScale;
-      const bh = 28 * pScale;
-      g.roundRect(prevCx - bw / 2, prevY, bw, bh, 4).fill(colors.primary);
-      // Head
-      g.circle(prevCx, prevY - 6 * pScale, 10 * pScale).fill(colors.skin);
-      // Eyes
-      g.circle(prevCx + 3 * pScale, prevY - 7 * pScale, 2.5 * pScale).fill(0xFFFFFF);
-      g.circle(prevCx + 4 * pScale, prevY - 7 * pScale, 1.2 * pScale).fill(0x222222);
-      // Legs
-      g.rect(prevCx - 7 * pScale, prevY + bh, 5 * pScale, 12 * pScale).fill(colors.secondary);
-      g.rect(prevCx + 2 * pScale, prevY + bh, 5 * pScale, 12 * pScale).fill(colors.secondary);
+      // Card background gradient
+      const bgTop = sel ? 0x1A1A50 : 0x0E0E28;
+      const bgBot = sel ? 0x101038 : 0x08081A;
+      for (let row = 0; row < 8; row++) {
+        const ry = cardY + row * (cardH / 8);
+        g.rect(x, ry, cardW, cardH / 8 + 1).fill(lerpColor(bgTop, bgBot, row / 7));
+      }
+      // Inner border
+      g.roundRect(x + 2, cardY + 2, cardW - 4, cardH - 4, 5).stroke({ color: sel ? 0x444488 : 0x222244, width: 1 });
 
-      // Character-specific accent (simplified)
-      switch (char) {
-        case KingdomChar.ARTHUR:
-          g.rect(prevCx - 8 * pScale, prevY - 18 * pScale, 16 * pScale, 5 * pScale).fill(0xFFD700);
-          for (let j = 0; j < 3; j++) g.rect(prevCx + (-6 + j * 5) * pScale, prevY - 22 * pScale, 3 * pScale, 5 * pScale).fill(0xFFD700);
-          break;
-        case KingdomChar.MERLIN:
-          g.moveTo(prevCx - 8 * pScale, prevY - 14 * pScale).lineTo(prevCx + 3 * pScale, prevY - 35 * pScale)
-            .lineTo(prevCx + 8 * pScale, prevY - 14 * pScale).fill(colors.primary);
-          g.circle(prevCx + 2 * pScale, prevY - 28 * pScale, 3 * pScale).fill(0xFFD700);
-          g.moveTo(prevCx - 5 * pScale, prevY + 5 * pScale).lineTo(prevCx, prevY + 18 * pScale)
-            .lineTo(prevCx + 5 * pScale, prevY + 5 * pScale).fill(0xDDDDDD);
-          break;
-        case KingdomChar.GUINEVERE:
-          g.rect(prevCx - 8 * pScale, prevY - 16 * pScale, 16 * pScale, 3 * pScale).fill(0xFFD700);
-          g.circle(prevCx, prevY - 18 * pScale, 3 * pScale).fill(0x6688FF);
-          g.rect(prevCx - 12 * pScale, prevY - 10 * pScale, 4 * pScale, 25 * pScale).fill(colors.hair);
-          g.rect(prevCx + 8 * pScale, prevY - 10 * pScale, 4 * pScale, 23 * pScale).fill(colors.hair);
-          break;
-        case KingdomChar.LANCELOT:
-          g.circle(prevCx, prevY - 7 * pScale, 11 * pScale).fill(colors.accent);
-          g.rect(prevCx - 7 * pScale, prevY - 5 * pScale, 14 * pScale, 3 * pScale).fill(0x111111);
-          g.rect(prevCx - 1 * pScale, prevY - 18 * pScale, 2 * pScale, 14 * pScale).fill(0x0044CC);
-          break;
+      // --- Detailed character portrait ---
+      const pcx = x + cardW / 2;
+      const pcy = cardY + cardH * 0.35;
+      const sc = Math.min(cardW / 80, 3.2); // scale factor
+
+      // Ground shadow
+      g.ellipse(pcx, pcy + 42 * sc, 22 * sc, 4 * sc).fill({ color: 0x000000, alpha: 0.3 });
+
+      // Feet with boots
+      const bootCol = darken(colors.secondary, 20);
+      for (const side of [-1, 1]) {
+        const fx = pcx + side * 5 * sc;
+        g.roundRect(fx - 4 * sc, pcy + 34 * sc, 8 * sc, 8 * sc, 2 * sc).fill(bootCol);
+        g.roundRect(fx - 4 * sc + side * 1.5 * sc, pcy + 39 * sc, 5 * sc, 3 * sc, 1 * sc).fill(darken(bootCol, 15)); // toe
       }
 
-      // Name
+      // Legs with shading
+      for (const side of [-1, 1]) {
+        const lx = pcx + side * 5 * sc;
+        g.roundRect(lx - 4 * sc, pcy + 18 * sc, 8 * sc, 18 * sc, 2 * sc).fill(colors.secondary);
+        g.roundRect(lx - 2 * sc, pcy + 18 * sc, 4 * sc, 18 * sc, 1 * sc).fill(lighten(colors.secondary, 10)); // highlight
+      }
+
+      // Torso with armor detail
+      const torsoY = pcy - 6 * sc;
+      const torsoW = 26 * sc;
+      const torsoH = 26 * sc;
+      g.roundRect(pcx - torsoW / 2, torsoY, torsoW, torsoH, 3 * sc).fill(colors.primary);
+      // Armor shading
+      g.roundRect(pcx - torsoW / 2 + 2 * sc, torsoY + 2 * sc, torsoW / 2 - 3 * sc, torsoH - 4 * sc, 2 * sc).fill(lighten(colors.primary, 12));
+      // Belt
+      g.roundRect(pcx - torsoW / 2 - 1 * sc, torsoY + torsoH - 5 * sc, torsoW + 2 * sc, 4 * sc, 1 * sc).fill(darken(colors.secondary, 30));
+      g.roundRect(pcx - 2 * sc, torsoY + torsoH - 5.5 * sc, 4 * sc, 5 * sc, 1 * sc).fill(0xCCA800); // buckle
+
+      // Arms with gauntlets
+      for (const side of [-1, 1]) {
+        const ax = pcx + side * (torsoW / 2 + 2 * sc);
+        // Upper arm
+        g.roundRect(ax - 4 * sc, torsoY + 3 * sc, 8 * sc, 14 * sc, 2 * sc).fill(colors.primary);
+        // Forearm
+        g.roundRect(ax - 3.5 * sc, torsoY + 15 * sc, 7 * sc, 10 * sc, 2 * sc).fill(darken(colors.primary, 15));
+        // Gauntlet
+        g.roundRect(ax - 4 * sc, torsoY + 22 * sc, 8 * sc, 5 * sc, 1.5 * sc).fill(darken(colors.secondary, 10));
+        // Shoulder pad
+        g.ellipse(ax, torsoY + 3 * sc, 6 * sc, 4 * sc).fill(lighten(colors.primary, 20));
+        g.ellipse(ax, torsoY + 2 * sc, 4 * sc, 2.5 * sc).fill(lighten(colors.primary, 35));
+      }
+
+      // Neck
+      g.roundRect(pcx - 3 * sc, torsoY - 4 * sc, 6 * sc, 6 * sc, 1).fill(colors.skin);
+
+      // Head
+      const headR = 12 * sc;
+      const headY = pcy - 24 * sc;
+      g.circle(pcx, headY, headR).fill(colors.skin);
+      // Face highlight
+      g.ellipse(pcx - 2 * sc, headY - 2 * sc, headR * 0.5, headR * 0.4).fill(lighten(colors.skin, 15));
+
+      // Eyes
+      const eyeY = headY - 1 * sc;
+      for (const side of [-1, 1]) {
+        const ex = pcx + side * 4.5 * sc;
+        g.ellipse(ex, eyeY, 3.2 * sc, 3 * sc).fill(0xFFFFFF);
+        g.circle(ex + side * 0.8 * sc, eyeY, 1.8 * sc).fill(0x334466);
+        g.circle(ex + side * 1.2 * sc, eyeY - 0.3 * sc, 0.8 * sc).fill(0x111122);
+        g.circle(ex + side * 0.3 * sc, eyeY - 1 * sc, 0.6 * sc).fill({ color: 0xFFFFFF, alpha: 0.6 }); // glint
+      }
+      // Eyebrows
+      for (const side of [-1, 1]) {
+        const bx = pcx + side * 4.5 * sc;
+        g.moveTo(bx - 3 * sc * side, eyeY - 4 * sc)
+          .lineTo(bx + 3.5 * sc * side, eyeY - 4.5 * sc)
+          .lineTo(bx + 3 * sc * side, eyeY - 3.5 * sc)
+          .lineTo(bx - 3 * sc * side, eyeY - 3 * sc).fill(darken(colors.hair || colors.skin, 40));
+      }
+      // Mouth
+      g.moveTo(pcx - 2.5 * sc, headY + 4 * sc)
+        .lineTo(pcx, headY + 5 * sc)
+        .lineTo(pcx + 2.5 * sc, headY + 4 * sc).stroke({ color: darken(colors.skin, 35), width: 1.2 });
+      // Ears
+      for (const side of [-1, 1]) {
+        g.ellipse(pcx + side * headR * 0.9, headY + 1 * sc, 2.5 * sc, 4 * sc).fill(colors.skin);
+        g.ellipse(pcx + side * headR * 0.9, headY + 1 * sc, 1.5 * sc, 2.5 * sc).fill(darken(colors.skin, 15));
+      }
+
+      // --- Character-specific details (high poly) ---
+      switch (char) {
+        case KingdomChar.ARTHUR: {
+          // Crown — ornate 5-point with jewels
+          const crY = headY - headR - 1 * sc;
+          const crW = headR * 1.8;
+          g.roundRect(pcx - crW / 2, crY, crW, 6 * sc, 2).fill(0xFFD700);
+          g.roundRect(pcx - crW / 2, crY + 4 * sc, crW, 2 * sc, 1).fill(0xCCA800);
+          g.roundRect(pcx - crW / 2, crY, crW, 2 * sc, 1).fill(0xFFEE55);
+          for (let j = 0; j < 5; j++) {
+            const cpx = pcx - crW / 2 + (crW / 4) * j;
+            const cph = (j === 2 ? 10 : 7) * sc;
+            g.moveTo(cpx - 3 * sc, crY).lineTo(cpx, crY - cph).lineTo(cpx + 3 * sc, crY).fill(0xFFD700);
+            g.circle(cpx, crY - cph, 2 * sc).fill(0xFFEE66);
+          }
+          g.circle(pcx, crY + 3 * sc, 3 * sc).fill(0xDD0000); // ruby
+          g.circle(pcx - 1 * sc, crY + 2 * sc, 1.5 * sc).fill({ color: 0xFF6666, alpha: 0.7 }); // ruby highlight
+          g.circle(pcx - crW * 0.3, crY + 3 * sc, 2 * sc).fill(0x2244CC); // sapphire
+          g.circle(pcx + crW * 0.3, crY + 3 * sc, 2 * sc).fill(0x2244CC); // sapphire
+          // Royal cape behind
+          g.moveTo(pcx - torsoW / 2 - 2 * sc, torsoY + 2 * sc)
+            .lineTo(pcx - torsoW / 2 - 6 * sc, pcy + 40 * sc)
+            .lineTo(pcx - torsoW / 2 + 4 * sc, pcy + 38 * sc).fill({ color: 0xAA0000, alpha: 0.6 });
+          g.moveTo(pcx + torsoW / 2 + 2 * sc, torsoY + 2 * sc)
+            .lineTo(pcx + torsoW / 2 + 6 * sc, pcy + 40 * sc)
+            .lineTo(pcx + torsoW / 2 - 4 * sc, pcy + 38 * sc).fill({ color: 0xAA0000, alpha: 0.6 });
+          // Cape ermine trim
+          for (let ci = 0; ci < 3; ci++) {
+            g.circle(pcx - torsoW / 2 - 4 * sc + ci * 3 * sc, pcy + 38 * sc, 1.5 * sc).fill(0xEEEEEE);
+          }
+          // Sword at side
+          const swordX = pcx + torsoW / 2 + 5 * sc;
+          g.rect(swordX, torsoY - 5 * sc, 2.5 * sc, 32 * sc).fill(0xBBBBCC);
+          g.rect(swordX - 0.5 * sc, torsoY - 5 * sc, 3.5 * sc, 3 * sc).fill(0xDDDDEE); // tip
+          g.rect(swordX - 3 * sc, torsoY + 12 * sc, 9 * sc, 3 * sc).fill(0xFFD700); // cross-guard
+          g.roundRect(swordX - 0.5 * sc, torsoY + 15 * sc, 3.5 * sc, 8 * sc, 1).fill(0x8B4513); // grip
+          g.circle(swordX + 1 * sc, torsoY + 24 * sc, 2.5 * sc).fill(0xFFD700); // pommel
+          break;
+        }
+        case KingdomChar.MERLIN: {
+          // Wizard hat — curved conical with stars and brim
+          const hatY = headY - headR;
+          const brim = headR * 2.2;
+          g.ellipse(pcx, hatY + 2 * sc, brim / 2, 3 * sc).fill(colors.primary);
+          g.ellipse(pcx, hatY + 1 * sc, brim / 2 - 2, 2 * sc).fill(lighten(colors.primary, 15));
+          const hatTipX = pcx + 6 * sc + Math.sin(t * 2) * 2 * sc;
+          const hatTipY = hatY - 35 * sc;
+          g.moveTo(pcx - headR * 0.8, hatY)
+            .lineTo(pcx - 5 * sc, hatY - 18 * sc)
+            .lineTo(hatTipX, hatTipY)
+            .lineTo(pcx + 6 * sc, hatY - 16 * sc)
+            .lineTo(pcx + headR * 0.8, hatY).fill(colors.primary);
+          // Hat highlight
+          g.moveTo(pcx - 3 * sc, hatY - 8 * sc)
+            .lineTo(hatTipX - 2 * sc, hatTipY + 4 * sc)
+            .lineTo(pcx + 5 * sc, hatY - 6 * sc).fill(lighten(colors.primary, 18));
+          // Hat band
+          g.rect(pcx - headR * 0.75, hatY - 1 * sc, headR * 1.5, 4 * sc).fill(darken(colors.primary, 25));
+          g.roundRect(pcx - 2 * sc, hatY - 2 * sc, 4 * sc, 6 * sc, 1).fill(0xFFD700); // buckle
+          // Stars on hat
+          this._star5(g, pcx + 4 * sc, hatY - 20 * sc, 4 * sc, 0xFFD700);
+          this._star5(g, pcx - 2 * sc, hatY - 10 * sc, 2.5 * sc, 0xFFEE88);
+          this._star5(g, pcx + 7 * sc, hatY - 28 * sc, 2 * sc, 0xFFDD44);
+          // Flowing beard
+          const beardY = headY + headR * 0.3;
+          for (let strand = 0; strand < 5; strand++) {
+            const sx2 = pcx + (strand - 2) * 4 * sc;
+            const wave = Math.sin(t * 1.5 + strand * 1.3) * 2 * sc;
+            const len = (16 + strand * 3) * sc;
+            g.moveTo(sx2 - 2 * sc, beardY)
+              .lineTo(sx2 - 2 * sc + wave * 0.5, beardY + len * 0.5)
+              .lineTo(sx2 + wave, beardY + len)
+              .lineTo(sx2 + 2 * sc + wave, beardY + len)
+              .lineTo(sx2 + 2 * sc + wave * 0.5, beardY + len * 0.5)
+              .lineTo(sx2 + 2 * sc, beardY).fill(strand % 2 === 0 ? 0xDDDDDD : 0xEEEEEE);
+          }
+          // Staff
+          const staffX = pcx - torsoW / 2 - 6 * sc;
+          g.rect(staffX, torsoY - 15 * sc, 3 * sc, 55 * sc).fill(0x8B5A2B);
+          g.rect(staffX - 0.5 * sc, torsoY - 15 * sc, 4 * sc, 2 * sc).fill(0xAA7744);
+          // Orb on staff with glow
+          const orbGlow = 0.5 + Math.sin(t * 2.5) * 0.3;
+          g.circle(staffX + 1.5 * sc, torsoY - 20 * sc, 8 * sc).fill({ color: 0x4422CC, alpha: 0.3 * orbGlow });
+          g.circle(staffX + 1.5 * sc, torsoY - 20 * sc, 6 * sc).fill({ color: 0x6644FF, alpha: 0.7 });
+          g.circle(staffX + 1.5 * sc, torsoY - 20 * sc, 4 * sc).fill({ color: 0xAA88FF, alpha: 0.8 });
+          g.circle(staffX + 0 * sc, torsoY - 22 * sc, 2 * sc).fill({ color: 0xFFFFFF, alpha: 0.5 });
+          // Robe details
+          g.moveTo(pcx - 5 * sc, torsoY + torsoH).lineTo(pcx - 8 * sc, pcy + 42 * sc)
+            .lineTo(pcx, pcy + 40 * sc).fill(lighten(colors.primary, 8));
+          g.moveTo(pcx + 5 * sc, torsoY + torsoH).lineTo(pcx + 8 * sc, pcy + 42 * sc)
+            .lineTo(pcx, pcy + 40 * sc).fill(lighten(colors.primary, 8));
+          break;
+        }
+        case KingdomChar.GUINEVERE: {
+          // Tiara
+          const tY = headY - headR - 1 * sc;
+          const tW = headR * 1.7;
+          g.roundRect(pcx - tW / 2, tY, tW, 5 * sc, 2).fill(0xFFD700);
+          g.roundRect(pcx - tW / 2, tY, tW, 2 * sc, 1).fill(0xFFEE55);
+          g.moveTo(pcx - 5 * sc, tY).lineTo(pcx, tY - 8 * sc).lineTo(pcx + 5 * sc, tY).fill(0xFFD700);
+          g.circle(pcx, tY - 3 * sc, 3.5 * sc).fill(0x4466FF);
+          g.circle(pcx - 1 * sc, tY - 4 * sc, 1.5 * sc).fill({ color: 0x88AAFF, alpha: 0.7 });
+          g.moveTo(pcx - tW * 0.38, tY).lineTo(pcx - tW * 0.3, tY - 4 * sc).lineTo(pcx - tW * 0.22, tY).fill(0xFFD700);
+          g.moveTo(pcx + tW * 0.22, tY).lineTo(pcx + tW * 0.3, tY - 4 * sc).lineTo(pcx + tW * 0.38, tY).fill(0xFFD700);
+          g.circle(pcx - tW * 0.3, tY + 2 * sc, 2 * sc).fill(0xFF44AA);
+          g.circle(pcx + tW * 0.3, tY + 2 * sc, 2 * sc).fill(0xFF44AA);
+          // Flowing hair
+          const hairBase = headY - headR * 0.3;
+          const hairLen = 35 * sc;
+          for (let strand = 0; strand < 6; strand++) {
+            const hx = pcx + (strand - 2.5) * 5 * sc;
+            const hw = 4 * sc;
+            const wave1 = Math.sin(t * 1.8 + strand * 1.1) * 3 * sc;
+            const wave2 = Math.sin(t * 1.2 + strand * 0.7) * 4 * sc;
+            const len = hairLen * (0.8 + (strand === 2 || strand === 3 ? 0.2 : 0));
+            g.moveTo(hx - hw / 2, hairBase)
+              .lineTo(hx - hw / 2 + wave1, hairBase + len * 0.4)
+              .lineTo(hx + wave2, hairBase + len)
+              .lineTo(hx + hw + wave2, hairBase + len)
+              .lineTo(hx + hw / 2 + wave1, hairBase + len * 0.4)
+              .lineTo(hx + hw / 2, hairBase).fill(strand % 3 === 0 ? lighten(colors.hair, 15) : colors.hair);
+          }
+          // Dress details — flowing skirt
+          const skirtY = torsoY + torsoH - 2 * sc;
+          g.moveTo(pcx - torsoW / 2 - 3 * sc, skirtY)
+            .lineTo(pcx - torsoW / 2 - 8 * sc, pcy + 42 * sc)
+            .lineTo(pcx + torsoW / 2 + 8 * sc, pcy + 42 * sc)
+            .lineTo(pcx + torsoW / 2 + 3 * sc, skirtY).fill(colors.primary);
+          // Dress hem triangles
+          for (let hi = 0; hi < 5; hi++) {
+            const hx = pcx - torsoW / 2 - 6 * sc + hi * 8 * sc;
+            g.moveTo(hx, pcy + 40 * sc).lineTo(hx + 4 * sc, pcy + 44 * sc)
+              .lineTo(hx + 8 * sc, pcy + 40 * sc).fill({ color: colors.accent, alpha: 0.4 });
+          }
+          // Bow at back
+          const bowX = pcx;
+          const bowY2 = torsoY + 3 * sc;
+          g.moveTo(bowX, bowY2).lineTo(bowX - 6 * sc, bowY2 - 4 * sc).lineTo(bowX - 5 * sc, bowY2 + 5 * sc).fill(colors.accent);
+          g.moveTo(bowX, bowY2).lineTo(bowX + 6 * sc, bowY2 - 4 * sc).lineTo(bowX + 5 * sc, bowY2 + 5 * sc).fill(colors.accent);
+          g.circle(bowX, bowY2, 2 * sc).fill(lighten(colors.accent, 20));
+          break;
+        }
+        case KingdomChar.LANCELOT: {
+          // Full great helm with detailed visor
+          const helmR = headR + 3 * sc;
+          g.circle(pcx, headY, helmR + 2 * sc).fill(darken(colors.accent, 15));
+          g.circle(pcx, headY, helmR).fill(colors.accent);
+          g.ellipse(pcx - headR * 0.25, headY - headR * 0.35, headR * 0.4, headR * 0.35).fill({ color: 0xFFFFFF, alpha: 0.12 });
+          // Visor slit
+          g.roundRect(pcx - helmR * 0.7, headY - 2 * sc, helmR * 1.4, 5 * sc, 2).fill(0x0A0A0A);
+          // Breathing holes
+          for (let hi = 0; hi < 4; hi++)
+            g.circle(pcx - helmR * 0.4 + hi * helmR * 0.26, headY + headR * 0.35, 1.5 * sc).fill(0x222222);
+          // Nose guard
+          g.moveTo(pcx - 2.5 * sc, headY - headR * 0.5).lineTo(pcx, headY - headR * 0.65)
+            .lineTo(pcx + 2.5 * sc, headY - headR * 0.5)
+            .lineTo(pcx + 2 * sc, headY + 2 * sc)
+            .lineTo(pcx - 2 * sc, headY + 2 * sc).fill(lighten(colors.accent, 20));
+          // Rivets
+          for (let ri = 0; ri < 8; ri++) {
+            const ra = (ri / 8) * Math.PI * 2 - Math.PI / 2;
+            const rvx = pcx + Math.cos(ra) * (helmR + 0.5 * sc);
+            const rvy = headY + Math.sin(ra) * (helmR + 0.5 * sc);
+            g.circle(rvx, rvy, 1.5 * sc).fill(0x999999);
+            g.circle(rvx - 0.5 * sc, rvy - 0.5 * sc, 0.7 * sc).fill(0xBBBBBB);
+          }
+          // Plume
+          const plumeH = 25 * sc;
+          const plumeWave = Math.sin(t * 2.5) * 4 * sc;
+          g.moveTo(pcx - 1 * sc, headY - helmR)
+            .lineTo(pcx - 3 * sc, headY - helmR - plumeH * 0.4)
+            .lineTo(pcx + plumeWave, headY - helmR - plumeH)
+            .lineTo(pcx + 5 * sc + plumeWave * 0.5, headY - helmR - plumeH * 0.5)
+            .lineTo(pcx + 4 * sc, headY - helmR).fill(0x0044CC);
+          g.moveTo(pcx + 1 * sc, headY - helmR - 2 * sc)
+            .lineTo(pcx + 1 * sc + plumeWave * 0.5, headY - helmR - plumeH * 0.7)
+            .lineTo(pcx + 4 * sc + plumeWave * 0.3, headY - helmR - plumeH * 0.3)
+            .lineTo(pcx + 3 * sc, headY - helmR - 2 * sc).fill(0x2266DD);
+          // Shield on arm
+          const shX = pcx - torsoW / 2 - 8 * sc;
+          const shY = torsoY + 5 * sc;
+          const shW = 12 * sc;
+          const shH2 = 18 * sc;
+          g.moveTo(shX, shY).lineTo(shX + shW, shY).lineTo(shX + shW / 2, shY + shH2).fill(0x0044AA);
+          g.moveTo(shX + 2 * sc, shY + 2 * sc).lineTo(shX + shW - 2 * sc, shY + 2 * sc)
+            .lineTo(shX + shW / 2, shY + shH2 - 3 * sc).fill(0x0055CC);
+          // Shield cross
+          g.rect(shX + shW * 0.4, shY + 3 * sc, shW * 0.2, shH2 * 0.6).fill(0xFFD700);
+          g.rect(shX + shW * 0.15, shY + shH2 * 0.2, shW * 0.7, shH2 * 0.12).fill(0xFFD700);
+          // Lance
+          const wpX = pcx + torsoW / 2 + 5 * sc;
+          g.rect(wpX, torsoY - 18 * sc, 3 * sc, 58 * sc).fill(0x8B5A2B);
+          g.moveTo(wpX - 2 * sc, torsoY - 18 * sc).lineTo(wpX + 1.5 * sc, torsoY - 28 * sc)
+            .lineTo(wpX + 5 * sc, torsoY - 18 * sc).fill(0xBBBBCC);
+          // Armor plate overlay on torso
+          g.roundRect(pcx - 8 * sc, torsoY + 3 * sc, 16 * sc, 10 * sc, 2).fill({ color: lighten(colors.primary, 25), alpha: 0.3 });
+          break;
+        }
+      }
+
+      // --- Name ---
       const nameIdx = 1 + i;
       if (nameIdx < this._uiTexts.length) {
         const nt = this._uiTexts[nameIdx];
-        nt.visible = true; nt.style = sel ? CHAR_NAME_STYLE : sty(16, 0x8888AA, false, 1);
-        nt.text = CHAR_NAMES[char]; nt.x = x + cardW / 2 - nt.width / 2; nt.y = cardY + cardH - 85;
+        nt.visible = true; nt.style = sel ? sty(24, 0xFFD700, true, 2, true) : sty(17, 0x7777AA, false, 1);
+        nt.text = CHAR_NAMES[char]; nt.x = x + cardW / 2 - nt.width / 2; nt.y = cardY + cardH - 100;
       }
 
-      // Special ability
+      // Special ability label
       const descIdx = 5 + i;
       if (descIdx < this._uiTexts.length) {
-        const dt = this._uiTexts[descIdx];
-        dt.visible = true; dt.style = sty(11, sel ? 0xBBBBDD : 0x666688, false, 0);
-        dt.text = stats.special; dt.x = x + cardW / 2 - dt.width / 2; dt.y = cardY + cardH - 58;
+        const dt2 = this._uiTexts[descIdx];
+        dt2.visible = true; dt2.style = sty(12, sel ? 0xBBBBDD : 0x555577, false, 0);
+        dt2.text = stats.special; dt2.x = x + cardW / 2 - dt2.width / 2; dt2.y = cardY + cardH - 72;
       }
 
-      // Stat bars
-      const barY = cardY + cardH - 42;
-      const barW2 = cardW - 20;
-      this._statBar(g, x + 10, barY, barW2, "SPD", stats.speedMul, sel);
-      this._statBar(g, x + 10, barY + 14, barW2, "JMP", stats.jumpMul, sel);
+      // Stat bars with labels
+      const barY = cardY + cardH - 55;
+      const barW2 = cardW - 24;
+      this._statBar(g, x + 12, barY, barW2, "SPD", stats.speedMul, sel);
+      this._statBar(g, x + 12, barY + 16, barW2, "JMP", stats.jumpMul, sel);
 
-      // Selection indicator
+      // Selection arrow
       if (sel) {
-        const arrowY = cardY - 18 + Math.sin(Date.now() / 180) * 5;
-        g.moveTo(x + cardW / 2 - 10, arrowY).lineTo(x + cardW / 2 + 10, arrowY)
-          .lineTo(x + cardW / 2, arrowY + 12).fill(0xFFD700);
+        const arrowY = cardY - 22 + Math.sin(t * 3) * 6;
+        const arrowCx = x + cardW / 2;
+        g.moveTo(arrowCx - 12, arrowY).lineTo(arrowCx + 12, arrowY)
+          .lineTo(arrowCx, arrowY + 14).fill(0xFFD700);
+        g.moveTo(arrowCx - 8, arrowY - 2).lineTo(arrowCx + 8, arrowY - 2)
+          .lineTo(arrowCx, arrowY + 10).fill(0xFFEE66);
       }
     }
 
-    // Description of selected character
+    // Description
     const selChar = CHAR_LIST[s.charSelectIndex];
     const descText = CHAR_STATS[selChar].desc;
     const t10 = this._uiTexts[10];
     if (t10) {
-      t10.visible = true; t10.style = sty(13, 0x9999BB, false, 1);
-      t10.text = descText; t10.x = cx - t10.width / 2; t10.y = sh * 0.82;
+      t10.visible = true; t10.style = sty(14, 0xAAAACC, false, 1);
+      t10.text = descText; t10.x = cx - t10.width / 2; t10.y = sh * 0.84;
     }
 
     // Controls
     const t11 = this._uiTexts[11];
     if (t11) {
-      t11.visible = true; t11.style = sty(14, 0x666688, false, 1);
+      t11.visible = true; t11.style = sty(13, 0x555577, false, 1);
       t11.text = "< >  Select     ENTER  Confirm     ESC  Back";
       t11.x = cx - t11.width / 2; t11.y = sh * 0.92;
     }

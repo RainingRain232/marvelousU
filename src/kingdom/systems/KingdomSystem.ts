@@ -486,7 +486,7 @@ export function exitBonusRoom(s: KingdomState): void {
   s.cameraX = s.bonusRoomSavedCamera;
   s.player.x = ret.returnX; s.player.y = ret.returnY;
   s.player.vx = 0; s.player.vy = 0;
-  s.bonusRoom = null; s.bonusRoomSavedTiles = null;
+  s.bonusRoom = null; s.bonusRoomSavedTiles = null; s.bonusRoomSavedCoins = [];
   s.phase = KingdomPhase.PLAYING;
 }
 

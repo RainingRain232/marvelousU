@@ -315,7 +315,11 @@ function _showLoading(mode: string): void {
   await viewManager.init(mountPoint);
 
   // 2. Load spritesheets (falls back to generated placeholders automatically)
-  await animationManager.load(viewManager.app.renderer);
+  try {
+    await animationManager.load(viewManager.app.renderer);
+  } catch (e) {
+    console.error("[Boot] Animation load failed, continuing with placeholders:", e);
+  }
 
   // ---------------------------------------------------------------------------
   // Start screen

@@ -673,6 +673,10 @@ interface Fighter {
   momentum: number;
   momentumDecayTimer: number;
   momentumUnstoppableAnnounced: boolean;
+  // AI footwork
+  aiFootworkGoal: number;
+  aiFootworkTimer: number;
+  aiFootworkSpeed: number;
   // Taunt system
   taunting: boolean;
   tauntTimer: number;
@@ -2627,6 +2631,10 @@ export class SwordOfAvalonGame {
       tauntSuperGained: 0,
       // Boss
       isBoss: false,
+      // AI footwork
+      aiFootworkGoal: 0,
+      aiFootworkTimer: 0,
+      aiFootworkSpeed: 0,
     };
   }
 
@@ -3640,13 +3648,44 @@ export class SwordOfAvalonGame {
       return;
     }
 
-    // Movement
-    if (distance > 110) {
-      ai.vx += ai.facing * MOVE_SPEED * 0.3 * speedMul;
-      ai.aiTimer = 0;
-    } else if (distance < 45) {
-      ai.vx -= ai.facing * MOVE_SPEED * 0.2 * speedMul;
-      ai.aiTimer = 0;
+    // Footwork — fluid, unpredictable movement
+    ai.aiFootworkTimer--;
+    if (ai.aiFootworkTimer <= 0) {
+      // Pick a new footwork goal: a target distance from the player
+      const roll = Math.random();
+      if (distance > 130) {
+        // Far away — close in decisively
+        ai.aiFootworkGoal = 55 + Math.random() * 30; // want to be 55-85 away
+        ai.aiFootworkSpeed = (0.6 + Math.random() * 0.4) * speedMul;
+      } else if (distance < 40) {
+        // Too close — back off or hold ground
+        ai.aiFootworkGoal = roll < 0.3 ? 30 : 60 + Math.random() * 30;
+        ai.aiFootworkSpeed = (0.4 + Math.random() * 0.3) * speedMul;
+      } else if (roll < 0.35) {
+        // Advance into striking range
+        ai.aiFootworkGoal = 50 + Math.random() * 20;
+        ai.aiFootworkSpeed = (0.5 + Math.random() * 0.5) * speedMul;
+      } else if (roll < 0.55) {
+        // Retreat / create space
+        ai.aiFootworkGoal = 90 + Math.random() * 40;
+        ai.aiFootworkSpeed = (0.3 + Math.random() * 0.4) * speedMul;
+      } else if (roll < 0.75) {
+        // Feint: quick dart forward then plan to pull back next
+        ai.aiFootworkGoal = 45 + Math.random() * 15;
+        ai.aiFootworkSpeed = (0.7 + Math.random() * 0.3) * speedMul;
+      } else {
+        // Hold position / subtle sway
+        ai.aiFootworkGoal = distance + (Math.random() - 0.5) * 20;
+        ai.aiFootworkSpeed = (0.15 + Math.random() * 0.2) * speedMul;
+      }
+      // More aggressive enemies change footwork faster
+      ai.aiFootworkTimer = Math.floor(15 + Math.random() * 40 - aggressiveness * 15);
+    }
+    const goalDiff = ai.aiFootworkGoal - distance;
+    if (Math.abs(goalDiff) > 5) {
+      // goalDiff > 0 means we want MORE distance → move away from player
+      const moveDir = goalDiff > 0 ? -ai.facing : ai.facing;
+      ai.vx += moveDir * MOVE_SPEED * ai.aiFootworkSpeed;
     }
 
     // Dash attack (AI): 10% chance at medium range

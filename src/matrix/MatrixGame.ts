@@ -575,6 +575,66 @@ export class MatrixGame {
     this._scene.background = new THREE.Color(0x000a00);
     this._scene.fog = new THREE.Fog(0x001a00, 18, 65);
 
+    // Sky dome — dark digital void with green matrix rain streaks and stars
+    const skyGeo = new THREE.SphereGeometry(80, 32, 24);
+    const skyCanvas = document.createElement("canvas");
+    skyCanvas.width = 512; skyCanvas.height = 512;
+    const sctx = skyCanvas.getContext("2d")!;
+    // Dark gradient
+    const grad = sctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, "#000800"); grad.addColorStop(0.3, "#001200");
+    grad.addColorStop(0.6, "#001a08"); grad.addColorStop(1, "#000a00");
+    sctx.fillStyle = grad; sctx.fillRect(0, 0, 512, 512);
+    // Digital rain streaks
+    for (let i = 0; i < 120; i++) {
+      const rx = Math.random() * 512;
+      const ry = Math.random() * 400;
+      const rLen = 4 + Math.random() * 25;
+      const alpha = 0.05 + Math.random() * 0.15;
+      sctx.fillStyle = `rgba(0,${150 + Math.floor(Math.random() * 105)},${Math.floor(Math.random() * 60)},${alpha})`;
+      sctx.fillRect(rx, ry, 1, rLen);
+    }
+    // Stars / data points
+    for (let i = 0; i < 80; i++) {
+      const sx2 = Math.random() * 512, sy2 = Math.random() * 300;
+      const bright = 0.1 + Math.random() * 0.4;
+      sctx.fillStyle = `rgba(0,${180 + Math.floor(Math.random() * 75)},0,${bright})`;
+      sctx.fillRect(sx2, sy2, 1 + (Math.random() > 0.85 ? 1 : 0), 1 + (Math.random() > 0.85 ? 1 : 0));
+    }
+    // Distant grid lines on horizon
+    sctx.strokeStyle = "rgba(0,80,0,0.06)";
+    sctx.lineWidth = 1;
+    for (let i = 0; i < 15; i++) {
+      const gy = 350 + i * 10;
+      sctx.beginPath(); sctx.moveTo(0, gy); sctx.lineTo(512, gy); sctx.stroke();
+    }
+    for (let i = 0; i < 20; i++) {
+      const gx = i * 26;
+      sctx.beginPath(); sctx.moveTo(gx, 350); sctx.lineTo(256 + (gx - 256) * 0.3, 512); sctx.stroke();
+    }
+    const skyMesh = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(skyCanvas), side: THREE.BackSide, depthWrite: false,
+    }));
+    this._scene.add(skyMesh);
+
+    // Floating code particles around the arena
+    const particleGeo = new THREE.BufferGeometry();
+    const particleCount = 200;
+    const pPositions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r2 = 8 + Math.random() * 35;
+      pPositions[i * 3] = Math.cos(a) * r2;
+      pPositions[i * 3 + 1] = 1 + Math.random() * 20;
+      pPositions[i * 3 + 2] = Math.sin(a) * r2;
+    }
+    particleGeo.setAttribute("position", new THREE.BufferAttribute(pPositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x00ff44, size: 0.08, transparent: true, opacity: 0.4,
+      depthWrite: false, sizeAttenuation: true,
+    });
+    this._scene.add(new THREE.Points(particleGeo, particleMat));
+
     // Lighting
     this._scene.add(new THREE.AmbientLight(0x003300, 0.4));
     const sun = new THREE.DirectionalLight(0x00ff44, 0.6);

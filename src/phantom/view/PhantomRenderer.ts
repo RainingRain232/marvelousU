@@ -143,7 +143,7 @@ export class PhantomRenderer {
     this._floatTexts = [];
   }
 
-  render(s: PhantomState, sw: number, sh: number, meta: PhantomMeta): void {
+  render(s: PhantomState, sw: number, sh: number, meta: PhantomMeta, pauseIndex = 0, pauseSubpage = ""): void {
     this._tiles = s.tiles; this._cols = s.cols; this._rows = s.rows;
     this._cellSize = B.CELL_SIZE;
     // Smooth camera follows interpolated player position
@@ -164,7 +164,22 @@ export class PhantomRenderer {
 
     const g = this._gfx;
     g.clear();
-    g.rect(0, 0, sw, sh).fill(B.COLOR_BG);
+    // Atmospheric background gradient (dark dungeon atmosphere)
+    for (let i = 0; i < 6; i++) {
+      const by = i * (sh / 6);
+      g.rect(0, by, sw, sh / 6 + 1).fill(lerpColor(0x06060F, 0x0C0C1A, i / 5));
+    }
+    // Subtle ambient fog/mist around screen edges
+    const fogAlpha = 0.06 + Math.sin(s.time * 0.5) * 0.02;
+    g.rect(0, 0, sw, sh * 0.15).fill({ color: 0x221133, alpha: fogAlpha });
+    g.rect(0, sh * 0.85, sw, sh * 0.15).fill({ color: 0x221133, alpha: fogAlpha });
+    // Floating dust motes in the background
+    for (let m = 0; m < 12; m++) {
+      const mx = ((m * 197.3 + s.time * 8 * (0.3 + (m % 4) * 0.1)) % (sw + 40)) - 20;
+      const my = ((m * 131.7 + s.time * 5 * (0.2 + (m % 3) * 0.15)) % (sh + 40)) - 20;
+      const ma = 0.05 + Math.sin(s.time * 1.5 + m * 2) * 0.03;
+      g.circle(mx, my, 1.5 + Math.sin(s.time + m) * 0.5).fill({ color: 0x6644aa, alpha: ma });
+    }
 
     const ox = this._offsetX + shakeX;
     const oy = this._offsetY + shakeY;
@@ -538,45 +553,92 @@ export class PhantomRenderer {
 
       const gcx = gpx + cs / 2, gcy = gpy + cs / 2;
 
-      // Guard body (enhanced detail)
+      // Guard body (detailed)
       if (guard.type === GuardType.HOUND) {
-        // Hound: body + ears + tail
-        g.ellipse(gcx, gcy + 1, cs * 0.38, cs * 0.26).fill(color); // body shadow
+        // Hound: quadruped body + ears + tail + legs
+        const sdx = DIR_DX[guard.dir], sdy = DIR_DY[guard.dir];
+        // Shadow
+        g.ellipse(gcx, gcy + 2, cs * 0.4, cs * 0.12).fill({ color: 0x000000, alpha: 0.3 });
+        // Body
+        g.ellipse(gcx, gcy + 1, cs * 0.38, cs * 0.26).fill(darken(color, 12));
         g.ellipse(gcx, gcy, cs * 0.38, cs * 0.26).fill(lerpColor(color, 0xffffff, 0.1));
-        // Pointy ears
-        g.poly([gcx - 7, gcy - 4, gcx - 4, gcy - 10, gcx - 1, gcy - 4]).fill(color);
-        g.poly([gcx + 7, gcy - 4, gcx + 4, gcy - 10, gcx + 1, gcy - 4]).fill(color);
+        // Belly highlight
+        g.ellipse(gcx, gcy + 2, cs * 0.22, cs * 0.12).fill({ color: lerpColor(color, 0xffffff, 0.2), alpha: 0.4 });
+        // Legs (4 small rectangles)
+        for (const lx of [-6, -2, 2, 6]) {
+          g.roundRect(gcx + lx - 1, gcy + cs * 0.2, 2.5, 5, 1).fill(darken(color, 20));
+        }
+        // Pointy ears with inner detail
+        for (const side of [-1, 1]) {
+          g.poly([gcx + side * 7, gcy - 4, gcx + side * 4, gcy - 11, gcx + side * 1, gcy - 4]).fill(color);
+          g.poly([gcx + side * 5.5, gcy - 5, gcx + side * 4, gcy - 9, gcx + side * 2.5, gcy - 5]).fill(lerpColor(color, 0xffaaaa, 0.3));
+        }
         // Snout
-        const sdx = DIR_DX[guard.dir] * 6, sdy = DIR_DY[guard.dir] * 5;
-        g.ellipse(gcx + sdx, gcy + sdy, 3, 2).fill(lerpColor(color, 0x000000, 0.2));
-        // Eyes
-        g.circle(gcx + sdx * 0.3 - 2, gcy + sdy * 0.3 - 2, 1.5).fill(0xffffff);
-        g.circle(gcx + sdx * 0.3 + 2, gcy + sdy * 0.3 - 2, 1.5).fill(0xffffff);
+        g.ellipse(gcx + sdx * 7, gcy + sdy * 6, 4, 3).fill(lerpColor(color, 0x000000, 0.15));
+        g.ellipse(gcx + sdx * 8, gcy + sdy * 7, 2, 1.5).fill(0x222222); // nose
+        // Eyes (both visible)
+        for (const side of [-1, 1]) {
+          g.circle(gcx + sdx * 3 + side * 3, gcy + sdy * 2 - 2, 2).fill(0xffffff);
+          g.circle(gcx + sdx * 3.5 + side * 3, gcy + sdy * 2.2 - 2, 1).fill(0x882222);
+        }
+        // Tail
+        const tailWave = Math.sin(s.time * 6) * 3;
+        g.moveTo(gcx - sdx * cs * 0.35, gcy - sdy * cs * 0.3)
+          .lineTo(gcx - sdx * cs * 0.5 + tailWave, gcy - sdy * cs * 0.4 - 4)
+          .stroke({ color: color, width: 2.5 });
       } else if (guard.type === GuardType.SENTRY) {
-        // Sentry: shield body + helmet
-        g.star(gcx, gcy + 1, 4, cs * 0.4, cs * 0.25).fill(lerpColor(color, 0x000000, 0.2)); // shadow
+        // Sentry: armored shield bearer
+        // Shadow
+        g.ellipse(gcx, gcy + cs * 0.35, cs * 0.35, cs * 0.1).fill({ color: 0x000000, alpha: 0.3 });
+        // Body (octagonal armor)
+        g.star(gcx, gcy + 1, 4, cs * 0.4, cs * 0.25).fill(darken(color, 15));
         g.star(gcx, gcy, 4, cs * 0.4, cs * 0.25).fill(color);
-        // Shield border
         g.star(gcx, gcy, 4, cs * 0.4, cs * 0.25).stroke({ color: lerpColor(color, 0xffffff, 0.3), width: 1.5 });
-        // Helmet visor slit
-        g.rect(gcx - 4, gcy - 1, 8, 2).fill({ color: 0x000000, alpha: 0.4 });
+        // Armor plate highlight
+        g.ellipse(gcx - 2, gcy - 2, cs * 0.15, cs * 0.12).fill({ color: lerpColor(color, 0xffffff, 0.2), alpha: 0.3 });
+        // Helmet with visor
+        g.roundRect(gcx - cs * 0.25, gcy - cs * 0.35, cs * 0.5, cs * 0.3, 3).fill(lerpColor(color, 0xffffff, 0.15));
+        g.rect(gcx - 5, gcy - cs * 0.15, 10, 2.5).fill({ color: 0x000000, alpha: 0.5 });
+        // Helmet crest
+        g.rect(gcx - 1, gcy - cs * 0.4, 2, cs * 0.12).fill(lerpColor(color, 0xffffff, 0.25));
+        // Shield emblem
+        const gdx = DIR_DX[guard.dir] * cs * 0.15;
+        const gdy = DIR_DY[guard.dir] * cs * 0.15;
+        g.circle(gcx + gdx, gcy + gdy, 3).fill({ color: B.COLOR_GOLD, alpha: 0.3 });
+        // Eyes (both visible through visor)
+        for (const side of [-1, 1]) {
+          g.circle(gcx + DIR_DX[guard.dir] * cs * 0.2 + side * 2.5, gcy + DIR_DY[guard.dir] * cs * 0.2 - cs * 0.08, 1.5).fill(0xffffff);
+        }
       } else {
-        // Patrol guard: body + helmet + weapon
-        g.roundRect(gpx + 3, gpy + 4, cs - 6, cs - 6, 3).fill(lerpColor(color, 0x000000, 0.15)); // shadow
+        // Patrol guard: armored body + helmet + weapon
+        // Shadow
+        g.ellipse(gcx, gcy + cs * 0.35, cs * 0.35, cs * 0.1).fill({ color: 0x000000, alpha: 0.3 });
+        // Body
+        g.roundRect(gpx + 2, gpy + 4, cs - 4, cs - 5, 4).fill(darken(color, 15));
         g.roundRect(gpx + 3, gpy + 3, cs - 6, cs - 6, 3).fill(color);
-        // Helmet (arc on top)
-        g.roundRect(gpx + 5, gpy + 1, cs - 10, cs * 0.35, 4).fill(lerpColor(color, 0xffffff, 0.15));
-        // Spear (line extending in facing direction)
+        // Armor shading
+        g.roundRect(gpx + 4, gpy + 4, (cs - 8) * 0.45, cs * 0.3, 2).fill({ color: lerpColor(color, 0xffffff, 0.12), alpha: 0.5 });
+        // Belt
+        g.roundRect(gpx + 4, gpy + cs * 0.65, cs - 8, 3, 1).fill(darken(color, 25));
+        // Helmet with faceguard
+        g.roundRect(gpx + 5, gpy + 1, cs - 10, cs * 0.38, 5).fill(lerpColor(color, 0xffffff, 0.18));
+        g.roundRect(gpx + 7, gpy + 2, cs - 14, cs * 0.2, 3).fill(lerpColor(color, 0xffffff, 0.25));
+        // Helmet nose guard
+        g.rect(gcx - 1, gpy + 1, 2, cs * 0.35).fill(lerpColor(color, 0xffffff, 0.3));
+        // Spear with tip
         const wx = DIR_DX[guard.dir] * cs * 0.5, wy = DIR_DY[guard.dir] * cs * 0.5;
-        g.moveTo(gcx + wx * 0.3, gcy + wy * 0.3).lineTo(gcx + wx * 1.1, gcy + wy * 1.1)
-          .stroke({ color: 0x888888, width: 1.5, alpha: 0.5 });
-      }
-
-      // Direction indicator (eye dot)
-      if (guard.state !== GuardState.KNOCKOUT && guard.state !== GuardState.SLEEPING && guard.type !== GuardType.HOUND) {
-        const gdx = DIR_DX[guard.dir] * cs * 0.35;
-        const gdy = DIR_DY[guard.dir] * cs * 0.35;
-        g.circle(gcx + gdx, gcy + gdy, 2).fill(0xffffff);
+        g.moveTo(gcx + wx * 0.2, gcy + wy * 0.2).lineTo(gcx + wx * 1.2, gcy + wy * 1.2)
+          .stroke({ color: 0x8B5A2B, width: 2, alpha: 0.6 });
+        // Spear tip
+        const tipX = gcx + wx * 1.2, tipY = gcy + wy * 1.2;
+        g.circle(tipX, tipY, 2).fill({ color: 0xBBBBCC, alpha: 0.7 });
+        // Eyes (both visible)
+        for (const side of [-1, 1]) {
+          const gex = gcx + DIR_DX[guard.dir] * cs * 0.25 + side * 2.5;
+          const gey = gcy + DIR_DY[guard.dir] * cs * 0.25 - 1;
+          g.circle(gex, gey, 1.8).fill(0xffffff);
+          g.circle(gex + DIR_DX[guard.dir] * 0.5, gey + DIR_DY[guard.dir] * 0.5, 0.9).fill(0x222222);
+        }
       }
 
       // Sleeping indicator (zzz in blue)
@@ -668,22 +730,49 @@ export class PhantomRenderer {
         }
       }
 
-      // Body
+      // Body — layered cloak with folds
+      g.roundRect(ppx + 2, ppy + 3, cs - 4, cs - 5, 6).fill(darken(playerColor, 15));
       g.roundRect(ppx + 3, ppy + 3, cs - 6, cs - 6, 5).fill(playerColor);
-      // Hood/head highlight
-      g.roundRect(ppx + 5, ppy + 2, cs - 10, cs * 0.4, 4).fill(lerpColor(playerColor, 0xffffff, 0.12));
+      // Cloak folds (vertical shading lines)
+      g.roundRect(ppx + cs * 0.3, ppy + cs * 0.3, 2, cs * 0.45, 1).fill({ color: darken(playerColor, 25), alpha: 0.3 });
+      g.roundRect(ppx + cs * 0.6, ppy + cs * 0.35, 2, cs * 0.4, 1).fill({ color: darken(playerColor, 25), alpha: 0.3 });
+      // Hood — rounded top with depth
+      g.roundRect(ppx + 4, ppy + 1, cs - 8, cs * 0.42, 5).fill(lerpColor(playerColor, 0xffffff, 0.08));
+      g.roundRect(ppx + 5, ppy + 2, cs - 10, cs * 0.3, 4).fill(lerpColor(playerColor, 0xffffff, 0.15));
+      // Hood rim shadow
+      g.roundRect(ppx + 4, ppy + cs * 0.38, cs - 8, 2, 1).fill({ color: darken(playerColor, 30), alpha: 0.4 });
+      // Shoulders
+      g.ellipse(ppx + 4, ppy + cs * 0.4, 4, 3).fill(lerpColor(playerColor, 0xffffff, 0.06));
+      g.ellipse(ppx + cs - 4, ppy + cs * 0.4, 4, 3).fill(lerpColor(playerColor, 0xffffff, 0.06));
+      // Belt/sash
+      g.roundRect(ppx + 5, ppy + cs * 0.7, cs - 10, 3, 1).fill(darken(playerColor, 35));
+      g.circle(pcx, ppy + cs * 0.72, 1.5).fill(B.COLOR_GOLD);
+      // Feet hint at bottom
+      g.roundRect(ppx + cs * 0.2, ppy + cs - 5, cs * 0.2, 3, 1).fill(darken(playerColor, 20));
+      g.roundRect(ppx + cs * 0.6, ppy + cs - 5, cs * 0.2, 3, 1).fill(darken(playerColor, 20));
 
-      // Eyes (glowing in shadow)
+      // Face — visible inside hood
       const edx = DIR_DX[s.playerDir] * 4;
       const edy = DIR_DY[s.playerDir] * 4;
+      const faceX = pcx + edx * 0.3;
+      const faceY = pcy + edy * 0.3 - cs * 0.08;
+      // Face shadow (hood interior)
+      g.ellipse(faceX, faceY, cs * 0.22, cs * 0.18).fill({ color: 0x000000, alpha: 0.35 });
+      // Skin tone (subtle)
+      g.ellipse(faceX, faceY, cs * 0.18, cs * 0.14).fill({ color: s.hidden ? darken(playerColor, 20) : 0x887766, alpha: s.hidden ? 0.4 : 0.3 });
+
+      // Eyes (glowing in shadow, always two visible)
       const eyeColor = s.hidden ? 0xaaaaff : 0xffffff;
-      const eyeAlpha = s.hidden ? 0.9 : 0.8;
-      g.circle(pcx + edx - 3, pcy + edy - 1, 2).fill({ color: eyeColor, alpha: eyeAlpha });
-      g.circle(pcx + edx + 3, pcy + edy - 1, 2).fill({ color: eyeColor, alpha: eyeAlpha });
-      // Eye glow when hidden
-      if (s.hidden) {
-        g.circle(pcx + edx - 3, pcy + edy - 1, 4).fill({ color: 0x6644cc, alpha: 0.15 });
-        g.circle(pcx + edx + 3, pcy + edy - 1, 4).fill({ color: 0x6644cc, alpha: 0.15 });
+      const eyeAlpha = s.hidden ? 0.95 : 0.85;
+      for (const side of [-1, 1]) {
+        const ex = pcx + edx + side * 3;
+        const ey = pcy + edy - 1;
+        g.circle(ex, ey, 2.2).fill({ color: eyeColor, alpha: eyeAlpha });
+        g.circle(ex + DIR_DX[s.playerDir] * 0.5, ey + DIR_DY[s.playerDir] * 0.5, 1.2).fill({ color: s.hidden ? 0x4422aa : 0x334466, alpha: 0.8 });
+        // Eye glow when hidden
+        if (s.hidden) {
+          g.circle(ex, ey, 5).fill({ color: 0x6644cc, alpha: 0.12 });
+        }
       }
     }
 
@@ -1006,10 +1095,120 @@ export class PhantomRenderer {
     }
 
     if (s.phase === PhantomPhase.PAUSED) {
-      ui.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.5 });
+      ui.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.6 });
+
+      const panW = 400, panH = pauseSubpage ? 420 : 340;
+      const px = sw / 2 - panW / 2, py = sh / 2 - panH / 2;
+
+      // Panel glow
+      ui.roundRect(px - 4, py - 4, panW + 8, panH + 8, 12).fill({ color: B.COLOR_PLAYER, alpha: 0.08 });
+      // Panel border
+      ui.roundRect(px - 2, py - 2, panW + 4, panH + 4, 10).fill({ color: B.COLOR_PLAYER, alpha: 0.25 });
+      // Panel body
+      ui.roundRect(px, py, panW, panH, 8).fill({ color: 0x0D0D1E, alpha: 0.95 });
+      // Inner border
+      ui.roundRect(px + 4, py + 4, panW - 8, panH - 8, 6).stroke({ color: 0x333355, width: 1 });
+      // Header bar
+      ui.roundRect(px + 8, py + 8, panW - 16, 44, 4).fill({ color: 0x15152A, alpha: 0.8 });
+      ui.rect(px + 8, py + 50, panW - 16, 1).fill({ color: B.COLOR_PLAYER, alpha: 0.3 });
+
+      // Title
       this._pauseText.visible = true;
       this._pauseText.anchor.set(0.5);
-      this._pauseText.x = sw / 2; this._pauseText.y = sh / 2;
+      this._pauseText.x = sw / 2; this._pauseText.y = py + 30;
+
+      if (pauseSubpage === "controls") {
+        // Controls subpage
+        this._statsText.visible = true;
+        this._statsText.style = new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: 0xaaaacc, lineHeight: 22 });
+        this._statsText.text =
+          "MOVEMENT\n" +
+          "  W A S D / Arrow Keys — Move\n" +
+          "  SPACE — Wait one turn\n" +
+          "  Shift — Peek ahead (see further)\n\n" +
+          "ABILITIES\n" +
+          "  Q — Shadow Dash (teleport to nearest shadow)\n" +
+          "  E — Smoke Bomb (create concealing cloud)\n" +
+          "  T — Quick throw stone (distraction)\n" +
+          "  Shift+T — Aimed throw mode\n" +
+          "  [ / ] — Adjust throw distance\n\n" +
+          "OTHER\n" +
+          "  ESC — Pause / Resume\n" +
+          "  Move behind a guard to backstab";
+        this._statsText.x = px + 24; this._statsText.y = py + 65;
+        this._promptText.visible = true;
+        this._promptText.text = "Press ESC or ENTER to go back";
+        this._promptText.style = new TextStyle({ fontFamily: "Georgia, serif", fontSize: 14, fill: 0x666688 });
+        this._promptText.anchor.set(0.5);
+        this._promptText.x = sw / 2; this._promptText.y = py + panH - 24;
+      } else if (pauseSubpage === "howto") {
+        // How to play subpage
+        this._statsText.visible = true;
+        this._statsText.style = new TextStyle({ fontFamily: "Georgia, serif", fontSize: 13, fill: 0xaaaacc, lineHeight: 21 });
+        this._statsText.text =
+          "You are the Phantom — a shadow thief infiltrating\n" +
+          "the castle. Your goal: collect all relics on each\n" +
+          "floor, then escape through the exit door.\n\n" +
+          "Stay in shadows (dark purple tiles) to remain\n" +
+          "hidden. Guards have vision cones — avoid them!\n\n" +
+          "If detected, the eye meter fills. When full,\n" +
+          "guards will chase you. Hide to reduce detection.\n\n" +
+          "Collect keys to unlock doors. Throw stones to\n" +
+          "distract guards. Use Shadow Dash and Smoke Bombs\n" +
+          "strategically. Backstab guards from behind.\n\n" +
+          "Stealth Rating: GHOST (unseen) > SHADOW > EXPOSED\n" +
+          "Better ratings earn more Shadow Coins for upgrades.";
+        this._statsText.x = px + 24; this._statsText.y = py + 65;
+        this._promptText.visible = true;
+        this._promptText.text = "Press ESC or ENTER to go back";
+        this._promptText.style = new TextStyle({ fontFamily: "Georgia, serif", fontSize: 14, fill: 0x666688 });
+        this._promptText.anchor.set(0.5);
+        this._promptText.x = sw / 2; this._promptText.y = py + panH - 24;
+      } else {
+        // Main pause menu buttons
+        const items = ["Resume", "Controls", "How to Play", "Exit to Menu"];
+        const icons = ["\u25B6", "\u2328", "\u2139", "\u21A9"];
+        const itemH = 44;
+        const listY = py + 70;
+        for (let i = 0; i < items.length; i++) {
+          const iy = listY + i * (itemH + 6);
+          const sel = i === pauseIndex;
+          // Button background
+          if (sel) {
+            ui.roundRect(px + 16, iy - 2, panW - 32, itemH + 4, 6).fill({ color: B.COLOR_PLAYER, alpha: 0.12 });
+            ui.roundRect(px + 18, iy, panW - 36, itemH, 5).fill({ color: B.COLOR_PLAYER, alpha: 0.15 });
+            // Selection indicator bar
+            ui.roundRect(px + 18, iy, 3, itemH, 2).fill({ color: B.COLOR_GOLD, alpha: 0.8 });
+          } else {
+            ui.roundRect(px + 18, iy, panW - 36, itemH, 5).fill({ color: 0x181830, alpha: 0.5 });
+          }
+          // Icon circle
+          const iconX = px + 48;
+          const iconY2 = iy + itemH / 2;
+          ui.circle(iconX, iconY2, 14).fill({ color: sel ? B.COLOR_PLAYER : 0x333355, alpha: sel ? 0.3 : 0.2 });
+          ui.circle(iconX, iconY2, 14).stroke({ color: sel ? B.COLOR_PLAYER : 0x444466, width: 1 });
+          // Item text (use available text slots)
+          const tIdx = i < 4 ? i : 0;
+          const textSlots = [this._hudText, this._hudRightText, this._hudAbilities, this._modifierText];
+          if (tIdx < textSlots.length) {
+            const bt = textSlots[tIdx];
+            bt.visible = true;
+            bt.style = new TextStyle({
+              fontFamily: "Georgia, serif", fontSize: sel ? 18 : 16,
+              fill: sel ? B.COLOR_GOLD : 0x8888aa, fontWeight: sel ? "bold" : "normal",
+              letterSpacing: sel ? 2 : 0,
+            });
+            bt.text = `${icons[i]}  ${items[i]}`;
+            bt.x = px + 74; bt.y = iy + itemH / 2 - (sel ? 10 : 9);
+          }
+        }
+        // Footer hint
+        this._promptText.visible = true;
+        this._promptText.text = "W/S Navigate  •  ENTER Select";
+        this._promptText.style = new TextStyle({ fontFamily: "monospace", fontSize: 11, fill: 0x555577 });
+        this._promptText.anchor.set(0.5);
+        this._promptText.x = sw / 2; this._promptText.y = py + panH - 20;
+      }
     }
 
     if (s.phase === PhantomPhase.FLOOR_CLEAR) {
@@ -1255,6 +1454,12 @@ export class PhantomRenderer {
 // Color utility
 // ---------------------------------------------------------------------------
 
+function darken(c: number, amt: number): number {
+  return lerpColor(c, 0x000000, amt / 100);
+}
+function lighten(c: number, amt: number): number {
+  return lerpColor(c, 0xffffff, amt / 100);
+}
 function lerpColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
   const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;

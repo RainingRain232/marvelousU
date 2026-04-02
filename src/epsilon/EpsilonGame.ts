@@ -491,6 +491,85 @@ export class EpsilonGame {
   // ── scene ──────────────────────────────────────────────────────────────
 
   private _initScene(): void {
+    // Cosmic sky dome with stars, nebulae, and distant galaxies
+    const skyGeo = new THREE.SphereGeometry(120, 48, 32);
+    const skyCanvas = document.createElement("canvas");
+    skyCanvas.width = 1024; skyCanvas.height = 512;
+    const sctx = skyCanvas.getContext("2d")!;
+    // Deep space gradient
+    const grad = sctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, "#020210"); grad.addColorStop(0.25, "#08041a");
+    grad.addColorStop(0.5, "#0a0622"); grad.addColorStop(0.75, "#06031a");
+    grad.addColorStop(1, "#020208");
+    sctx.fillStyle = grad; sctx.fillRect(0, 0, 1024, 512);
+    // Nebula clouds
+    for (let ni = 0; ni < 8; ni++) {
+      const nx = Math.random() * 1024, ny = Math.random() * 400;
+      const nr = 40 + Math.random() * 80;
+      const colors = [
+        `rgba(60,20,120,0.04)`, `rgba(120,40,80,0.03)`,
+        `rgba(30,50,130,0.04)`, `rgba(80,20,100,0.03)`,
+      ];
+      const ng = sctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
+      ng.addColorStop(0, colors[ni % colors.length]);
+      ng.addColorStop(1, "rgba(0,0,0,0)");
+      sctx.fillStyle = ng; sctx.fillRect(0, 0, 1024, 512);
+    }
+    // Stars — varied sizes and brightness
+    for (let i = 0; i < 400; i++) {
+      const sx2 = Math.random() * 1024, sy2 = Math.random() * 512;
+      const bright = 0.1 + Math.random() * 0.9;
+      const sz = Math.random() > 0.92 ? 2.5 : Math.random() > 0.75 ? 1.5 : 1;
+      const r = 180 + Math.floor(Math.random() * 75);
+      const g = 180 + Math.floor(Math.random() * 75);
+      const b = 200 + Math.floor(Math.random() * 55);
+      sctx.fillStyle = `rgba(${r},${g},${b},${bright})`;
+      sctx.fillRect(sx2, sy2, sz, sz);
+      // Diffraction cross on bright stars
+      if (sz >= 2 && bright > 0.6) {
+        sctx.fillStyle = `rgba(${r},${g},${b},${bright * 0.3})`;
+        sctx.fillRect(sx2 - 2, sy2, 5, 1);
+        sctx.fillRect(sx2, sy2 - 2, 1, 5);
+      }
+    }
+    // Distant spiral galaxy
+    const gx = 700, gy = 150;
+    for (let arm = 0; arm < 60; arm++) {
+      const ga = arm * 0.5;
+      const gr = arm * 1.2;
+      for (const offset of [0, Math.PI]) {
+        const px = gx + Math.cos(ga + offset) * gr;
+        const py = gy + Math.sin(ga + offset) * gr * 0.5;
+        sctx.fillStyle = `rgba(160,130,220,${0.15 - arm * 0.002})`;
+        sctx.fillRect(px, py, 1.5, 1);
+      }
+    }
+    sctx.fillStyle = "rgba(200,180,255,0.15)"; sctx.beginPath();
+    sctx.arc(gx, gy, 5, 0, Math.PI * 2); sctx.fill();
+
+    const skyTex = new THREE.CanvasTexture(skyCanvas);
+    const skyMesh = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({
+      map: skyTex, side: THREE.BackSide, depthWrite: false,
+    }));
+    this._scene.add(skyMesh);
+
+    // Floating cosmic dust particles around the arena
+    const dustGeo = new THREE.BufferGeometry();
+    const dustCount = 150;
+    const dustPos = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r2 = 15 + Math.random() * 50;
+      dustPos[i * 3] = Math.cos(a) * r2;
+      dustPos[i * 3 + 1] = -5 + Math.random() * 30;
+      dustPos[i * 3 + 2] = Math.sin(a) * r2;
+    }
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+    this._scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({
+      color: 0x8866dd, size: 0.1, transparent: true, opacity: 0.35,
+      depthWrite: false, sizeAttenuation: true,
+    })));
+
     // ambient
     this._scene.add(new THREE.AmbientLight(0x223344, 0.4));
     const hemi = new THREE.HemisphereLight(0x6644aa, 0x112233, 0.5);
@@ -1670,88 +1749,205 @@ export class EpsilonGame {
     const g = new THREE.Group();
     const color = ENEMY_COLORS[e.type] ?? 0xff3366;
     const r = e.radius;
-    let geo: THREE.BufferGeometry;
-    if (e.type === EnemyType.SEEKER) geo = new THREE.OctahedronGeometry(r, 1);
-    else if (e.type === EnemyType.ORBITER) geo = new THREE.TetrahedronGeometry(r, 1);
-    else if (e.type === EnemyType.DASHER) geo = new THREE.ConeGeometry(r, r * 2, 12);
-    else if (e.type === EnemyType.TITAN) geo = new THREE.IcosahedronGeometry(r, 2);
-    else if (e.type === EnemyType.SPLITTER) geo = new THREE.DodecahedronGeometry(r, 1);
-    else geo = new THREE.IcosahedronGeometry(r, 3);
-
     const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.4, transparent: true, opacity: 0.85 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    g.add(mesh);
+    const brightMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 2.0, roughness: 0.1, metalness: 0.5 });
+    const wireMat = new THREE.MeshBasicMaterial({ color: e.isElite ? 0xffd866 : color, wireframe: true, transparent: true, opacity: e.isElite ? 0.5 : 0.25, depthWrite: false });
+    const accentMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.6 });
+    const glowMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.15, depthWrite: false });
 
-    // inner core (brighter, smaller)
-    const coreGeo = new THREE.IcosahedronGeometry(r * 0.4, 1);
-    const coreMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 2.0, roughness: 0.1, metalness: 0.5 });
-    const core = new THREE.Mesh(coreGeo, coreMat);
-    g.add(core);
-
-    // wireframe overlay
-    const wireColor = e.isElite ? 0xffd866 : color;
-    const wireMat = new THREE.MeshBasicMaterial({ color: wireColor, wireframe: true, transparent: true, opacity: e.isElite ? 0.5 : 0.25, depthWrite: false });
-    const wire = new THREE.Mesh(geo.clone(), wireMat);
-    wire.scale.setScalar(e.isElite ? 1.25 : 1.15);
-    g.add(wire);
-
-    // orbital ring (unique per type)
-    if (e.type === EnemyType.ORBITER || e.type === EnemyType.TITAN) {
-      const ringGeo = new THREE.TorusGeometry(r * 1.4, 0.02, 8, 24);
-      const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2 + 0.3;
-      g.add(ring);
-    }
     if (e.type === EnemyType.SEEKER) {
-      // floating eye-like slit
-      const slit = new THREE.Mesh(new THREE.PlaneGeometry(r * 0.6, r * 0.15),
+      // Seeker — eye-like entity with armored shell and tendrils
+      const shell = new THREE.Mesh(new THREE.OctahedronGeometry(r, 2), mat);
+      shell.castShadow = true; g.add(shell);
+      // Inner core
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.4, 1), brightMat));
+      // Wireframe
+      const wire = new THREE.Mesh(new THREE.OctahedronGeometry(r * 1.15, 2), wireMat);
+      g.add(wire);
+      // Eye slit (wider, with pupil)
+      const slit = new THREE.Mesh(new THREE.PlaneGeometry(r * 0.7, r * 0.2),
         new THREE.MeshBasicMaterial({ color: 0xffffff, depthWrite: false, side: THREE.DoubleSide }));
-      slit.position.z = r * 0.85;
-      g.add(slit);
-    }
-    if (e.type === EnemyType.DASHER) {
-      // trailing fin spikes
-      for (let f = 0; f < 3; f++) {
-        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, r * 0.4, r * 0.3),
-          new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.6 }));
-        fin.position.set(0, r * 0.3, -r * 0.8 - f * 0.15);
-        fin.rotation.x = -0.2 * f;
-        g.add(fin);
+      slit.position.z = r * 0.85; g.add(slit);
+      // Pupil
+      const pupil = new THREE.Mesh(new THREE.CircleGeometry(r * 0.06, 12),
+        new THREE.MeshBasicMaterial({ color: 0x110011, depthWrite: false, side: THREE.DoubleSide }));
+      pupil.position.z = r * 0.86; g.add(pupil);
+      // Armored ridges around body
+      for (let ridge = 0; ridge < 3; ridge++) {
+        const ridgeRing = new THREE.Mesh(new THREE.TorusGeometry(r * (0.7 + ridge * 0.2), 0.015, 8, 16),
+          new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.3 }));
+        ridgeRing.rotation.x = Math.PI / 2;
+        ridgeRing.position.y = (ridge - 1) * r * 0.3;
+        g.add(ridgeRing);
       }
-    }
-    if (e.type === EnemyType.SPLITTER) {
-      // fracture lines
-      for (let fl = 0; fl < 4; fl++) {
-        const fa = (fl / 4) * Math.PI * 2;
-        const fLine = new THREE.Mesh(new THREE.BoxGeometry(r * 1.6, 0.015, 0.015),
-          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false }));
+      // Trailing tendrils (3 small cones behind)
+      for (let t = 0; t < 3; t++) {
+        const ta = ((t / 3) * Math.PI * 2) - Math.PI / 2;
+        const tendril = new THREE.Mesh(new THREE.ConeGeometry(r * 0.06, r * 0.5, 8), accentMat);
+        tendril.position.set(Math.cos(ta) * r * 0.4, Math.sin(ta) * r * 0.3, r * 0.6);
+        tendril.rotation.x = Math.PI * 0.7;
+        g.add(tendril);
+      }
+      // Ambient glow sphere
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(r * 1.4, 12, 8), glowMat));
+
+    } else if (e.type === EnemyType.ORBITER) {
+      // Orbiter — spinning satellite with dual rings and energy nodes
+      const body = new THREE.Mesh(new THREE.TetrahedronGeometry(r, 2), mat);
+      body.castShadow = true; g.add(body);
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.35, 1), brightMat));
+      g.add(new THREE.Mesh(new THREE.TetrahedronGeometry(r * 1.15, 2), wireMat));
+      // Dual orbital rings at different tilts
+      for (let ri = 0; ri < 2; ri++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(r * (1.3 + ri * 0.3), 0.02, 10, 32),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4 - ri * 0.1, depthWrite: false }));
+        ring.rotation.x = Math.PI / 2 + 0.3 + ri * 0.8;
+        ring.rotation.z = ri * 0.5;
+        g.add(ring);
+      }
+      // Energy nodes on outer ring (4 orbiting spheres)
+      for (let n = 0; n < 4; n++) {
+        const na = (n / 4) * Math.PI * 2;
+        const node = new THREE.Mesh(new THREE.SphereGeometry(r * 0.12, 12, 8), brightMat);
+        node.position.set(Math.cos(na) * r * 1.3, 0, Math.sin(na) * r * 1.3);
+        g.add(node);
+      }
+      // Connecting energy beams between nodes
+      for (let b = 0; b < 4; b++) {
+        const ba = (b / 4) * Math.PI * 2;
+        const ba2 = ((b + 1) / 4) * Math.PI * 2;
+        const mx = (Math.cos(ba) + Math.cos(ba2)) * r * 0.65;
+        const mz = (Math.sin(ba) + Math.sin(ba2)) * r * 0.65;
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, r * 1.0, 8), accentMat);
+        beam.position.set(mx, 0, mz);
+        beam.rotation.z = Math.PI / 2;
+        beam.rotation.y = ba + Math.PI / 4;
+        g.add(beam);
+      }
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(r * 1.5, 12, 8), glowMat));
+
+    } else if (e.type === EnemyType.DASHER) {
+      // Dasher — aggressive torpedo with fins and exhaust
+      const body = new THREE.Mesh(new THREE.ConeGeometry(r, r * 2, 16), mat);
+      body.castShadow = true; g.add(body);
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.35, 1), brightMat));
+      g.add(new THREE.Mesh(new THREE.ConeGeometry(r * 1.12, r * 2.2, 16), wireMat));
+      // Nose spike
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(r * 0.12, r * 0.6, 8),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 1.5 }));
+      spike.position.y = r * 1.2; g.add(spike);
+      // 4 large swept-back fins
+      for (let f = 0; f < 4; f++) {
+        const fa = (f / 4) * Math.PI * 2;
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.03, r * 0.5, r * 0.4), accentMat);
+        fin.position.set(Math.cos(fa) * r * 0.5, -r * 0.3, Math.sin(fa) * r * 0.5);
+        fin.rotation.y = fa;
+        fin.rotation.x = -0.3;
+        g.add(fin);
+        // Fin tip glow
+        const finTip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), brightMat);
+        finTip.position.set(Math.cos(fa) * r * 0.5, -r * 0.55, Math.sin(fa) * r * 0.5);
+        g.add(finTip);
+      }
+      // Exhaust glow at rear
+      const exhaust = new THREE.Mesh(new THREE.SphereGeometry(r * 0.3, 12, 8),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false }));
+      exhaust.position.y = -r; g.add(exhaust);
+      // Exhaust ring
+      const exRing = new THREE.Mesh(new THREE.TorusGeometry(r * 0.35, 0.02, 8, 16), accentMat);
+      exRing.rotation.x = Math.PI / 2; exRing.position.y = -r * 0.8; g.add(exRing);
+
+    } else if (e.type === EnemyType.TITAN) {
+      // Titan — massive armored sphere with floating plates
+      const body = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 3), mat);
+      body.castShadow = true; g.add(body);
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.45, 2), brightMat));
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 1.1, 3), wireMat));
+      // Orbital ring
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.5, 0.03, 10, 32),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false }));
+      ring.rotation.x = Math.PI / 2 + 0.3; g.add(ring);
+      // Floating armor plates (6 around body)
+      const plateMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2, metalness: 0.7, roughness: 0.3 });
+      for (let p = 0; p < 6; p++) {
+        const pa = (p / 6) * Math.PI * 2;
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(r * 0.5, r * 0.5, r * 0.08), plateMat);
+        plate.position.set(Math.cos(pa) * r * 1.25, (p % 2 === 0 ? 0.15 : -0.15), Math.sin(pa) * r * 1.25);
+        plate.rotation.y = -pa;
+        g.add(plate);
+      }
+      // Crown spikes on top
+      for (let s = 0; s < 5; s++) {
+        const sa = (s / 5) * Math.PI * 2;
+        const spike2 = new THREE.Mesh(new THREE.ConeGeometry(r * 0.06, r * 0.3, 6), accentMat);
+        spike2.position.set(Math.cos(sa) * r * 0.5, r + r * 0.1, Math.sin(sa) * r * 0.5);
+        g.add(spike2);
+      }
+      // Ground shadow indicator
+      const shadow = new THREE.Mesh(new THREE.CircleGeometry(r * 1.2, 16),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false }));
+      shadow.rotation.x = -Math.PI / 2; shadow.position.y = -r - 0.3; g.add(shadow);
+
+    } else if (e.type === EnemyType.SPLITTER) {
+      // Splitter — cracked crystalline body ready to fragment
+      const body = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 2), mat);
+      body.castShadow = true; g.add(body);
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.35, 1), brightMat));
+      g.add(new THREE.Mesh(new THREE.DodecahedronGeometry(r * 1.12, 2), wireMat));
+      // Fracture lines (glowing cracks)
+      for (let fl = 0; fl < 6; fl++) {
+        const fa = (fl / 6) * Math.PI * 2;
+        const fLine = new THREE.Mesh(new THREE.BoxGeometry(r * 1.8, 0.02, 0.02),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
         fLine.rotation.y = fa;
+        fLine.rotation.z = (fl % 2) * 0.3;
         g.add(fLine);
       }
-    }
-    // elite crown ring
-    if (e.isElite) {
-      const crownGeo = new THREE.TorusGeometry(r * 0.6, 0.025, 6, 12);
-      const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 1.0, roughness: 0.3, metalness: 0.8 });
-      const crown = new THREE.Mesh(crownGeo, crownMat);
-      crown.rotation.x = Math.PI / 2;
-      crown.position.y = r + 0.15;
-      g.add(crown);
+      // Orbiting crystal shards (4 small fragments)
+      for (let sh = 0; sh < 4; sh++) {
+        const sha = (sh / 4) * Math.PI * 2;
+        const shard = new THREE.Mesh(new THREE.TetrahedronGeometry(r * 0.15, 0),
+          new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 }));
+        shard.position.set(Math.cos(sha) * r * 1.4, Math.sin(sha * 2) * r * 0.3, Math.sin(sha) * r * 1.4);
+        g.add(shard);
+      }
+      // Unstable energy aura
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(r * 1.6, 12, 8), glowMat));
+      // Pulsing inner ring
+      const pulseRing = new THREE.Mesh(new THREE.TorusGeometry(r * 0.8, 0.015, 8, 24),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, depthWrite: false }));
+      pulseRing.rotation.x = Math.PI / 2; g.add(pulseRing);
+
+    } else {
+      // Generic enemy fallback
+      const body = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 3), mat);
+      body.castShadow = true; g.add(body);
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 0.4, 1), brightMat));
+      g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(r * 1.15, 3), wireMat));
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(r * 1.3, 12, 8), glowMat));
     }
 
-    // hp bar
+    // Elite crown ring with spikes
+    if (e.isElite) {
+      const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 1.0, roughness: 0.3, metalness: 0.8 });
+      const crown = new THREE.Mesh(new THREE.TorusGeometry(r * 0.6, 0.03, 8, 16), crownMat);
+      crown.rotation.x = Math.PI / 2; crown.position.y = r + 0.15; g.add(crown);
+      // Crown spikes
+      for (let cs = 0; cs < 5; cs++) {
+        const ca = (cs / 5) * Math.PI * 2;
+        const cSpike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 6), crownMat);
+        cSpike.position.set(Math.cos(ca) * r * 0.6, r + 0.2, Math.sin(ca) * r * 0.6);
+        g.add(cSpike);
+      }
+    }
+
+    // HP bar
     const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, 0.08),
       new THREE.MeshBasicMaterial({ color: 0x333333, depthWrite: false }));
-    hpBg.position.y = r + 0.5;
-    hpBg.rotation.x = -0.5;
-    g.add(hpBg);
+    hpBg.position.y = r + 0.5; hpBg.rotation.x = -0.5; g.add(hpBg);
     const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, 0.08),
       new THREE.MeshBasicMaterial({ color, depthWrite: false }));
-    hpFill.position.y = r + 0.5;
-    hpFill.rotation.x = -0.5;
-    g.add(hpFill);
+    hpFill.position.y = r + 0.5; hpFill.rotation.x = -0.5; g.add(hpFill);
 
     g.position.set(e.x, e.y, e.z);
     this._scene.add(g);

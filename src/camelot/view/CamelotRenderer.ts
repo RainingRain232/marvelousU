@@ -18,7 +18,8 @@ export class CamelotRenderer {
   constructor() {
     this._canvas = document.createElement("canvas");
     this._ctx = this._canvas.getContext("2d")!;
-    this._texture = Texture.from(this._canvas);
+    // Texture + sprite are created in init() once screen dimensions are known
+    this._texture = Texture.EMPTY;
     this._sprite = new Sprite(this._texture);
     this.container.addChild(this._sprite);
   }
@@ -26,14 +27,23 @@ export class CamelotRenderer {
   init(sw: number, sh: number): void {
     this._canvas.width = sw;
     this._canvas.height = sh;
-    this._sprite.width = sw;
-    this._sprite.height = sh;
+    // Create texture from the already-sized canvas so dimensions match
+    this._texture = Texture.from(this._canvas);
+    this._sprite.texture = this._texture;
+    // Sprite scale 1:1 with texture — no rescaling needed
+    this._sprite.scale.set(1);
   }
 
   render(s: CamelotState, sw: number, sh: number): void {
     const c = this._canvas;
     const ctx = this._ctx;
-    if (c.width !== sw || c.height !== sh) { c.width = sw; c.height = sh; }
+    if (c.width !== sw || c.height !== sh) {
+      c.width = sw; c.height = sh;
+      // Recreate texture at new size so sprite scale stays 1:1
+      this._texture = Texture.from(c);
+      this._sprite.texture = this._texture;
+      this._sprite.scale.set(1);
+    }
     ctx.clearRect(0, 0, sw, sh);
 
     if (s.phase === CamelotPhase.START) { this._drawStartScreen(ctx, sw, sh); }

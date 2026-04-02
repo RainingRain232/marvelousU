@@ -147,6 +147,68 @@ export class LeviathanRenderer {
     this._scene.add(this._causticLight);
     this._scene.add(this._causticLight.target);
 
+    // Underwater atmosphere — distant murky depths with faint light from above
+    const depthSkyGeo = new THREE.SphereGeometry(90, 32, 24);
+    const depthCanvas = document.createElement("canvas");
+    depthCanvas.width = 512; depthCanvas.height = 512;
+    const dctx = depthCanvas.getContext("2d")!;
+    // Deep ocean gradient — lighter above (surface light), dark below (abyss)
+    const dg = dctx.createLinearGradient(0, 0, 0, 512);
+    dg.addColorStop(0, "#0c1825"); dg.addColorStop(0.2, "#081420");
+    dg.addColorStop(0.5, "#050e18"); dg.addColorStop(0.8, "#030810");
+    dg.addColorStop(1, "#010408");
+    dctx.fillStyle = dg; dctx.fillRect(0, 0, 512, 512);
+    // Surface caustic light rays from above
+    for (let ray = 0; ray < 20; ray++) {
+      const rx = 50 + Math.random() * 412;
+      const rw = 3 + Math.random() * 8;
+      const rg = dctx.createLinearGradient(rx, 0, rx + rw * 2, 200 + Math.random() * 150);
+      rg.addColorStop(0, `rgba(40,80,120,${0.04 + Math.random() * 0.04})`);
+      rg.addColorStop(1, "rgba(10,30,50,0)");
+      dctx.fillStyle = rg;
+      dctx.beginPath();
+      dctx.moveTo(rx, 0); dctx.lineTo(rx + rw, 0);
+      dctx.lineTo(rx + rw * 3, 200 + Math.random() * 150);
+      dctx.lineTo(rx - rw, 200 + Math.random() * 150);
+      dctx.fill();
+    }
+    // Suspended particles / plankton
+    for (let i = 0; i < 150; i++) {
+      const px2 = Math.random() * 512, py2 = Math.random() * 512;
+      const pa = 0.03 + Math.random() * 0.08;
+      const ps = 1 + (Math.random() > 0.9 ? 1 : 0);
+      dctx.fillStyle = `rgba(80,120,160,${pa})`;
+      dctx.fillRect(px2, py2, ps, ps);
+    }
+    // Faint bioluminescent spots
+    for (let i = 0; i < 12; i++) {
+      const bx = Math.random() * 512, by = 200 + Math.random() * 312;
+      const br = 3 + Math.random() * 6;
+      const bg = dctx.createRadialGradient(bx, by, 0, bx, by, br);
+      bg.addColorStop(0, `rgba(60,180,200,${0.03 + Math.random() * 0.03})`);
+      bg.addColorStop(1, "rgba(0,0,0,0)");
+      dctx.fillStyle = bg; dctx.fillRect(bx - br, by - br, br * 2, br * 2);
+    }
+    const depthMesh = new THREE.Mesh(depthSkyGeo, new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(depthCanvas), side: THREE.BackSide, depthWrite: false,
+    }));
+    this._scene.add(depthMesh);
+
+    // Floating underwater particles (sediment, plankton)
+    const sedGeo = new THREE.BufferGeometry();
+    const sedCount = 250;
+    const sedPos = new Float32Array(sedCount * 3);
+    for (let i = 0; i < sedCount; i++) {
+      sedPos[i * 3] = (Math.random() - 0.5) * 80;
+      sedPos[i * 3 + 1] = (Math.random() - 0.5) * 40;
+      sedPos[i * 3 + 2] = (Math.random() - 0.5) * 80;
+    }
+    sedGeo.setAttribute("position", new THREE.BufferAttribute(sedPos, 3));
+    this._scene.add(new THREE.Points(sedGeo, new THREE.PointsMaterial({
+      color: 0x446688, size: 0.06, transparent: true, opacity: 0.3,
+      depthWrite: false, sizeAttenuation: true,
+    })));
+
     this._buildPlayer();
     this._buildPools();
     this._buildPostProcessing(w, h);

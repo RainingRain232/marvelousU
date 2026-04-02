@@ -346,6 +346,7 @@ export class AnimationManager {
     } catch {
       // Asset not found — use detailed procedural generators where available,
       // otherwise fall back to generic colored-square placeholders.
+      try {
       if (key === "swordsman") {
         this._generateSwordsmanSprites(key, renderer);
       } else if (key === "archer") {
@@ -709,6 +710,10 @@ export class AnimationManager {
         // Race-specific national mage sprites
         this._generateMageSprites(key, renderer, NATIONAL_MAGE_PALETTES[key]);
       } else {
+        this._generatePlaceholders(key, renderer);
+      }
+      } catch (genErr) {
+        console.warn(`[AnimationManager] procedural generation failed for "${key}":`, genErr);
         this._generatePlaceholders(key, renderer);
       }
     }

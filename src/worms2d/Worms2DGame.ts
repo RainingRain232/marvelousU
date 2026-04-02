@@ -9,7 +9,7 @@
 const GRAVITY = 400;
 const WORM_RADIUS = 14;
 const WORM_HP = 100;
-const TURN_TIME = 45;
+const TURN_TIME = 22;
 const RETREAT_TIME = 5;
 const WATER_LEVEL = 50;
 const TERRAIN_WIDTH = 3200;
@@ -1996,10 +1996,10 @@ export class Worms2DGame {
     this._aiTimer += dt;
     switch (this._aiPhase) {
       case 'thinking': {
-        if (this._aiTimer > 0.8) {
+        if (this._aiTimer > 0.4) {
           this._aiSelectWeapon(worm);
           this._aiPhase = 'moving'; this._aiTimer = 0;
-          this._aiMoveTime = randRange(0.5, 2.0);
+          this._aiMoveTime = randRange(1.5, 4.0);
           // Move toward nearest enemy
           const target = this._findNearestEnemy(worm);
           this._aiMoveDir = target ? (target.x > worm.x ? 1 : -1) : (Math.random() > 0.5 ? 1 : -1);
@@ -2018,6 +2018,13 @@ export class Worms2DGame {
               worm.vx = this._aiMoveDir * MOVE_SPEED * 1.2;
               worm.grounded = false;
             }
+            // Re-evaluate direction mid-move: if approaching a cliff or wall, change direction
+            const aheadX = worm.x + this._aiMoveDir * (WORM_RADIUS + 20);
+            if (aheadX < 20 || aheadX > TERRAIN_WIDTH - 20 ||
+                (!this._isTerrainSolid(aheadX, worm.y + WORM_RADIUS + 5) && worm.grounded)) {
+              this._aiMoveDir = -this._aiMoveDir;
+              worm.facing = this._aiMoveDir;
+            }
           }
         } else {
           worm.vx = 0; this._aiPhase = 'aiming'; this._aiTimer = 0; this._aiCalculateShot(worm);
@@ -2025,8 +2032,8 @@ export class Worms2DGame {
         this._camTargetX = worm.x; this._camTargetY = worm.y; break;
       }
       case 'aiming': {
-        worm.aimAngle = lerp(worm.aimAngle, this._aiTargetAngle, dt * 1.5);
-        if (this._aiTimer > 1.0) { this._aiPhase = 'firing'; this._aiTimer = 0; }
+        worm.aimAngle = lerp(worm.aimAngle, this._aiTargetAngle, dt * 3);
+        if (this._aiTimer > 0.5) { this._aiPhase = 'firing'; this._aiTimer = 0; }
         break;
       }
       case 'firing': {
@@ -3743,7 +3750,7 @@ export class Worms2DGame {
         line('Grail Knights (Gold) - Led by Sir Galahad, with Bors, Tristan, and Kay.');
         gap();
         heading('Turn Structure');
-        line('Each turn lasts 45 seconds. You can move, aim, and fire one weapon. After firing, you get a 5-second retreat phase to move to safety. Then the next team takes their turn.');
+        line('Each turn lasts 22 seconds. You can move, aim, and fire one weapon. After firing, you get a 5-second retreat phase to move to safety. Then the next team takes their turn.');
         break;
 
       case 'concepts':

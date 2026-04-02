@@ -47,6 +47,10 @@ export class PhantomGame {
   private _heldTimer = 0;
   private _heldFirst = true; // is this the first repeat?
 
+  // Pause menu
+  private _pauseIndex = 0;
+  private _pauseSubpage = ""; // "" = main menu, "controls", "howto", "about"
+
   async boot(): Promise<void> {
     viewManager.clearWorld();
     viewManager.camera.zoom = 1;
@@ -121,9 +125,42 @@ export class PhantomGame {
       }
 
       if (e.code === "Escape") {
-        if (s.phase === PhantomPhase.PLAYING) s.phase = PhantomPhase.PAUSED;
-        else if (s.phase === PhantomPhase.PAUSED) s.phase = PhantomPhase.PLAYING;
+        if (s.phase === PhantomPhase.PLAYING) {
+          s.phase = PhantomPhase.PAUSED;
+          this._pauseIndex = 0;
+          this._pauseSubpage = "";
+        } else if (s.phase === PhantomPhase.PAUSED) {
+          if (this._pauseSubpage) { this._pauseSubpage = ""; }
+          else { s.phase = PhantomPhase.PLAYING; }
+        }
         e.preventDefault(); return;
+      }
+
+      // Pause menu navigation
+      if (s.phase === PhantomPhase.PAUSED) {
+        if (this._pauseSubpage) {
+          // Any key goes back to main pause menu
+          if (e.code === "Space" || e.code === "Enter" || e.code === "Backspace") {
+            this._pauseSubpage = "";
+            e.preventDefault();
+          }
+          return;
+        }
+        const menuItems = 4; // Resume, Controls, How to Play, Exit
+        if (e.code === "ArrowUp" || e.code === "KeyW") {
+          this._pauseIndex = (this._pauseIndex - 1 + menuItems) % menuItems;
+          e.preventDefault();
+        } else if (e.code === "ArrowDown" || e.code === "KeyS") {
+          this._pauseIndex = (this._pauseIndex + 1) % menuItems;
+          e.preventDefault();
+        } else if (e.code === "Space" || e.code === "Enter") {
+          if (this._pauseIndex === 0) { s.phase = PhantomPhase.PLAYING; }
+          else if (this._pauseIndex === 1) { this._pauseSubpage = "controls"; }
+          else if (this._pauseIndex === 2) { this._pauseSubpage = "howto"; }
+          else if (this._pauseIndex === 3) { this._exit(); }
+          e.preventDefault();
+        }
+        return;
       }
 
       if (s.phase !== PhantomPhase.PLAYING) return;
@@ -293,7 +330,7 @@ export class PhantomGame {
     updateParticles(s, dt);
     updateFloatingTexts(s, dt);
 
-    this._renderer.render(s, sw, sh, this._meta);
+    this._renderer.render(s, sw, sh, this._meta, this._pauseIndex, this._pauseSubpage);
   }
 
   private _startGame(): void {

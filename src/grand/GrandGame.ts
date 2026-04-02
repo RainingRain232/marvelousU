@@ -131,6 +131,7 @@ export class GrandGame {
   private _trackRails: THREE.Mesh[] = [];
   private _skybox: THREE.Mesh | null = null;
   private _clouds: THREE.Mesh[] = [];
+  private _skyGroup: THREE.Group | null = null;
   private _pillars: THREE.Mesh[] = [];
 
   // racers
@@ -472,6 +473,10 @@ export class GrandGame {
     dir.shadow.camera.top = 60; dir.shadow.camera.bottom = -60;
     this._scene.add(dir);
 
+    // sky group — follows camera so sky always surrounds the viewer
+    this._skyGroup = new THREE.Group();
+    this._scene.add(this._skyGroup);
+
     // sky gradient dome (richer sunset gradient)
     const skyGeo = new THREE.SphereGeometry(150, 48, 24);
     const skyCanvas = document.createElement("canvas");
@@ -506,19 +511,19 @@ export class GrandGame {
       sctx.fillRect(0, 0, 512, 512);
     }
     this._skybox = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyCanvas), side: THREE.BackSide }));
-    this._scene.add(this._skybox);
+    this._skyGroup!.add(this._skybox);
 
     // Sun/moon in the sunset sky
     const sunGeo = new THREE.SphereGeometry(3, 16, 12);
     const sunMat = new THREE.MeshBasicMaterial({ color: 0xffcc66 });
     const sun = new THREE.Mesh(sunGeo, sunMat);
     sun.position.set(-80, 40, -60);
-    this._scene.add(sun);
+    this._skyGroup!.add(sun);
     // Sun glow
     const sunGlow = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8),
       new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.08, depthWrite: false }));
     sunGlow.position.copy(sun.position);
-    this._scene.add(sunGlow);
+    this._skyGroup!.add(sunGlow);
 
     // clouds (volumetric-looking, layered)
     const cloudColors = [0xffeedd, 0xffddcc, 0xeeddcc, 0xffd8c0];
@@ -533,19 +538,19 @@ export class GrandGame {
       cloud.position.set((Math.random() - 0.5) * 250, -10 + Math.random() * 40, (Math.random() - 0.5) * 250);
       cloud.rotation.x = -0.3 + Math.random() * 0.2;
       cloud.rotation.y = Math.random() * Math.PI;
-      this._scene.add(cloud); this._clouds.push(cloud);
+      this._skyGroup!.add(cloud); this._clouds.push(cloud);
     }
 
     // sun/moon
     this._sunMesh = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 12),
       new THREE.MeshBasicMaterial({ color: 0xffdd88, transparent: true, opacity: 0.9 }));
     this._sunMesh.position.set(80, 50, -40);
-    this._scene.add(this._sunMesh);
+    this._skyGroup!.add(this._sunMesh);
     // sun glow halo
     const sunGlow2 = new THREE.Mesh(new THREE.SphereGeometry(8, 12, 8),
       new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.15, depthWrite: false }));
     sunGlow2.position.copy(this._sunMesh.position);
-    this._scene.add(sunGlow2);
+    this._skyGroup!.add(sunGlow2);
 
     // build track mesh
     this._buildTrackMesh();
@@ -1917,6 +1922,8 @@ export class GrandGame {
           this._playSound("go");
           setTimeout(() => { if (this._countdownDiv) { this._countdownDiv.style.opacity = "0"; this._countdownDiv.style.color = "#ffd866"; } }, 800);
           this._phase = GrandPhase.RACING;
+          // give all racers a rolling start so nobody is stuck at 0
+          for (const r of this._racers) r.speed = MAX_SPEED * 0.3;
         }
       }
       return;
@@ -2361,6 +2368,9 @@ export class GrandGame {
   private _render(): void {
     const pr = this._racers[0];
     const world = this._getTrackPosWorld(pr.trackPos, pr.lateralOffset);
+
+    // keep sky group centered on camera so sky always surrounds the viewer
+    if (this._skyGroup) this._skyGroup.position.copy(this._camera.position);
 
     // update racer meshes
     for (const r of this._racers) {
