@@ -282,6 +282,7 @@ function _showLoading(mode: string): void {
     grail_keeper: "GRAIL KEEPER",
     gargoyle: "GARGOYLE",
     owls: "OWLS",
+    solstice: "SOLSTICE",
     lot: "LOT",
     guinevere: "GUINEVERE",
     forest: "FOREST",
@@ -468,6 +469,7 @@ function _showLoading(mode: string): void {
     [GameMode.WORMS_2D]: 91,
     [GameMode.HOLY_TENNIS]: 92,
     [GameMode.OWLS]: 93,
+    [GameMode.SOLSTICE]: 94,
   };
   // Modes that need the setup screen (not skipSetup)
   const NEEDS_SETUP = new Set([GameMode.STANDARD, GameMode.DEATHMATCH, GameMode.BATTLEFIELD, GameMode.WAVE]);
@@ -1007,6 +1009,12 @@ function _showLoading(mode: string): void {
       menuScreen.hide();
       _showLoading(menuScreen.selectedGameMode);
       _bootOwlsGame().then(() => loadingScreen.hide());
+      return;
+    }
+    if (menuScreen.selectedGameMode === GameMode.SOLSTICE) {
+      menuScreen.hide();
+      _showLoading(menuScreen.selectedGameMode);
+      _bootSolsticeGame().then(() => loadingScreen.hide());
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.LOT) {
@@ -4125,6 +4133,26 @@ async function _bootOwlsGame(): Promise<void> {
     menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
   };
   window.addEventListener("owlsExit", _onExit);
+}
+
+// ---------------------------------------------------------------------------
+// Solstice: Celestial Strategy boot
+// ---------------------------------------------------------------------------
+
+let _solsticeGame: any = null;
+
+async function _bootSolsticeGame(): Promise<void> {
+  if (_solsticeGame) { _solsticeGame.destroy(); _solsticeGame = null; }
+  const { SolsticeGame } = await import("./solstice/SolsticeGame");
+
+  _solsticeGame = new SolsticeGame();
+  await _solsticeGame.boot();
+  const _onExit = () => {
+    window.removeEventListener("solsticeExit", _onExit);
+    if (_solsticeGame) { _solsticeGame.destroy(); _solsticeGame = null; }
+    menuScreen.hasWaveSave = _hasWaveSave(); menuScreen.show();
+  };
+  window.addEventListener("solsticeExit", _onExit);
 }
 
 async function _bootKingdomGame(): Promise<void> {
