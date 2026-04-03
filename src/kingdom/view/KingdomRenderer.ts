@@ -3251,11 +3251,12 @@ export class KingdomRenderer {
           g.moveTo(pcx + tW * 0.22, tY).lineTo(pcx + tW * 0.3, tY - 4 * sc).lineTo(pcx + tW * 0.38, tY).fill(0xFFD700);
           g.circle(pcx - tW * 0.3, tY + 2 * sc, 2 * sc).fill(0xFF44AA);
           g.circle(pcx + tW * 0.3, tY + 2 * sc, 2 * sc).fill(0xFF44AA);
-          // Flowing hair
+          // Flowing hair — parted to frame face
           const hairBase = headY - headR * 0.3;
           const hairLen = 35 * sc;
+          const hairOffsets = [-14, -10, -7, 7, 10, 14];
           for (let strand = 0; strand < 6; strand++) {
-            const hx = pcx + (strand - 2.5) * 5 * sc;
+            const hx = pcx + hairOffsets[strand] * sc;
             const hw = 4 * sc;
             const wave1 = Math.sin(t * 1.8 + strand * 1.1) * 3 * sc;
             const wave2 = Math.sin(t * 1.2 + strand * 0.7) * 4 * sc;
