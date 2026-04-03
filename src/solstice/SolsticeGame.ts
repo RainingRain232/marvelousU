@@ -11,6 +11,7 @@ import {
 } from "./state/SolsticeState";
 import { SolsticeSceneManager } from "./view/SolsticeSceneManager";
 import { SolsticeHUD } from "./view/SolsticeHUD";
+import { SolsticeEscapeMenu } from "./view/SolsticeEscapeMenu";
 import { updateAI } from "./systems/SolsticeAISystem";
 
 // ---------------------------------------------------------------------------
@@ -21,6 +22,8 @@ export class SolsticeGame {
   private _state!:  SolsticeState;
   private _scene!:  SolsticeSceneManager;
   private _hud!:    SolsticeHUD;
+  private _menu!:   SolsticeEscapeMenu;
+  private _paused   = false;
   private _ticker:  ((t: Ticker) => void) | null = null;
 
   // Input tracking
@@ -55,8 +58,13 @@ export class SolsticeGame {
 
     this._hud = new SolsticeHUD();
     this._hud.onSpawn = (kind) => this._playerSpawn(kind);
-    this._hud.onExit  = () => this._exit();
+    this._hud.onExit  = () => this._openMenu();
     viewManager.addToLayer("ui", this._hud.container);
+
+    this._menu = new SolsticeEscapeMenu();
+    this._menu.onResume = () => this._closeMenu();
+    this._menu.onQuit   = () => this._exit();
+    viewManager.addToLayer("ui", this._menu.container);
 
     this._initInput();
 
@@ -71,10 +79,15 @@ export class SolsticeGame {
   private _initInput(): void {
     this._keyHandler = (e: KeyboardEvent) => {
       if (e.repeat) return;
+      if (e.code === "Escape") {
+        if (this._state.phase !== "playing") { this._exit(); return; }
+        this._paused ? this._closeMenu() : this._openMenu();
+        return;
+      }
+      if (this._paused) return;
       if (e.code === "Digit1") this._playerSpawn("guardian");
       if (e.code === "Digit2") this._playerSpawn("warden");
       if (e.code === "Digit3") this._playerSpawn("invoker");
-      if (e.code === "Escape") this._exit();
     };
     window.addEventListener("keydown", this._keyHandler);
 
@@ -143,6 +156,11 @@ export class SolsticeGame {
 
   private _loop(dt: number): void {
     dt = Math.min(dt, 0.1); // cap delta to avoid spiral of death
+
+    if (this._paused) {
+      this._scene.update(this._state, 0);
+      return;
+    }
 
     if (this._state.phase === "playing") {
       this._updateTime(dt);
@@ -427,6 +445,16 @@ export class SolsticeGame {
   // Exit
   // ---------------------------------------------------------------------------
 
+  private _openMenu(): void {
+    this._paused = true;
+    this._menu.show();
+  }
+
+  private _closeMenu(): void {
+    this._paused = false;
+    this._menu.hide();
+  }
+
   private _exit(): void {
     window.dispatchEvent(new Event("solsticeExit"));
   }
@@ -441,6 +469,8 @@ export class SolsticeGame {
     this._scene.destroy();
     viewManager.removeFromLayer("ui", this._hud.container);
     this._hud.destroy();
+    viewManager.removeFromLayer("ui", this._menu.container);
+    this._menu.destroy();
     viewManager.clearWorld();
   }
 }
