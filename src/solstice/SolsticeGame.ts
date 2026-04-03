@@ -81,7 +81,7 @@ export class SolsticeGame {
       if (e.repeat) return;
       if (e.code === "Escape") {
         if (this._state.phase !== "playing") { this._exit(); return; }
-        this._paused ? this._closeMenu() : this._openMenu();
+        this._paused ? this._resumeGame() : this._pauseGame();
         return;
       }
       if (this._paused) return;
@@ -444,6 +444,14 @@ export class SolsticeGame {
   // ---------------------------------------------------------------------------
   // Exit
   // ---------------------------------------------------------------------------
+
+  private _pauseGame(): void {
+    this._paused = true;
+  }
+
+  private _resumeGame(): void {
+    this._paused = false;
+  }
 
   private _openMenu(): void {
     this._paused = true;
