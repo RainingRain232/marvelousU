@@ -468,6 +468,7 @@ export class SolsticeSceneManager {
         this._bridgeGlowLines[nid].push(lineMesh);
 
         this._bridgeAnimOffset[p.id].push(0);
+        this._bridgeAnimOffset[nid] = this._bridgeAnimOffset[nid] ?? [];
         this._bridgeAnimOffset[nid].push(0);
       }
     }
