@@ -616,6 +616,7 @@ const GAME_MODES: GameModeEntry[] = [
   { mode: GameMode.WORMS_3D, label: "WORMS 3D", desc: "3D turn-based artillery — teams of Camelot knights on destructible terrain, 20+ weapons, wind, water & explosive medieval mayhem", skipSetup: true, tag: "3D" },
   { mode: GameMode.WORMS_2D, label: "WORMS 2D", desc: "2D turn-based artillery — classic side-view worms with Camelot knights, 30+ weapons, destructible terrain, parallax backgrounds & medieval chaos", skipSetup: true, tag: "NEW" },
   { mode: GameMode.HOLY_TENNIS, label: "HOLY TENNIS", desc: "3D medieval tennis — wield swords as rackets and volley the Holy Grail across a moonlit castle court. Full tennis scoring, deuce, tiebreaks & best-of-3 sets", skipSetup: true, tag: "NEW" },
+  { mode: GameMode.SOLSTICE, label: "SOLSTICE", desc: "3D celestial strategy — command factions of light and shadow on floating stone platforms, control ley-line nodes and score Grand Alignment points as the sun and moon orbit overhead", skipSetup: true, tag: "3D" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1263,10 +1264,10 @@ export class MenuScreen {
     // appear on the menu. The index is the position in the MODE_BUTTONS array
     // (0-based). Modes not listed in any category below will be invisible.
     const categories: { title: string; icon: string; color: number; accent: number; indices: number[] }[] = [
-      { title: "STRATEGY & TACTICS", icon: "\u2694", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 28, 5, 6, 34, 37, 49, 50, 61, 67] },
+      { title: "STRATEGY & TACTICS", icon: "\u2694", color: 0xffd700, accent: 0x332a00, indices: [0, 1, 2, 3, 4, 28, 5, 6, 34, 37, 49, 50, 61, 67, 93] },
       { title: "ADVENTURE & RPG", icon: "\u{1F4DC}", color: 0x44ddaa, accent: 0x0a2a1a, indices: [7, 21, 18, 22, 8, 9, 10, 32, 33, 31, 35, 36, 38, 41, 42, 46, 47, 48, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66, 70, 74, 75, 76, 77, 88, 89] },
       { title: "3D ACTION & COMBAT", icon: "\u{1F6E1}", color: 0xff7744, accent: 0x2a1408, indices: [11, 15, 12, 13, 14, 16, 17, 29, 68, 71, 72, 73, 80, 82, 84, 85, 86, 87, 90] },
-      { title: "WORLDS & SPORTS", icon: "\u{1F30D}", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30, 39, 40, 43, 44, 45, 69, 78, 79, 81, 83, 91] },
+      { title: "WORLDS & SPORTS", icon: "\u{1F30D}", color: 0x6699ff, accent: 0x0a1a2a, indices: [19, 20, 23, 24, 25, 26, 27, 30, 39, 40, 43, 44, 45, 69, 78, 79, 81, 83, 91, 92] },
     ];
 
     const COLS = 4;
