@@ -56,6 +56,15 @@ export class SolsticeGame {
     this._scene.init();
     this._scene.buildWorld(this._state);
 
+    // Bring Pixi canvas above the Three.js canvas so the UI layer is visible
+    const pixiCanvas = viewManager.app.canvas as HTMLElement;
+    pixiCanvas.style.position = "absolute";
+    pixiCanvas.style.top = "0";
+    pixiCanvas.style.left = "0";
+    pixiCanvas.style.zIndex = "20";
+    pixiCanvas.style.pointerEvents = "none";
+    viewManager.app.renderer.background.alpha = 0;
+
     this._hud = new SolsticeHUD();
     this._hud.onSpawn = (kind) => this._playerSpawn(kind);
     this._hud.onExit  = () => this._openMenu();
@@ -480,5 +489,11 @@ export class SolsticeGame {
     viewManager.removeFromLayer("ui", this._menu.container);
     this._menu.destroy();
     viewManager.clearWorld();
+
+    // Restore Pixi canvas defaults
+    const pixiCanvas = viewManager.app.canvas as HTMLElement;
+    pixiCanvas.style.zIndex = "";
+    pixiCanvas.style.pointerEvents = "";
+    viewManager.app.renderer.background.alpha = 1;
   }
 }
