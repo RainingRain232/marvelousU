@@ -1465,65 +1465,67 @@ export class KingdomRenderer {
 
       this._drawCharAccent(g, char, headCx, headCy, headR, w, h, f, fire, torsoTop, torsoH, sx, sy, c);
     } else {
-      // SMALL character
+      // SMALL character — narrower visual width
+      const sw = w * 0.7;           // visual width (narrower than hitbox)
+      const ox = sx + (w - sw) / 2; // center the narrower sprite
       const headR = h * 0.22;
       const bodyTop = sy + headR * 2 + bob;
       const bodyH = h - headR * 2 - bob;
 
       // Shadow
-      g.ellipse(sx + w / 2, sy + h, w * 0.4, 2.5).fill({ color: 0x000000, alpha: 0.25 });
+      g.ellipse(ox + sw / 2, sy + h, sw * 0.4, 2.5).fill({ color: 0x000000, alpha: 0.25 });
 
       // Legs with boots (draw behind body)
-      const lw = w * 0.26;
+      const lw = sw * 0.26;
       const legTop = bodyTop + bodyH * 0.52;
       const legH = h - headR * 2 - bodyH * 0.52 - bob;
       const bootH = 4;
       if (jumpFrame) {
         // Spread legs when jumping
-        g.roundRect(sx + w * 0.08, legTop, lw, legH * 0.6, 2).fill(c.secondary);
-        g.roundRect(sx + w * 0.62, legTop, lw, legH * 0.6, 2).fill(c.secondary);
-        g.roundRect(sx + w * 0.05, legTop + legH * 0.6 - 1, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
-        g.roundRect(sx + w * 0.59, legTop + legH * 0.6 - 1, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
+        g.roundRect(ox + sw * 0.08, legTop, lw, legH * 0.6, 2).fill(c.secondary);
+        g.roundRect(ox + sw * 0.62, legTop, lw, legH * 0.6, 2).fill(c.secondary);
+        g.roundRect(ox + sw * 0.05, legTop + legH * 0.6 - 1, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
+        g.roundRect(ox + sw * 0.59, legTop + legH * 0.6 - 1, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
       } else {
         const lo = legPhase === 1 ? 2 : legPhase === 3 ? -2 : 0;
-        g.roundRect(sx + w * 0.12, legTop + lo, lw, legH - lo, 2).fill(c.secondary);
-        g.roundRect(sx + w * 0.62, legTop - lo, lw, legH + lo, 2).fill(c.secondary);
+        g.roundRect(ox + sw * 0.12, legTop + lo, lw, legH - lo, 2).fill(c.secondary);
+        g.roundRect(ox + sw * 0.62, legTop - lo, lw, legH + lo, 2).fill(c.secondary);
         // Knee highlights
-        g.ellipse(sx + w * 0.25, legTop + legH * 0.3, lw * 0.25, 1.5).fill({ color: lighten(c.secondary, 18), alpha: 0.4 });
-        g.ellipse(sx + w * 0.75, legTop + legH * 0.3, lw * 0.25, 1.5).fill({ color: lighten(c.secondary, 18), alpha: 0.4 });
+        g.ellipse(ox + sw * 0.25, legTop + legH * 0.3, lw * 0.25, 1.5).fill({ color: lighten(c.secondary, 18), alpha: 0.4 });
+        g.ellipse(ox + sw * 0.75, legTop + legH * 0.3, lw * 0.25, 1.5).fill({ color: lighten(c.secondary, 18), alpha: 0.4 });
         // Boots
-        g.roundRect(sx + w * 0.06, sy + h - bootH, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
-        g.roundRect(sx + w * 0.58, sy + h - bootH, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
+        g.roundRect(ox + sw * 0.06, sy + h - bootH, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
+        g.roundRect(ox + sw * 0.58, sy + h - bootH, lw + 3, bootH, 2).fill(darken(c.secondary, 30));
       }
 
       // Torso (with belt and shading)
-      g.roundRect(sx + 1, bodyTop, w - 2, bodyH * 0.55, 3).fill(primary);
+      g.roundRect(ox + 1, bodyTop, sw - 2, bodyH * 0.55, 3).fill(primary);
       // Torso highlight
-      g.roundRect(sx + 2, bodyTop + 1, (w - 4) * 0.4, bodyH * 0.15, 1).fill({ color: primaryLt, alpha: 0.5 });
+      g.roundRect(ox + 2, bodyTop + 1, (sw - 4) * 0.4, bodyH * 0.15, 1).fill({ color: primaryLt, alpha: 0.5 });
       // Torso shadow at bottom
-      g.roundRect(sx + 2, bodyTop + bodyH * 0.4, w - 4, bodyH * 0.12, 1).fill({ color: darken(primary, 20), alpha: 0.3 });
+      g.roundRect(ox + 2, bodyTop + bodyH * 0.4, sw - 4, bodyH * 0.12, 1).fill({ color: darken(primary, 20), alpha: 0.3 });
       // Belt
-      g.roundRect(sx + 1, bodyTop + bodyH * 0.48, w - 2, 3, 1).fill(darken(c.secondary, 20));
-      g.circle(sx + w / 2, bodyTop + bodyH * 0.5, 1.5).fill(0xCCAA33); // buckle
+      g.roundRect(ox + 1, bodyTop + bodyH * 0.48, sw - 2, 3, 1).fill(darken(c.secondary, 20));
+      g.circle(ox + sw / 2, bodyTop + bodyH * 0.5, 1.5).fill(0xCCAA33); // buckle
 
       // Arms (both visible, with hands)
-      const armW2 = w * 0.15;
+      const armW2 = sw * 0.15;
       const armLen = bodyH * 0.42;
       const armSwing = walk === 1 ? -2 : walk === 3 ? 2 : 0;
       // Back arm
-      const backArmX = f > 0 ? sx - armW2 + 1 : sx + w - 1;
+      const backArmX = f > 0 ? ox - armW2 + 1 : ox + sw - 1;
       g.roundRect(backArmX, bodyTop + 3 - armSwing, armW2, armLen, 2).fill(darken(primary, 15));
       g.circle(backArmX + armW2 / 2, bodyTop + 3 - armSwing + armLen, armW2 * 0.4).fill(darken(c.skin, 8));
       // Front arm
-      const frontArmX = f > 0 ? sx + w - 1 : sx - armW2 + 1;
+      const frontArmX = f > 0 ? ox + sw - 1 : ox - armW2 + 1;
       g.roundRect(frontArmX, bodyTop + 3 + armSwing, armW2, armLen, 2).fill(primaryLt);
       g.circle(frontArmX + armW2 / 2, bodyTop + 3 + armSwing + armLen, armW2 * 0.4).fill(c.skin);
       // Shoulder pads
-      g.ellipse(sx + 1, bodyTop + 3, armW2 * 0.7, 2.5).fill(lighten(primary, 15));
-      g.ellipse(sx + w - 1, bodyTop + 3, armW2 * 0.7, 2.5).fill(lighten(primary, 15));
+      g.ellipse(ox + 1, bodyTop + 3, armW2 * 0.7, 2.5).fill(lighten(primary, 15));
+      g.ellipse(ox + sw - 1, bodyTop + 3, armW2 * 0.7, 2.5).fill(lighten(primary, 15));
 
       // Head
-      const headCx = sx + w / 2;
+      const headCx = ox + sw / 2;
       const headCy = sy + headR + bob;
       // Neck
       g.roundRect(headCx - 2, headCy + headR * 0.7, 4, headR * 0.4, 1).fill(c.skin);
@@ -1555,12 +1557,14 @@ export class KingdomRenderer {
         g.ellipse(headCx + side * headR * 0.88, headCy + headR * 0.05, headR * 0.1, headR * 0.16).fill(c.skin);
       }
 
-      this._drawCharAccent(g, char, headCx, headCy, headR, w, h, f, fire, bodyTop, bodyH, sx, sy, c);
+      this._drawCharAccent(g, char, headCx, headCy, headR, sw, h, f, fire, bodyTop, bodyH, ox, sy, c);
     }
 
     // Fire power glow on hand
     if (fire) {
-      const handX = f > 0 ? sx + w + 2 : sx - 6;
+      const vw = big ? w : w * 0.7;
+      const vx = sx + (w - vw) / 2;
+      const handX = f > 0 ? vx + vw + 2 : vx - 6;
       const handY = sy + h * 0.45;
       g.circle(handX + 2, handY, 5).fill({ color: 0xFF6600, alpha: 0.6 + Math.sin(Date.now() / 80) * 0.2 });
       g.circle(handX + 2, handY, 3).fill({ color: 0xFFCC00, alpha: 0.8 });

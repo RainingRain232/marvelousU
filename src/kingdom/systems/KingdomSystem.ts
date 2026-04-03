@@ -233,9 +233,11 @@ export function updatePlayer(s: KingdomState, input: InputKeys, dt: number): voi
   const speedRatio = Math.min(1, Math.abs(p.vx) / MAX_RUN_SPEED);
   const jumpV = JUMP_VELOCITY * stats.jumpMul * (1 + speedRatio * RUN_JUMP_BOOST);
 
+  let jumpedThisFrame = false;
   if (p.jumpBufferTimer > 0 && canJump && !p.crouching) {
     p.vy = jumpV; p.grounded = false; p.jumping = true;
     p.hasDoubleJumped = false; p.coyoteTimer = 0; p.jumpBufferTimer = 0; p.onPlatformIdx = -1;
+    jumpedThisFrame = true;
   }
 
   // Wall jump
@@ -244,6 +246,7 @@ export function updatePlayer(s: KingdomState, input: InputKeys, dt: number): voi
     p.vy = WALL_JUMP_VY * stats.jumpMul;
     p.facing = -p.wallSlideDir;
     p.wallSlideDir = 0; p.coyoteTimer = 0; p.jumpBufferTimer = 0;
+    jumpedThisFrame = true;
     for (let i = 0; i < 4; i++) {
       s.particles.push({ x: p.x + (p.facing < 0 ? p.width : 0), y: p.y + p.height * 0.5,
         vx: p.facing * (2 + Math.random() * 2), vy: -1 - Math.random() * 2,
@@ -252,7 +255,7 @@ export function updatePlayer(s: KingdomState, input: InputKeys, dt: number): voi
   }
 
   // Double jump (Guinevere)
-  if (input.jumpPressed && !p.grounded && !p.hasDoubleJumped && p.coyoteTimer <= 0 && p.wallSlideDir === 0 && s.character === KingdomChar.GUINEVERE) {
+  if (!jumpedThisFrame && input.jumpPressed && !p.grounded && !p.hasDoubleJumped && p.coyoteTimer <= 0 && p.wallSlideDir === 0 && s.character === KingdomChar.GUINEVERE) {
     p.vy = jumpV * 0.82; p.hasDoubleJumped = true;
     for (let i = 0; i < 4; i++) {
       s.particles.push({ x: p.x + p.width / 2, y: p.y + p.height,
