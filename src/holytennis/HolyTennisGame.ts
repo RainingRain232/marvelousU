@@ -2546,9 +2546,9 @@ export class HolyTennisGame {
         const midZ = (p.pos.z + opp.pos.z) * 0.5;
         const spanZ = Math.abs(p.pos.z - opp.pos.z);
         const spanX = Math.abs(p.pos.x - opp.pos.x);
-        // Extra pullback to fit both players: base 8 + half the court span
-        const pullback = 8 + spanZ * 0.6 + spanX * 0.3;
-        const extraHeight = spanZ * 0.2 + spanX * 0.15;
+        // Extra pullback to fit both players: base 11 + half the court span
+        const pullback = 11 + spanZ * 0.7 + spanX * 0.35;
+        const extraHeight = spanZ * 0.25 + spanX * 0.18;
         tL = new THREE.Vector3(
           midX * 0.5 + (g.inPlay ? g.pos.x * 0.15 : 0),
           g.inPlay ? Math.min(g.pos.y * 0.3, 2.5) + 1 : 1.5,
@@ -2556,7 +2556,7 @@ export class HolyTennisGame {
         );
         cI = new THREE.Vector3(
           midX * 0.4,
-          7 + extraHeight,
+          9 + extraHeight,
           p.pos.z + p.side * (-pullback)
         );
       }
