@@ -27,6 +27,7 @@ export function createKingdomState(sw: number, sh: number): KingdomState {
     checkpointX: -1, checkpointY: -1, hasCheckpoint: false,
     bonusRoom: null, bonusRoomSavedTiles: null, bonusRoomSavedCamera: 0,
     bonusRoomSavedCoins: [], pipeEntrances: [],
+    warpPending: null,
     bossDeathTimer: 0, bossDeathActive: false,
     sw, sh, tileSize,
     highScore: loadHighScore(),

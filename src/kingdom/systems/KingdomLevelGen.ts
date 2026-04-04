@@ -116,9 +116,13 @@ export function generateLevel(world: number, level: number): LevelGenResult {
   // Place hidden blocks (secrets)
   placeHiddenBlocks(tiles, rng, safeEnd, width - 20, difficulty);
 
-  // Place one enterable pipe per outdoor level
-  if (!isCastle && rng() < 0.6 + world * 0.1) {
-    placeBonusPipe(tiles, pipeEntrances, rng, safeEnd + 20, width - 40);
+  // Place bonus pipe (coin room) in first half of outdoor levels
+  if (!isCastle && rng() < 0.75 + world * 0.05) {
+    placeBonusPipe(tiles, pipeEntrances, rng, safeEnd + 20, Math.floor(width * 0.5));
+  }
+  // Place warp pipe (next world) in second half of outdoor levels — worlds 1–3 only
+  if (!isCastle && world < 4) {
+    placeWarpPipe(tiles, pipeEntrances, rng, Math.floor(width * 0.55), width - 40, world + 1, 1);
   }
 
   // Hand-designed signature section per world (placed at ~30% through level)
@@ -157,14 +161,11 @@ function placeHiddenBlocks(tiles: TileType[][], rng: () => number, c0: number, c
 }
 
 function placeBonusPipe(tiles: TileType[][], entrances: PipeEntrance[], rng: () => number, c0: number, c1: number): void {
-  // Find a good spot for an enterable pipe
   for (let attempts = 0; attempts < 10; attempts++) {
-    const c = c0 + Math.floor(rng() * (c1 - c0));
+    const c = c0 + Math.floor(rng() * Math.max(1, c1 - c0));
     const gy = findGroundY(tiles, c);
     if (gy >= LEVEL_HEIGHT || gy < 4) continue;
-    // Check there's room for a pipe (2 wide)
     if (get(tiles, gy - 1, c) !== TileType.EMPTY || get(tiles, gy - 1, c + 1) !== TileType.EMPTY) continue;
-    // Place enterable pipe (height 3)
     const pipeH = 3;
     const topRow = gy - pipeH;
     set(tiles, topRow, c, TileType.PIPE_ENTER_L);
@@ -173,7 +174,28 @@ function placeBonusPipe(tiles: TileType[][], entrances: PipeEntrance[], rng: () 
       set(tiles, r, c, TileType.PIPE_BL);
       set(tiles, r, c + 1, TileType.PIPE_BR);
     }
-    entrances.push({ col: c, row: topRow, bonusRoomIdx: 0 });
+    entrances.push({ col: c, row: topRow, bonusRoomIdx: 0, type: 'bonus' });
+    return;
+  }
+}
+
+function placeWarpPipe(tiles: TileType[][], entrances: PipeEntrance[], rng: () => number, c0: number, c1: number, warpWorld: number, warpLevel: number): void {
+  for (let attempts = 0; attempts < 10; attempts++) {
+    const c = c0 + Math.floor(rng() * Math.max(1, c1 - c0));
+    const gy = findGroundY(tiles, c);
+    if (gy >= LEVEL_HEIGHT || gy < 4) continue;
+    if (get(tiles, gy - 1, c) !== TileType.EMPTY || get(tiles, gy - 1, c + 1) !== TileType.EMPTY) continue;
+    // Don't overlap an existing entrance
+    if (entrances.some(pe => Math.abs(pe.col - c) < 4)) continue;
+    const pipeH = 3;
+    const topRow = gy - pipeH;
+    set(tiles, topRow, c, TileType.PIPE_WARP_L);
+    set(tiles, topRow, c + 1, TileType.PIPE_WARP_R);
+    for (let r = topRow + 1; r < gy; r++) {
+      set(tiles, r, c, TileType.PIPE_BL);
+      set(tiles, r, c + 1, TileType.PIPE_BR);
+    }
+    entrances.push({ col: c, row: topRow, bonusRoomIdx: 0, type: 'warp', warpWorld, warpLevel });
     return;
   }
 }

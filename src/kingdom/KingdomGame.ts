@@ -255,6 +255,15 @@ export class KingdomGame {
   }
 
   private _updatePlaying(s: KingdomState, input: InputKeys, dt: number): void {
+    // Warp pipe teleport
+    if (s.warpPending) {
+      const { world, level } = s.warpPending;
+      s.warpPending = null;
+      s.world = world; s.level = level;
+      this._loadLevel();
+      return;
+    }
+
     // Boss death sequence
     if (s.bossDeathActive) {
       updateBossDeath(s, dt);

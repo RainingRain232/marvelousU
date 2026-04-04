@@ -800,15 +800,37 @@ export class KingdomRenderer {
             break;
           case TileType.PIPE_ENTER_L:
           case TileType.PIPE_ENTER_R:
-            // Enterable pipe — draw like normal pipe top but with arrow indicator
+            // Bonus room pipe — yellow pulsing arrow
             this._tilePipe(g, x, y, ts, tile === TileType.PIPE_ENTER_L ? TileType.PIPE_TL : TileType.PIPE_TR, theme);
-            // Down arrow to indicate enterable
             if (tile === TileType.PIPE_ENTER_L) {
               const ax = x + ts / 2 + ts * 0.5;
               const pulse = 0.5 + Math.sin(Date.now() / 300) * 0.3;
               g.moveTo(ax - 4, y - 8).lineTo(ax + 4, y - 8).lineTo(ax, y - 2).fill({ color: 0xFFFF44, alpha: pulse });
             }
             break;
+          case TileType.PIPE_WARP_L:
+          case TileType.PIPE_WARP_R: {
+            // Warp pipe — same pipe body but cyan/blue pulsing arrow with star
+            this._tilePipe(g, x, y, ts, tile === TileType.PIPE_WARP_L ? TileType.PIPE_TL : TileType.PIPE_TR, theme);
+            if (tile === TileType.PIPE_WARP_L) {
+              const ax = x + ts / 2 + ts * 0.5;
+              const pulse = 0.5 + Math.sin(Date.now() / 250) * 0.3;
+              // Arrow
+              g.moveTo(ax - 4, y - 10).lineTo(ax + 4, y - 10).lineTo(ax, y - 2).fill({ color: 0x44EEFF, alpha: pulse });
+              // Small star above arrow
+              const st = Date.now() / 400;
+              const sr = 3.5;
+              for (let i = 0; i < 5; i++) {
+                const a1 = (i * Math.PI * 2) / 5 - Math.PI / 2 + st * 0.3;
+                const a2 = ((i + 0.5) * Math.PI * 2) / 5 - Math.PI / 2 + st * 0.3;
+                if (i === 0) g.moveTo(ax + Math.cos(a1) * sr, y - 17 + Math.sin(a1) * sr);
+                else g.lineTo(ax + Math.cos(a1) * sr, y - 17 + Math.sin(a1) * sr);
+                g.lineTo(ax + Math.cos(a2) * (sr * 0.4), y - 17 + Math.sin(a2) * (sr * 0.4));
+              }
+              g.fill({ color: 0x44EEFF, alpha: pulse });
+            }
+            break;
+          }
           case TileType.ONE_WAY:
             // One-way platform — thin with arrows
             g.rect(x, y, ts, ts * 0.3).fill(lighten(theme.groundTopColor, 20));

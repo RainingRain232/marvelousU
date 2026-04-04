@@ -67,6 +67,7 @@ export function isSolid(t: TileType): boolean {
     case TileType.BRICK: case TileType.QUESTION: case TileType.USED_QUESTION:
     case TileType.PIPE_TL: case TileType.PIPE_TR: case TileType.PIPE_BL: case TileType.PIPE_BR:
     case TileType.PIPE_ENTER_L: case TileType.PIPE_ENTER_R:
+    case TileType.PIPE_WARP_L: case TileType.PIPE_WARP_R:
     case TileType.CASTLE_WALL: case TileType.CASTLE_FLOOR:
     case TileType.BRIDGE: case TileType.COIN_BLOCK: case TileType.SPRING:
       return true;
@@ -191,6 +192,11 @@ export function updatePlayer(s: KingdomState, input: InputKeys, dt: number): voi
     const pr = Math.floor(p.y + p.height);
     for (const pe of s.pipeEntrances) {
       if (Math.abs(pc - pe.col) <= 1 && Math.abs(pr - 1 - pe.row) <= 1) {
+        if (pe.type === 'warp' && pe.warpWorld !== undefined && pe.warpLevel !== undefined) {
+          s.warpPending = { world: pe.warpWorld, level: pe.warpLevel };
+          s.scorePopups.push({ x: p.x + p.width / 2, y: p.y - 1, value: 0, timer: 2.0, text: `WARP! → W${pe.warpWorld}-${pe.warpLevel}`, color: 0x44EEFF, big: true });
+          return;
+        }
         enterBonusRoom(s, pe.bonusRoomIdx);
         return;
       }

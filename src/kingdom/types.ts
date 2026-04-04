@@ -47,6 +47,7 @@ export enum TileType {
   COIN_BLOCK = 16, SPRING = 17, HIDDEN = 18,
   PIPE_ENTER_L = 19, PIPE_ENTER_R = 20,
   ONE_WAY = 21,
+  PIPE_WARP_L = 22, PIPE_WARP_R = 23,
 }
 
 export enum EnemyType {
@@ -184,7 +185,7 @@ export interface MovingPlatformSpawn {
   x: number; y: number; width: number;
   endX: number; endY: number; speed: number;
 }
-export interface PipeEntrance { col: number; row: number; bonusRoomIdx: number; }
+export interface PipeEntrance { col: number; row: number; bonusRoomIdx: number; type: 'bonus' | 'warp'; warpWorld?: number; warpLevel?: number; }
 
 export interface LevelData {
   tiles: TileType[][]; enemies: EnemySpawn[];
@@ -242,6 +243,9 @@ export interface KingdomState {
   bonusRoomSavedCamera: number;
   bonusRoomSavedCoins: FloatingCoin[];
   pipeEntrances: PipeEntrance[];
+
+  // Warp pipe
+  warpPending: { world: number; level: number } | null;
 
   // Dragon boss death
   bossDeathTimer: number;
