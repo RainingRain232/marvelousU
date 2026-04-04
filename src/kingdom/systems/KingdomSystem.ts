@@ -465,11 +465,11 @@ function enterBonusRoom(s: KingdomState, _idx: number): void {
       coins.push({ x: c + 0.5, y: r + 0.5, collected: false, bobOffset: c * 0.3 + r * 0.5 });
     }
   }
-  // Exit pipe on right — clear wall tiles so pipe isn't buried in bricks
-  tiles[h - 3][w - 2] = TileType.PIPE_ENTER_L;
-  tiles[h - 3][w - 1] = TileType.PIPE_ENTER_R;
-  tiles[h - 2][w - 2] = TileType.PIPE_BL;
-  tiles[h - 2][w - 1] = TileType.PIPE_BR;
+  // Exit pipe on right — one tile away from wall so pipe is fully clear
+  tiles[h - 3][w - 3] = TileType.PIPE_ENTER_L;
+  tiles[h - 3][w - 2] = TileType.PIPE_ENTER_R;
+  tiles[h - 2][w - 3] = TileType.PIPE_BL;
+  tiles[h - 2][w - 2] = TileType.PIPE_BR;
 
   s.bonusRoom = {
     tiles, floatingCoins: coins, width: w, height: h,
@@ -504,8 +504,9 @@ export function exitBonusRoom(s: KingdomState): void {
 export function checkBonusRoomExit(s: KingdomState): boolean {
   if (!s.bonusRoom) return false;
   const p = s.player;
+  const pfeet = p.y + p.height;
   if (p.x >= s.bonusRoom.exitX - 0.5 && p.x <= s.bonusRoom.exitX + 1.5 &&
-      Math.abs(p.y - s.bonusRoom.exitY) < 1.5) {
+      Math.abs(pfeet - s.bonusRoom.exitY) < 1.5) {
     exitBonusRoom(s);
     return true;
   }
