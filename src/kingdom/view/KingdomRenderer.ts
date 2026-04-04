@@ -1681,26 +1681,24 @@ export class KingdomRenderer {
         g.circle(cx - tW * 0.3, tY + r * 0.12, 1.5).fill(0xFF44AA);
         g.circle(cx + tW * 0.3, tY + r * 0.12, 1.5).fill(0xFF44AA);
 
-        // Flowing hair — multiple wavy strands
-        const hairBase = cy - r * 0.4;
+        // Flowing hair — parted to frame face, originates from top of head
+        const hairBase = cy - r * 0.85;
         const hairLen = r * 2.5;
         const waveT = Date.now() / 300;
-        for (let strand = 0; strand < 4; strand++) {
-          const strandX = cx + (strand - 1.5) * (r * 0.45);
-          const strandW = 3 + (strand === 1 || strand === 2 ? 1 : 0);
-          const wave1 = Math.sin(waveT + strand * 1.2) * 3;
-          const wave2 = Math.sin(waveT * 0.7 + strand * 0.8) * 4;
+        const hairOffsets = [-r * 0.8, -r * 0.65, -r * 0.5, r * 0.5, r * 0.65, r * 0.8];
+        for (let strand = 0; strand < 6; strand++) {
+          const strandX = cx + hairOffsets[strand];
+          const strandW = 3 + (strand === 2 || strand === 3 ? 1 : 0);
+          const wave1 = Math.sin(waveT * 1.8 + strand * 1.1) * 3;
+          const wave2 = Math.sin(waveT * 1.2 + strand * 0.7) * 4;
+          const len = hairLen * (0.8 + (strand === 2 || strand === 3 ? 0.2 : 0));
           g.moveTo(strandX - strandW / 2, hairBase)
-            .lineTo(strandX - strandW / 2 + wave1, hairBase + hairLen * 0.5)
-            .lineTo(strandX + wave2, hairBase + hairLen)
-            .lineTo(strandX + strandW / 2 + wave2, hairBase + hairLen)
-            .lineTo(strandX + strandW / 2 + wave1, hairBase + hairLen * 0.5)
-            .lineTo(strandX + strandW / 2, hairBase).fill(c.hair);
+            .lineTo(strandX - strandW / 2 + wave1, hairBase + len * 0.4)
+            .lineTo(strandX + wave2, hairBase + len)
+            .lineTo(strandX + strandW / 2 + wave2, hairBase + len)
+            .lineTo(strandX + strandW / 2 + wave1, hairBase + len * 0.4)
+            .lineTo(strandX + strandW / 2, hairBase).fill(strand % 3 === 0 ? lighten(c.hair, 15) : c.hair);
         }
-        // Hair highlight strand
-        const hlX = cx - r * 0.5;
-        g.moveTo(hlX, hairBase).lineTo(hlX + Math.sin(waveT) * 2, hairBase + hairLen * 0.6)
-          .lineTo(hlX + 2, hairBase).fill(lighten(c.hair, 45));
 
         // Dress hem (decorative triangles)
         const hemY = torsoTop + torsoH;
