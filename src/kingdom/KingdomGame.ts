@@ -22,7 +22,7 @@ import type { InputKeys } from "./systems/KingdomSystem";
 import { KingdomRenderer } from "./view/KingdomRenderer";
 import { LEVEL_TIME, LEVEL_INTRO_TIME } from "./config/KingdomConfig";
 
-const MAX_WORLDS = 4;
+const MAX_WORLDS = 6;
 const LEVELS_PER_WORLD = 4;
 
 export class KingdomGame {

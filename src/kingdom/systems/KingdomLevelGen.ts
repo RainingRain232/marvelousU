@@ -285,6 +285,69 @@ function placeWorldSignature(
       enemies.push({ type: EnemyType.SKELETON, col: col + 18, row: GROUND_ROW - 1 });
       break;
     }
+    case 5: {
+      // "The Floating Maze" — aerial labyrinth, no ground, two diverging routes
+      // Remove ground for the entire section
+      for (let c = col; c < col + 28; c++) {
+        set(tiles, GROUND_ROW, c, TileType.EMPTY);
+        set(tiles, GROUND_ROW + 1, c, TileType.EMPTY);
+      }
+      // Lower route: staggered one-way platforms with alternating heights
+      for (let i = 0; i < 5; i++) {
+        const pc = col + i * 5;
+        const pr = 11 + (i % 2 === 0 ? 0 : 1);
+        for (let j = 0; j < 4; j++) set(tiles, pr, pc + j, TileType.ONE_WAY);
+        if (i % 2 === 0) coins.push({ x: pc + 2, y: pr - 1.5, collected: false, bobOffset: i * 0.4 });
+      }
+      // Upper route: brick platforms with a hidden reward at the end
+      for (let i = 0; i < 3; i++) {
+        const pc = col + 3 + i * 8;
+        for (let j = 0; j < 5; j++) set(tiles, 7, pc + j, TileType.BRICK);
+        if (i === 1) set(tiles, 6, pc + 2, TileType.QUESTION);
+        coins.push({ x: pc + 2.5, y: 5.5, collected: false, bobOffset: i * 0.6 });
+      }
+      set(tiles, 6, col + 24, TileType.HIDDEN); // Secret block at the far end
+      // Dividing wall that forces the route choice
+      for (let r = 3; r < 11; r++) {
+        if (r < 7 || r > 9) set(tiles, r, col + 14, TileType.CASTLE_WALL);
+      }
+      // Bat sentinels guarding each route
+      enemies.push({ type: EnemyType.BAT, col: col + 7, row: 6 });
+      enemies.push({ type: EnemyType.BAT, col: col + 21, row: 10 });
+      // Restore ground after the maze
+      fillGround(tiles, col + 28, col + 33);
+      break;
+    }
+    case 6: {
+      // "The Infernal Crucible" — relentless lava gauntlet with overhead pressure
+      for (let i = 0; i < 5; i++) {
+        const pc = col + i * 6;
+        // Lava pit spanning most of the gap
+        for (let c = pc + 1; c < pc + 5; c++) {
+          set(tiles, GROUND_ROW, c, TileType.LAVA);
+          set(tiles, GROUND_ROW + 1, c, TileType.LAVA);
+        }
+        // Tiny bridge tile as a stepping stone
+        set(tiles, GROUND_ROW - 1, pc + 2, TileType.BRIDGE);
+        set(tiles, GROUND_ROW - 1, pc + 3, TileType.BRIDGE);
+        // Low ceiling wall obstacle on every other gap — forces crouch or careful jump
+        if (i % 2 === 0) {
+          set(tiles, GROUND_ROW - 4, pc + 5, TileType.CASTLE_WALL);
+          set(tiles, GROUND_ROW - 3, pc + 5, TileType.CASTLE_WALL);
+          set(tiles, GROUND_ROW - 2, pc + 5, TileType.CASTLE_WALL);
+        }
+        coins.push({ x: pc + 2.5, y: GROUND_ROW - 3, collected: false, bobOffset: i * 0.5 });
+      }
+      // Boars charging across the narrow safe sections
+      enemies.push({ type: EnemyType.BOAR, col: col + 5, row: GROUND_ROW - 1 });
+      enemies.push({ type: EnemyType.BOAR, col: col + 23, row: GROUND_ROW - 1 });
+      // Skeleton sniper on an elevated platform overlooking the gauntlet
+      set(tiles, 6, col + 13, TileType.CASTLE_FLOOR);
+      set(tiles, 6, col + 14, TileType.CASTLE_FLOOR);
+      set(tiles, 6, col + 15, TileType.CASTLE_FLOOR);
+      enemies.push({ type: EnemyType.SKELETON, col: col + 14, row: 5 });
+      break;
+    }
   }
 }
 
@@ -702,6 +765,22 @@ function pickEnemyType(rng: () => number, world: number, isCastle: boolean): Ene
     if (r < 0.55) return EnemyType.DARK_KNIGHT;
     if (r < 0.7) return EnemyType.BAT;
     if (r < 0.85) return EnemyType.BOAR;
+    return EnemyType.SKELETON;
+  }
+  // World 5 — airborne horrors dominate
+  if (world === 5) {
+    if (r < 0.1) return EnemyType.GOBLIN;
+    if (r < 0.25) return EnemyType.DARK_KNIGHT;
+    if (r < 0.55) return EnemyType.BAT;
+    if (r < 0.7) return EnemyType.BOAR;
+    return EnemyType.SKELETON;
+  }
+  // World 6 — undead and heavy chargers everywhere
+  if (world >= 6) {
+    if (r < 0.05) return EnemyType.GOBLIN;
+    if (r < 0.15) return EnemyType.DARK_KNIGHT;
+    if (r < 0.3) return EnemyType.BAT;
+    if (r < 0.55) return EnemyType.BOAR;
     return EnemyType.SKELETON;
   }
   // World 3-4

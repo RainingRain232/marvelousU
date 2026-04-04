@@ -323,6 +323,22 @@ export const WORLD_THEMES: WorldTheme[] = [
     pipeColor: 0x336633, pipeDark: 0x224422,
     castleColor: 0x333344, questionColor: 0x997700, questionDark: 0x665500,
   },
+  {
+    name: "The Void Citadel",
+    skyTop: 0x020208, skyBottom: 0x0D0520,
+    groundColor: 0x442266, groundTopColor: 0x7733AA,
+    brickColor: 0x331155, brickLine: 0x220044,
+    pipeColor: 0x5511AA, pipeDark: 0x330077,
+    castleColor: 0x2A1044, questionColor: 0xAA44FF, questionDark: 0x7722CC,
+  },
+  {
+    name: "The Infernal Keep",
+    skyTop: 0x1A0000, skyBottom: 0x3D0800,
+    groundColor: 0x1A1A1A, groundTopColor: 0x3D0D00,
+    brickColor: 0x2A0800, brickLine: 0x1A0000,
+    pipeColor: 0x661100, pipeDark: 0x440000,
+    castleColor: 0x2A0800, questionColor: 0xFF3300, questionDark: 0xCC1100,
+  },
 ];
 
 // ---------------------------------------------------------------------------
