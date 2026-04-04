@@ -1514,7 +1514,7 @@ export class KingdomRenderer {
         g.ellipse(headCx + side * headR * 0.88, headCy + headR * 0.05, headR * 0.07, headR * 0.12).fill(darken(c.skin, 12));
       }
 
-      this._drawCharAccent(g, char, headCx, headCy, headR, w, h, f, fire, torsoTop, torsoH, sx, sy, c);
+      this._drawCharAccent(g, char, headCx, headCy, headR, w, h, f, fire, true, torsoTop, torsoH, sx, sy, c);
     } else {
       // SMALL character — narrower visual width
       const sw = w * 0.7;           // visual width (narrower than hitbox)
@@ -1608,7 +1608,7 @@ export class KingdomRenderer {
         g.ellipse(headCx + side * headR * 0.88, headCy + headR * 0.05, headR * 0.1, headR * 0.16).fill(c.skin);
       }
 
-      this._drawCharAccent(g, char, headCx, headCy, headR, sw, h, f, fire, bodyTop, bodyH, ox, sy, c);
+      this._drawCharAccent(g, char, headCx, headCy, headR, sw, h, f, fire, false, bodyTop, bodyH, ox, sy, c);
     }
 
     // Fire power glow on hand
@@ -1625,10 +1625,12 @@ export class KingdomRenderer {
   private _drawCharAccent(
     g: Graphics, char: KingdomChar,
     cx: number, cy: number, r: number,
-    w: number, h: number, f: number, fire: boolean,
+    w: number, h: number, f: number, fire: boolean, big: boolean,
     torsoTop: number, torsoH: number,
     sx: number, sy: number, c: CharColors,
   ): void {
+    // Weapon scale — weapons grow with the character when powered up
+    const ws = big ? 1.65 : 1.0;
     switch (char) {
       case KingdomChar.ARTHUR: {
         // Crown — ornate 5-point with jewels and trim
@@ -1654,14 +1656,17 @@ export class KingdomRenderer {
         // Side sapphires
         g.circle(cx - crW * 0.3, crY + crH * 0.3, 2).fill(0x2244CC);
         g.circle(cx + crW * 0.3, crY + crH * 0.3, 2).fill(0x2244CC);
-        // Sword held at side
-        const swordX = f > 0 ? sx + w + 1 : sx - 6;
+        // Sword held at side — scales with ws when powered up
+        const sOff = Math.round(6 * ws);
+        const swordX = f > 0 ? sx + w + 1 : sx - sOff;
         const swordY = torsoTop + torsoH * 0.2;
-        const sLen = torsoH * 1.1;
-        g.rect(swordX + 1, swordY, 2, sLen).fill(0xBBBBCC); // blade
-        g.rect(swordX, swordY, 4, 2).fill(0xDDDDEE); // tip
-        g.rect(swordX - 2, swordY + sLen * 0.3, 8, 3).fill(0xFFD700); // cross-guard
-        g.rect(swordX + 0.5, swordY + sLen * 0.3 + 3, 3, sLen * 0.25).fill(0x8B4513); // grip
+        const sLen = torsoH * 1.1 * ws;
+        const bW = Math.round(2 * ws); // blade width
+        const cgW = Math.round(8 * ws); // cross-guard width
+        g.rect(swordX + 1, swordY, bW, sLen).fill(0xBBBBCC); // blade
+        g.rect(swordX, swordY, bW + 2, Math.round(2 * ws)).fill(0xDDDDEE); // tip
+        g.rect(swordX - Math.round(2 * ws), swordY + sLen * 0.3, cgW, Math.round(3 * ws)).fill(0xFFD700); // cross-guard
+        g.rect(swordX + 0.5, swordY + sLen * 0.3 + Math.round(3 * ws), Math.round(3 * ws), sLen * 0.25).fill(0x8B4513); // grip
         break;
       }
       case KingdomChar.MERLIN: {
@@ -1702,16 +1707,19 @@ export class KingdomRenderer {
         g.moveTo(cx - beardW * 0.4, beardY + 2)
           .lineTo(cx, beardY + r * 1.0)
           .lineTo(cx + beardW * 0.4, beardY + 2).fill(0xEEEEEE);
-        // Staff
-        const staffX = f > 0 ? sx + w + 2 : sx - 5;
+        // Staff — scales with ws when powered up
+        const stOff = Math.round(5 * ws);
+        const staffX = f > 0 ? sx + w + 2 : sx - stOff;
         const staffY = torsoTop - r;
-        const staffH = torsoH + h * 0.35;
-        g.rect(staffX, staffY, 3, staffH).fill(0x8B5A2B);
-        g.rect(staffX - 0.5, staffY, 4, 2).fill(0xAA7744);
+        const staffH = (torsoH + h * 0.35) * ws;
+        const stW = Math.round(3 * ws); // shaft width
+        const orbR = Math.round(5 * ws); // orb radius
+        g.rect(staffX, staffY, stW, staffH).fill(0x8B5A2B);
+        g.rect(staffX - 0.5, staffY, stW + 1, Math.round(2 * ws)).fill(0xAA7744);
         // Orb on staff
-        g.circle(staffX + 1.5, staffY - 4, 5).fill({ color: 0x6644FF, alpha: 0.7 });
-        g.circle(staffX + 1.5, staffY - 4, 3).fill({ color: 0xAA88FF, alpha: 0.8 });
-        g.circle(staffX + 0.5, staffY - 5, 1.5).fill({ color: 0xFFFFFF, alpha: 0.5 });
+        g.circle(staffX + stW / 2, staffY - orbR * 0.8, orbR).fill({ color: 0x6644FF, alpha: 0.7 });
+        g.circle(staffX + stW / 2, staffY - orbR * 0.8, Math.round(orbR * 0.6)).fill({ color: 0xAA88FF, alpha: 0.8 });
+        g.circle(staffX + stW / 2 - 1, staffY - orbR, Math.round(orbR * 0.3)).fill({ color: 0xFFFFFF, alpha: 0.5 });
         break;
       }
       case KingdomChar.GUINEVERE: {
@@ -1806,11 +1814,13 @@ export class KingdomRenderer {
         // Shield cross
         g.rect(shX + shW * 0.4, shY + 3, shW * 0.2, shH * 0.6).fill(0xFFD700);
         g.rect(shX + shW * 0.15, shY + shH * 0.2, shW * 0.7, shH * 0.12).fill(0xFFD700);
-        // Lance / weapon
-        const wpX = f > 0 ? sx + w + 1 : sx - 4;
-        g.rect(wpX, torsoTop - r * 0.5, 3, torsoH + h * 0.3).fill(0x8B5A2B);
-        g.moveTo(wpX - 1, torsoTop - r * 0.5).lineTo(wpX + 1.5, torsoTop - r * 1.2)
-          .lineTo(wpX + 4, torsoTop - r * 0.5).fill(0xBBBBCC);
+        // Lance / weapon — scales with ws when powered up
+        const wpOff = Math.round(4 * ws);
+        const wpX = f > 0 ? sx + w + 1 : sx - wpOff;
+        const lanceW = Math.round(3 * ws); // shaft width
+        g.rect(wpX, torsoTop - r * 0.5, lanceW, (torsoH + h * 0.3) * ws).fill(0x8B5A2B);
+        g.moveTo(wpX - Math.round(ws), torsoTop - r * 0.5).lineTo(wpX + lanceW / 2, torsoTop - r * 1.2 * ws)
+          .lineTo(wpX + Math.round(4 * ws), torsoTop - r * 0.5).fill(0xBBBBCC);
         break;
       }
     }
