@@ -35,6 +35,9 @@ import {
   SPRING_BOUNCE_VY, RUN_JUMP_BOOST,
   BAT_SPEED, BAT_SWOOP_SPEED, BAT_SWOOP_RANGE,
   BOAR_SPEED, BOAR_CHARGE_SPEED, BOAR_CHARGE_RANGE, BOAR_CHARGE_DURATION,
+  WRAITH_SPEED, WRAITH_FIRE_INTERVAL, WRAITH_FIRE_SPEED, WRAITH_HP,
+  HELLHOUND_SPEED, HELLHOUND_LUNGE_SPEED, HELLHOUND_LUNGE_RANGE,
+  HELLHOUND_LUNGE_DURATION, HELLHOUND_LUNGE_COOLDOWN,
   MULTI_COIN_MAX_HITS,
   COIN_MAGNET_RANGE, COIN_MAGNET_SPEED,
   LANDING_DUST_MIN_VY, LANDING_SQUASH_DURATION,
@@ -709,6 +712,8 @@ export function updateEnemies(s: KingdomState, dt: number): void {
       case EnemyType.DRAGON: updateDragon(s, e, dt); continue;
       case EnemyType.BAT: updateBat(s, e, dt); continue;
       case EnemyType.BOAR: updateBoar(s, e, dt); continue;
+      case EnemyType.WRAITH: updateWraith(s, e, dt); continue;
+      case EnemyType.HELLHOUND: updateHellhound(s, e, dt); continue;
       default: break;
     }
 
@@ -809,11 +814,93 @@ function updateDragon(s: KingdomState, e: Enemy, dt: number): void {
   e.animTimer += dt; if (e.animTimer > 0.2) { e.animTimer = 0; e.animFrame = (e.animFrame + 1) % 2; }
 }
 
+function updateWraith(s: KingdomState, e: Enemy, dt: number): void {
+  const dx = s.player.x - e.x, dy = s.player.y - e.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  // Slow homing drift — accelerate toward player then dampen
+  if (dist > 1.5) {
+    e.vx += (dx / dist) * WRAITH_SPEED * 4 * dt;
+    e.vy += (dy / dist) * WRAITH_SPEED * 4 * dt;
+  }
+  e.vx *= 0.94; e.vy *= 0.94;
+  const spd = Math.sqrt(e.vx * e.vx + e.vy * e.vy);
+  if (spd > WRAITH_SPEED * 2.2) { e.vx = (e.vx / spd) * WRAITH_SPEED * 2.2; e.vy = (e.vy / spd) * WRAITH_SPEED * 2.2; }
+
+  // Ethereal undulation
+  e.vy += Math.sin(Date.now() / 380 + e.x * 0.7) * 0.6;
+
+  e.x += e.vx * dt; e.y += e.vy * dt;
+  e.facing = dx > 0 ? 1 : -1;
+  if (e.y < 1) { e.y = 1; e.vy = Math.abs(e.vy); }
+  if (e.y > s.levelHeight - 1.5) { e.y = s.levelHeight - 1.5; e.vy = -Math.abs(e.vy); }
+
+  // Spectral bolt — fired toward player when close enough
+  e.attackTimer -= dt;
+  if (e.attackTimer <= 0 && dist < 14) {
+    e.attackTimer = WRAITH_FIRE_INTERVAL + (e.hp < 2 ? -0.8 : 0); // faster when wounded
+    const d = Math.max(1, dist);
+    // Phase 2 (hp=1): fires three bolts in a spread
+    const shots = e.hp < 2 ? 3 : 1;
+    for (let i = 0; i < shots; i++) {
+      const spread = (i - Math.floor(shots / 2)) * 0.4;
+      s.projectiles.push({ x: e.x + e.width / 2, y: e.y + e.height * 0.4, vx: (dx / d) * WRAITH_FIRE_SPEED + spread, vy: (dy / d) * WRAITH_FIRE_SPEED + spread, width: 0.3, height: 0.3, active: true, fromPlayer: false, bounceCount: 0 });
+    }
+    for (let i = 0; i < 5; i++) s.particles.push({ x: e.x + e.width / 2, y: e.y + e.height * 0.4, vx: (dx / d) * 2 + (Math.random() - 0.5) * 4, vy: (dy / d) * 2 + (Math.random() - 0.5) * 4, life: 0.5, maxLife: 0.5, color: 0xAA33FF, size: 0.12 });
+  }
+
+  // Purple soul-wisp trail
+  if (Math.random() < 0.35) s.particles.push({ x: e.x + e.width * 0.5 + (Math.random() - 0.5) * 0.6, y: e.y + e.height * 0.7, vx: (Math.random() - 0.5) * 0.8, vy: -0.6 - Math.random() * 0.8, life: 0.8, maxLife: 0.8, color: e.hp < 2 ? 0x66FFFF : 0x6600CC, size: 0.1 + Math.random() * 0.05 });
+
+  e.animTimer += dt; if (e.animTimer > 0.12) { e.animTimer = 0; e.animFrame = (e.animFrame + 1) % 2; }
+}
+
+function updateHellhound(s: KingdomState, e: Enemy, dt: number): void {
+  const dx = s.player.x - e.x, dy = s.player.y - e.y;
+  e.vy += GRAVITY * dt; if (e.vy > MAX_FALL_SPEED) e.vy = MAX_FALL_SPEED;
+
+  if (e.charging) {
+    // Mid-lunge — ride out the trajectory
+    e.attackTimer -= dt;
+    if (e.attackTimer <= 0) { e.charging = false; e.attackTimer = HELLHOUND_LUNGE_COOLDOWN; }
+    if (Math.random() < 0.55) s.particles.push({ x: e.x + e.width * 0.5, y: e.y + e.height * 0.3, vx: -e.vx * 0.12 + (Math.random() - 0.5) * 2, vy: -Math.random() * 2.5, life: 0.35, maxLife: 0.35, color: [0xFF5500, 0xFF8800, 0xFFCC00][Math.floor(Math.random() * 3)], size: 0.1 + Math.random() * 0.07 });
+  } else {
+    e.attackTimer -= dt;
+    // Trigger lunge when player is within range and not too far above
+    if (e.attackTimer <= 0 && Math.abs(dx) < HELLHOUND_LUNGE_RANGE && dy < 3.5) {
+      const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+      e.facing = dx > 0 ? 1 : -1;
+      e.charging = true;
+      e.attackTimer = HELLHOUND_LUNGE_DURATION;
+      e.vx = (dx / dist) * HELLHOUND_LUNGE_SPEED;
+      e.vy = Math.min(-9, (dy / dist) * HELLHOUND_LUNGE_SPEED - 5); // always has upward kick
+    } else {
+      e.vx = e.facing * HELLHOUND_SPEED;
+    }
+  }
+
+  e.x += e.vx * dt;
+  const eL = Math.floor(e.x), eR = Math.floor(e.x + e.width - 0.01);
+  for (let r = Math.floor(e.y); r <= Math.floor(e.y + e.height - 0.01); r++) {
+    if (e.vx > 0 && isSolid(getTile(s, r, eR))) { e.x = eR - e.width; e.vx = -e.vx; e.facing = -1; e.charging = false; }
+    else if (e.vx < 0 && isSolid(getTile(s, r, eL))) { e.x = eL + 1; e.vx = -e.vx; e.facing = 1; e.charging = false; }
+  }
+  e.y += e.vy * dt;
+  const nB = Math.floor(e.y + e.height); let landed = false;
+  for (let c = Math.floor(e.x + 0.1); c <= Math.floor(e.x + e.width - 0.11); c++) {
+    if (isSolid(getTile(s, nB, c))) { e.y = nB - e.height; e.vy = 0; landed = true; }
+  }
+  if (landed && !e.charging) { const ah = Math.floor(e.x + (e.vx > 0 ? e.width + 0.1 : -0.1)); if (!isSolid(getTile(s, Math.floor(e.y + e.height + 0.1), ah))) { e.vx = -e.vx; e.facing = e.vx > 0 ? 1 : -1; } }
+  if (e.y > s.levelHeight + 2) e.alive = false;
+  e.animTimer += dt; if (e.animTimer > (e.charging ? 0.06 : 0.11)) { e.animTimer = 0; e.animFrame = (e.animFrame + 1) % 2; }
+}
+
 function killEnemy(s: KingdomState, e: Enemy, byFireball: boolean): void {
   if (e.type === EnemyType.DRAGON) { triggerBossDeath(s, e); return; }
   e.alive = false; e.deathTimer = 0.5; s.totalEnemiesKilled++;
   addScore(s, byFireball ? SCORE_FIRE_KILL : 100, e.x, e.y);
-  for (let i = 0; i < 6; i++) s.particles.push({ x: e.x + e.width / 2, y: e.y + e.height / 2, vx: (Math.random() - 0.5) * 8, vy: -4 - Math.random() * 6, life: 0.6, maxLife: 0.6, color: e.type === EnemyType.GOBLIN ? 0x228B22 : e.type === EnemyType.BAT ? 0x553366 : e.type === EnemyType.BOAR ? 0x886644 : 0x444444, size: 0.15 + Math.random() * 0.1 });
+  const deathColor = e.type === EnemyType.GOBLIN ? 0x228B22 : e.type === EnemyType.BAT ? 0x553366 : e.type === EnemyType.BOAR ? 0x886644 : e.type === EnemyType.WRAITH ? 0x8822FF : e.type === EnemyType.HELLHOUND ? 0xFF3300 : 0x444444;
+  for (let i = 0; i < 6; i++) s.particles.push({ x: e.x + e.width / 2, y: e.y + e.height / 2, vx: (Math.random() - 0.5) * 8, vy: -4 - Math.random() * 6, life: 0.6, maxLife: 0.6, color: deathColor, size: 0.15 + Math.random() * 0.1 });
 }
 
 // ---------------------------------------------------------------------------
@@ -836,6 +923,12 @@ export function checkPlayerEnemyCollision(s: KingdomState): void {
       if (e.type === EnemyType.DARK_KNIGHT && !e.isShell) { e.isShell = true; e.shellMoving = false; e.vx = 0; e.height = 0.6; e.stompBounce = 0.2; }
       else if (e.isShell && !e.shellMoving) { e.shellMoving = true; e.vx = (p.x + p.width / 2 < e.x + e.width / 2) ? SHELL_SPEED : -SHELL_SPEED; e.stompBounce = 0.15; }
       else if (e.type === EnemyType.DRAGON) { e.hp--; if (e.hp <= 0) triggerBossDeath(s, e); else e.stompBounce = 0.4; triggerShake(s, SHAKE_BOSS_HIT, SHAKE_BOSS_INTENSITY); }
+      else if (e.type === EnemyType.WRAITH) {
+        e.hp--;
+        if (e.hp <= 0) killEnemy(s, e, false);
+        else { e.stompBounce = 0.55; for (let i = 0; i < 8; i++) s.particles.push({ x: e.x + e.width / 2, y: e.y + e.height / 2, vx: (Math.random() - 0.5) * 10, vy: -3 - Math.random() * 5, life: 0.7, maxLife: 0.7, color: 0x66FFFF, size: 0.1 + Math.random() * 0.08 }); }
+        triggerShake(s, SHAKE_STOMP, SHAKE_STOMP_INTENSITY);
+      }
       else killEnemy(s, e, false);
       p.stompCombo++; p.stompComboTimer = STOMP_COMBO_WINDOW;
       const ci = Math.min(p.stompCombo - 1, SCORE_STOMP_COMBO.length - 1);
@@ -1008,13 +1101,13 @@ export function createEnemyFromSpawn(spawn: { type: EnemyType; col: number; row:
   const t = spawn.type;
   return {
     type: t, x: spawn.col, y: spawn.row,
-    vx: t === EnemyType.DRAGON ? -DRAGON_SPEED : t === EnemyType.BAT ? -BAT_SPEED : t === EnemyType.BOAR ? -BOAR_SPEED : t === EnemyType.SKELETON ? 0 : t === EnemyType.DARK_KNIGHT ? -DARK_KNIGHT_SPEED : -GOBLIN_SPEED,
+    vx: t === EnemyType.DRAGON ? -DRAGON_SPEED : t === EnemyType.BAT ? -BAT_SPEED : t === EnemyType.BOAR ? -BOAR_SPEED : t === EnemyType.SKELETON ? 0 : t === EnemyType.DARK_KNIGHT ? -DARK_KNIGHT_SPEED : t === EnemyType.WRAITH ? 0 : t === EnemyType.HELLHOUND ? -HELLHOUND_SPEED : -GOBLIN_SPEED,
     vy: 0,
-    width: t === EnemyType.DRAGON ? 2 : t === EnemyType.BOAR ? 1.1 : 0.9,
-    height: t === EnemyType.DRAGON ? 2 : t === EnemyType.BOAR ? 0.8 : t === EnemyType.DARK_KNIGHT ? 0.9 : 0.8,
+    width: t === EnemyType.DRAGON ? 2 : t === EnemyType.BOAR ? 1.1 : t === EnemyType.HELLHOUND ? 1.2 : 0.9,
+    height: t === EnemyType.DRAGON ? 2 : t === EnemyType.BOAR ? 0.8 : t === EnemyType.DARK_KNIGHT ? 0.9 : t === EnemyType.HELLHOUND ? 0.85 : t === EnemyType.WRAITH ? 1.1 : 0.8,
     alive: true, isShell: false, shellMoving: false,
-    hp: t === EnemyType.DRAGON ? DRAGON_HP : 1,
-    attackTimer: t === EnemyType.SKELETON ? SKELETON_ATTACK_INTERVAL : t === EnemyType.DRAGON ? DRAGON_FIRE_INTERVAL : 0,
+    hp: t === EnemyType.DRAGON ? DRAGON_HP : t === EnemyType.WRAITH ? WRAITH_HP : 1,
+    attackTimer: t === EnemyType.SKELETON ? SKELETON_ATTACK_INTERVAL : t === EnemyType.DRAGON ? DRAGON_FIRE_INTERVAL : t === EnemyType.WRAITH ? WRAITH_FIRE_INTERVAL : t === EnemyType.HELLHOUND ? HELLHOUND_LUNGE_COOLDOWN * 0.5 : 0,
     animFrame: 0, animTimer: 0, facing: -1, stompBounce: 0, deathTimer: 0,
     homeY: spawn.row, swooping: false, charging: false, chargeSpeed: BOAR_CHARGE_SPEED,
     alertTimer: 0,

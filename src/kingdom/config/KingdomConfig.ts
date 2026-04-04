@@ -182,6 +182,19 @@ export const BOAR_CHARGE_SPEED = 8;
 export const BOAR_CHARGE_RANGE = 7;
 export const BOAR_CHARGE_DURATION = 1.5;
 
+// Wraith (World 5 unique) — spectral hovering spellcaster, 2 HP
+export const WRAITH_SPEED = 1.8;
+export const WRAITH_FIRE_INTERVAL = 3.0;
+export const WRAITH_FIRE_SPEED = 5.5;
+export const WRAITH_HP = 2;
+
+// Hellhound (World 6 unique) — lunging demonic hound
+export const HELLHOUND_SPEED = 3.0;
+export const HELLHOUND_LUNGE_SPEED = 11;
+export const HELLHOUND_LUNGE_RANGE = 6;
+export const HELLHOUND_LUNGE_DURATION = 0.65;
+export const HELLHOUND_LUNGE_COOLDOWN = 2.8;
+
 // ---------------------------------------------------------------------------
 // Multi-coin blocks
 // ---------------------------------------------------------------------------

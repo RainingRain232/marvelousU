@@ -311,9 +311,10 @@ function placeWorldSignature(
       for (let r = 3; r < 11; r++) {
         if (r < 7 || r > 9) set(tiles, r, col + 14, TileType.CASTLE_WALL);
       }
-      // Bat sentinels guarding each route
+      // Bat sentinels flanking the routes; wraith guards the far end
       enemies.push({ type: EnemyType.BAT, col: col + 7, row: 6 });
       enemies.push({ type: EnemyType.BAT, col: col + 21, row: 10 });
+      enemies.push({ type: EnemyType.WRAITH, col: col + 24, row: 8 });
       // Restore ground after the maze
       fillGround(tiles, col + 28, col + 33);
       break;
@@ -338,8 +339,8 @@ function placeWorldSignature(
         }
         coins.push({ x: pc + 2.5, y: GROUND_ROW - 3, collected: false, bobOffset: i * 0.5 });
       }
-      // Boars charging across the narrow safe sections
-      enemies.push({ type: EnemyType.BOAR, col: col + 5, row: GROUND_ROW - 1 });
+      // Hellhound ambush at the start, boar mid-section
+      enemies.push({ type: EnemyType.HELLHOUND, col: col + 5, row: GROUND_ROW - 1 });
       enemies.push({ type: EnemyType.BOAR, col: col + 23, row: GROUND_ROW - 1 });
       // Skeleton sniper on an elevated platform overlooking the gauntlet
       set(tiles, 6, col + 13, TileType.CASTLE_FLOOR);
@@ -767,21 +768,24 @@ function pickEnemyType(rng: () => number, world: number, isCastle: boolean): Ene
     if (r < 0.85) return EnemyType.BOAR;
     return EnemyType.SKELETON;
   }
-  // World 5 — airborne horrors dominate
+  // World 5 — airborne horrors, wraiths haunt the void
   if (world === 5) {
-    if (r < 0.1) return EnemyType.GOBLIN;
-    if (r < 0.25) return EnemyType.DARK_KNIGHT;
-    if (r < 0.55) return EnemyType.BAT;
-    if (r < 0.7) return EnemyType.BOAR;
-    return EnemyType.SKELETON;
+    if (r < 0.08) return EnemyType.GOBLIN;
+    if (r < 0.2) return EnemyType.DARK_KNIGHT;
+    if (r < 0.44) return EnemyType.BAT;
+    if (r < 0.56) return EnemyType.BOAR;
+    if (r < 0.78) return EnemyType.SKELETON;
+    return EnemyType.WRAITH;
   }
-  // World 6 — undead and heavy chargers everywhere
+  // World 6 — hellhounds and undead rule the infernal keep
   if (world >= 6) {
-    if (r < 0.05) return EnemyType.GOBLIN;
-    if (r < 0.15) return EnemyType.DARK_KNIGHT;
-    if (r < 0.3) return EnemyType.BAT;
-    if (r < 0.55) return EnemyType.BOAR;
-    return EnemyType.SKELETON;
+    if (r < 0.04) return EnemyType.GOBLIN;
+    if (r < 0.12) return EnemyType.DARK_KNIGHT;
+    if (r < 0.24) return EnemyType.BAT;
+    if (r < 0.42) return EnemyType.BOAR;
+    if (r < 0.66) return EnemyType.SKELETON;
+    if (r < 0.84) return EnemyType.HELLHOUND;
+    return EnemyType.WRAITH; // wraiths still appear, rarer
   }
   // World 3-4
   if (r < 0.2) return EnemyType.GOBLIN;

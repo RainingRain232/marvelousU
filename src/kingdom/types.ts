@@ -53,6 +53,7 @@ export enum TileType {
 export enum EnemyType {
   GOBLIN = "goblin", DARK_KNIGHT = "dark_knight", SKELETON = "skeleton",
   DRAGON = "dragon", BAT = "bat", BOAR = "boar",
+  WRAITH = "wraith", HELLHOUND = "hellhound",
 }
 
 export enum ItemType {

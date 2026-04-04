@@ -1860,6 +1860,8 @@ export class KingdomRenderer {
         case EnemyType.DRAGON:   this._dragon(g, sx, sy, w, h, e, ts); break;
         case EnemyType.BAT:     this._bat(g, sx, sy, w, h, e, ts); break;
         case EnemyType.BOAR:    this._boar(g, sx, sy, w, h, e, ts); break;
+        case EnemyType.WRAITH:   this._wraith(g, sx, sy, w, h, e, ts); break;
+        case EnemyType.HELLHOUND: this._hellhound(g, sx, sy, w, h, e, ts); break;
       }
     }
   }
@@ -2502,6 +2504,182 @@ export class KingdomRenderer {
       .lineTo(tailX - f * 3, y + h * 0.35).fill(0x554422);
     // Tail tuft
     g.circle(tailX - f * 6 + tw * 1.5, y + h * 0.24, 2.5).fill(0x443311);
+  }
+
+  private _wraith(g: Graphics, x: number, y: number, w: number, h: number, e: Enemy, ts: number): void {
+    const now = Date.now();
+    const cx = x + w / 2;
+    const phased = e.hp < 2; // wounded — semi-transparent, cyan tint
+    const pulse = 0.6 + Math.sin(now / 220 + e.x) * 0.4;
+    const bob = Math.sin(now / 500 + e.x) * 2;
+
+    // Outer glow aura
+    const auraColor = phased ? 0x44FFFF : 0x7700BB;
+    g.ellipse(cx, y + h * 0.55 + bob, w * 0.65, h * 0.6).fill({ color: auraColor, alpha: 0.12 * pulse });
+    g.ellipse(cx, y + h * 0.5 + bob, w * 0.5, h * 0.48).fill({ color: auraColor, alpha: 0.1 * pulse });
+
+    // Wispy tendrils at bottom — undulating
+    for (let i = 0; i < 5; i++) {
+      const tx = cx - w * 0.25 + i * w * 0.12;
+      const tLen = 4 + Math.sin(now / 300 + i * 1.3 + e.x) * 3;
+      const tWave = Math.sin(now / 250 + i * 0.9) * 3;
+      g.moveTo(tx, y + h * 0.88 + bob)
+        .lineTo(tx + tWave, y + h * 0.88 + bob + tLen)
+        .lineTo(tx + tWave + 1.5, y + h * 0.88 + bob + tLen - 1)
+        .fill({ color: phased ? 0x33DDDD : 0x5500AA, alpha: 0.55 + Math.sin(now / 200 + i) * 0.2 });
+    }
+
+    // Cloak body — layered for depth
+    g.ellipse(cx, y + h * 0.55 + bob, w * 0.42, h * 0.38).fill({ color: phased ? 0x224444 : 0x1A0033, alpha: 0.85 });
+    g.ellipse(cx, y + h * 0.52 + bob, w * 0.36, h * 0.32).fill({ color: phased ? 0x336655 : 0x220044, alpha: 0.9 });
+    // Cloak highlight ridge
+    g.moveTo(cx - w * 0.1, y + h * 0.25 + bob)
+      .lineTo(cx, y + h * 0.2 + bob)
+      .lineTo(cx + w * 0.1, y + h * 0.25 + bob)
+      .lineTo(cx + w * 0.08, y + h * 0.32 + bob)
+      .lineTo(cx - w * 0.08, y + h * 0.32 + bob).fill({ color: phased ? 0x55BBBB : 0x4400AA, alpha: 0.4 });
+
+    // Hood — pointed top
+    g.moveTo(cx - w * 0.3, y + h * 0.3 + bob)
+      .lineTo(cx, y + h * 0.05 + bob)
+      .lineTo(cx + w * 0.3, y + h * 0.3 + bob)
+      .lineTo(cx + w * 0.25, y + h * 0.42 + bob)
+      .lineTo(cx - w * 0.25, y + h * 0.42 + bob).fill({ color: phased ? 0x1A4444 : 0x0D0022, alpha: 0.92 });
+    // Hood inner shadow
+    g.moveTo(cx - w * 0.2, y + h * 0.32 + bob)
+      .lineTo(cx, y + h * 0.14 + bob)
+      .lineTo(cx + w * 0.2, y + h * 0.32 + bob)
+      .lineTo(cx + w * 0.15, y + h * 0.42 + bob)
+      .lineTo(cx - w * 0.15, y + h * 0.42 + bob).fill({ color: 0x000000, alpha: 0.55 });
+
+    // Glowing eyes — two points of light in the dark hood
+    const eyeY = y + h * 0.3 + bob;
+    const eyeGlow = phased ? 0x00FFFF : 0xBB00FF;
+    g.circle(cx - w * 0.1, eyeY, 3.5).fill({ color: eyeGlow, alpha: 0.3 * pulse });
+    g.circle(cx + w * 0.1, eyeY, 3.5).fill({ color: eyeGlow, alpha: 0.3 * pulse });
+    g.circle(cx - w * 0.1, eyeY, 2).fill({ color: eyeGlow, alpha: 0.8 });
+    g.circle(cx + w * 0.1, eyeY, 2).fill({ color: eyeGlow, alpha: 0.8 });
+    g.circle(cx - w * 0.1, eyeY, 1).fill(0xFFFFFF);
+    g.circle(cx + w * 0.1, eyeY, 1).fill(0xFFFFFF);
+
+    // Clawed hands reaching forward
+    const hDir = e.facing;
+    const handX = cx + hDir * w * 0.38;
+    const handY = y + h * 0.52 + bob + Math.sin(now / 400) * 2;
+    g.ellipse(handX, handY, w * 0.1, h * 0.08).fill({ color: phased ? 0x336666 : 0x220044, alpha: 0.85 });
+    for (let c = -1; c <= 1; c++) {
+      g.moveTo(handX + c * 3, handY - 2)
+        .lineTo(handX + c * 3 + hDir * 3, handY - 5)
+        .lineTo(handX + c * 3 + hDir * 2, handY - 3).fill({ color: phased ? 0x44FFFF : 0x9900FF, alpha: 0.7 });
+    }
+
+    // If phased (hp=1): flickering overlay to show damage
+    if (phased) {
+      const flicker = Math.sin(now / 80) > 0.3;
+      if (flicker) g.ellipse(cx, y + h * 0.5 + bob, w * 0.38, h * 0.35).fill({ color: 0x00FFFF, alpha: 0.08 });
+    }
+  }
+
+  private _hellhound(g: Graphics, x: number, y: number, w: number, h: number, e: Enemy, ts: number): void {
+    const f = e.facing;
+    const cx = x + w / 2;
+    const lunging = e.charging;
+    const now = Date.now();
+    const fo = e.animFrame % 2 === 0 ? 0 : (lunging ? 6 : 3);
+
+    // Lunge aura — forward-facing heat blur
+    if (lunging) {
+      for (let al = 0; al < 3; al++) {
+        g.ellipse(cx - f * al * 4, y + h * 0.5, w * (0.5 - al * 0.08), h * 0.4).fill({ color: 0xFF4400, alpha: 0.07 - al * 0.02 });
+      }
+    }
+
+    // Body — lean and low, muscular build
+    g.ellipse(cx, y + h * 0.52, w * 0.46, h * 0.35).fill(0x2A1A1A);
+    g.ellipse(cx, y + h * 0.5, w * 0.4, h * 0.3).fill(0x3D2222);
+    g.ellipse(cx, y + h * 0.47, w * 0.32, h * 0.22).fill(0x4A2828);
+    // Chest / underbelly
+    g.ellipse(cx + f * w * 0.06, y + h * 0.58, w * 0.22, h * 0.16).fill(0x331A11);
+
+    // Flaming mane ridge along spine — 8 flame tongues
+    for (let i = 0; i < 8; i++) {
+      const mx = cx - w * 0.3 + i * w * 0.085;
+      const mh = 4 + Math.sin(now / 120 + i * 0.9 + e.x) * 3;
+      const flameColor = i % 2 === 0 ? 0xFF4400 : 0xFF8800;
+      g.moveTo(mx, y + h * 0.18)
+        .lineTo(mx + 1.5, y + h * 0.18 - mh)
+        .lineTo(mx + 3, y + h * 0.18).fill({ color: flameColor, alpha: 0.85 });
+      g.moveTo(mx + 0.8, y + h * 0.18 - 1)
+        .lineTo(mx + 1.5, y + h * 0.18 - mh + 1.5)
+        .lineTo(mx + 2.2, y + h * 0.18 - 1).fill({ color: 0xFFCC00, alpha: 0.5 });
+    }
+
+    // Head
+    const headCx = f > 0 ? x + w * 0.74 : x + w * 0.26;
+    const headCy = y + h * 0.38;
+    g.ellipse(headCx, headCy, w * 0.22, h * 0.24).fill(0x2A1A1A);
+    g.ellipse(headCx + f * w * 0.03, headCy, w * 0.18, h * 0.2).fill(0x3D2222);
+    // Muzzle — elongated snout
+    const muzzX = headCx + f * w * 0.2;
+    const muzzY = headCy + h * 0.04;
+    g.ellipse(muzzX, muzzY, w * 0.12, h * 0.12).fill(0x2A1A1A);
+    g.ellipse(muzzX + f * w * 0.02, muzzY, w * 0.09, h * 0.09).fill(0x4A2828);
+    // Nostrils with ember glow
+    g.circle(muzzX + f * 2, muzzY - 2, 2).fill(0x880000);
+    g.circle(muzzX + f * 2, muzzY - 2, 1).fill(0xFF4400);
+    // Upper jaw lip with fangs
+    g.moveTo(muzzX - f * w * 0.06, muzzY + h * 0.04)
+      .lineTo(muzzX + f * w * 0.14, muzzY + h * 0.04)
+      .lineTo(muzzX + f * w * 0.14, muzzY + h * 0.01).fill({ color: 0x1A1010, alpha: 0.7 });
+    for (const fi of [0, 1, 2]) {
+      const fangX = muzzX - f * w * 0.04 + fi * f * w * 0.06;
+      g.moveTo(fangX, muzzY + h * 0.04)
+        .lineTo(fangX + f * 1, muzzY + h * 0.1)
+        .lineTo(fangX + f * 2.5, muzzY + h * 0.04).fill(0xEEEEEE);
+    }
+    // Eye — glowing ember
+    const eyeX = headCx + f * w * 0.07;
+    const eyeY2 = headCy - h * 0.07;
+    g.circle(eyeX, eyeY2, 3.5).fill({ color: 0xFF2200, alpha: 0.3 });
+    g.circle(eyeX, eyeY2, 2.2).fill(lunging ? 0xFF6600 : 0xCC2200);
+    g.circle(eyeX + f * 0.6, eyeY2, 1).fill(0xFF8800);
+    // Ear — tall pointed
+    g.moveTo(headCx - f * w * 0.08, headCy - h * 0.15)
+      .lineTo(headCx - f * w * 0.12, headCy - h * 0.32)
+      .lineTo(headCx + f * w * 0.02, headCy - h * 0.15).fill(0x2A1A1A);
+    g.moveTo(headCx - f * w * 0.08, headCy - h * 0.16)
+      .lineTo(headCx - f * w * 0.11, headCy - h * 0.28)
+      .lineTo(headCx + f * w * 0.01, headCy - h * 0.16).fill({ color: 0x880000, alpha: 0.5 });
+
+    // Tail — thin, whipping
+    const tailX = x + (f > 0 ? w * 0.04 : w * 0.88);
+    const tw = Math.sin(now / 130 + e.x) * (lunging ? 6 : 3);
+    g.moveTo(tailX, y + h * 0.3)
+      .lineTo(tailX - f * 5 + tw, y + h * 0.18)
+      .lineTo(tailX - f * 9 + tw * 1.8, y + h * 0.12)
+      .lineTo(tailX - f * 8 + tw, y + h * 0.2)
+      .lineTo(tailX - f * 4, y + h * 0.32).fill(0x2A1A1A);
+    // Tail tip ember
+    g.circle(tailX - f * 9 + tw * 1.8, y + h * 0.12, 2).fill({ color: 0xFF4400, alpha: 0.7 });
+
+    // 4 legs
+    const legPos: [number, number][] = [
+      [x + w * 0.12, -fo], [x + w * 0.28, fo],
+      [x + w * 0.56, -fo * 0.7], [x + w * 0.72, fo * 0.7],
+    ];
+    for (const [lx, lo] of legPos) {
+      const ly = y + h - 9 - lo;
+      const lh = 9 + lo;
+      g.roundRect(lx, ly, w * 0.12, lh * 0.52, 2).fill(0x2A1A1A);
+      g.roundRect(lx + 1, ly + lh * 0.48, w * 0.1, lh * 0.52, 1).fill(0x1A1010);
+      g.circle(lx + w * 0.06, ly + lh * 0.48, 2).fill(0x3D2222);
+      // Paw with ember-glow claws
+      for (let c = 0; c < 3; c++) {
+        g.moveTo(lx + c * 3, y + h - 1)
+          .lineTo(lx + c * 3 + 1, y + h + 2)
+          .lineTo(lx + c * 3 + 2.5, y + h - 1).fill(0x880000);
+      }
+    }
   }
 
   // =======================================================================
