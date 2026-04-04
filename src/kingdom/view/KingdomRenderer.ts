@@ -3710,11 +3710,50 @@ export class KingdomRenderer {
     t0.text = "GAME OVER"; t0.x = cx - t0.width / 2; t0.y = sh * 0.2;
 
     // Broken sword graphic
-    g.moveTo(cx - 3, sh * 0.38).lineTo(cx, sh * 0.32).lineTo(cx + 3, sh * 0.38)
-      .lineTo(cx + 1, sh * 0.52).lineTo(cx - 1, sh * 0.52).fill(0x888888);
-    g.rect(cx - 2, sh * 0.52, 4, 20).fill(0x8B4513);
-    // Break line
-    g.rect(cx - 6, sh * 0.42, 12, 2).fill(0xAA4444);
+    const guardY = sh * 0.52;
+    const breakY = sh * 0.40;
+    const tipX = cx + 16, tipY = sh * 0.30;
+
+    // Glow behind sword
+    g.circle(cx, sh * 0.43, 50).fill({ color: 0x550000, alpha: 0.35 });
+
+    // Lower blade (guard up to break, vertical)
+    g.moveTo(cx - 5, guardY).lineTo(cx + 5, guardY)
+     .lineTo(cx + 2, breakY).lineTo(cx - 2, breakY).fill(0x8899AA);
+    // Lower blade highlight
+    g.moveTo(cx - 1, guardY - 2).lineTo(cx + 1, guardY - 2)
+     .lineTo(cx + 1, breakY + 6).lineTo(cx - 1, breakY + 6).fill(0xCCDDEE);
+
+    // Upper blade (broken off, angled)
+    g.moveTo(cx - 2, breakY).lineTo(cx + 2, breakY)
+     .lineTo(tipX + 2, tipY + 4).lineTo(tipX, tipY).fill(0x8899AA);
+    // Upper blade highlight
+    g.moveTo(cx + 1, breakY - 2).lineTo(tipX, tipY + 3)
+     .lineTo(tipX + 2, tipY + 5).lineTo(cx + 2, breakY).fill(0xCCDDEE);
+
+    // Jagged break edge
+    g.moveTo(cx - 6, breakY + 2).lineTo(cx - 2, breakY - 5)
+     .lineTo(cx + 1, breakY - 1).lineTo(cx + 4, breakY - 7)
+     .lineTo(cx + 6, breakY - 2).lineTo(cx + 4, breakY + 4)
+     .lineTo(cx - 6, breakY + 4).fill(0xBB3322);
+
+    // Cross guard
+    g.roundRect(cx - 22, guardY, 44, 10, 4).fill(0x556633);
+    g.roundRect(cx - 20, guardY + 2, 40, 5, 2).fill(0x778844);
+
+    // Grip
+    const gripTop = guardY + 10;
+    g.rect(cx - 5, gripTop, 10, 28).fill(0x6B2E08);
+    for (let wi = 0; wi < 3; wi++) {
+      g.rect(cx - 5, gripTop + 4 + wi * 9, 10, 4).fill(0x4A1F05);
+      g.rect(cx - 4, gripTop + 5 + wi * 9, 8, 2).fill(0x9B5523);
+    }
+
+    // Pommel
+    const pommY = gripTop + 34;
+    g.circle(cx, pommY, 9).fill(0x556633);
+    g.circle(cx, pommY, 6).fill(0x778844);
+    g.circle(cx, pommY, 3).fill(0x445522);
 
     const t1 = this._uiTexts[1]; t1.visible = true; t1.style = sty(20, 0xDDDDDD, false, 2);
     t1.text = `Score: ${String(s.score).padStart(7, "0")}`; t1.x = cx - t1.width / 2; t1.y = sh * 0.62;
