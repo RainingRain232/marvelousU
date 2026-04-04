@@ -90,6 +90,7 @@ export function generateLevel(world: number, level: number): LevelGenResult {
   if (!isCastle) {
     col = genOutdoor(tiles, enemies, floatingCoins, movingPlatforms, col, width, rng, world, difficulty);
     placeFlagPole(tiles, width - 14);
+    placeFlagApproachBlocks(tiles, width - 14, world, level);
     placeEndCastle(tiles, width - 6);
   } else {
     col = genCastle(tiles, enemies, floatingCoins, movingPlatforms, col, width, rng, world, difficulty);
@@ -714,6 +715,32 @@ function pickEnemyType(rng: () => number, world: number, isCastle: boolean): Ene
 // ---------------------------------------------------------------------------
 // Flag pole & end structures
 // ---------------------------------------------------------------------------
+
+function placeFlagApproachBlocks(tiles: TileType[][], flagCol: number, world: number, level: number): void {
+  // Vary the layout per level using a simple hash
+  const variant = (world * 4 + level) % 4;
+  if (variant === 0) {
+    // Hidden coin block 3 tiles left of flag at mid height — boosts players up
+    set(tiles, GROUND_ROW - 5, flagCol - 3, TileType.HIDDEN);
+  } else if (variant === 1) {
+    // Brick staircase leading up to flag: 3 steps
+    set(tiles, GROUND_ROW - 1, flagCol - 4, TileType.BRICK);
+    set(tiles, GROUND_ROW - 2, flagCol - 3, TileType.BRICK);
+    set(tiles, GROUND_ROW - 2, flagCol - 4, TileType.BRICK);
+    set(tiles, GROUND_ROW - 3, flagCol - 2, TileType.BRICK);
+    set(tiles, GROUND_ROW - 3, flagCol - 3, TileType.BRICK);
+    set(tiles, GROUND_ROW - 3, flagCol - 4, TileType.BRICK);
+  } else if (variant === 2) {
+    // Two hidden coin blocks at different heights — secret double boost
+    set(tiles, GROUND_ROW - 4, flagCol - 5, TileType.HIDDEN);
+    set(tiles, GROUND_ROW - 7, flagCol - 3, TileType.HIDDEN);
+  } else {
+    // Floating brick platform with a hidden block above for boost
+    set(tiles, GROUND_ROW - 4, flagCol - 4, TileType.BRICK);
+    set(tiles, GROUND_ROW - 4, flagCol - 3, TileType.BRICK);
+    set(tiles, GROUND_ROW - 7, flagCol - 4, TileType.HIDDEN);
+  }
+}
 
 function placeFlagPole(tiles: TileType[][], col: number): void {
   fillGround(tiles, col - 2, col + 6);
