@@ -323,18 +323,9 @@ export class KingdomRenderer {
     const sw = s.sw, sh = s.sh;
     const worldIdx = Math.min(s.world - 1, 3);
 
-    // Vignette — darkened edges for depth
-    const vigW = sw * 0.35;
+    // Subtle top/bottom depth shading
     const vigH = sh * 0.35;
-    // Left edge
-    g.rect(0, 0, vigW, sh).fill({ color: 0x000000, alpha: 0.08 });
-    g.rect(0, 0, vigW * 0.5, sh).fill({ color: 0x000000, alpha: 0.05 });
-    // Right edge
-    g.rect(sw - vigW, 0, vigW, sh).fill({ color: 0x000000, alpha: 0.08 });
-    g.rect(sw - vigW * 0.5, 0, vigW * 0.5, sh).fill({ color: 0x000000, alpha: 0.05 });
-    // Top edge
     g.rect(0, 0, sw, vigH).fill({ color: 0x000000, alpha: 0.06 });
-    // Bottom edge
     g.rect(0, sh - vigH, sw, vigH).fill({ color: 0x000000, alpha: 0.04 });
 
     // World-specific tinting
