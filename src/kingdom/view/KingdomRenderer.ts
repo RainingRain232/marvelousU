@@ -2919,12 +2919,55 @@ export class KingdomRenderer {
     const timeFill = timeVal <= 60 ? 0xFF4444 : 0xFFFFFF;
     texts[4].style = sty(16, timeFill, true, 1, true); texts[4].text = `TIME ${timeVal}`; texts[4].x = gap * 3 + 10; texts[4].y = ty + 3;
 
-    // Character icon
+    // Character icon — mini portrait
     const cc = CHAR_COLORS[s.character];
     const iconX = gap * 4 + 10;
-    g.circle(iconX + 10, ty + 10, 10).fill(cc.primary);
-    g.circle(iconX + 10, ty + 6, 6).fill(cc.skin);
-    texts[5].style = HUD_STYLE; texts[5].text = `x${s.lives}`; texts[5].x = iconX + 24; texts[5].y = ty + 3;
+    const ix = iconX + 12, iy = ty + 18; // center-bottom of icon
+    // Legs
+    for (const side of [-1, 1]) {
+      g.roundRect(ix + side * 4 - 2, iy - 9, 4, 9, 1).fill(cc.secondary);
+    }
+    // Torso
+    g.roundRect(ix - 6, iy - 20, 12, 11, 2).fill(cc.primary);
+    g.roundRect(ix - 5, iy - 19, 5, 9, 1).fill(lighten(cc.primary, 14));
+    // Belt
+    g.rect(ix - 6, iy - 10, 12, 2).fill(darken(cc.secondary, 25));
+    g.rect(ix - 1, iy - 10, 2, 2).fill(0xCCA800);
+    // Arms
+    g.roundRect(ix - 9, iy - 19, 3, 8, 1).fill(cc.primary);
+    g.roundRect(ix + 6, iy - 19, 3, 8, 1).fill(cc.primary);
+    // Head
+    g.circle(ix, iy - 24, 6).fill(cc.skin);
+    g.circle(ix, iy - 26, 4).fill(lighten(cc.skin, 8));
+    // Eyes
+    g.circle(ix - 2, iy - 24, 1).fill(0x222222);
+    g.circle(ix + 2, iy - 24, 1).fill(0x222222);
+    // Crown (Arthur) or hat depending on char
+    if (s.character === KingdomChar.ARTHUR) {
+      g.roundRect(ix - 5, iy - 32, 10, 3, 1).fill(0xFFD700);
+      for (const px of [-3, 0, 3]) {
+        g.moveTo(ix + px - 1, iy - 32).lineTo(ix + px, iy - 35).lineTo(ix + px + 1, iy - 32).fill(0xFFD700);
+        g.circle(ix + px, iy - 35, 1).fill(lighten(cc.accent, 20));
+      }
+    } else if (s.character === KingdomChar.MERLIN) {
+      g.moveTo(ix - 5, iy - 30).lineTo(ix, iy - 40).lineTo(ix + 5, iy - 30).fill(cc.primary);
+      g.roundRect(ix - 6, iy - 31, 12, 3, 1).fill(darken(cc.primary, 20));
+      g.circle(ix, iy - 40, 2).fill(cc.accent);
+    } else if (s.character === KingdomChar.GUINEVERE) {
+      for (let hi = 0; hi < 3; hi++) {
+        g.circle(ix - 4 + hi * 4, iy - 31, 2).fill(cc.hair);
+      }
+      g.roundRect(ix - 4, iy - 31, 8, 2, 1).fill(darken(cc.accent, 10));
+    } else {
+      // Lancelot — helmet
+      g.roundRect(ix - 5, iy - 32, 10, 5, 2).fill(cc.primary);
+      g.rect(ix - 1, iy - 30, 2, 6).fill(darken(cc.primary, 20));
+    }
+    // Shoes
+    for (const side of [-1, 1]) {
+      g.roundRect(ix + side * 4 - 2 + side * 1, iy - 1, 5, 2, 1).fill(darken(cc.secondary, 30));
+    }
+    texts[5].style = HUD_STYLE; texts[5].text = `x${s.lives}`; texts[5].x = iconX + 26; texts[5].y = ty + 3;
 
     texts[6].style = sty(12, 0xAAAAAA, false, 1); texts[6].text = `HI ${String(s.highScore).padStart(7, "0")}`; texts[6].x = gap * 5 + 10; texts[6].y = ty + 5;
 
