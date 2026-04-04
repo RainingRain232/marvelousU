@@ -1253,65 +1253,90 @@ export class KingdomRenderer {
         .stroke({ color: 0x555555, width: 2, alpha: 0.25 });
 
       // Platform shadow
-      g.ellipse(sx + w / 2, sy + h + 3, w * 0.4, 3).fill({ color: 0x000000, alpha: 0.12 });
+      g.ellipse(sx + w / 2, sy + h + 4, w * 0.45, 4).fill({ color: 0x000000, alpha: 0.15 });
 
-      // Main body — wooden with metal reinforcement
-      g.roundRect(sx, sy, w, h, 4).fill(0x7A5533);
-      g.roundRect(sx + 1, sy + 1, w - 2, h - 2, 3).fill(0x8A6543);
-      // Top highlight
-      g.roundRect(sx + 2, sy + 1, w - 4, 3, 1).fill(0xAA8866);
-      // Bottom shadow
-      g.rect(sx + 2, sy + h - 3, w - 4, 2).fill(0x5A3520);
+      // Main body — thicker wooden beam
+      const bh = h * 1.4; // taller than before
+      g.roundRect(sx, sy, w, bh, 6).fill(0x6B4420);
+      g.roundRect(sx + 1, sy + 1, w - 2, bh - 2, 5).fill(0x7A5533);
+      g.roundRect(sx + 2, sy + 2, w - 4, bh - 4, 4).fill(0x8A6543);
 
-      // Plank lines
-      const planks = Math.floor(w / (ts * 0.5));
+      // Top walking surface highlight strip
+      g.roundRect(sx + 3, sy + 2, w - 6, 4, 2).fill(0xAA8866);
+      g.roundRect(sx + 5, sy + 2, w - 10, 2, 1).fill({ color: 0xFFFFEE, alpha: 0.25 });
+
+      // Bottom shadow strip
+      g.roundRect(sx + 3, sy + bh - 5, w - 6, 4, 2).fill(0x4A2C0A);
+
+      // Plank lines — vertical grain
+      const planks = Math.max(2, Math.floor(w / (ts * 0.55)));
       for (let i = 1; i < planks; i++) {
         const px = sx + i * (w / planks);
-        g.rect(px, sy + 2, 1, h - 4).fill(0x6A4A2A);
+        g.rect(px - 0.5, sy + 3, 1, bh - 6).fill({ color: 0x5A3010, alpha: 0.5 });
       }
 
-      // Metal edge strips (top and bottom)
-      g.rect(sx, sy, w, 2).fill(0x888888);
-      g.rect(sx, sy, w, 1).fill(0xAAAAAA);
-      g.rect(sx, sy + h - 2, w, 2).fill(0x666666);
-
-      // Warning stripe triangles at edges
-      for (let i = 0; i < 2; i++) {
-        const ex = i === 0 ? sx + 2 : sx + w - 10;
-        g.moveTo(ex, sy + 4).lineTo(ex + 4, sy + h / 2).lineTo(ex, sy + h - 4).fill(0xEEAA00);
-        g.moveTo(ex + 2, sy + 6).lineTo(ex + 5, sy + h / 2).lineTo(ex + 2, sy + h - 6).fill(0x886600);
+      // Horizontal wood grain lines
+      for (let gi = 1; gi < 3; gi++) {
+        g.rect(sx + 4, sy + gi * (bh / 3), w - 8, 1).fill({ color: 0x9A7553, alpha: 0.3 });
       }
 
-      // Rivets with 3D highlight
-      const rivets = [sx + 8, sx + w / 2, sx + w - 8];
+      // Rounded log-cut end caps
+      g.ellipse(sx + 5, sy + bh / 2, 5, bh * 0.42).fill(0x6B4420);
+      g.ellipse(sx + 5, sy + bh / 2, 3.5, bh * 0.3).fill(0x5A3010);
+      g.ellipse(sx + 5, sy + bh / 2, 1.5, bh * 0.15).fill(0x7A5533);
+      g.ellipse(sx + w - 5, sy + bh / 2, 5, bh * 0.42).fill(0x6B4420);
+      g.ellipse(sx + w - 5, sy + bh / 2, 3.5, bh * 0.3).fill(0x5A3010);
+      g.ellipse(sx + w - 5, sy + bh / 2, 1.5, bh * 0.15).fill(0x7A5533);
+
+      // Metal bracket clamps at ends
+      for (const bx of [sx + 2, sx + w - 10]) {
+        g.roundRect(bx, sy - 2, 8, bh + 4, 2).fill({ color: 0x888888, alpha: 0.0 }); // transparent placeholder
+        g.rect(bx, sy, 8, 3).fill(0x999999);
+        g.rect(bx, sy, 8, 1).fill(0xBBBBBB);
+        g.rect(bx, sy + bh - 3, 8, 3).fill(0x777777);
+        g.rect(bx + 1, sy + 1, 6, 1).fill({ color: 0xFFFFFF, alpha: 0.15 });
+      }
+
+      // Support arm hanging below center
+      const armX = sx + w / 2;
+      g.rect(armX - 2, sy + bh, 4, 10).fill(0x777777);
+      g.rect(armX - 1, sy + bh, 2, 10).fill(0x999999);
+      g.roundRect(armX - 7, sy + bh + 8, 14, 5, 2).fill(0x666666);
+      g.roundRect(armX - 6, sy + bh + 9, 12, 3, 1).fill(0x888888);
+
+      // Rivets — 3D domed
+      const rivets = [sx + 14, sx + w / 2, sx + w - 14];
       for (const rx of rivets) {
-        g.circle(rx, sy + h / 2, 2.5).fill(0x666666);
-        g.circle(rx - 0.5, sy + h / 2 - 0.5, 1.5).fill(0x888888);
-        g.circle(rx + 0.5, sy + h / 2 + 0.5, 1).fill(0x444444);
+        g.circle(rx, sy + bh / 2, 3).fill(0x666666);
+        g.circle(rx - 0.7, sy + bh / 2 - 0.7, 1.8).fill(0x999999);
+        g.circle(rx + 0.5, sy + bh / 2 + 0.5, 1).fill(0x444444);
       }
 
-      // Gear on one side (animated)
-      const gearX = sx - 5;
-      const gearY = sy + h / 2;
-      const gearR = 6;
+      // Animated gear on left end
+      const gearX = sx - 7;
+      const gearY = sy + bh / 2;
+      const gearR = 7;
       const gearRot = now / 500 * mp.direction;
+      g.circle(gearX, gearY, gearR + 1).fill(0x555555);
       g.circle(gearX, gearY, gearR).fill(0x777777);
-      g.circle(gearX, gearY, gearR - 2).fill(0x888888);
-      g.circle(gearX, gearY, 2).fill(0x555555);
-      // Gear teeth
-      for (let t = 0; t < 6; t++) {
-        const a = gearRot + (t / 6) * Math.PI * 2;
+      g.circle(gearX, gearY, gearR - 2.5).fill(0x888888);
+      g.circle(gearX, gearY, 2).fill(0x444444);
+      for (let t = 0; t < 8; t++) {
+        const a = gearRot + (t / 8) * Math.PI * 2;
         const tx = gearX + Math.cos(a) * gearR;
         const ty = gearY + Math.sin(a) * gearR;
-        g.circle(tx, ty, 2).fill(0x666666);
+        g.circle(tx, ty, 2.5).fill(0x666666);
+        g.circle(tx - 0.5, ty - 0.5, 1).fill(0x888888);
       }
 
-      // Chain links hanging underneath
-      const chainX = sx + w / 2;
-      for (let ci = 0; ci < 3; ci++) {
-        const cy = sy + h + 2 + ci * 5;
-        const cw = ci % 2 === 0 ? 4 : 3;
-        g.roundRect(chainX - cw / 2, cy, cw, 4, 1).stroke({ color: 0x777777, width: 1 });
+      // Chain links below support arm
+      const chainX = armX;
+      for (let ci = 0; ci < 4; ci++) {
+        const cy2 = sy + bh + 14 + ci * 6;
+        const cw = ci % 2 === 0 ? 5 : 4;
+        const ch = ci % 2 === 0 ? 4 : 5;
+        g.roundRect(chainX - cw / 2, cy2, cw, ch, 1.5).stroke({ color: 0x777777, width: 1.5 });
+        g.roundRect(chainX - cw / 2 + 1, cy2 + 1, cw - 2, ch - 2, 1).fill({ color: 0x555555, alpha: 0.4 });
       }
     }
   }
@@ -1822,12 +1847,6 @@ export class KingdomRenderer {
       const h = e.height * ts;
 
       if (!e.alive) {
-        // Flip & fade
-        const a = Math.max(0, e.deathTimer / 0.5);
-        g.rect(sx + 2, sy, w - 4, h).fill({ color: 0xFF4444, alpha: a * 0.6 });
-        // X eyes
-        g.rect(sx + w * 0.3, sy + h * 0.2, 4, 1).fill({ color: 0x000000, alpha: a });
-        g.rect(sx + w * 0.6, sy + h * 0.2, 4, 1).fill({ color: 0x000000, alpha: a });
         continue;
       }
 
@@ -1970,19 +1989,35 @@ export class KingdomRenderer {
     // Gauntlet spikes
     g.moveTo(armX2, y + h * 0.38).lineTo(armX2 + w * 0.07, y + h * 0.34).lineTo(armX2 + w * 0.14, y + h * 0.38).fill(0x555566);
 
-    // Legs — armored
+    // Legs — rounded organic segments with joints
     const fo = walk % 2 === 0 ? 0 : 3;
-    g.roundRect(x + w * 0.18, y + h - 8 - fo, w * 0.26, 8 + fo, 2).fill(0x226622);
-    g.roundRect(x + w * 0.56, y + h - 8 + fo, w * 0.26, 8 - fo, 2).fill(0x226622);
-    // Knee pads
-    g.circle(x + w * 0.3, y + h * 0.78 - fo, 3).fill(0x555566);
-    g.circle(x + w * 0.68, y + h * 0.78 + fo, 3).fill(0x555566);
-    // Clawed feet
-    for (let t = 0; t < 2; t++) {
-      g.moveTo(x + w * 0.15 + t * w * 0.1, y + h - fo).lineTo(x + w * 0.2 + t * w * 0.1, y + h + 2 - fo)
-        .lineTo(x + w * 0.25 + t * w * 0.1, y + h - fo).fill(0x226622);
-      g.moveTo(x + w * 0.53 + t * w * 0.1, y + h + fo).lineTo(x + w * 0.58 + t * w * 0.1, y + h + 2 + fo)
-        .lineTo(x + w * 0.63 + t * w * 0.1, y + h + fo).fill(0x226622);
+    // Left leg
+    const ll_hipX = x + w * 0.28, ll_hipY = y + h * 0.72 - fo;
+    const ll_kneeX = x + w * 0.22, ll_kneeY = y + h * 0.82 - fo * 0.4;
+    const ll_footX = x + w * 0.18, ll_footY = y + h - 2;
+    g.ellipse(ll_hipX, ll_hipY, w * 0.13, h * 0.1).fill(0x337733);        // thigh
+    g.moveTo(ll_hipX - w * 0.1, ll_hipY).quadraticCurveTo(ll_kneeX - 3, ll_kneeY - 4, ll_kneeX, ll_kneeY)
+      .quadraticCurveTo(ll_kneeX + 5, ll_kneeY - 2, ll_hipX + w * 0.06, ll_hipY).fill(0x226622);
+    g.moveTo(ll_kneeX, ll_kneeY).quadraticCurveTo(ll_footX - 2, ll_footY - 4, ll_footX, ll_footY)
+      .quadraticCurveTo(ll_footX + 7, ll_footY - 2, ll_kneeX + 5, ll_kneeY).fill(0x1A5518);
+    g.circle(ll_kneeX, ll_kneeY, 3.5).fill(0x444455); // knee joint
+    // Right leg
+    const rl_hipX = x + w * 0.66, rl_hipY = y + h * 0.72 + fo;
+    const rl_kneeX = x + w * 0.74, rl_kneeY = y + h * 0.82 + fo * 0.4;
+    const rl_footX = x + w * 0.78, rl_footY = y + h - 2;
+    g.ellipse(rl_hipX, rl_hipY, w * 0.13, h * 0.1).fill(0x337733);
+    g.moveTo(rl_hipX - w * 0.06, rl_hipY).quadraticCurveTo(rl_kneeX - 5, rl_kneeY - 2, rl_kneeX, rl_kneeY)
+      .quadraticCurveTo(rl_kneeX + 3, rl_kneeY - 4, rl_hipX + w * 0.1, rl_hipY).fill(0x226622);
+    g.moveTo(rl_kneeX, rl_kneeY).quadraticCurveTo(rl_footX + 2, rl_footY - 4, rl_footX, rl_footY)
+      .quadraticCurveTo(rl_footX - 7, rl_footY - 2, rl_kneeX - 5, rl_kneeY).fill(0x1A5518);
+    g.circle(rl_kneeX, rl_kneeY, 3.5).fill(0x444455);
+    // Clawed feet — 3 toes each
+    for (const [fx, flip] of [[ll_footX, -1], [rl_footX, 1]] as [number, number][]) {
+      for (let t = -1; t <= 1; t++) {
+        g.moveTo(fx + flip * 1, y + h - 2)
+          .lineTo(fx + flip * (4 + t * 3), y + h + 4)
+          .lineTo(fx + flip * (2 + t * 3), y + h - 1).fill(0x334433);
+      }
     }
   }
 
