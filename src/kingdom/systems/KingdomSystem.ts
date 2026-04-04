@@ -465,9 +465,11 @@ function enterBonusRoom(s: KingdomState, _idx: number): void {
       coins.push({ x: c + 0.5, y: r + 0.5, collected: false, bobOffset: c * 0.3 + r * 0.5 });
     }
   }
-  // Exit pipe on right
+  // Exit pipe on right — clear wall tiles so pipe isn't buried in bricks
   tiles[h - 3][w - 2] = TileType.PIPE_ENTER_L;
   tiles[h - 3][w - 1] = TileType.PIPE_ENTER_R;
+  tiles[h - 2][w - 2] = TileType.PIPE_BL;
+  tiles[h - 2][w - 1] = TileType.PIPE_BR;
 
   s.bonusRoom = {
     tiles, floatingCoins: coins, width: w, height: h,

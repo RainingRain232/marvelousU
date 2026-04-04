@@ -308,7 +308,7 @@ export class KingdomGame {
     updateTimer(s, dt);
 
     // Check exit pipe
-    if (input.downPressed) {
+    if (input.downPressed || input.runPressed) {
       checkBonusRoomExit(s);
     }
     // Auto-exit if time runs low
