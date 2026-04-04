@@ -7605,7 +7605,8 @@ export class Worms3DGame {
         // Blink faster as fuse runs out
         const blinkRate = Math.max(0.05, p.fuseTimer * 0.3);
         const blink = Math.sin(this._time / blinkRate) > 0;
-        (p.mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = blink ? 1.5 : 0.2;
+        const blinkMesh = p.mesh.material ? p.mesh : (p.mesh as unknown as THREE.Group).children[0] as THREE.Mesh;
+        (blinkMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = blink ? 1.5 : 0.2;
 
         if (p.fuseTimer <= 0) {
           this._createExplosion(p.pos.clone(), p.weapon);
