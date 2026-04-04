@@ -51,7 +51,7 @@ import {
 export interface InputKeys {
   left: boolean; right: boolean;
   jump: boolean; jumpPressed: boolean;
-  run: boolean;
+  run: boolean; runPressed: boolean;
   fire: boolean; firePressed: boolean;
   special: boolean; specialPressed: boolean;
   down: boolean; downPressed: boolean;
@@ -186,8 +186,8 @@ export function updatePlayer(s: KingdomState, input: InputKeys, dt: number): voi
     if (canStand) { p.crouching = false; updateCrouchHeight(p); }
   }
 
-  // Pipe entrance (press down on enterable pipe)
-  if (input.downPressed && p.grounded) {
+  // Pipe entrance (press Z on enterable pipe)
+  if (input.runPressed && p.grounded) {
     const pc = Math.floor(p.x + p.width / 2);
     const pr = Math.floor(p.y + p.height);
     for (const pe of s.pipeEntrances) {

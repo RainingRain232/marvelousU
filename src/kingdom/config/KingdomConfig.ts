@@ -339,7 +339,7 @@ export interface CharColors {
 
 export const CHAR_COLORS: Record<KingdomChar, CharColors> = {
   [KingdomChar.ARTHUR]: {
-    primary: 0xCC0000, secondary: 0x8B4513, skin: 0xFFCC99, accent: 0xFFD700, hair: 0x8B4513,
+    primary: 0x1A5ECC, secondary: 0x8B4513, skin: 0xFFCC99, accent: 0xFFD700, hair: 0x8B4513,
   },
   [KingdomChar.MERLIN]: {
     primary: 0x2244CC, secondary: 0x7700BB, skin: 0xFFCC99, accent: 0xFFFFFF, hair: 0xCCCCCC,

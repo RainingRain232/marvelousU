@@ -37,6 +37,7 @@ export class KingdomGame {
   async boot(): Promise<void> {
     viewManager.clearWorld();
     viewManager.camera.zoom = 1;
+    viewManager.camera.keyboardEnabled = false;
     audioManager.playGameMusic();
     const sw = viewManager.screenWidth, sh = viewManager.screenHeight;
     this._state = createKingdomState(sw, sh);
@@ -48,6 +49,7 @@ export class KingdomGame {
   }
 
   destroy(): void {
+    viewManager.camera.keyboardEnabled = true;
     if (this._tickerCb) { viewManager.app.ticker.remove(this._tickerCb); this._tickerCb = null; }
     this._destroyInput();
     this._renderer.destroy();
@@ -82,6 +84,7 @@ export class KingdomGame {
       jump: this._keys.has("ArrowUp") || this._keys.has("Space"),
       jumpPressed: this._justPressed.has("ArrowUp") || this._justPressed.has("Space"),
       run: this._keys.has("KeyZ") || this._keys.has("ShiftLeft") || this._keys.has("ShiftRight"),
+      runPressed: this._justPressed.has("KeyZ"),
       fire: this._keys.has("KeyX"),
       firePressed: this._justPressed.has("KeyX"),
       special: this._keys.has("KeyC"),
