@@ -2540,16 +2540,24 @@ export class HolyTennisGame {
         break;
       }
       default: {
-        // Behind player (original)
+        // Behind player, zoomed to keep both players in view
+        const opp = this._players[1];
+        const midX = (p.pos.x + opp.pos.x) * 0.5;
+        const midZ = (p.pos.z + opp.pos.z) * 0.5;
+        const spanZ = Math.abs(p.pos.z - opp.pos.z);
+        const spanX = Math.abs(p.pos.x - opp.pos.x);
+        // Extra pullback to fit both players: base 8 + half the court span
+        const pullback = 8 + spanZ * 0.6 + spanX * 0.3;
+        const extraHeight = spanZ * 0.2 + spanX * 0.15;
         tL = new THREE.Vector3(
-          (p.pos.x + (g.inPlay ? g.pos.x : 0)) * 0.3,
+          midX * 0.5 + (g.inPlay ? g.pos.x * 0.15 : 0),
           g.inPlay ? Math.min(g.pos.y * 0.3, 2.5) + 1 : 1.5,
-          (p.pos.z + (g.inPlay ? g.pos.z : 0)) * 0.3
+          midZ * 0.5 + (g.inPlay ? g.pos.z * 0.15 : 0)
         );
         cI = new THREE.Vector3(
-          p.pos.x * 0.4,
-          7 + Math.abs(p.pos.z) * 0.15,
-          p.pos.z + p.side * (-8 - Math.abs(p.pos.z) * 0.3)
+          midX * 0.4,
+          7 + extraHeight,
+          p.pos.z + p.side * (-pullback)
         );
       }
     }
