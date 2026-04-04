@@ -1085,29 +1085,52 @@ export class LancelotGame {
     sfArm.position.y = -0.2;
     shieldGroup.add(sfArm);
 
-    // Shield (heater shape — wider top, narrow bottom)
-    const shieldGeo = new THREE.CylinderGeometry(0.22, 0.12, 0.7, 12);
-    const shieldMat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.55 });
+    // Shield — flat slab held in front of the forearm, facing the enemy (+Z)
+    const shieldW = 0.38;
+    const shieldH = 0.52;
+    const shieldD = 0.055;
+    const shieldGeo = new THREE.BoxGeometry(shieldW, shieldH, shieldD);
+    const shieldMat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.5 });
     const shield = new THREE.Mesh(shieldGeo, shieldMat);
-    shield.position.set(-0.12, -0.1, 0.05);
-    shield.rotation.z = Math.PI / 2;
+    shield.position.set(0, -0.28, 0.18);
     shieldGroup.add(shield);
 
-    // Shield boss
-    const bossGeo = new THREE.SphereGeometry(0.1, 16, 12, 0, Math.PI);
+    // Rim — four metal bars around the edges
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x887744, metalness: 0.65, roughness: 0.35 });
+    const rimT = 0.022;
+    const hBarGeo = new THREE.BoxGeometry(shieldW + rimT * 2, rimT, shieldD + 0.006);
+    const topBar = new THREE.Mesh(hBarGeo, rimMat);
+    topBar.position.set(0, shieldH / 2, 0);
+    shield.add(topBar);
+    const botBar = new THREE.Mesh(hBarGeo, rimMat);
+    botBar.position.set(0, -shieldH / 2, 0);
+    shield.add(botBar);
+    const vBarGeo = new THREE.BoxGeometry(rimT, shieldH, shieldD + 0.006);
+    const leftBar = new THREE.Mesh(vBarGeo, rimMat);
+    leftBar.position.set(-shieldW / 2, 0, 0);
+    shield.add(leftBar);
+    const rightBar = new THREE.Mesh(vBarGeo, rimMat);
+    rightBar.position.set(shieldW / 2, 0, 0);
+    shield.add(rightBar);
+
+    // Shield boss — dome protruding from the front face
+    const bossGeo = new THREE.SphereGeometry(0.065, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
     const bossMat = new THREE.MeshStandardMaterial({ color: 0xddcc88, metalness: 0.75, roughness: 0.25 });
     const boss = new THREE.Mesh(bossGeo, bossMat);
-    boss.position.set(-0.15, -0.1, 0.1);
-    boss.rotation.y = -Math.PI / 2;
-    shieldGroup.add(boss);
+    boss.rotation.x = -Math.PI / 2; // dome faces +Z (toward enemy)
+    boss.position.set(0, 0, shieldD / 2 + 0.002);
+    shield.add(boss);
 
-    // Shield rim
-    const rimGeo = new THREE.TorusGeometry(0.28, 0.02, 10, 16);
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0x887744, metalness: 0.65, roughness: 0.35 });
-    const rim = new THREE.Mesh(rimGeo, rimMat);
-    rim.position.set(-0.14, -0.1, 0.06);
-    rim.rotation.y = -Math.PI / 2;
-    shieldGroup.add(rim);
+    // Cross reinforcing strips on the front face
+    const stripMat = new THREE.MeshStandardMaterial({ color: 0x887744, metalness: 0.5, roughness: 0.4 });
+    const hStripGeo = new THREE.BoxGeometry(shieldW * 0.75, 0.018, 0.012);
+    const hStrip = new THREE.Mesh(hStripGeo, stripMat);
+    hStrip.position.set(0, 0, shieldD / 2 + 0.006);
+    shield.add(hStrip);
+    const vStripGeo = new THREE.BoxGeometry(0.018, shieldH * 0.72, 0.012);
+    const vStrip = new THREE.Mesh(vStripGeo, stripMat);
+    vStrip.position.set(0, 0, shieldD / 2 + 0.006);
+    shield.add(vStrip);
 
     group.add(shieldGroup);
 

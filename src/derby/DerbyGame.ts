@@ -61,6 +61,14 @@ export class DerbyGame {
     this._renderer.build(sw, sh);
     viewManager.addToLayer("background", this._renderer.container);
 
+    // Wire pause menu callbacks
+    this._renderer.onResume = () => {
+      if (this._state.phase === DerbyPhase.PAUSED) {
+        this._state.phase = DerbyPhase.RACING;
+      }
+    };
+    this._renderer.onExitToMenu = () => this._exitToMenu();
+
     // Input
     this._initInput();
 
@@ -411,11 +419,22 @@ export class DerbyGame {
   // Input
   // ---------------------------------------------------------------------------
 
+  private _exitToMenu(): void {
+    window.dispatchEvent(new CustomEvent("derbyExit"));
+  }
+
   private _initInput(): void {
+    // WASD keys are not used in derby — block them so they don't scroll the page
+    const BLOCKED_KEYS = new Set(["w", "a", "s", "d", "W", "A", "S", "D"]);
+
     this._keyDownHandler = (e: KeyboardEvent) => {
+      if (BLOCKED_KEYS.has(e.key)) {
+        e.preventDefault();
+        return;
+      }
       this._keys.add(e.key);
 
-      // ESC toggle pause (edge-triggered)
+      // ESC: open pause menu; when paused, ESC also resumes
       if (e.key === "Escape") {
         if (this._state.phase === DerbyPhase.RACING) {
           this._state.phase = DerbyPhase.PAUSED;

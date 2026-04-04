@@ -740,7 +740,15 @@ function _showLoading(mode: string): void {
     if (menuScreen.selectedGameMode === GameMode.GRAIL_DERBY) {
       menuScreen.hide();
       _showLoading(menuScreen.selectedGameMode);
-      _bootDerbyGame().then(() => loadingScreen.hide());
+      _bootDerbyGame().then(() => {
+        loadingScreen.hide();
+        const _onDerbyExit = () => {
+          window.removeEventListener("derbyExit", _onDerbyExit);
+          if (_derbyGame) { _derbyGame.destroy(); _derbyGame = null; }
+          menuScreen.show();
+        };
+        window.addEventListener("derbyExit", _onDerbyExit);
+      });
       return;
     }
     if (menuScreen.selectedGameMode === GameMode.GRAIL_BREAKER) {

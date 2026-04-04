@@ -148,6 +148,11 @@ export class DerbyRenderer {
   private _crashBuilt = false;
   private _pauseOverlay = new Container();
   private _pauseBuilt = false;
+  private _pauseSubPanel: Container | null = null;
+
+  // Pause menu callbacks (set by DerbyGame)
+  onResume: (() => void) | null = null;
+  onExitToMenu: (() => void) | null = null;
 
   // Crash overlay texts (for dynamic update)
   private _crashScoreText!: Text;
@@ -1891,23 +1896,140 @@ export class DerbyRenderer {
 
   private _buildPause(): void {
     this._pauseOverlay.removeChildren();
+    this._pauseSubPanel = null;
     const sw = this._sw;
     const sh = this._sh;
 
+    // Dim background
     const bg = new Graphics();
-    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.5 });
+    bg.rect(0, 0, sw, sh).fill({ color: 0x000000, alpha: 0.55 });
     this._pauseOverlay.addChild(bg);
 
+    // Centered panel
+    const panelW = 260;
+    const panelH = 270;
+    const px = sw / 2 - panelW / 2;
+    const py = sh / 2 - panelH / 2;
+
+    const panel = new Graphics();
+    panel.roundRect(px, py, panelW, panelH, 8).fill({ color: 0x111111, alpha: 0.97 });
+    panel.roundRect(px, py, panelW, panelH, 8).stroke({ color: 0xffd700, width: 2, alpha: 0.8 });
+    this._pauseOverlay.addChild(panel);
+
     const title = new Text({ text: "PAUSED", style: PAUSE_STYLE });
-    title.anchor.set(0.5, 0.5);
+    title.anchor.set(0.5, 0);
     title.x = sw / 2;
-    title.y = sh / 2;
+    title.y = py + 14;
     this._pauseOverlay.addChild(title);
 
-    const sub = new Text({ text: "Press ESC to resume", style: PROMPT_STYLE });
-    sub.anchor.set(0.5, 0.5);
-    sub.x = sw / 2;
-    sub.y = sh / 2 + 40;
+    const btnDefs: Array<{ label: string; color: number }> = [
+      { label: "RESUME",          color: 0x44aa44 },
+      { label: "CONTROLS",        color: 0x4466cc },
+      { label: "HOW TO PLAY",     color: 0x4466cc },
+      { label: "RETURN TO MENU",  color: 0x993333 },
+    ];
+    const btnW = 210;
+    const btnH = 38;
+    const btnGap = 10;
+    const firstBtnY = py + 82;
+
+    btnDefs.forEach(({ label, color }, i) => {
+      const btn = this._makePauseBtn(label, sw / 2 - btnW / 2, firstBtnY + i * (btnH + btnGap), btnW, btnH, color);
+      btn.on("pointerdown", () => {
+        if (label === "RESUME") {
+          this.onResume?.();
+        } else if (label === "CONTROLS") {
+          this._showPauseSubPanel("controls");
+        } else if (label === "HOW TO PLAY") {
+          this._showPauseSubPanel("howtoplay");
+        } else if (label === "RETURN TO MENU") {
+          this.onExitToMenu?.();
+        }
+      });
+      this._pauseOverlay.addChild(btn);
+    });
+  }
+
+  private _makePauseBtn(label: string, x: number, y: number, w: number, h: number, accentColor: number): Container {
+    const btn = new Container();
+    btn.x = x;
+    btn.y = y;
+    btn.eventMode = "static";
+    btn.cursor = "pointer";
+
+    const bgGfx = new Graphics();
+    const draw = (hovered: boolean) => {
+      bgGfx.clear();
+      bgGfx.roundRect(0, 0, w, h, 6).fill({ color: hovered ? accentColor : 0x2a2a2a, alpha: hovered ? 0.9 : 1 });
+      bgGfx.roundRect(0, 0, w, h, 6).stroke({ color: hovered ? 0xffffff : 0x555555, width: 1 });
+    };
+    draw(false);
+    btn.addChild(bgGfx);
+
+    const txt = new Text({
+      text: label,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 13, fill: "#ffffff", align: "center" }),
+    });
+    txt.anchor.set(0.5, 0.5);
+    txt.x = w / 2;
+    txt.y = h / 2;
+    btn.addChild(txt);
+
+    btn.on("pointerover", () => draw(true));
+    btn.on("pointerout", () => draw(false));
+    return btn;
+  }
+
+  private _showPauseSubPanel(type: "controls" | "howtoplay"): void {
+    if (this._pauseSubPanel) {
+      this._pauseOverlay.removeChild(this._pauseSubPanel);
+      this._pauseSubPanel = null;
+    }
+    const sw = this._sw;
+    const sh = this._sh;
+    const panelW = 300;
+    const panelH = 220;
+    const px = sw / 2 - panelW / 2;
+    const py = sh / 2 - panelH / 2;
+
+    const sub = new Container();
+
+    const bg = new Graphics();
+    bg.roundRect(px, py, panelW, panelH, 8).fill({ color: 0x0a0a0a, alpha: 0.99 });
+    bg.roundRect(px, py, panelW, panelH, 8).stroke({ color: 0x888888, width: 1.5 });
+    sub.addChild(bg);
+
+    const titleStr = type === "controls" ? "CONTROLS" : "HOW TO PLAY";
+    const bodyStr = type === "controls"
+      ? "UP / DOWN   Switch lane\nSHIFT       Sprint\nSPACE       Shoot (archery)\nESC         Pause"
+      : "Ride your horse down the road and\navoid obstacles (mud pits, carts,\nrocks). Collect gold coins and\npotions. Outrun rival knights.\nSprint for a speed boost — watch\nyour stamina bar!";
+
+    const titleTxt = new Text({
+      text: titleStr,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 16, fill: "#ffd700", fontWeight: "bold" }),
+    });
+    titleTxt.anchor.set(0.5, 0);
+    titleTxt.x = sw / 2;
+    titleTxt.y = py + 14;
+    sub.addChild(titleTxt);
+
+    const bodyTxt = new Text({
+      text: bodyStr,
+      style: new TextStyle({ fontFamily: "monospace", fontSize: 12, fill: "#cccccc", lineHeight: 20, wordWrap: true, wordWrapWidth: panelW - 32 }),
+    });
+    bodyTxt.anchor.set(0.5, 0);
+    bodyTxt.x = sw / 2;
+    bodyTxt.y = py + 44;
+    sub.addChild(bodyTxt);
+
+    const backBtn = this._makePauseBtn("BACK", sw / 2 - 80, py + panelH - 50, 160, 34, 0x555555);
+    backBtn.on("pointerdown", () => {
+      this._pauseOverlay.removeChild(sub);
+      this._pauseSubPanel = null;
+    });
+    sub.addChild(backBtn);
+
+    this._pauseSubPanel = sub;
     this._pauseOverlay.addChild(sub);
   }
 
@@ -1919,6 +2041,7 @@ export class DerbyRenderer {
     this._menuBuilt = false;
     this._crashBuilt = false;
     this._pauseBuilt = false;
+    this._pauseSubPanel = null;
     this._menuOverlay.removeChildren();
     this._crashOverlay.removeChildren();
     this._pauseOverlay.removeChildren();
