@@ -1333,12 +1333,25 @@ export class KingdomRenderer {
     const h = p.height * ts;
     const colors = CHAR_COLORS[s.character];
 
-    // Star power: rainbow aura
+    // Star power: rainbow sparkle ring (no filled bg)
     if (p.starTimer > 0) {
-      const hue = (Date.now() / 40) % 360;
-      for (let i = 3; i > 0; i--) {
-        const sc = hslToHex((hue + i * 40) % 360, 100, 60);
-        g.roundRect(sx - i * 2, sy - i * 2, w + i * 4, h + i * 4, 4).fill({ color: sc, alpha: 0.15 });
+      const now = Date.now();
+      const hue = (now / 40) % 360;
+      // Orbiting sparkle dots around the player
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + now / 300;
+        const rx = (w / 2 + 8) * Math.cos(angle);
+        const ry = (h / 2 + 6) * Math.sin(angle);
+        const sc = hslToHex((hue + i * 45) % 360, 100, 70);
+        g.circle(sx + w / 2 + rx, sy + h / 2 + ry, 3).fill({ color: sc, alpha: 0.85 });
+      }
+      // Small inner sparkles
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2 - now / 200;
+        const rx = (w / 2 + 3) * Math.cos(angle);
+        const ry = (h / 2 + 3) * Math.sin(angle);
+        const sc = hslToHex((hue + i * 90 + 20) % 360, 100, 80);
+        g.circle(sx + w / 2 + rx, sy + h / 2 + ry, 2).fill({ color: sc, alpha: 0.7 });
       }
     }
 
